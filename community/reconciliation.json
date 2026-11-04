@@ -1,6 +1,6 @@
 {
   "reconciled_on": "2026-10-21",
-  "scope": "Findings F1-F17 and contributions C001/C002 against the public metadata of the bafu-community-fixes patches. Provider responses are cited as recorded in that public metadata; no private correspondence is reproduced. A patch never closes a finding: only a verified official BAFU release (provider_correction_shipped) does. `retained` keeps asks, objections and earlier interpretations that a status change must not erase.",
+  "scope": "Findings F1-F17 (21 October), F19, F21 and F29-F31 (added 4 November) and contributions C001/C002 against the public metadata of the bafu-community-fixes patches. Provider responses are cited as recorded in that public metadata; no private correspondence is reproduced. A patch never closes a finding: only a verified official BAFU release (provider_correction_shipped) does. `retained` keeps asks, objections and earlier interpretations that a status change must not erase.",
   "sources": {
     "community_fixes": {
       "repository": "https://github.com/sentier-dev/bafu-community-fixes",
@@ -332,13 +332,19 @@
       "community_patch": null,
       "reviewer_consensus": null,
       "pipeline_run_evidence": null,
-      "validation_scope": "Counted on the release files; handled in the lci-bafu-catalog layer. sentier-brightway #4 (open) adds file-export tests for Bq→kBq, km→m and kWh→MJ; whether they cover the release's m-declared noise exchanges is not verified.",
+      "validation_scope": "Counted on the release files; handled in the lci-bafu-catalog layer. sentier-brightway #4 (open) adds file-export tests for Bq→kBq, km→m and kWh→MJ; whether they cover the release's m-declared noise exchanges is not verified. Re-counted on the 2026 v1 files on 31 October by name and compartment: 112 flows in two units, including 2 gas resources in Nm3 and m3 (127 exchanges), correcting the earlier count of three names.",
       "provider_response": null,
       "provider_correction_shipped": null,
       "next_action": "Run the Cobalt-58 parity check against sentier-importers.",
       "review_role": "importer maintainer",
       "evidence_url": "https://github.com/sentier-dev/sentier-bafu/issues/32",
-      "retained": []
+      "retained": [
+        {
+          "kind": "earlier-interpretation",
+          "text": "Counted at first by name: three flows in two units. Counted by name and compartment, 112.",
+          "evidence_url": "https://github.com/sentier-dev/sentier-bafu/issues/32"
+        }
+      ]
     },
     {
       "id": "F13",
@@ -447,17 +453,132 @@
       ],
       "ledger_status": {
         "before": "open",
-        "after": "open"
+        "after": "upstream-fixed"
       },
       "community_patch": null,
       "reviewer_consensus": null,
       "pipeline_run_evidence": "https://github.com/sentier-dev/sentier-bafu/blob/main/community/runs/sentier-brightway-backtest-2026-10-21.json",
-      "validation_scope": "Measured on the published workbook and three method sources (BAFU's distributed EF 3.1 Method (adapted) 00.00.037, GreenDelta 2.8.2, JRC EF 3.1) on 2026-10-21, plus a recomputation of all 11,947 processes. Not yet re-measured by a second person.",
+      "validation_scope": "Measured on the June workbook (sha256 a213ab5a…) and three method sources on 2026-10-21; on 2026-10-26 the June and July files were compared cell by cell: three cells differ (the date and the two exchanged sub-indicator headers), every value is identical.",
+      "provider_response": null,
+      "provider_correction_shipped": {
+        "release": "BAFU:2026 v1 LCIA results workbook, corrected file of 15 July 2026 (BAFU-2026 v1 LCIA Results_corrected.xlsx, sha256 7e9f1c9f9c171f847b5d445c8d939896cc7594571a77029ca6c098f1dde7b672)",
+        "evidence_url": "https://github.com/sentier-dev/sentier-bafu/issues/35#issuecomment-6416361584"
+      },
+      "next_action": null,
+      "review_role": null,
+      "evidence_url": "https://github.com/sentier-dev/sentier-bafu/issues/35#issuecomment-6416361584",
+      "retained": [
+        {
+          "kind": "earlier-interpretation",
+          "text": "Filed on 21 October as a swap in the published workbook. It was measured on the June file, which BAFU had already replaced on 15 July by relabelling the two headers; a tool reading the columns by position still has the swap.",
+          "evidence_url": "https://github.com/sentier-dev/sentier-bafu/issues/35#issuecomment-6416361584"
+        }
+      ]
+    },
+    {
+      "id": "F19",
+      "kind": "finding",
+      "links": [
+        "https://github.com/sentier-dev/sentier-bafu/issues/41"
+      ],
+      "ledger_status": {
+        "before": "open",
+        "after": "open"
+      },
+      "community_patch": null,
+      "reviewer_consensus": null,
+      "pipeline_run_evidence": null,
+      "validation_scope": "Measured on the ecoSpold XML of 2025 v2 and 2026 v1 against the report figure, row by row by amount, and on the LCIA workbook; filed 31 October 2026. Not yet re-measured by a second person.",
       "provider_response": null,
       "provider_correction_shipped": null,
-      "next_action": "Independent re-measurement (drop needs-triage), then send to BAFU with the next batch: swap the two column headers or columns in the workbook.",
+      "next_action": "Independent re-measurement (drop needs-triage), then send to BAFU with the next batch.",
       "review_role": "reviewer",
-      "evidence_url": "https://github.com/sentier-dev/sentier-bafu/issues/35",
+      "evidence_url": "https://github.com/sentier-dev/sentier-bafu/issues/41",
+      "retained": []
+    },
+    {
+      "id": "F21",
+      "kind": "finding",
+      "links": [
+        "https://github.com/sentier-dev/sentier-bafu/issues/42",
+        "https://gitlab.com/eos-lci/lci-bafu-catalog/-/issues/36"
+      ],
+      "ledger_status": {
+        "before": "open",
+        "after": "open"
+      },
+      "community_patch": null,
+      "reviewer_consensus": null,
+      "pipeline_run_evidence": null,
+      "validation_scope": "Measured on all 38 datasets of the name in the ecoSpold XML of 2025 v2 and 2026 v1 and on the LCIA workbook; filed 31 October 2026. Not yet re-measured by a second person.",
+      "provider_response": null,
+      "provider_correction_shipped": null,
+      "next_action": "Independent re-measurement (drop needs-triage), then send to BAFU with the next batch.",
+      "review_role": "reviewer",
+      "evidence_url": "https://github.com/sentier-dev/sentier-bafu/issues/42",
+      "retained": []
+    },
+    {
+      "id": "F29",
+      "kind": "finding",
+      "links": [
+        "https://github.com/sentier-dev/sentier-bafu/issues/43"
+      ],
+      "ledger_status": {
+        "before": "open",
+        "after": "open"
+      },
+      "community_patch": null,
+      "reviewer_consensus": null,
+      "pipeline_run_evidence": null,
+      "validation_scope": "Factors read from the method in the release's openLCA package and compared with the FOEN report; the workbook column recomputed on the 101 cumulative datasets with SO2. Filed 31 October 2026. Not yet re-measured by a second person.",
+      "provider_response": null,
+      "provider_correction_shipped": null,
+      "next_action": "Independent re-measurement (drop needs-triage), then send to BAFU with the next batch.",
+      "review_role": "reviewer",
+      "evidence_url": "https://github.com/sentier-dev/sentier-bafu/issues/43",
+      "retained": []
+    },
+    {
+      "id": "F30",
+      "kind": "finding",
+      "links": [
+        "https://github.com/sentier-dev/sentier-bafu/issues/44"
+      ],
+      "ledger_status": {
+        "before": "open",
+        "after": "open"
+      },
+      "community_patch": null,
+      "reviewer_consensus": null,
+      "pipeline_run_evidence": null,
+      "validation_scope": "CAS counted on all elementary exchanges of the 2026 v1 ecoSpold XML and on the BAFU:2025 flow list (no flow-list CSV is held for 2026); species nitrogen compared on the 104 unit processes. Filed 31 October 2026. A question to BAFU; no double count has been shown.",
+      "provider_response": null,
+      "provider_correction_shipped": null,
+      "next_action": "Independent re-measurement (drop needs-triage), then ask BAFU with the next batch.",
+      "review_role": "reviewer",
+      "evidence_url": "https://github.com/sentier-dev/sentier-bafu/issues/44",
+      "retained": []
+    },
+    {
+      "id": "F31",
+      "kind": "finding",
+      "links": [
+        "https://github.com/sentier-dev/sentier-bafu/issues/45"
+      ],
+      "ledger_status": {
+        "before": "open",
+        "after": "open"
+      },
+      "community_patch": null,
+      "reviewer_consensus": null,
+      "pipeline_run_evidence": null,
+      "validation_scope": "Every elementary exchange of the ecoSpold XML matched on name and compartment against the BAFU:2025 flow list (no flow-list CSV is held for 2026); the database package checked on 3 of the 7 uranium datasets. Filed 31 October 2026. Not yet re-measured by a second person.",
+      "provider_response": null,
+      "provider_correction_shipped": null,
+      "next_action": "Independent re-measurement (drop needs-triage), then send to BAFU with the next batch.",
+      "review_role": "reviewer",
+      "evidence_url": "https://github.com/sentier-dev/sentier-bafu/issues/45",
       "retained": []
     },
     {
