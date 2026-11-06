@@ -332,7 +332,7 @@
       "community_patch": null,
       "reviewer_consensus": null,
       "pipeline_run_evidence": null,
-      "validation_scope": "Counted on the release files; handled in the lci-bafu-catalog layer. sentier-brightway #4 (open) adds file-export tests for Bq→kBq, km→m and kWh→MJ; whether they cover the release's m-declared noise exchanges is not verified. Re-counted on the 2026 v1 files on 31 October by name and compartment: 112 flows in two units, including 2 gas resources in Nm3 and m3 (127 exchanges), correcting the earlier count of three names.",
+      "validation_scope": "Counted on the release files. The lci-bafu-catalog layer converts Bq/kBq, m/km and kWh/MJ and records it per exchange; its Nm3 route is a label mapping that records nothing, and whether 1 Nm3 = 1 m3 holds for those 127 exchanges is open. sentier-brightway #4 (open) adds file-export tests for Bq→kBq, km→m and kWh→MJ; whether they cover the release's m-declared noise exchanges is not verified. Re-counted on the 2026 v1 files on 31 October by name and compartment: 112 flows in two units, including 2 gas resources in Nm3 and m3 (127 exchanges); the first count listed three unit pairs.",
       "provider_response": null,
       "provider_correction_shipped": null,
       "next_action": "Run the Cobalt-58 parity check against sentier-importers.",
@@ -341,7 +341,7 @@
       "retained": [
         {
           "kind": "earlier-interpretation",
-          "text": "Counted at first by name: three flows in two units. Counted by name and compartment, 112.",
+          "text": "The first count listed three unit pairs. Counted by name and compartment, 112 flows.",
           "evidence_url": "https://github.com/sentier-dev/sentier-bafu/issues/32"
         }
       ]
@@ -531,7 +531,7 @@
       "community_patch": null,
       "reviewer_consensus": null,
       "pipeline_run_evidence": null,
-      "validation_scope": "Factors read from the method in the release's openLCA package and compared with the FOEN report; the workbook column recomputed on the 101 cumulative datasets with SO2. Filed 31 October 2026. Not yet re-measured by a second person.",
+      "validation_scope": "Factors read from the method in the release's openLCA package (12,000 UBP/kg in all four air compartments, read again on 6 November) and compared with the FOEN report; the workbook column recomputed on the 101 cumulative datasets with SO2. Exposure on the 87 with no technosphere input as measured in the lci-bafu-catalog ledger (!44), not repeated here. Filed 31 October 2026. Not yet re-measured by a second person.",
       "provider_response": null,
       "provider_correction_shipped": null,
       "next_action": "Independent re-measurement (drop needs-triage), then send to BAFU with the next batch.",
@@ -552,7 +552,7 @@
       "community_patch": null,
       "reviewer_consensus": null,
       "pipeline_run_evidence": null,
-      "validation_scope": "CAS counted on all elementary exchanges of the 2026 v1 ecoSpold XML and on the BAFU:2025 flow list (no flow-list CSV is held for 2026); species nitrogen compared on the 104 unit processes. Filed 31 October 2026. A question to BAFU; no double count has been shown.",
+      "validation_scope": "CAS counted on all elementary exchanges of the 2026 v1 ecoSpold XML and on the 2025 flow list (SetupDatabase_file.CSV of the BAFU:2025 SimaPro import guide; the 2026 download has no such file); formula N2 on the three `Nitrogen` to water flows read from the release's openLCA package on 6 November; species nitrogen compared on the 104 unit processes. Filed 31 October 2026. A question to BAFU; no double count has been shown.",
       "provider_response": null,
       "provider_correction_shipped": null,
       "next_action": "Independent re-measurement (drop needs-triage), then ask BAFU with the next batch.",
@@ -573,7 +573,7 @@
       "community_patch": null,
       "reviewer_consensus": null,
       "pipeline_run_evidence": null,
-      "validation_scope": "Every elementary exchange of the ecoSpold XML matched on name and compartment against the BAFU:2025 flow list (no flow-list CSV is held for 2026); the database package checked on 3 of the 7 uranium datasets. Filed 31 October 2026. Not yet re-measured by a second person.",
+      "validation_scope": "Every elementary exchange of the ecoSpold XML matched on name and compartment against the 2025 flow list (SetupDatabase_file.CSV of the BAFU:2025 SimaPro import guide; the 2026 download has no such file); the release's openLCA package read on 6 November for all 7 uranium exchanges (kg) and the 304227 row. Filed 31 October 2026. Not yet re-measured by a second person.",
       "provider_response": null,
       "provider_correction_shipped": null,
       "next_action": "Independent re-measurement (drop needs-triage), then send to BAFU with the next batch.",

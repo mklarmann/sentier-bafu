@@ -68,12 +68,12 @@ evidence link in [reconciliation.json](reconciliation.json). In short:
 | Finding | Before | After | Why |
 |---|---|---|---|
 | F17 swapped ecotoxicity headers | open | upstream-fixed | BAFU's corrected workbook of 15 July 2026 exchanges the two header labels; compared cell by cell with the June file, every value is identical. We had measured the June file. A tool reading the columns by position keeps the swap ([#35](https://github.com/sentier-dev/sentier-bafu/issues/35#issuecomment-6416361584)). |
-| F12 flows in two units | informational | informational | Re-counted by name and compartment: 112 flows, not three names, plus Nm3 and m3 on two gas resources ([#32](https://github.com/sentier-dev/sentier-bafu/issues/32)). |
+| F12 flows in two units | informational | informational | Re-counted by name and compartment: 112 flows, including Nm3 and m3 on two gas resources; the first count listed three unit pairs ([#32](https://github.com/sentier-dev/sentier-bafu/issues/32)). |
 | F19 asparagus seedling | — | open | Filed as [#41](https://github.com/sentier-dev/sentier-bafu/issues/41). |
 | F21 gas combustion at 0.5 MJ/MJ | — | open | Filed as [#42](https://github.com/sentier-dev/sentier-bafu/issues/42). |
 | F29 SO₂ in Ecological Scarcity 2021 | — | open | Filed as [#43](https://github.com/sentier-dev/sentier-bafu/issues/43). |
 | F30 CAS on `Nitrogen` to water | — | open | Filed as [#44](https://github.com/sentier-dev/sentier-bafu/issues/44); a question, no double count shown. |
-| F31 exchanges without a flow-list row | — | open | Filed as [#45](https://github.com/sentier-dev/sentier-bafu/issues/45); refines the withdrawn F4. |
+| F31 exchanges without a flow-list row | — | open | Filed as [#45](https://github.com/sentier-dev/sentier-bafu/issues/45); refines the withdrawn F4. For 2026 only the RAF name is a real difference: the uranium gap is in the 2025 flow list. |
 
 Numbers follow the lci-bafu-catalog ledger, so F18, F20 and F22–F28, which have no issue here, are not listed. The five new findings were filed on 31 October and have not been re-measured by a second person; no patch applies to them.
 
