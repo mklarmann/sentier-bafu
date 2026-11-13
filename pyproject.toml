@@ -58,13 +58,6 @@ extend-exclude = [
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
 
-# The Brightway build (#40 follow-up) runs in the environments of sentier-importers and
-# sentier-brightway, which are on Python 3.12. Keep its files to 3.12 syntax.
-[tool.ruff.per-file-target-version]
-"scripts/build_release.py" = "py312"
-"scripts/release_build/*.py" = "py312"
-"release-build-tests/*.py" = "py312"
-
 [tool.pyright]
 venvPath = "."
 venv = ".venv"
