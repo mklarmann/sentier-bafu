@@ -103,3 +103,15 @@ def test_list_shows_the_findings(capsys):
     lines = capsys.readouterr().out.splitlines()
     assert any(re.fullmatch(r"  0001-straw.*\t\[Chris Mutel\]\tF1", line) for line in lines)
     assert any(re.fullmatch(r"  0004-flow-.*\t\[Chris Mutel\]\tno finding", line) for line in lines)
+
+
+def test_list_as_json_is_the_one_place_other_tools_read(capsys):
+    main(["list", "--json"])
+    listing = json.loads(capsys.readouterr().out)
+    assert [step["kind"] for step in listing].count("patch") == len(available_patches())
+    strawberry = next(step for step in listing if step["id"].startswith("0001-"))
+    assert strawberry["findings"] == ["F1"]
+    assert strawberry["authorised_by"] == "Chris Mutel"
+    assert strawberry["references"][0].endswith("/sentier-bafu/issues/6")
+    assert all((REPO / step["source"]).is_file() for step in listing)
+    assert strawberry["source"].endswith("/patches/p0001_strawberry_polyethylene_disposal.py")

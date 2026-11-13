@@ -1,8 +1,10 @@
 """Apply community patches to the BAFU EcoSpold 1 database."""
 
 import argparse
+import json
 import logging
 import sys
+from dataclasses import asdict
 from pathlib import Path
 
 from bafu_community_fixes.compliance import ComplianceError
@@ -17,7 +19,10 @@ def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="bafu-fixes", description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
 
-    sub.add_parser("list", help="List import fixes and patches")
+    list_p = sub.add_parser("list", help="List import fixes and patches")
+    list_p.add_argument(
+        "--json", action="store_true", help="As JSON, with who is behind each, for other tools"
+    )
 
     run_p = sub.add_parser("run", help="Import, fix and patch an EcoSpold 1 file or directory")
     run_p.add_argument(
@@ -70,6 +75,21 @@ def main(argv: list[str] | None = None) -> None:
     run_p.add_argument("-v", "--verbose", action="store_true")
 
     args = parser.parse_args(argv)
+    if args.command == "list" and args.json:
+        steps = [("import fix", fix) for fix in IMPORT_FIXES]
+        steps += [("patch", p) for p in available_patches()]
+        listing = [
+            {
+                "id": step.id,
+                "kind": kind,
+                "description": step.description,
+                **asdict(step.provenance),
+                "source": "src/" + step.func.__module__.replace(".", "/") + ".py",
+            }
+            for kind, step in steps
+        ]
+        print(json.dumps(listing, indent=2, ensure_ascii=False))
+        return
     if args.command == "list":
         print("Import fixes (always applied, in order):")
         for fix in IMPORT_FIXES:
