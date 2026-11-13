@@ -1,9 +1,13 @@
 import hashlib
+import json
 import zipfile
+from pathlib import Path
 
 import pytest
 
 from bafu_community_fixes import download
+
+REPO = Path(__file__).parents[1]
 
 
 @pytest.fixture
@@ -38,3 +42,11 @@ def test_checksum_mismatch(release, monkeypatch):
     with pytest.raises(OSError, match="SHA-256 mismatch"):
         download.latest_release(url=release)
     assert not download.is_cached(release)
+
+
+def test_the_sites_list_of_releases_names_the_archive_the_tool_downloads():
+    """`site/config.json` gives a release its id. The manifest of a patched release finds
+    that id by the archive's checksum, so exactly one release there names this archive."""
+    releases = json.loads((REPO / "site" / "config.json").read_text())["releases"]
+    known = download.CHECKSUMS[download.LATEST_RELEASE]
+    assert len([r["id"] for r in releases if r.get("archive_sha256") == known]) == 1

@@ -9,9 +9,10 @@ exchange list, no text of a dataset. A GitHub Release of a patched release holds
 and nothing else, because BAFU's terms ask that whoever receives the data accepts them
 first, and a release page can't ask for that.
 
-The first ten fields (`CORE_KEYS`) are the manifest of a patched release as the records side
-of this repository defines it (format `sentier-bafu/patched-release/1`): same names, same
-kinds, same meaning. This format, `…/2`, adds what the build knows:
+The first ten fields (`CORE_KEYS`) are the contract with the site and the records
+(`docs/automation.md` has the table): inside this format a field is never renamed or removed,
+and fields may be added. They are the ten fields of format `sentier-bafu/patched-release/1`,
+with the same names, kinds and meaning. This format, `…/2`, adds what the build knows:
 
 - `status`, `problems`, `not_releasable`: whether every step ran, and what keeps a tag from
   being published (a patch that changed data without an authoriser, a failed audit);
@@ -22,6 +23,10 @@ kinds, same meaning. This format, `…/2`, adds what the build knows:
 - `declared_units`: inputs whose declared unit is not their supplier's, with their finding;
 - `exports`: the name, size and SHA-256 of every export file and whether it read back;
 - `contributions`: each contribution built beside the patched release, under its own name.
+
+A manifest names the author and the authoriser of a patch, and of a contribution's layer,
+and nobody else: who reported a finding and who answered for the provider are in the run
+summary and are left out here.
 
 `--verify` checks that a file has exactly this shape, so that the job that publishes can
 refuse anything else. Standard library only, and it runs on the Python a runner has: the job
@@ -184,8 +189,12 @@ def core(summary: dict, tag: str | None, revision: str | None, config: dict | No
     }
 
 
-def blockers(summary: dict, manifest_core: dict) -> list[str]:
-    """What keeps this run from being published as a release."""
+def blockers(summary: dict, manifest_core: dict, findings: set[str] | None = None) -> list[str]:
+    """What keeps this run from being published as a release.
+
+    `findings` are the ids of the finding records of the repository. A patch that names a
+    finding without a record blocks a release; without the ids this is not checked.
+    """
     found = []
     if summary.get("status") != "completed" or not summary.get("output"):
         found.append("the run of the patch tool did not complete")
@@ -203,6 +212,19 @@ def blockers(summary: dict, manifest_core: dict) -> list[str]:
                 f"patch {patch['id']}: the run counts {patch['datasets_changed']} changed "
                 f"datasets, its list of changed datasets has {len(patch['datasets'])}"
             )
+        if findings is not None:
+            found += [
+                f"patch {patch['id']} names {finding}, which has no record"
+                for finding in patch["findings"]
+                if finding not in findings
+            ]
+    listed = {patch["id"] for patch in manifest_core["patches"]}
+    marked = {patch for dataset in summary.get("datasets") or () for patch in dataset["patches"]}
+    if marked - listed:
+        found.append(
+            "the changed datasets carry the mark of a patch the run does not list: "
+            + ", ".join(sorted(marked - listed))
+        )
     return found
 
 
@@ -370,8 +392,13 @@ def manifest(
     revision: str | None = None,
     steps: list[dict] | None = None,
     config: dict | None = None,
+    findings: set[str] | None = None,
 ) -> dict:
-    """The manifest of the release run in `out` (as `build_release.py release` lays it out)."""
+    """The manifest of the release run in `out` (as `build_release.py release` lays it out).
+
+    `config` is `site/config.json` (it names the provider release); `findings` are the ids
+    of the finding records, which a patch of a release must name correctly.
+    """
     unreadable: list[str] = []
     summary = load(out / "patched" / "release-summary.json", unreadable)
     if summary is not None and not {"release", "steps", "totals"} <= set(summary):
@@ -401,7 +428,7 @@ def manifest(
             "contributions": [],
         }
     first = core(summary, tag, revision, config)
-    not_releasable = blockers(summary, first)
+    not_releasable = blockers(summary, first, findings)
     builds = {name: build_section(out / name) for name in ("provider", "patched")}
     for name, build in builds.items():
         audit = (build or {}).get("audit")

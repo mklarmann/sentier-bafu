@@ -8,7 +8,8 @@
     },
     {
       "id": "2026-v1",
-      "name": "BAFU:2026 v1"
+      "name": "BAFU:2026 v1",
+      "archive_sha256": "cbaeed4ae79c0be98709c854211cd72725d4f22f8b9b3fe334b7f343fca152f5"
     }
   ],
   "repository": "https://github.com/sentier-dev/sentier-bafu",

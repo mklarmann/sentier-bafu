@@ -359,7 +359,8 @@ class Core(Folder):
             ["patch 0001-amount changed data and names nobody who authorised it"],
         )
         # a patch nobody authorised that changed nothing blocks nothing
-        self.assertEqual(blockers(steps=[step("0002-none", "patch", 0, authorised_by=None)]), [])
+        idle = [step("0002-none", "patch", 0, authorised_by=None)]
+        self.assertEqual(blockers(steps=idle, datasets=[]), [])
         self.assertIn("the run of the patch tool did not complete", blockers(status="failed"))
         unknown = summary()["release"] | {"url": None, "archive_sha256": None}
         self.assertEqual(
@@ -373,6 +374,44 @@ class Core(Folder):
             "datasets has 1",
             blockers(datasets=summary()["datasets"][:1]),
         )
+        # a dataset that carries the mark of a patch the run does not list
+        marked = summary()["datasets"] + [
+            {"file": "process_z.xml", "number": 100, "import_fixes": [], "patches": ["0009-x"]}
+        ]
+        self.assertEqual(
+            blockers(datasets=marked),
+            ["the changed datasets carry the mark of a patch the run does not list: 0009-x"],
+        )
+
+    def test_a_patch_that_names_a_finding_without_a_record_is_no_release(self):
+        data = summary()
+        core = rm.core(data, None, None)
+        self.assertEqual(rm.blockers(data, core, {"F1", "F2"}), [])
+        self.assertEqual(
+            rm.blockers(data, core, {"F2"}),
+            ["patch 0001-amount names F1, which has no record"],
+        )
+        # without the ids of the records, nothing is said about them
+        self.assertEqual(rm.blockers(data, core), [])
+
+    def test_a_manifest_names_the_author_and_the_authoriser_and_nobody_else(self):
+        steps = [
+            step(
+                "0001-amount",
+                "patch",
+                2,
+                reported_by="Rex Reporter, Some Company",
+                confirmed_by="Paula Person, the provider (email)",
+                references=["https://example.org/thread"],
+            )
+        ]
+        text = json.dumps(self.manifest(steps=steps))
+        self.assertIn("Ann Author", text)
+        self.assertIn("Rita Reviewer", text)
+        for words in ("Rex Reporter", "Paula Person", "(email)", "example.org/thread"):
+            self.assertNotIn(words, text)
+        self.assertNotIn("placeholders for missing data", text)
+        self.assertNotIn(str(self.out), text, "no path of the machine")
 
 
 class WholeManifest(Folder):
@@ -428,6 +467,16 @@ class WholeManifest(Folder):
         self.assertIs(exports_["published"], False)
         self.assertIs(data["exports"]["published"], False)
         self.assertEqual(data["check_against_previous"]["patches"][0]["id"], "0001-amount")
+
+    def test_a_finding_without_a_record_blocks_the_release(self):
+        steps = write_run(self.out)
+        known = rm.manifest(self.out, tag="patched-x", steps=steps, findings={"F1"})
+        self.assertEqual(rm.release_errors(known), [])
+        unknown = rm.manifest(self.out, tag="patched-x", steps=steps, findings=set())
+        self.assertEqual(rm.shape_errors(unknown), [])
+        self.assertEqual(
+            rm.release_errors(unknown), ["patch 0001-amount names F1, which has no record"]
+        )
 
     def test_a_contribution_is_listed_beside_the_patched_release_and_not_in_it(self):
         data = self.manifest(contribution=True)

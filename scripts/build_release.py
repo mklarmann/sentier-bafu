@@ -684,6 +684,12 @@ def _marker(record: dict, build_steps: list[dict]) -> dict:
     }
 
 
+def _finding_ids() -> set[str]:
+    """The ids of the finding records: a release holds no patch that names another."""
+    folder = REPOSITORY / "community" / "findings"
+    return {path.stem for path in folder.rglob("F*.json")}
+
+
 def _repository_commit() -> str:
     try:
         commit = _git("-C", str(REPOSITORY), "rev-parse", "HEAD")
@@ -894,7 +900,7 @@ def release(args: argparse.Namespace) -> int:
     config = release_manifest.load(REPOSITORY / "site" / "config.json")
     revision = _repository_commit().split()[0]
     data = release_manifest.manifest(
-        out, tag=args.tag, revision=revision, steps=steps, config=config
+        out, tag=args.tag, revision=revision, steps=steps, config=config, findings=_finding_ids()
     )
     errors = release_manifest.shape_errors(data)
     if errors:
