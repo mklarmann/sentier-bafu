@@ -209,6 +209,12 @@ The site learns from the manifest of the latest release which patches a patched 
 and which datasets each changed. Reading it at build time, the way the issues are read, is work
 for the site build.
 
+A manifest is written in one place. The fields above are the contract with the site and the
+records: inside format 1 a field is never renamed or removed, and fields may be added. If the
+build tools bring a writer of their own that says more (the Brightway build, the exports), that
+writer and its release workflow take over and this script goes, except for its check
+(`--verify`), which stays as the gate before anything is published.
+
 ## 3. Staleness
 
 Nothing is stored and nothing is sent. `community.staleness(record, today, thresholds)` computes
