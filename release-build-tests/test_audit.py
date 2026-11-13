@@ -197,6 +197,16 @@ PROJECT = textwrap.dedent(
     method = bd.Method(("sentier", "EF v3.1", "Climate change"))
     method.register(unit="kg CO2 eq", sentier_method_id="ef-3.1:climate-change")
     method.write([((bio, "co2"), 1.0), ((bio, "ch4"), 30.0), ((bio, "unused"), 7.0)])
+    if "renamed" in sys.argv:
+        # A flow the flow terms don't hold: sentier-brightway writes it without a compartment
+        bd.Database(residual).write({
+            (residual, "r1"): flow("No EF flow"),
+            (residual, "new"): {**flow("Gas, renamed"), "categories": ()},
+        })
+        data = bd.Database(inventory).load()
+        data[(inventory, "b")]["exchanges"].append(
+            {"input": (residual, "new"), "type": "biosphere", "amount": 4.0})
+        bd.Database(inventory).write(data)
     if "dangling" in sys.argv:
         from bw2data.backends import ExchangeDataset
         ExchangeDataset.create(
@@ -286,10 +296,40 @@ class AuditOfAProject(unittest.TestCase):
         self.assertEqual(lines[0], "code,ef-3.1:climate-change")
         self.assertEqual([line.split(",")[0] for line in lines[1:]], ["a", "b"])
 
-    def test_a_score_outside_its_range_fails_only_when_asked(self):
+    def test_findings_fail_only_when_asked(self):
         self.write_project()
         self.assertEqual(self.run_audit().returncode, 0)
-        self.assertEqual(self.run_audit("--fail-on-range").returncode, 1)
+        result = json.loads((self.root / "audit" / "audit.json").read_text())
+        self.assertEqual(len(result["findings"]), 1)
+        self.assertIn("outside its plausible range: Product B", result["findings"][0])
+        self.assertEqual(self.run_audit("--fail-on-findings").returncode, 1)
+
+    def test_a_flow_the_flow_terms_do_not_hold_is_a_finding(self):
+        self.write_project()
+        self.run_audit()
+        before = json.loads((self.root / "audit" / "audit.json").read_text())
+        self.assertEqual(before["elementary_flows"]["not_in_the_pinned_flow_terms"]["flows"], 0)
+
+        self.write_project("renamed")
+        done = self.run_audit()
+        self.assertEqual(done.returncode, 0, done.stderr)
+        after = json.loads((self.root / "audit" / "audit.json").read_text())
+        self.assertEqual(
+            after["elementary_flows"]["not_in_the_pinned_flow_terms"],
+            {"flows": 1, "exchanges": 1, "names": ["Gas, renamed"]},
+        )
+        self.assertEqual(after["status"], "passed")
+        self.assertTrue(any("Gas, renamed" in finding for finding in after["findings"]))
+        self.assertIn("Gas, renamed", done.stdout)
+
+    def test_a_documented_score_that_is_not_reproduced_is_a_finding(self):
+        self.write_project()
+        sample = json.loads(json.dumps(SAMPLE))
+        sample["datasets"][0]["documented_score"]["value"] = 2.5
+        (self.root / "sample.json").write_text(json.dumps(sample))
+        self.run_audit()
+        result = json.loads((self.root / "audit" / "audit.json").read_text())
+        self.assertTrue(any("documented 2.5" in finding for finding in result["findings"]))
 
     def test_an_exchange_without_a_supplier_fails_the_audit(self):
         self.write_project("dangling")

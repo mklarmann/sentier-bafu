@@ -10,6 +10,11 @@ It reads the Brightway project itself, not the files it was built from:
 - scores of a fixed sample of datasets for EF 3.1 climate change, and of every dataset for
   every method (written beside the audit as `scores.csv`).
 
+Errors fail the audit: an unlinked exchange, a score that is not a number. Findings are
+things a person has to look at: a sample score outside its plausible range, or elementary
+flows that the pinned flow terms don't hold (a patch renamed or moved them, so they lost
+their EF 3.1 flow). `--fail-on-findings` turns findings into a failure.
+
 Scores are computed from one factorisation of the technosphere matrix: one solve per sample
 dataset, and one transposed solve per method for all datasets. The two must agree, the
 residual of every solve is checked, and three sample scores are recomputed with bw2calc's
@@ -454,13 +459,16 @@ def audit(project: str, inventory_db: str, sample_path: Path, out_dir: Path, lab
         for m in methods
     ]
     any_factor = set().union(*(m["factors"] for m in methods)) if methods else set()
-    residual_names = sorted(
-        {
-            bd.get_node(database=database, code=code)["name"]
-            for database, code in emitted
-            if database == residual_db
-        }
-    )
+    residual_nodes = {
+        key: bd.get_node(database=key[0], code=key[1]) for key in emitted if key[0] == residual_db
+    }
+    residual_names = sorted({node["name"] for node in residual_nodes.values()})
+    # sentier-brightway gives a flow without an EF 3.1 flow its compartment from the pinned
+    # flow terms. A flow with no compartment is one those terms don't hold: its name,
+    # compartment or unit differs from BAFU's release, so the mapping can't know it either.
+    unknown = {key: node for key, node in residual_nodes.items() if not node.get("categories")}
+    unknown_names = sorted({node["name"] for node in unknown.values()})
+    unknown_exchanges = sum(emitted[key] for key in unknown)
     id_of_key = {key: node_id for node_id, key in data["key_of_id"].items()}
     scores = compute_scores(bd, inventory_db, methods, load_sample(sample_path), id_of_key)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -482,11 +490,28 @@ def audit(project: str, inventory_db: str, sample_path: Path, out_dir: Path, lab
     if not np.isfinite(table).all():
         errors.append("Scores that are not finite numbers")
     with_exchanges = {code for _, _, _, code in data["exchanges"]}
+    findings = [
+        f"Sample score outside its plausible range: {flag}"
+        for flag in scores["summary"]["range_flags"]
+    ]
+    findings += [
+        f"Sample score differs from the documented one: {entry['name']} ({entry['location']}): "
+        f"{entry['score']:.6g}, documented {entry['documented_score']['value']:.6g}"
+        for entry in scores["summary"]["sample"]
+        if not entry.get("documented_score", {"agrees": True})["agrees"]
+    ]
+    if unknown:
+        findings.append(
+            f"{len(unknown)} elementary flow(s) are not in the pinned flow terms, so the mapping "
+            f"can't know them, and their {unknown_exchanges} exchange(s) have no EF 3.1 flow: "
+            + "; ".join(unknown_names)
+        )
     return {
         "audit_version": AUDIT_VERSION,
         "label": label,
         "status": "failed" if errors else "passed",
         "errors": errors,
+        "findings": findings,
         "project": project,
         "databases": {
             "inventory": inventory_db,
@@ -504,6 +529,11 @@ def audit(project: str, inventory_db: str, sample_path: Path, out_dir: Path, lab
             "with_a_factor_in_any_method": sum(1 for key in emitted if key in any_factor),
             "without_a_factor_in_any_method": sum(1 for key in emitted if key not in any_factor),
             "no_ef_3_1_flow_names": residual_names,
+            "not_in_the_pinned_flow_terms": {
+                "flows": len(unknown),
+                "exchanges": unknown_exchanges,
+                "names": unknown_names,
+            },
         },
         "methods": coverage,
         "scores": scores["summary"]
@@ -549,9 +579,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--out", type=Path, required=True, help="Folder for audit.json")
     parser.add_argument("--label", default="", help="What this build is, e.g. 'patched release'")
     parser.add_argument(
-        "--fail-on-range",
+        "--fail-on-findings",
         action="store_true",
-        help="Exit with an error if a sample score is outside its plausible range",
+        help="Exit with an error if the audit has findings: a sample score outside its "
+        "plausible range, or elementary flows the pinned flow terms don't hold",
     )
     args = parser.parse_args(argv)
     try:
@@ -561,14 +592,14 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     target = args.out / "audit.json"
     target.write_text(json.dumps(result, indent=2, allow_nan=False) + "\n")
-    flags = result["scores"]["range_flags"]
+    findings = result["findings"]
     print(
         f"{result['status']}: {result['datasets']} datasets, "
-        f"{result['exchanges']['total']} exchanges, {len(flags)} range flag(s); {target}"
+        f"{result['exchanges']['total']} exchanges, {len(findings)} finding(s); {target}"
     )
-    for line in [*result["errors"], *flags]:
+    for line in [*result["errors"], *findings]:
         print(f"  {line}")
-    return int(bool(result["errors"]) or (args.fail_on_range and bool(flags)))
+    return int(bool(result["errors"]) or (args.fail_on_findings and bool(findings)))
 
 
 if __name__ == "__main__":
