@@ -36,9 +36,12 @@ def workspace(target):
 def copy_repository(target):
     """A copy of this repository at `target` with the frozen records in place of its own."""
     target = Path(target)
+    # Without the patch tool (`src`): the frozen list of patches is not the registry's of today,
+    # and a tree without a registry has nothing to compare the list with.
     shutil.copytree(
         ROOT, target,
-        ignore=shutil.ignore_patterns(".git", "_site", ".local", "__pycache__", ".venv", "fixtures"),
+        ignore=shutil.ignore_patterns(".git", "_site", ".local", "__pycache__", ".venv", "fixtures", "src",
+                                      ".pytest_cache", ".ruff_cache", "output"),
     )
     for name in REPLACED:
         path = target / name

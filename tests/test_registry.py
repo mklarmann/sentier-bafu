@@ -1,5 +1,6 @@
 """What a patch needs to be registered, and what holds for the patches that are."""
 
+import importlib.util
 import json
 import re
 from pathlib import Path
@@ -75,27 +76,58 @@ def test_no_patch_is_left_as_a_template():
         assert "TODO" not in p.description + p.rationale, p.id
 
 
-def _ledger() -> set[str]:
-    """The ids of all findings: one record each, or a row in the ledger."""
-    records = {p.stem for p in (REPO / "community" / "findings").glob("F*.json")}
-    ledger = (REPO / "community" / "findings.md").read_text(encoding="utf-8")
-    return records | set(re.findall(r"(?m)^\| (F\d+) \|", ledger))
+def _records() -> set[str]:
+    """The ids of all findings: one record each, `community/findings/<n // 1000>/F<n>.json`."""
+    return {p.stem for p in (REPO / "community" / "findings").rglob("F*.json")}
 
 
-def test_findings_of_the_patches_are_in_the_ledger():
-    known = _ledger()
+def test_findings_of_the_patches_have_a_record():
+    known = _records()
     assert known
     for p in available_patches():
         assert set(p.provenance.findings) <= known, p.id
 
 
-def test_findings_of_the_patches_agree_with_the_reconciliation():
-    """The receipt of 21 October lists patches and findings by hand; the patches now say it."""
-    reconciliation = json.loads((REPO / "community" / "reconciliation.json").read_text())
-    listed = {entry["id"]: tuple(entry["findings"]) for entry in reconciliation["patches"]}
-    declared = {p.id: p.provenance.findings for p in available_patches()}
-    assert len(listed) == 11
-    assert {id: declared[id] for id in listed} == listed
+def _snapshot():
+    """`scripts/patches_snapshot.py`, which writes the list of patches the site reads."""
+    spec = importlib.util.spec_from_file_location(
+        "patches_snapshot", REPO / "scripts" / "patches_snapshot.py"
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_the_list_of_patches_the_site_reads_is_what_the_registry_gives(capsys):
+    """`community/patches.json` is written from the registry and never kept by hand."""
+    snapshot = _snapshot()
+    wanted, how = snapshot.expected(REPO)
+    assert how == snapshot.IMPORTED  # these tests run where the tool is installed
+    committed = json.loads((REPO / "community" / "patches.json").read_text(encoding="utf-8"))
+    assert snapshot.differences(committed, wanted) == []
+    assert [p["id"] + "-" + p["slug"] for p in committed["patches"]] == [
+        p.id for p in available_patches()
+    ]
+    capsys.readouterr()
+
+
+def test_the_registry_reads_the_same_from_the_tool_its_listing_and_the_source(capsys):
+    """The records are checked without the tool, from the source of the patch modules."""
+    snapshot = _snapshot()
+    main(["list", "--json"])
+    printed = capsys.readouterr().out
+    from_listing, _ = snapshot.expected(REPO, printed)
+    from_tool, _ = snapshot.expected(REPO)
+    config = json.loads((REPO / "site" / "config.json").read_text(encoding="utf-8"))
+    from_source = snapshot.snapshot(
+        snapshot.from_source(REPO), config["repository"], config.get("source_ref", "main")
+    )
+    assert from_listing == from_tool == from_source
+    # who reported and who confirmed stay in the registry
+    for step in json.loads(printed):
+        for name in (step["reported_by"], step["confirmed_by"]):
+            if name and name not in (step["authored_by"], step["authorised_by"]):
+                assert name not in json.dumps(from_tool, ensure_ascii=False)
 
 
 def test_list_shows_the_findings(capsys):

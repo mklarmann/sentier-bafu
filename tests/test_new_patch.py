@@ -12,14 +12,14 @@ from bafu_community_fixes import registry
 
 REPO = Path(__file__).parents[1]
 SCRIPT = REPO / "scripts" / "new_patch.py"
-ISSUES = "https://github.com/example/repo/issues"
-LEDGER = f"""# Findings
-
-| ID | What | Datasets | Release | Status | Links |
-|---|---|---|---|---|---|
-| F3 | Locations | 573961 | 2026 v1 | open | [#8]({ISSUES}/8) |
-| F14 | Wind | 584039 | 2026 v1 | open | [#29]({ISSUES}/29) · [#8]({ISSUES}/8) |
-"""
+REPOSITORY = "https://github.com/example/repo"
+ISSUES = f"{REPOSITORY}/issues"
+# What a finding record says about where it is discussed: its issue here, threads elsewhere.
+RECORDS = {
+    "F3": {"id": "F3", "issue": 8, "threads": []},
+    "F14": {"id": "F14", "issue": 29, "threads": [f"{ISSUES}/8"]},
+    "F1048": {"id": "F1048", "issue": None, "threads": ["https://example.org/thread/5"]},
+}
 
 
 @pytest.fixture(scope="module")
@@ -32,7 +32,7 @@ def new_patch():
 
 @pytest.fixture
 def root(tmp_path):
-    """A checkout with two patches and a ledger."""
+    """A checkout with two patches and three finding records."""
     patches = tmp_path / "src" / "bafu_community_fixes" / "patches"
     patches.mkdir(parents=True)
     for name in ("__init__.py", "p0001_first.py", "p0011_latest.py"):
@@ -40,8 +40,13 @@ def root(tmp_path):
     for name in ("__init__.py", "pipeline.py", "registry.py", "xml.py"):
         (patches.parent / name).touch()  # so the linter sees the package as this project's
     (tmp_path / "tests").mkdir()
-    (tmp_path / "community").mkdir()
-    (tmp_path / "community" / "findings.md").write_text(LEDGER)
+    (tmp_path / "site").mkdir()
+    (tmp_path / "site" / "config.json").write_text(json.dumps({"repository": REPOSITORY}))
+    for finding, record in RECORDS.items():
+        # a thousand records to a folder: F14 is in 0/, F1048 in 1/
+        folder = tmp_path / "community" / "findings" / str(int(finding[1:]) // 1000)
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / f"{finding}.json").write_text(json.dumps(record))
     return tmp_path
 
 
@@ -68,13 +73,12 @@ def test_scaffold_takes_the_next_number_and_the_findings_links(new_patch, root):
     assert new_patch.next_number(root) == 13
 
 
-def test_scaffold_prefers_the_finding_record(new_patch, root):
-    (root / "community" / "findings").mkdir()
-    record = {"id": "F14", "links": ["https://github.com/example/repo/issues/99"]}
-    (root / "community" / "findings" / "F14.json").write_text(json.dumps(record))
-    patch_file, _ = new_patch.scaffold(root, "storage-pump-wind", "F14", "Jane Doe")
-    assert '"https://github.com/example/repo/issues/99",' in patch_file.read_text()
-    assert "issues/29" not in patch_file.read_text()
+def test_scaffold_reads_a_record_wherever_its_number_puts_it(new_patch, root):
+    patch_file, _ = new_patch.scaffold(root, "storage-pump-wind", "F1048", "Jane Doe")
+    source = patch_file.read_text()
+    assert 'findings=("F1048",),' in source
+    # a finding without an issue here is discussed elsewhere only
+    assert '    references=(\n        "https://example.org/thread/5",\n    ),\n' in source
 
 
 def test_scaffold_without_a_finding(new_patch, root):
@@ -88,8 +92,8 @@ def test_scaffold_without_a_finding(new_patch, root):
 @pytest.mark.parametrize(
     ("name", "finding", "message"),
     [
-        ("storage-pump-wind", "F99", "no finding F99 in the ledger"),
-        ("storage-pump-wind", "F1", "no finding F1 in the ledger"),  # F14 isn't F1
+        ("storage-pump-wind", "F99", "no record of finding F99"),
+        ("storage-pump-wind", "F1", "no record of finding F1 "),  # F14 isn't F1
         ("storage-pump-wind", "14", "looks like 'F14'"),
         ("Storage_Pump", "F14", "must look like 'storage-pump-wind'"),
         ("0012-storage", "F14", None),  # allowed, if odd
@@ -137,7 +141,7 @@ def test_command_line(new_patch, root, monkeypatch, capsys):
     out = capsys.readouterr().out
     assert "Created src/bafu_community_fixes/patches/p0012_storage_pump_wind.py" in out
     assert "Created tests/test_p0012_storage_pump_wind.py" in out
-    with pytest.raises(SystemExit, match="no finding F99"):
+    with pytest.raises(SystemExit, match="no record of finding F99"):
         new_patch.main(["other", "--finding", "F99", "--author", "Jane Doe"])
     with pytest.raises(SystemExit):  # a finding, or the statement that there is none
         new_patch.main(["other", "--author", "Jane Doe"])

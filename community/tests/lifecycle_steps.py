@@ -8,12 +8,14 @@ command, and must stay that. A unit test that reads the repository's own records
 one of these steps, and somebody would have to edit it.
 
 This script takes each step on a scratch copy of the repository, with the commands people use
-(`community.py repeat`, `send`, `answer`, `fixed`, `close`), checks the records of the copy,
+(`community.py repeat`, `send`, `answer`, `fixed`, `close`, `new_patch.py` and
+`patches_snapshot.py`), checks the records of the copy,
 and runs the unit tests on it. It exits 1 and names the tests that failed. The cure for such a
 test is to read the frozen records (community/tests/frozen.py), not to update the test.
 """
 
 import concurrent.futures
+import importlib.util
 import json
 import shutil
 import subprocess
@@ -122,18 +124,23 @@ def a_new_release(copy):
 
 def a_new_patch(copy):
     """A community patch is added for a finding that has none."""
-    path = copy / community.PATCHES_FILE
-    if not path.exists():
-        raise Skip("no patch snapshot")
-    data = json.loads(path.read_text())
+    registry = community.registry_module()
+    if not registry.has_registry(copy):
+        raise Skip("no patch tool in this tree")
+    data = community.load_patches(copy) or {"patches": []}
     answered = {rid for patch in data["patches"] for rid in patch["findings"]}
     free = [record["id"] for record in community.load_findings(copy) if record["id"] not in answered]
-    if not free or not data["patches"]:
+    if not free:
         raise Skip("no finding without a patch")
-    last = max(data["patches"], key=lambda patch: patch["id"])
-    data["patches"].append(dict(last, id=f"{int(last['id']) + 1:04d}", slug="lifecycle-check",
-                                description="An example patch for the lifecycle check.", findings=[free[-1]]))
-    path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
+    # As a person does it: the scaffold of the patch, then the list of patches from the registry.
+    spec = importlib.util.spec_from_file_location("new_patch", copy / "scripts/new_patch.py")
+    new_patch = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(new_patch)
+    new_patch.scaffold(copy, "lifecycle-check", free[-1], WHO)
+    written = subprocess.run([sys.executable, str(copy / "scripts/patches_snapshot.py"), "--root", str(copy)],
+                             capture_output=True, text=True)
+    if written.returncode != 0:
+        raise RuntimeError(f"patches_snapshot.py failed on the copy: {written.stdout}{written.stderr}")
 
 
 STEPS = (a_new_finding, next_step, not_reproduced, withdrawn, a_new_release, a_new_patch)

@@ -19,7 +19,7 @@ Interface for the site build and other tools (all take plain records, none reads
     load_config(root)                  provider name and the fixed list of provider releases
     load_findings(root)                every finding record, in number order; record.path is its file
     load_contributions(root)           every contribution record; record.path is its file
-    load_patches(root)                 community/patches.json, the snapshot of the patch registry
+    load_patches(root)                 community/patches.json: the community patches, as the registry has them
     stage(record)                      the stage key, computed as above
     STATUSES, statuses(provider)       the status vocabulary in path order: key, label, description
     status_label(key, provider)        the words the site shows for a stage key
@@ -47,6 +47,7 @@ import argparse
 import datetime
 import functools
 import hashlib
+import importlib.util
 import json
 import math
 from pathlib import Path
@@ -635,7 +636,7 @@ PATCHES_FILE = "community/patches.json"
 
 
 def load_patches(root=ROOT):
-    """The snapshot of the community patch registry, or None when there is none."""
+    """The community patches as scripts/patches_snapshot.py wrote them, or None when there is no file."""
     path = Path(root) / PATCHES_FILE
     return read(path) if path.exists() else None
 
@@ -646,9 +647,11 @@ def patch_errors(data):
         return [f"{PATCHES_FILE}: needs a list of patches"]
     errors = []
     source = data.get("source") if isinstance(data.get("source"), dict) else {}
-    revision = str(source.get("revision", ""))
-    if not re.fullmatch(r"[0-9a-f]{40}", revision):
-        errors.append(f"{PATCHES_FILE}: source.revision is the full revision the snapshot was taken from")
+    repository, ref, folder = (str(source.get(key, "")) for key in ("repository", "ref", "path"))
+    plain = re.compile(r"[A-Za-z0-9][A-Za-z0-9._/-]*")
+    if not (HTTPS_URL.fullmatch(repository) and plain.fullmatch(ref) and plain.fullmatch(folder)):
+        errors.append(f"{PATCHES_FILE}: source names the repository, the ref and the folder the patches are in")
+    here = f"{repository}/blob/{ref}/{folder}/"
     seen = set()
     for patch in data["patches"]:
         pid = patch.get("id", "?") if isinstance(patch, dict) else "?"
@@ -668,8 +671,9 @@ def patch_errors(data):
                 "who authorised it (or null) and the findings it answers"
             )
             continue
-        if not HTTPS_URL.fullmatch(str(patch.get("url", ""))) or revision not in patch["url"]:
-            errors.append(f"patch {pid}: the source url is pinned to the snapshot's revision")
+        url = str(patch.get("url", ""))
+        if not HTTPS_URL.fullmatch(url) or not url.startswith(here) or ".." in url:
+            errors.append(f"patch {pid}: the source url leads to the patch's file in this repository")
         # The site writes these texts into pages, so the rules for record text hold here too.
         for key in ("description", "author", "authorised_by"):
             if RAW_HTML.search(patch.get(key) or ""):
@@ -679,6 +683,47 @@ def patch_errors(data):
             errors.append(f"patch {pid} is listed twice")
         seen.add(pid)
     return errors
+
+
+def registry_module():
+    """scripts/patches_snapshot.py, which reads the patch registry. Loaded by its path, so that
+    it is found however this file was started."""
+    name = "patches_snapshot"
+    if name not in sys.modules:
+        spec = importlib.util.spec_from_file_location(name, Path(__file__).with_name(f"{name}.py"))
+        sys.modules[name] = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(sys.modules[name])
+    return sys.modules[name]
+
+
+def registry_errors(root, patches):
+    """The committed list of patches against the patch registry of `root`: (errors, notes).
+
+    Patches are read from the registry, never kept by hand: the file must be exactly what
+    scripts/patches_snapshot.py writes. A tree without the patch tool has nothing to compare.
+    When the tool cannot be imported (the records are checked on another Python, without its
+    packages), the registry is read from the source of the patch modules instead; a module
+    that cannot be read that way is named in a note, and the comparison is then made by the
+    check that runs inside the tool's environment.
+    """
+    registry = registry_module()
+    try:
+        wanted, how = registry.expected(root)
+    except registry.Unreadable as problem:
+        return [], [f"{PATCHES_FILE} was not compared with the patch registry: {problem}"]
+    except Exception as error:  # a broken site/config.json is named by the rules for the site
+        return [f"{PATCHES_FILE}: the patch registry could not be read ({type(error).__name__}: {error})"], []
+    if wanted is None:
+        return [], []
+    again = "run `python3 scripts/patches_snapshot.py`"
+    if patches is None:
+        return [f"{PATCHES_FILE} is missing, and {registry.PATCH_FOLDER} holds patches: {again}"], []
+    found = registry.differences(patches, wanted)
+    if found:
+        more = f" and {len(found) - 5} more" if len(found) > 5 else ""
+        return [f"{PATCHES_FILE} differs from the patch registry (read from {how}): "
+                + "; ".join(found[:5]) + more + f". Do not edit the file: {again}"], []
+    return [], [f"{PATCHES_FILE} is what the patch registry gives (read from {how})"]
 
 
 def patches_by_finding(patches):
@@ -1063,9 +1108,12 @@ def problems(root=ROOT):
     except Exception as error:  # a broken snapshot is named, like a broken record
         patches, found = None, [f"{PATCHES_FILE}: unreadable ({type(error).__name__}: {error})"]
     errors += found
+    stale, unread = ([], []) if found else registry_errors(root, patches)
+    errors += stale
     patches = None if found else patches
     cross, notes = cross_record_errors(findings, patches)
     errors += cross
+    notes = unread + notes
     counted = f", {len(patches['patches'])} community patches" if patches else ""
     summary = (
         f"Validated {len(findings)} findings, {len(records)} contribution records{counted} "

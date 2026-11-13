@@ -4,9 +4,13 @@
     uv run python scripts/new_patch.py pad-something --no-finding --author "Jane Doe"
 
 The patch is registered by being in `src/bafu_community_fixes/patches/`; there is no
-list to add it to. The finding must be in the ledger, and its links become the patch's
-references. Both new files fail until they are written, so a patch can't be merged as
-a template.
+list to add it to. The finding must have a record (`community/findings/`), and the places
+where it is discussed become the patch's references. Both new files fail until they are
+written, so a patch can't be merged as a template.
+
+When the patch is written, `python3 scripts/patches_snapshot.py` writes
+`community/patches.json` from the registry: the site reads the patches from that file, and
+the check of the records fails while the file differs from the registry.
 """
 
 import argparse
@@ -15,6 +19,9 @@ import re
 import subprocess
 import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import community  # noqa: E402  the finding records; standard library only
 
 ROOT = Path(__file__).resolve().parents[1]
 PATCHES = Path("src/bafu_community_fixes/patches")
@@ -85,16 +92,17 @@ def next_number(root: Path) -> int:
 
 
 def finding_links(root: Path, finding: str) -> list[str]:
-    """The links of a finding in the ledger. Stops if the ledger doesn't have it."""
-    record = root / "community" / "findings" / f"{finding}.json"
-    if record.exists():
-        return list(json.loads(record.read_text(encoding="utf-8")).get("links", []))
-    ledger = root / "community" / "findings.md"
-    if ledger.exists():
-        for line in ledger.read_text(encoding="utf-8").splitlines():
-            if line.startswith(f"| {finding} "):
-                return re.findall(r"\((https://[^)\s]+)\)", line)
-    raise ScaffoldError(f"There is no finding {finding} in the ledger (community/findings)")
+    """Where a finding is discussed: its issue here, then the threads elsewhere.
+
+    Stops if the finding has no record.
+    """
+    record = root / community.record_path(finding)
+    if not record.is_file():
+        raise ScaffoldError(f"There is no record of finding {finding} ({record.relative_to(root)})")
+    repository = json.loads((root / "site" / "config.json").read_text(encoding="utf-8"))[
+        "repository"
+    ]
+    return community.discussion_links(json.loads(record.read_text(encoding="utf-8")), repository)
 
 
 def _tuple(values: list[str]) -> str:
@@ -147,7 +155,7 @@ def main(argv: list[str] | None = None) -> int:
     finding = parser.add_mutually_exclusive_group(required=True)
     finding.add_argument("--finding", metavar="ID", help="The finding the patch answers: F14")
     finding.add_argument(
-        "--no-finding", action="store_true", help="The patch answers no finding in the ledger"
+        "--no-finding", action="store_true", help="The patch answers no recorded finding"
     )
     parser.add_argument("--author", help="Who writes the patch (default: your git user name)")
     args = parser.parse_args(argv)
@@ -162,12 +170,14 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Created {test_file.relative_to(ROOT)}")
     print(
         "Next: write the patch and its docstring, complete the test, then run\n"
+        "  python3 scripts/patches_snapshot.py\n"
         "  uv run pytest && uv run ruff check && uv run ruff format --check\n"
         "  uv run bafu-fixes run latest output/ --strict --summary output/summary.json\n"
         "  uv run python scripts/full_release_table.py output/summary.json --check\n"
-        "Open a pull request with the two files. The full release run in its checks shows\n"
-        "what the patch changes. Leave `authorised_by` out; the person who approves the\n"
-        "patch for the community release adds it."
+        "Open a pull request with the two files and community/patches.json, which the first\n"
+        "command writes from the registry. The full release run in its checks shows what\n"
+        "the patch changes. Leave `authorised_by` out; the person who approves the patch\n"
+        "for the community release adds it."
     )
     return 0
 

@@ -393,6 +393,8 @@ class Syntax(unittest.TestCase):
         # run by the entry point with its own interpreter, or in the export's environment
         files += [REPOSITORY / "scripts" / "full_release_table.py"]
         files += [REPOSITORY / "scripts" / "export_release.py"]
+        # read by the checks of the records, which run without the package's environment
+        files += [REPOSITORY / "scripts" / "new_patch.py"]
         files += sorted((REPOSITORY / "export-tests").glob("*.py"))
         files += sorted((REPOSITORY / "scripts" / "release_build").glob("*.py"))
         files += sorted((REPOSITORY / "release-build-tests").glob("*.py"))

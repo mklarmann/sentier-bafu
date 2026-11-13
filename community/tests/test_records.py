@@ -11,6 +11,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import unittest.mock
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -579,8 +580,9 @@ class JoinTests(unittest.TestCase):
         self.assertEqual([p["id"] for p in records.patches_without_finding(self.patches)],
                          ["0004", "0005", "0006", "0007", "0008", "0009", "0010"])
         self.assertEqual(records.patch_errors(self.patches), [])
+        source = self.patches["source"]
         for patch in self.patches["patches"]:
-            self.assertIn(self.patches["source"]["revision"], patch["url"])
+            self.assertTrue(patch["url"].startswith(f'{source["repository"]}/blob/{source["ref"]}/{source["path"]}/p{patch["id"]}_'))
             self.assertTrue(patch["author"] and patch["authorised_by"])
 
     def test_a_patch_that_names_a_missing_finding_is_an_error_and_one_that_names_none_a_note(self):
@@ -595,8 +597,11 @@ class JoinTests(unittest.TestCase):
 
     def test_rules_of_the_patch_snapshot_one_by_one(self):
         cases = {
-            "no revision": (lambda d: d["source"].update(revision="main"), "source.revision"),
-            "a url that is not pinned": (lambda d: d["patches"][0].update(url=f"{REPO}/blob/main/p.py"), "pinned to the snapshot's revision"),
+            "no ref": (lambda d: d["source"].pop("ref"), "source names the repository, the ref and the folder"),
+            "a repository that is not https": (lambda d: d["source"].update(repository="javascript:alert(1)"), "source names the repository"),
+            "a url that leads elsewhere": (lambda d: d["patches"][0].update(url="https://example.org/blob/main/p.py"), "leads to the patch's file in this repository"),
+            "a url outside the folder of the patches": (lambda d: d["patches"][0].update(url=f"{REPO}/blob/main/p.py"), "leads to the patch's file in this repository"),
+            "a url that climbs out of the folder": (lambda d: d["patches"][0].update(url=d["patches"][0]["url"].replace("/patches/", "/patches/../")), "leads to the patch's file in this repository"),
             "a patch listed twice": (lambda d: d["patches"].append(copy.deepcopy(d["patches"][0])), "listed twice"),
             "a patch without an author": (lambda d: d["patches"][0].pop("author"), "needs a four-digit id"),
             "an id that is the whole slug": (lambda d: d["patches"][0].update(id="0001-strawberry"), "needs a four-digit id"),
@@ -605,7 +610,7 @@ class JoinTests(unittest.TestCase):
             "raw HTML in a description": (lambda d: d["patches"][0].update(description="Fix <script>x</script>"), "description holds raw HTML"),
             "raw HTML in an author": (lambda d: d["patches"][0].update(author="<b>A</b>"), "author holds raw HTML"),
             "an image in a description": (lambda d: d["patches"][0].update(description="![x](https://other.example/p.png)"), "description embeds an image"),
-            "a source that is not https": (lambda d: d["patches"][0].update(url="javascript:alert(1)//" + d["source"]["revision"]), "pinned to the snapshot's revision"),
+            "a source that is not https": (lambda d: d["patches"][0].update(url="javascript:alert(1)//" + d["patches"][0]["url"]), "leads to the patch's file in this repository"),
         }
         for name, (change, message) in cases.items():
             data = copy.deepcopy(self.patches)
@@ -790,7 +795,7 @@ class CheckTests(WorkspaceCase):
         data = records.read(self.root / "community/patches.json")
         data["patches"][0]["url"] = "https://example.org/unpinned.py"
         (self.root / "community/patches.json").write_text(json.dumps(data))
-        self.assertIn("patch 0001: the source url is pinned", self.result()[1])
+        self.assertIn("patch 0001: the source url leads to the patch's file in this repository", self.result()[1])
 
     def test_a_patch_snapshot_that_cannot_be_read_is_named_not_raised(self):
         cases = {
@@ -1010,48 +1015,225 @@ class CommandTests(WorkspaceCase):
         self.assertIn("must come from someone else", refused.stderr)
 
 
-class PatchSnapshotTests(unittest.TestCase):
-    """scripts/patches_snapshot.py reads the patch modules of a revision without importing them."""
+MODULE = """from bafu_community_fixes.registry import patch
 
-    @classmethod
-    def setUpClass(cls):
-        spec = importlib.util.spec_from_file_location("patches_snapshot", ROOT / "scripts/patches_snapshot.py")
-        cls.snapshot = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(cls.snapshot)
-
-    def test_a_patch_module_is_read_from_its_decorator(self):
-        source = '''
-ID = "0042-example-patch"
+ID = "{id}"
 ISSUE = "https://github.com/sentier-dev/sentier-bafu/issues/48"
+
 
 @patch(
     ID,
+    findings={findings},
     authored_by="A. Author",
-    authorised_by=None,
+    authorised_by={authorised},
+    reported_by="A Reporter, Some Company",
     confirmed_by="Someone, BAFU (email)",
     references=(ISSUE, "https://example.org/elsewhere"),
 )
 def example(db):
-    """Correct the example amount.
+    \"\"\"{description}
 
     The longer reason, which is not the description.
+    \"\"\"
+"""
+
+
+class PatchRegistryTests(WorkspaceCase):
+    """community/patches.json is written from the patch registry and compared with it.
+
+    The registry here is made up: a folder of patch modules as the patch tool has them, read
+    from their source, because the tool itself is not installed where the records are checked.
     """
-'''
+
+    @classmethod
+    def setUpClass(cls):
+        cls.snapshot = records.registry_module()
+
+    def module(self, key, findings=(), authorised='"An Authoriser"', description="Correct the example amount."):
+        folder = self.root / self.snapshot.PATCH_FOLDER
+        folder.mkdir(parents=True, exist_ok=True)
+        path = folder / f"p{key.replace('-', '_')}.py"
+        path.write_text(MODULE.format(id=key, findings=repr(tuple(findings)), authorised=authorised, description=description))
+        return path
+
+    def write(self, *args):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = self.snapshot.main(["--root", str(self.root), *args])
+        return code, out.getvalue()
+
+    def registry(self):
+        """Two patches: one answers F1, one answers nothing and is not yet authorised."""
+        self.module("0001-example-patch", ["F1"])
+        self.module("0002-other-patch", authorised="None", description="Add a missing number.")
+        (self.root / "src/bafu_community_fixes/patches/__init__.py").write_text("")
+        code, text = self.write()
+        self.assertEqual(code, 0, text)
+        return records.read(self.root / "community/patches.json")
+
+    def test_a_patch_module_is_read_from_its_decorator(self):
+        source = MODULE.format(id="0042-example-patch", findings='("F48",)', authorised="None",
+                               description="Correct the example amount.")
         ((key, arguments, description),) = self.snapshot.registered(source, "p0042_example_patch.py")
         self.assertEqual(key, "0042-example-patch")
         self.assertEqual(description, "Correct the example amount.")
         self.assertEqual(arguments, {
+            "findings": ("F48",),
             "authored_by": "A. Author",
             "authorised_by": None,
             "references": ("https://github.com/sentier-dev/sentier-bafu/issues/48", "https://example.org/elsewhere"),
         })
 
-    def test_the_committed_snapshot_names_no_one_but_author_and_authoriser(self):
+    def test_the_file_is_written_from_the_registry_and_names_author_and_authoriser_only(self):
+        data = self.registry()
+        self.assertEqual(data["schema"], "sentier-bafu/patches/2")
+        self.assertEqual(data["source"], {"repository": REPO, "ref": "main", "path": "src/bafu_community_fixes/patches"})
+        first, second = data["patches"]
+        self.assertEqual(first, {
+            "id": "0001", "slug": "example-patch", "description": "Correct the example amount.", "findings": ["F1"],
+            "author": "A. Author", "authorised_by": "An Authoriser",
+            "url": f"{REPO}/blob/main/src/bafu_community_fixes/patches/p0001_example_patch.py",
+        })
+        self.assertEqual((second["findings"], second["authorised_by"]), ([], None))
+        text = json.dumps(data)
+        for words in ("A Reporter", "Someone, BAFU", "(email)", "example.org/elsewhere", str(self.root)):
+            self.assertNotIn(words, text)
+        self.assertEqual(records.patch_errors(data), [])
+
+    def test_the_ref_of_the_addresses_comes_from_the_site_configuration(self):
+        config = records.read(self.root / "site/config.json")
+        (self.root / "site/config.json").write_text(json.dumps(dict(config, source_ref="trunk")))
+        data = self.registry()
+        self.assertEqual(data["source"]["ref"], "trunk")
+        self.assertIn("/blob/trunk/src/", data["patches"][0]["url"])
+        self.assertEqual(self.result()[0], 0)
+
+    def test_the_check_passes_while_the_file_is_what_the_registry_gives_and_says_how_it_was_read(self):
+        self.registry()
+        code, text = self.result()
+        self.assertEqual(code, 0, text)
+        self.assertIn("2 community patches", text)
+        self.assertIn("Note: community/patches.json is what the patch registry gives (read from the source of the patch modules)", text)
+        self.assertEqual(self.write("--check")[0], 0)
+
+    def test_a_tree_without_the_patch_tool_has_nothing_to_compare(self):
+        code, text = self.result()
+        self.assertEqual(code, 0, text)
+        self.assertNotIn("registry", text)
+        self.assertEqual(self.write(), (1, "src/bafu_community_fixes/patches is not in this tree: there is no registry to read\n"))
+
+    def test_what_makes_the_file_differ_from_the_registry_fails_the_check(self):
+        self.registry()
+        original = (self.root / "community/patches.json").read_text()
+
+        def edited(change):
+            data = json.loads(original)
+            change(data)
+            (self.root / "community/patches.json").write_text(json.dumps(data, indent=2) + "\n")
+
+        cases = {
+            "a finding added by hand": (lambda: edited(lambda d: d["patches"][1].update(findings=["F3"])), "patch 0002 differs in findings"),
+            "another authoriser": (lambda: edited(lambda d: d["patches"][0].update(authorised_by="Someone Else")), "patch 0001 differs in authorised_by"),
+            "a field the script does not write": (lambda: edited(lambda d: d["patches"][0].update(confirmed_by="A Person")), "patch 0001 differs in confirmed_by"),
+            "a patch removed by hand": (lambda: edited(lambda d: d["patches"].pop()), "patch 0002 is in the registry and not in the file"),
+            "a hand-kept block": (lambda: edited(lambda d: d.update(declared_findings={})), "its header (schema, note or source) is not the one the script writes"),
+            "a new patch without a new file": (lambda: self.module("0003-new-patch", ["F3"]), "patch 0003 is in the registry and not in the file"),
+            "a patch that now answers a finding": (lambda: self.module("0002-other-patch", ["F3"], "None", "Add a missing number."), "patch 0002 differs in findings"),
+            "a patch that was authorised": (lambda: self.module("0002-other-patch", description="Add a missing number."), "patch 0002 differs in authorised_by"),
+            "a patch that was removed": (lambda: (self.root / "src/bafu_community_fixes/patches/p0002_other_patch.py").unlink(), "patch 0002 is in the file and not in the registry"),
+            "no file": (lambda: (self.root / "community/patches.json").unlink(), "community/patches.json is missing, and src/bafu_community_fixes/patches holds patches"),
+        }
+        for name, (change, message) in cases.items():
+            with self.subTest(name):
+                change()
+                code, text = self.result()
+                self.assertEqual(code, 1, name)
+                self.assertIn(message, text)
+                self.assertIn("run `python3 scripts/patches_snapshot.py`", text)
+                if name != "no file":
+                    self.assertEqual(self.write("--check")[0], 1)
+                # The script puts it right, and nothing else is needed.
+                self.assertEqual(self.write()[0], 0)
+                self.assertEqual(self.result()[0], 0, name)
+                # Back to the two patches of the registry.
+                self.module("0001-example-patch", ["F1"])
+                self.module("0002-other-patch", authorised="None", description="Add a missing number.")
+                third = self.root / "src/bafu_community_fixes/patches/p0003_new_patch.py"
+                third.unlink(missing_ok=True)
+                (self.root / "community/patches.json").write_text(original)
+
+    def test_a_patch_that_names_a_finding_without_a_record_fails_the_check(self):
+        self.module("0001-example-patch", ["F9999"])
+        self.assertEqual(self.write()[0], 0)
+        code, text = self.result()
+        self.assertEqual(code, 1)
+        self.assertIn("patch 0001 names F9999, which has no record", text)
+
+    def test_a_patch_that_names_no_finding_is_allowed_and_reported(self):
+        self.registry()
+        self.assertIn("Note: 1 of 2 patches name no finding: 0002", self.result()[1])
+
+    def test_a_module_that_cannot_be_read_from_its_source_is_named_and_left_to_the_tool(self):
+        self.registry()
+        path = self.root / "src/bafu_community_fixes/patches/p0002_other_patch.py"
+        path.write_text(path.read_text().replace("findings=(),", "findings=tuple(FOUND),"))
+        code, text = self.result()
+        self.assertEqual(code, 0, text)
+        self.assertIn("Note: community/patches.json was not compared with the patch registry: "
+                      "src/bafu_community_fixes/patches/p0002_other_patch.py cannot be read without the patch tool", text)
+        self.assertIn("uv run python scripts/community.py check", text)
+        code, text = self.write()
+        self.assertEqual(code, 1)
+        self.assertIn("cannot be read without the patch tool", text)
+
+    def test_the_listing_of_the_patch_tool_gives_the_same_file(self):
+        from_source = self.registry()
+        listing = [
+            {"id": "location-codes", "kind": "import fix", "description": "x", "authored_by": "A", "authorised_by": "A",
+             "references": [], "reported_by": None, "confirmed_by": None, "findings": [], "source": "src/x.py"},
+            {"id": "0002-other-patch", "kind": "patch", "description": "Add a missing number.", "authored_by": "A. Author",
+             "authorised_by": None, "references": [], "reported_by": "A Reporter", "confirmed_by": "Someone, BAFU (email)",
+             "findings": [], "source": "src/bafu_community_fixes/patches/p0002_other_patch.py"},
+            {"id": "0001-example-patch", "kind": "patch", "description": "Correct the example amount.",
+             "authored_by": "A. Author", "authorised_by": "An Authoriser", "references": ["https://example.org/elsewhere"],
+             "reported_by": "A Reporter", "confirmed_by": None, "findings": ["F1"],
+             "source": "src/bafu_community_fixes/patches/p0001_example_patch.py"},
+        ]
+        given = self.root / "listing.json"
+        given.write_text(json.dumps(listing))
+        self.assertEqual(self.write("--listing", str(given), "--check")[0], 0)
+        wanted, how = self.snapshot.expected(self.root, json.dumps(listing))
+        self.assertEqual((wanted, how), (from_source, "the listing given"))
+        given.write_text("not a listing")
+        self.assertEqual(self.write("--listing", str(given)), (1, "not the output of `bafu-fixes list --json` (JSONDecodeError)\n"))
+
+    def test_a_patch_tool_installed_from_another_checkout_is_not_asked(self):
+        """An installed tool says what its own checkout registers, not what this tree does."""
+        import types
+        elsewhere = types.ModuleType("bafu_community_fixes")
+        elsewhere.__file__ = str(Path(self.tmp.name) / "another/src/bafu_community_fixes/__init__.py")
+        cli = types.ModuleType("bafu_community_fixes.cli")
+        cli.main = lambda argv: self.fail("the tool of another checkout was asked")
+        elsewhere.cli = cli
+        with unittest.mock.patch.dict(sys.modules, {"bafu_community_fixes": elsewhere, "bafu_community_fixes.cli": cli}):
+            self.assertIsNone(self.snapshot.from_package(self.root))
+            self.registry()
+            self.assertEqual(self.snapshot.listing(self.root)[1], "the source of the patch modules")
+
+
+class CommittedPatchesTests(unittest.TestCase):
+    def test_the_committed_file_names_no_one_but_author_and_authoriser(self):
         patches = records.load_patches(ROOT)
         for patch in patches["patches"]:
             self.assertEqual(set(patch), {"id", "slug", "description", "findings", "author", "authorised_by", "url"})
-        self.assertIn("declared_findings", patches)
-        self.assertIn("reads its registry directly", patches["note"])
+        self.assertEqual(set(patches), {"schema", "note", "source", "patches"})
+        self.assertIn("Do not edit this file", patches["note"])
+
+    def test_the_committed_file_is_what_the_registry_of_this_repository_gives(self):
+        snapshot = records.registry_module()
+        wanted, how = snapshot.expected(ROOT)
+        self.assertIsNotNone(wanted, "the patch tool is in this repository")
+        self.assertEqual(snapshot.differences(records.load_patches(ROOT), wanted), [], how)
 
 
 if __name__ == "__main__":
