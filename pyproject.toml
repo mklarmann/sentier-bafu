@@ -53,6 +53,14 @@ extend-exclude = [
     "scripts/build_site.py",
     "scripts/check_site.py",
     "scripts/community.py",
+    # The records, the site and the automation, written after the merge above in the
+    # same style as the files before them.
+    "scripts/github_api.py",
+    "scripts/intake.py",
+    "scripts/patches_snapshot.py",
+    "scripts/sitebuild/",
+    "scripts/sync.py",
+    "scripts/triage.py",
 ]
 
 [tool.ruff.lint]
