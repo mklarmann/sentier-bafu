@@ -44,7 +44,7 @@
       "title": "Feedback to BAFU",
       "source": "site/feedback.md",
       "page": "feedback.html",
-      "description": "What was reported to BAFU and when, what BAFU answered, what a BAFU release corrected, and what is ready to be reported."
+      "description": "What was reported to BAFU and when, what BAFU answered, what is resolved, and what is ready to be reported."
     },
     {
       "title": "Contributions",

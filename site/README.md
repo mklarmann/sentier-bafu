@@ -68,7 +68,7 @@ A comment on a line of its own is replaced by a generated block. Both forms work
 | `contributions-list` | the contributions list with search and a status filter |
 | `status-tracker` | the five steps of a finding's path with the number of findings that wait after each, and the two statuses off the path |
 | `status-vocabulary` | every status with its meter and the sentence that explains it |
-| `feedback-lists` | reported without answer, answered, corrected, repeated and not yet reported, each as a count and a list; then the reports by date |
+| `feedback-lists` | reported without answer, answered, resolved, repeated and not yet reported, each as a count and a list; then the reports by date |
 | `second-measurement-list` | the five findings that have waited longest for a second measurement, and a link to all of them |
 | `recent-changes` | the five newest dated steps |
 | `patch-table` | every community patch from `community/patches.json`: what it does, the finding it answers, who wrote it, who authorised it |
@@ -123,13 +123,13 @@ The public word for where a finding stands is **status**, and the site shows it 
 | `confirmed` | Repeated, not yet reported | `repeated` with result `reproduced`, by someone other than the reporter |
 | `sent` | Reported to BAFU | `sent` |
 | `answered` | Answered by BAFU | `answer` |
-| `fixed` | Corrected by BAFU | `fixed_in` |
+| `fixed` | Resolved | `fixed_in` |
 | `not-a-defect` | For information | `closed.as = "not-a-defect"` |
 | `withdrawn` | Withdrawn | `closed.as = "withdrawn"` |
 
 The status is the first that applies of `closed`, `fixed_in`, `answer`, `sent`, `repeated`; otherwise the finding is `filed`. A community patch and BAFU's answer are facts beside the status, never a status.
 
-The tracker shows the five steps of the path (measured, repeated, reported to BAFU, BAFU's answer, checked in a BAFU release). A step is shown as done only when the record holds its evidence. A step without evidence that a later step has passed says "not recorded".
+The tracker shows the five steps of the path, in these words wherever it appears: Measured, Repeated, Reported to BAFU, Answered by BAFU, Resolved. A step is shown as done only when the record holds its evidence. A step without evidence that a later step has passed says "not recorded". The feedback is continuous and not tied to BAFU's releases: a finding is resolved once a BAFU release covers the point, and no generated text frames the path as waiting for a release or says what BAFU will do.
 
 Generated text follows the house style: British spelling; "12 October 2026" in prose and "12 Oct 2026" in lists, always inside `<time datetime>`; no person's name except the author and the authoriser of a community patch, as the registry gives them; never stage, triage, ledger, layer, upstream, provider, candidate or fix (except "import fix") for the site's own things.
 
@@ -163,7 +163,7 @@ Everything a page needs comes from two modules. Neither is specific to a templat
 | `CONTRIBUTION_CLASSES`, `CONTRIBUTION_GROUPS` | class of a contribution; the group says whether it can enter the patched release or stands beside BAFU's numbers |
 | `evidence(record)` | the dated evidence of a record, oldest first: `(date, name, block)` |
 | `last_change(record)` | date of the newest evidence: when the finding changed, not when its issue did |
-| `waiting_since(record)` | that date while the finding is still on the path; `None` once it is corrected or closed |
+| `waiting_since(record)` | that date while the finding is still on the path; `None` once it is resolved or closed |
 | `changes(findings)` | every dated event of every finding, newest first: the changes page and the feed |
 | `related(findings)` | `{id: [ids]}` in both directions; a record names a relation on one side only |
 | `patches_by_finding(patches)`, `patches_without_finding(patches)` | the join of patches and findings |

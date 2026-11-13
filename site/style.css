@@ -482,8 +482,7 @@ html:not(.js) #stage-withdrawn:target ~ .filter .chip[data-filter="withdrawn"] {
 @container (max-width: 37.99rem) {
   .record { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "id thread" "main main" "stage stage"; gap: .3rem var(--s3); }
   .record-thread { flex-direction: row; flex-wrap: wrap; justify-content: flex-end; align-items: baseline; gap: 0 var(--s3); }
-  .thread-line > span { display: none; } /* the number of comments is on the finding's page */
-  .of-contributions .thread-line > span { display: inline; }
+  .thread-line > .comments { display: none; } /* the number of comments is on the finding's page */
   .record-stage { flex-direction: row; flex-wrap: wrap; align-items: center; gap: .1rem var(--s2); margin-top: .15rem; }
   .stage-sub { display: contents; }
   .record-stage .meter { order: -1; }
@@ -643,22 +642,16 @@ td:first-child { font-weight: 600; }
 .section-head h2 { font-size: var(--t-xl); font-weight: 700; }
 .section-head p { margin-top: var(--s2); max-width: var(--measure); color: var(--muted); }
 .aside { margin-top: var(--s4); max-width: var(--measure); font-size: var(--t-sm); color: var(--muted); }
-.also { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s5); }
-.also-card { display: flex; flex-direction: column; color: var(--ink); text-decoration: none; }
-.also-card:hover { border-color: var(--green); color: var(--ink); }
-.also-card h3 { font-size: var(--t-lg); font-weight: 700; }
-.also-card p { font-size: .9375rem; line-height: 1.55; color: var(--muted); }
-.also-card .also-foot { margin-top: auto; padding-top: var(--s4); font-size: var(--t-sm); color: var(--muted); }
-.also-foot strong { color: var(--green); }
-.band {
-  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s4) var(--s6);
-  margin-top: var(--s5); padding: var(--s5); border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper-deep);
-}
-.band p { flex: 1 1 22rem; max-width: var(--measure); font-size: .9375rem; line-height: 1.55; }
+/* the ways to take part: three cards, one below the other on a narrow screen */
+.ways { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s4); }
+@media (min-width: 58rem) { .ways { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s5); } }
+.ways .card { display: flex; flex-direction: column; }
+.ways h3 { font-size: var(--t-lg); font-weight: 700; }
+.ways p { font-size: .9375rem; line-height: 1.55; color: var(--muted); }
+.ways .card > a { margin-top: auto; padding-top: var(--s3); align-self: start; font-weight: 700; }
 @media (max-width: 47.99rem) {
   .hero { padding-block: var(--s7) var(--s6); }
   .section { padding-bottom: var(--s7); }
-  .also { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* --------------------------------------------------------- generated pages */

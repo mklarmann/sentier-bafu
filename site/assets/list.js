@@ -150,7 +150,7 @@
         '</span><span class="stage-sub"><span class="meter" aria-hidden="true">' + cells + "</span>" + tags + "</span></div>";
     }
     var link = /^https:\/\//.test(r[11]) ? '<a class="ext" href="' + esc(r[11]) + '">' + esc(r[10]) + "</a>" : "";
-    var said = r[12] < 0 ? "" : "<span>" + (r[12] === 0 ? "no comments yet" : fmt(r[12]) + (r[12] === 1 ? " comment" : " comments")) + "</span>";
+    var said = r[12] < 0 ? "" : '<span class="comments">' + (r[12] === 0 ? "no comments yet" : fmt(r[12]) + (r[12] === 1 ? " comment" : " comments")) + "</span>";
     return '<li class="record" data-stage="' + esc(status[0]) + '"><span class="record-id">' + id + "</span>" +
       '<div class="record-main"><a class="record-title" href="' + esc(base) + "findings/" + id + '.html" dir="auto">' + esc(r[1]) + "</a>" +
       '<p class="record-meta"><span class="meta-what">' + esc(r[2]) + "</span>" +

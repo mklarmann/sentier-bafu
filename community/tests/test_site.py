@@ -449,11 +449,53 @@ class SiteTests(unittest.TestCase):
     def test_the_overview_claims_nothing_the_records_do_not_show(self):
         text = squash(parse(self.out / "index.html").find("main").text())
         for claim in ("repeated by a second person", "Every finding has", "each with evidence and named reviewers",
-                      "apply the corrections", "Together"):
+                      "apply the corrections", "Together", "next release", "promise", " will "):
             self.assertNotIn(claim, text)
-        self.assertIn("a second person is asked to repeat the measurement", text)
-        self.assertIn("BAFU decides what it changes", text)
-        self.assertIn("Nothing here promises that BAFU adopts a finding", text)
+        self.assertIn("check each other's measurements and report the findings to BAFU", text)
+        self.assertIn("The aim is a better database for everyone. BAFU decides what it changes.", text)
+        # Each thing is said once.
+        self.assertEqual(text.count("BAFU decides what it changes"), 1)
+        self.assertEqual(text.count("A different result is as useful as the same one"), 1)
+
+    def test_the_path_has_the_same_five_steps_wherever_it_appears(self):
+        steps = ["Measured", "Repeated", "Reported to BAFU", "Answered by BAFU", "Resolved"]
+
+        def names(page, cls):
+            return [squash(n.children[0] if isinstance(n.children[0], str) else n.text())
+                    for n in parse(page).find("ol", cls).find_all("span", "path-name")]
+
+        self.assertEqual(names(self.out / "index.html", "path"), steps)
+        for f in self.findings:
+            self.assertEqual(names(self.out / f"findings/{f['id']}.html", "path"), steps, f["id"])
+        self.assertEqual(community.status_label("fixed", "BAFU"), "Resolved")
+        index = parse(self.out / "index.html").find("main")
+        sentences = [squash(n.text()) for n in index.find_all("span", "path-desc")]
+        self.assertEqual(sentences, ["Someone measures it on BAFU's files.", "A second person repeats the measurement.",
+                                     "The finding is reported to BAFU.", "BAFU answers.", "A BAFU release covers the point."])
+        self.assertEqual(index.find("h2", id="how").text(), "How it works")
+
+    def test_no_generated_page_frames_the_path_by_a_release_or_says_what_bafu_will_do(self):
+        pages = [self.out / name for name in ("index.html", "changes.html", "housekeeping.html", "404.html")]
+        pages += sorted((self.out / "releases").glob("2*.html")) + sorted((self.out / "datasets").glob("[0-9]*.html"))
+        for page in pages:
+            main = parse(page).find("main")
+            for node in main.find_all(cls="record-title") + main.find_all(cls="record-meta") + main.find_all(cls="quiet"):
+                node.children = []
+            text = squash(main.text())
+            for phrase in ("next release", "Checked in a", "release with the correction", "await a release",
+                           "Corrected by", " will "):
+                self.assertNotIn(phrase, text, (page.name, phrase))
+        # On a finding's page: the tracker, the status sentence and the panel's own labels.
+        for f in self.findings:
+            page = parse(self.out / f"findings/{f['id']}.html")
+            generated = squash(page.find("section", "tracker").text()) + " " + " ".join(
+                squash(n.text()) for n in page.find_all("dt") + page.find_all("p", "note"))
+            for phrase in ("next release", "Checked in a", "Corrected", "await", " will "):
+                self.assertNotIn(phrase, generated, (f["id"], phrase))
+        resolved = next(f for f in self.findings if community.stage(f) == "fixed")
+        page = parse(self.out / f"findings/{resolved['id']}.html")
+        self.assertIn("Resolved in", [dt.text() for dt in page.find_all("dt")])
+        self.assertTrue(squash(page.find("p", "stage-line").text()).startswith("Resolved."))
 
     def test_the_provider_is_named_and_no_placeholder_is_printed(self):
         for page in self.pages():

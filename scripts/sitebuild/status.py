@@ -14,12 +14,14 @@ import community
 from .text import day, esc, thousands
 
 # (evidence key, name of the step, what happens). {p} is the provider's name.
+# The feedback is continuous: the path ends when a release of the provider covers the point,
+# and nothing here frames it as waiting for a release.
 STEPS = (
-    ("reported", "Measured", "Someone measures it on {p}'s release files."),
-    ("repeated", "Repeated", "It is discussed in public, and a second person repeats the measurement."),
-    ("sent", "Reported to {p}", "It is reported to {p}."),
-    ("answer", "{p}'s answer", "{p} decides what it changes. Its answer is recorded here."),
-    ("fixed_in", "Checked in a {p} release", "{p}'s next release is checked, and a correction is recorded."),
+    ("reported", "Measured", "Someone measures it on {p}'s files."),
+    ("repeated", "Repeated", "A second person repeats the measurement."),
+    ("sent", "Reported to {p}", "The finding is reported to {p}."),
+    ("answer", "Answered by {p}", "{p} answers."),
+    ("fixed_in", "Resolved", "A {p} release covers the point."),
 )
 # The status of the findings that wait after each step, and the words under their count.
 AFTER = {
@@ -27,14 +29,14 @@ AFTER = {
     "repeated": ("confirmed", "repeated, not yet reported", "repeated, not yet reported"),
     "sent": ("sent", "reported, no answer yet", "reported, no answer yet"),
     "answer": ("answered", "answered by {p}", "answered by {p}"),
-    "fixed_in": ("fixed", "corrected by {p}", "corrected by {p}"),
+    "fixed_in": ("fixed", "resolved", "resolved"),
 }
 # What a step that is not done says under its name.
 WAITING = {
     "repeated": "a second person is wanted",
     "sent": "not yet reported",
     "answer": "no answer yet",
-    "fixed_in": "the next release is checked",
+    "fixed_in": "not yet",
 }
 SAID = {"done": "done", "now": "current", "help": "current, help wanted", "todo": "not yet",
         "unrecorded": "not recorded", "plain": ""}
@@ -102,7 +104,7 @@ def step_detail(site, f, step, up):
     if key == "answer":
         outcome = community.OUTCOMES[block["outcome"]]["label"].lower()
         return dated(block, f"where {site.provider}'s answer is recorded") + f" · {esc(outcome)}"
-    return f'{esc(site.release_name(block["release"]))}, checked {dated(block, "how the correction was checked")}'
+    return f'in {esc(site.release_name(block["release"]))} · {dated(block, "where this is recorded")}'
 
 
 def finding_tracker(site, f, up=""):
@@ -175,11 +177,9 @@ def path_with_counts(site, up=""):
         return f'<a href="{up}findings.html#stage-{key}">{text}</a>' if n else text
 
     return (
-        f'<div class="card pipeline">{path(steps, "How a finding reaches " + p, "counts")}'
-        f'<p class="path-off"><span>Off the path</span> {off(info, "not-a-defect", "for information")}: '
-        "a difference in method or scope, a convention worth knowing, or a question. "
-        f'{off(gone, "withdrawn", "withdrawn")}: the observation did not hold when it was measured again. '
-        "Both stay listed so that nobody reports them a second time.</p></div>"
+        f'<div class="card pipeline">{path(steps, "How it works", "counts")}'
+        f'<p class="path-off"><span>Off the path</span> {off(info, "not-a-defect", "for information")} · '
+        f'{off(gone, "withdrawn", "withdrawn")}</p></div>'
     )
 
 

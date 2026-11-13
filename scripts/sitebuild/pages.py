@@ -46,7 +46,7 @@ def event_words(site, event):
     if name == "answer":
         return f"{p} answered ", f' ({community.OUTCOMES[f["answer"]["outcome"]]["label"].lower()})'
     if name == "fixed_in":
-        return f"A correction by {p} was checked for ", ""
+        return "", f' was resolved in {site.release_name(f["fixed_in"]["release"])}'
     return "", " was withdrawn" if event["stage"] == "withdrawn" else " was recorded for information"
 
 
@@ -69,7 +69,7 @@ def changes_page(site):
     body = (
         "<h1>What changed</h1>"
         f"<p>Every dated step the records hold, the newest first: a new finding, a second measurement, a report to "
-        f"{esc(site.provider)}, its answer, a correction, a closing. {plural(total, 'step is', 'steps are')} recorded.{more} "
+        f"{esc(site.provider)}, its answer, a release that resolves a finding, a closing. {plural(total, 'step is', 'steps are')} recorded.{more} "
         'The same list is available as a <a href="feed.xml">feed</a>.</p>'
         + change_lines(site, site.changes[:CHANGES])
     )
@@ -126,7 +126,7 @@ def answer_line(site, up):
 
 
 def feedback_lists(site, up=""):
-    """What the provider received and answered: four numbers, then the findings behind each,
+    """What the provider received and answered and what is resolved: four numbers, then the findings behind each,
     then the reports by date. Everything comes from the dated evidence of the records."""
     p = esc(site.provider)
     sent = sorted(stage_of(site, "sent"), key=lambda f: (f["sent"]["date"], community.finding_number(f)))
@@ -138,7 +138,7 @@ def feedback_lists(site, up=""):
         ("awaiting", "Reported, no answer yet", sent, "sent", None,
          f"No finding is recorded as reported to {p} and still without an answer."),
         ("answered", f"Answered by {p}", answered, "answered", answer_line(site, up), f"No answer from {p} is recorded yet."),
-        ("corrected", f"Corrected by {p}", fixed, "fixed", None, f"No correction by {p} is recorded yet."),
+        ("resolved", "Resolved", fixed, "fixed", None, "No finding is recorded as resolved yet."),
         ("ready", "Repeated, not yet reported", ready, "confirmed", None,
          "No finding is waiting to be reported."),
     )
@@ -150,8 +150,8 @@ def feedback_lists(site, up=""):
     for anchor, title, found, key, extra, empty in groups:
         out += f'<h2 id="{anchor}">{title}</h2>'
         if anchor == "answered" and undated:
-            out += (f"<p>For {thousands(undated)} of the findings {p} has answered or corrected, the date they were "
-                    f"reported is not recorded.</p>")
+            out += (f"<p>For {thousands(undated)} of the findings that {p} has answered or that are resolved, "
+                    "the date they were reported is not recorded.</p>")
         out += findings.rows(site, found, up, limit=CAP, more=f"{up}findings.html#stage-{key}", empty=empty, extra=extra)
     reports = batches(site)
     out += '<h2 id="reports">Reports by date</h2>'
@@ -183,7 +183,7 @@ def batch_page(site, batch, entry):
         f"{p} decides what it changes. Where the report is recorded: {ext(entry['url'], esc(link_label(entry['url'], site.repo)))}.</p>"
         + (f'<h2 id="awaiting">No answer yet</h2>{findings.rows(site, waiting, up)}' if waiting else "")
         + (f'<h2 id="answered">Answered by {p}</h2>{findings.rows(site, answered, up, extra=answer_line(site, up))}' if answered else "")
-        + (f'<h2 id="other">Closed or corrected without a recorded answer</h2>{findings.rows(site, rest, up)}' if rest else "")
+        + (f'<h2 id="other">Resolved or closed without a recorded answer</h2>{findings.rows(site, rest, up)}' if rest else "")
     )
     return shell.generated_page(
         site, f"Report to {site.provider} of {day_text(entry['date'])}", body, f"feedback/{batch}.html",
@@ -203,8 +203,8 @@ def release_page(site, rid, entry):
     groups = []
     for key in ("answered", "sent", "confirmed", "filed"):
         groups.append((key, site.label(key), [f for f in observed if f["stage"] == key]))
-    groups.append(("fixed", f"Corrected by {site.provider} in this release", here))
-    groups.append(("fixed-later", f"Corrected by {site.provider} in another release",
+    groups.append(("fixed", "Resolved in this release", here))
+    groups.append(("fixed-later", "Resolved in another release",
                    [f for f in observed if f["stage"] == "fixed" and f not in here]))
     for key in ("not-a-defect", "withdrawn"):
         groups.append((key, site.label(key), [f for f in observed if f["stage"] == key]))
@@ -224,14 +224,14 @@ def release_page(site, rid, entry):
         f'<span aria-hidden="true">/</span> <span aria-current="page">{name}</span></nav>'
         f"<h1>Known in {name}</h1>"
         f"<p>{plural(len(observed), 'finding was', 'findings were')} observed in {name}"
-        + (f", and {plural(len(here), 'correction')} by {p} {'was' if len(here) == 1 else 'were'} checked in it" if here else "")
+        + (f"; {thousands(len(here))} of the findings {'is' if len(here) == 1 else 'are'} resolved in it" if here else "")
         + f". Only what someone has reported is listed here. {p} decides what it changes; a community patch in the "
         f'<a href="{up}patched-release.html">patched release</a> is not {p}\'s correction.</p>'
         + (summary + sections if groups else '<p class="list-none">No finding names this release.</p>')
     )
     return shell.generated_page(
         site, f"Known in {entry['name']}", body, f"releases/{rid}.html", current="findings.html", up=up,
-        description=f"The findings observed in {entry['name']}, by status, and the corrections checked in it.",
+        description=f"The findings observed in {entry['name']}, by status, and the findings resolved in it.",
     )
 
 
@@ -330,8 +330,8 @@ def housekeeping(site):
         + section("labels", "Issue labels that differ from the record",
                   "Labels follow the records. The build log names the labels to add and to remove for each issue.", labels)
         + section("waiting", "Longest waiting", "The ten findings of each open status that have waited longest for their next step.", longest)
-        + section("check", f"To check in {p}'s next release",
-                  f"{p} has answered these findings and no correction is recorded yet.",
+        + section("check", "Answered, not yet resolved",
+                  f"{p} has answered these findings, and none of them is recorded as resolved.",
                   f"<p>{ids(sorted(to_check, key=community.finding_number))}</p>" if to_check else "")
         + section("patches", "Community patches that name no finding",
                   "A patch should name the finding it answers, so that its page can show the patch.", patches)

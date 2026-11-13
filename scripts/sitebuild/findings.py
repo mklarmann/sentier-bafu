@@ -42,7 +42,7 @@ def discussion(site, f):
 def thread_cell(site, f):
     url, label, count = discussion(site, f)
     link = ext(url, esc(label)) if url else ""
-    said = f"<span>{comments(count)}</span>" if count is not None else ""
+    said = f'<span class="comments">{comments(count)}</span>' if count is not None else ""
     changed = f'<span class="quiet">changed {day(f["changed"])}</span>' if f["changed"] else ""
     return f'<div class="record-thread"><span class="thread-line">{link}{said}</span>{changed}</div>'
 
@@ -269,7 +269,7 @@ def answer_block(site, f, up):
 
 
 def panel(site, f, up):
-    """What stands beside the status: a correction, a closing, a community patch, the next step."""
+    """What stands beside the status: the release that resolves it, a closing, a community patch, the next step."""
     p, rid = site.provider, f["id"]
 
     def text(value):
@@ -280,8 +280,8 @@ def panel(site, f, up):
     if fixed:
         detail = f'<p class="note">{text(fixed["detail"])}</p>' if fixed.get("detail") else ""
         rows_ += (
-            f'<div><dt>Corrected in</dt><dd>{esc(site.release_name(fixed["release"]))}{detail}'
-            f'<p class="note">Checked {day(fixed["date"])}: {ext(fixed["url"], esc(link_label(fixed["url"], site.repo)))}</p></dd></div>'
+            f'<div><dt>Resolved in</dt><dd>{esc(site.release_name(fixed["release"]))}{detail}'
+            f'<p class="note">Recorded {day(fixed["date"])}: {ext(fixed["url"], esc(link_label(fixed["url"], site.repo)))}</p></dd></div>'
         )
     if closed:
         when = f'{day(closed["date"])}: ' if closed.get("date") else ""
@@ -295,8 +295,8 @@ def panel(site, f, up):
         )
         rows_ += (
             f'<div><dt>Community patch</dt><dd>{ext(x["url"], "Patch " + esc(x["id"]))}: {text(x["description"])}'
-            f'<p class="note">Applied in the <a href="{up}patched-release.html">patched release</a>, for those who need it '
-            f"before {esc(p)}'s next release. {who} A patch does not close a finding.</p></dd></div>"
+            f'<p class="note">Applied in the <a href="{up}patched-release.html">patched release</a>, for those who need '
+            f"the change now. {who} A community patch is not {esc(p)}'s correction and does not change the status.</p></dd></div>"
         )
     if f["next"]:
         rows_ += (
