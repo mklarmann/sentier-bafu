@@ -54,7 +54,7 @@ def words(slug):
     return text[:1].upper() + text[1:]
 
 
-def shorten(text, limit=110):
+def shorten(text, limit=84):
     """A line for a list row: cut at a word, never in the middle of one."""
     text = " ".join(text.split())
     if len(text) <= limit:

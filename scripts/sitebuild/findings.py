@@ -157,10 +157,12 @@ def findings_list(site, up=""):
         '<label class="field grow"><span>Search</span><input id="q" name="q" type="search" '
         'placeholder="Dataset code, name or word" autocomplete="off" spellcheck="false"></label>'
         + select("status", "Status", statuses, "field for-status")
-        + select("release", f"{esc(p)} release", [("", "All releases")] + [(r["id"], r["name"]) for r in config["releases"]])
-        + select("kind", "Kind", [("", "All kinds")] + [(k, v["label"]) for k, v in community.KINDS.items()])
-        + select("patch", "Community patch", [("", "With or without"), ("1", "Has a patch")])
-        + select("sort", "Sort by", SORTS)
+        # On a narrow screen the four fields below open with this button; on a wide one they are always there.
+        + '<button type="button" class="button more-filters" id="more-filters" aria-expanded="false">More filters</button>'
+        + select("release", f"{esc(p)} release", [("", "All releases")] + [(r["id"], r["name"]) for r in config["releases"]], "field extra")
+        + select("kind", "Kind", [("", "All kinds")] + [(k, v["label"]) for k, v in community.KINDS.items()], "field extra")
+        + select("patch", "Community patch", [("", "With or without"), ("1", "Has a patch")], "field extra")
+        + select("sort", "Sort by", SORTS, "field extra")
         + "</form>"
     )
     unlisted = ""

@@ -11,7 +11,7 @@
   if (!list || !controls || !q || !count) return;
   var noun = list.dataset.noun || "record", page = +list.dataset.page || 50, base = list.dataset.base || "";
   var more = document.getElementById("more"), none = document.getElementById("none"), clear = document.getElementById("clear");
-  var dataset = document.getElementById("dataset");
+  var dataset = document.getElementById("dataset"), extra = document.getElementById("more-filters");
   var chips = [].slice.call(document.querySelectorAll("[data-filter]"));
   var selects = {};
   ["status", "release", "kind", "patch", "sort"].forEach(function (name) {
@@ -85,6 +85,14 @@
       if (state.status.indexOf(chip.dataset.filter) >= 0) chip.setAttribute("aria-current", "true");
       else chip.removeAttribute("aria-current");
     });
+    // A filter that is set is never hidden behind "More filters".
+    if (state.release || state.kind || state.patch || state.sort !== "changed") openExtra(true);
+  }
+  function openExtra(open) {
+    if (!extra) return;
+    controls.classList.toggle("open", open);
+    extra.setAttribute("aria-expanded", open ? "true" : "false");
+    extra.textContent = open ? "Fewer filters" : "More filters";
   }
 
   // ---------------------------------------------------------------- matching
@@ -160,8 +168,10 @@
     var code = asked && !state.status.length && !state.release && !state.kind && !state.patch;
     if (dataset) { // a code that a finding names has a page of its own
       dataset.hidden = !(asked && shown > 0 && index);
-      dataset.href = base + "datasets/" + asked + ".html";
-      dataset.textContent = "All about dataset " + asked;
+      if (!dataset.hidden) {
+        dataset.href = base + "datasets/" + asked + ".html";
+        dataset.textContent = "All about dataset " + asked;
+      }
     }
     if (none) {
       none.hidden = shown > 0;
@@ -242,6 +252,7 @@
       change();
     });
   });
+  if (extra) extra.addEventListener("click", function () { openExtra(!controls.classList.contains("open")); });
   if (more) more.addEventListener("click", function () {
     limit += page;
     if (domRows) draw(); else load().then(function () { if (!hits.length) select(); draw(true); }, function () {});

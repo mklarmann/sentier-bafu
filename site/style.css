@@ -404,10 +404,14 @@ a.path-count:hover { border-color: var(--green); background: var(--surface); col
 .filter-count { display: flex; flex-wrap: wrap; gap: 0 var(--s4); font-size: var(--t-sm); color: var(--muted); }
 .unlisted { font-size: var(--t-sm); color: var(--muted); }
 /* the status as chips from 48rem, as a select below; without the script the chips stay, because they are links */
+.more-filters { display: none; }
 @media (min-width: 48rem) { .for-status { display: none; } }
 @media (max-width: 47.99rem) {
   .js .chips { display: none; }
   .field { flex: 1 1 9rem; }
+  /* release, kind, patch and sorting open with "More filters" */
+  .more-filters { display: inline-flex; flex: 0 0 auto; align-self: end; }
+  .filter-row:not(.open) .field.extra { display: none; }
 }
 /* Without the script a status link filters the rows on the page: the list shows only that status. */
 .prose > .status-target { display: block; height: 0; margin-top: 0; scroll-margin-top: var(--s4); }
@@ -478,6 +482,8 @@ html:not(.js) #stage-withdrawn:target ~ .filter .chip[data-filter="withdrawn"] {
 @container (max-width: 37.99rem) {
   .record { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "id thread" "main main" "stage stage"; gap: .3rem var(--s3); }
   .record-thread { flex-direction: row; flex-wrap: wrap; justify-content: flex-end; align-items: baseline; gap: 0 var(--s3); }
+  .thread-line > span { display: none; } /* the number of comments is on the finding's page */
+  .of-contributions .thread-line > span { display: inline; }
   .record-stage { flex-direction: row; flex-wrap: wrap; align-items: center; gap: .1rem var(--s2); margin-top: .15rem; }
   .stage-sub { display: contents; }
   .record-stage .meter { order: -1; }
