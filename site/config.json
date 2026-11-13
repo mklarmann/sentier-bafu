@@ -27,19 +27,19 @@
       "Findings"
     ],
     [
+      "feedback.html",
+      "Feedback to BAFU"
+    ],
+    [
       "contributions.html",
       "Contributions"
     ],
     [
-      "testing.html",
-      "Evidence"
-    ],
-    [
-      "import.html",
+      "patched-release.html",
       "Patched release"
     ],
     [
-      "contribute.html",
+      "take-part.html",
       "Take part"
     ]
   ],
@@ -50,29 +50,39 @@
       "page": "findings.html"
     },
     {
+      "title": "Feedback to BAFU",
+      "source": "site/feedback.md",
+      "page": "feedback.html"
+    },
+    {
       "title": "Contributions",
-      "source": "community/workflow.md",
+      "source": "site/contributions.md",
       "page": "contributions.html"
     },
     {
-      "title": "The patched release",
-      "source": "site/import.md",
-      "page": "import.html"
-    },
-    {
-      "title": "Evidence",
-      "source": "community/build-validation.md",
-      "page": "testing.html"
+      "title": "Patched release",
+      "source": "site/patched-release.md",
+      "page": "patched-release.html"
     },
     {
       "title": "Take part",
-      "source": "community/README.md",
-      "page": "contribute.html"
+      "source": "site/take-part.md",
+      "page": "take-part.html"
     },
     {
       "title": "Data and terms",
       "source": "docs/terms-of-use.md",
       "page": "terms.html"
+    },
+    {
+      "title": "How builds are checked",
+      "source": "community/build-validation.md",
+      "page": "testing.html"
+    },
+    {
+      "title": "Data (JSON)",
+      "source": "site/data.md",
+      "page": "data.html"
     },
     {
       "title": "Apply and test a contribution",
@@ -91,6 +101,8 @@
     }
   ],
   "redirects": {
-    "consensus.html": "contributions.html"
+    "consensus.html": "contributions.html",
+    "import.html": "patched-release.html",
+    "contribute.html": "take-part.html"
   }
 }
