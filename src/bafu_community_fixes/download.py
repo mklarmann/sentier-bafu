@@ -15,6 +15,11 @@ LATEST_RELEASE = "https://files.brightway.dev/bafu-2026-v1-ecospold.zip"
 CHECKSUMS = {
     LATEST_RELEASE: "cbaeed4ae79c0be98709c854211cd72725d4f22f8b9b3fe334b7f343fca152f5",
 }
+# The input fingerprint of the unpacked release, as `import_database` computes it. A
+# run summary uses it to say which release was read, however the files got there.
+FINGERPRINTS = {
+    LATEST_RELEASE: "d17ae05d88a3909e994c17a76addbb8e027b5ebbbde174a9ec57ca0ddac303ca",
+}
 _COMPLETE = ".complete"
 
 

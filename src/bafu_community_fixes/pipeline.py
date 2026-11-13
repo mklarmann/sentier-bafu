@@ -241,12 +241,14 @@ def run(
     report: Path | str | None = None,
     progress: ProgressCallback | None = None,
     placeholders: Placeholders = DEFAULT_PLACEHOLDERS,
+    summary: Path | str | None = None,
 ) -> RunLog:
     """Run the whole pipeline. With `report`, also write an HTML report there.
 
     `xsd_check` is one of `XSD_CHECKS`. With "end", the result is checked once,
     after all patches and before anything is written. The report is written even if
-    the run fails, so the failure can be shared.
+    the run fails, so the failure can be shared. So is the `summary`, a JSON file
+    with counts and checksums only (see `summary.py`).
     """
     if xsd_check not in XSD_CHECKS:
         raise ValueError(f"xsd_check must be one of {', '.join(XSD_CHECKS)}, not {xsd_check!r}")
@@ -261,12 +263,19 @@ def run(
             "placeholders for missing data": placeholders.describe(),
         },
     )
+    written: list[Path] = []
     try:
         db = import_database(
             source, strict=every_step, log=log, progress=progress, placeholders=placeholders
         )
         for patch in select_patches(only, skip):
-            apply_patch(db, patch, strict=every_step, log=log, progress=progress)
+            try:
+                apply_patch(db, patch, strict=every_step, log=log, progress=progress)
+            except RunCancelled:
+                raise
+            except Exception as e:
+                log.steps[-1].error = str(e)  # so the summary names the step
+                raise
         if xsd_check == "end":
             documents = [(str(p), d) for p, d in db.documents.items()]
             compliance.check(documents, "after all patches", progress)
@@ -287,4 +296,9 @@ def run(
 
             tracker(progress, "Writing the report")
             write_report(log, report)
+        if summary is not None:
+            from bafu_community_fixes.summary import write_summary
+
+            tracker(progress, "Writing the summary")
+            write_summary(log, summary, written)
     return log

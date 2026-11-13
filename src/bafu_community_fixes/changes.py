@@ -23,6 +23,7 @@ from importlib.metadata import version
 
 EXAMPLES = 10
 MAX_TRANSITIONS = 1000  # distinct transitions tracked per field; the rest are counted as "other"
+_EXCHANGE = re.compile(r"flowData/exchange(\[\d+\])?(/|$)")
 
 
 @dataclass(frozen=True, slots=True)
@@ -121,18 +122,21 @@ class StepLog:
     provenance: Provenance
     datasets: int = 0
     changes: int = 0
+    exchanges: int = 0  # exchanges with at least one changed value
     fields: dict[str, FieldStats] = field(default_factory=dict)
     examples: list[tuple[DatasetRef, list[Change]]] = field(default_factory=list)
     xsd_checked: int | None = None  # datasets checked against the XSD after this step
     snippet: tuple[DatasetRef, Snippet] | None = None  # first changed element, before/after
     rules: tuple[Rule, ...] = ()
     evidence: tuple[Evidence, ...] = ()
+    error: str | None = None  # why the run stopped at this step, if it did
 
     def record(self, dataset: DatasetRef, changes: list[Change]) -> None:
         if not changes:
             return
         self.datasets += 1
         self.changes += len(changes)
+        self.exchanges += len({m[1] for c in changes if (m := _EXCHANGE.match(c.path))})
         for change in changes:
             self.fields.setdefault(change.field, FieldStats()).add(change)
         if len(self.examples) < EXAMPLES:
