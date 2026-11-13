@@ -1,0 +1,17 @@
+# Tools the Brightway build calls, pinned by commit. `build_release.py` refuses a checkout
+# at another commit or with local changes. Change a pin together with a measured run.
+
+[tools.sentier-importers]
+repository = "https://github.com/sentier-dev/sentier-importers"
+commit = "28b28edd152a507f4ad02d3fde715223ea7d25e5"
+python = "3.12"
+
+[tools.sentier-brightway]
+repository = "https://github.com/sentier-dev/sentier-brightway"
+commit = "90d57eb47430015c378aa31572600c9722bb5b07"
+python = "3.12"
+extra = "testing" # brings bw2data, which the `db` command and the audit need
+
+# The elementary flow terms, the EF 3.1 methods and the BAFU to EF 3.1 mapping are not pinned
+# here: sentier-brightway pins them by commit and SHA-256 in its `sources.toml`, and the build
+# takes exactly those files. Only the inventory is replaced by the one built from the release.
