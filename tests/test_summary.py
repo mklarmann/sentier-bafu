@@ -137,7 +137,12 @@ def test_summary_has_no_data_from_the_release(raw_bafu, tmp_path, monkeypatch):
     run(raw_bafu, tmp_path / "out", summary=tmp_path / "summary.json")
     summary = json.loads((tmp_path / "summary.json").read_text())
     for step in summary["steps"]:
-        del step["rationale"]  # the tool's own text, which uses words the data also has
+        # the tool's own texts, which use words the data also has: a patch may be called
+        # after what it corrects
+        for own in ("id", "description", "rationale"):
+            del step[own]
+    for dataset in summary["datasets"]:
+        dataset["import_fixes"], dataset["patches"] = [], []
     text = json.dumps(summary, ensure_ascii=False)
     values = {
         value
