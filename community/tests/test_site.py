@@ -805,6 +805,7 @@ class SiteTests(unittest.TestCase):
         self.assertEqual(prose.tone("works on BAFU's release; not yet on the patched one")[0], "part")
         # The states as the patched-release page words them.
         for state, mark in (("Works", "ok"), ("Two ways exist. They do not agree yet.", "part"),
+                            ("Works on your own machine and in the checks of this repository. The files are not published.", "part"),
                             ("Works for BAFU's release. Not yet for the patched release.", "part"),
                             ("Done on a build of BAFU's release only.", "part"), ("Does not exist yet.", "todo")):
             self.assertEqual(prose.tone(state)[0], mark, state)
