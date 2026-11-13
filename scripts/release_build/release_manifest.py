@@ -24,8 +24,11 @@ kinds, same meaning. This format, `…/2`, adds what the build knows:
 - `contributions`: each contribution built beside the patched release, under its own name.
 
 `--verify` checks that a file has exactly this shape, so that the job that publishes can
-refuse anything else. Standard library only.
+refuse anything else. Standard library only, and it runs on the Python a runner has: the job
+that publishes installs nothing.
 """
+
+from __future__ import annotations
 
 import argparse
 import hashlib

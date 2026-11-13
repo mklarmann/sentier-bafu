@@ -15,6 +15,7 @@ import unittest
 from pathlib import Path
 
 REPOSITORY = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # for synthetic_release
 spec = importlib.util.spec_from_file_location(
     "build_release", REPOSITORY / "scripts" / "build_release.py"
 )
