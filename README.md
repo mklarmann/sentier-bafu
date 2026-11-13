@@ -195,6 +195,12 @@ of the raw release, the baseline, until Sentier inventory consumes the patched o
 The findings and contributions are reconciled with the patches in the
 [reconciliation receipt](community/reconciliation.md).
 
+That order can be run locally: `scripts/build_release.py` builds a Brightway database with
+the EF 3.1 methods from the provider release or from the patched release, audits it and
+compares the two. [From a release to a Brightway database](docs/brightway-build.md) maps the
+tools it calls, gives the measured results, and says what is still missing: four elementary
+flows that a patch renames lose their EF 3.1 flow in the patched build.
+
 [Import & use](site/import.md) · [Findings ledger](community/findings.md) ·
 [Reconciliation](community/reconciliation.md) ·
 [Evidence & testing](community/build-validation.md) · [Contribute](community/README.md) ·
