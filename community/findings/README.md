@@ -14,8 +14,10 @@ status, a flag and the issue's labels in agreement. The fields are described in
 **How a record is created.** A finding starts as an
 [issue](https://github.com/sentier-dev/sentier-bafu/issues/new?template=bafu-data-finding.yml).
 Its number is the number of the issue: issue 48 becomes `F48`. F1 to F32 follow an older
-numbering and keep their ids. A pull request then adds one file here, from the
-[template](../templates/finding.json), and a person reviews and merges it.
+numbering and keep their ids. A workflow reads the issue's form and opens a pull request that
+adds one file here; a person reviews and merges it. A record can also be written by hand from
+the [template](../templates/finding.json). [docs/automation.md](../../docs/automation.md)
+describes the whole path.
 
 **How evidence is added.** People add evidence, never a status. Each command writes the
 records it names and nothing else:
@@ -28,8 +30,10 @@ python3 scripts/community.py fixed F48 --release 2027-v1 --date 2027-03-01 --url
 python3 scripts/community.py close F48 --as withdrawn --reason "…" --date 2026-12-02
 ```
 
-A second measurement comes from a second person; the command refuses the reporter. BAFU's
-answer is written in our own words, attributed to BAFU, without a person's name.
+A second measurement comes from a second person; the command refuses the reporter. The second
+person can also comment on the issue, beginning with `/repeated reproduced` or
+`/repeated not-reproduced`: a workflow then opens the pull request. BAFU's answer is written in
+our own words, attributed to BAFU, without a person's name.
 
 **Where the list is published.** The [site](https://sentier-dev.github.io/sentier-bafu/findings.html)
 shows every record with its discussion. The build also publishes a one-line-per-finding table,

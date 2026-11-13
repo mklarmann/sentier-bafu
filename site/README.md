@@ -18,7 +18,7 @@ The build validates every record first, with the rules of `python3 scripts/commu
 
 `_site/` is ignored. Inventory files, licensed data and private evidence are never build inputs, and `check_site.py` refuses data file types in the output.
 
-[The Documentation workflow](../.github/workflows/pages.yml) deploys to GitHub Pages after a push to `main`, once a day, and when an issue is opened, closed or relabelled. Pull requests build and check the site without deploying it.
+[The Site workflow](../.github/workflows/pages.yml) deploys to GitHub Pages after a push to `main`, once a day, and when an issue is opened, closed or reopened. Pull requests are built and checked by [the Checks workflow](../.github/workflows/checks.yml), without the network and without deploying. [docs/automation.md](../docs/automation.md) describes every workflow.
 
 The design follows [Départ de Sentier's website](https://www.d-d-s.ch/): the green logo from [Depart-de-Sentier/dds-logo](https://github.com/Depart-de-Sentier/dds-logo) by Sylvain Prevost (CC BY 4.0), Nunito from [Google Fonts](https://github.com/google/fonts/tree/main/ofl/nunito) under `site/assets/OFL.txt`, dark green `#3C5343`, beige `#F0EEE1` and sage `#84AE99`. The renderer and stylesheet are meant to be shared with the sibling dataset sites; dataset-specific text lives in `site/config.json` and the Markdown sources.
 
