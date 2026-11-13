@@ -30,6 +30,8 @@ Interface for the site build and other tools (all take plain records, none reads
     changes(findings)                  every dated event of every finding, newest first
     last_change(record)                date of the newest evidence
     waiting_since(record)              that date while the finding is still on the path, else None
+    staleness(record, today, thresholds)   how long it has waited, against the threshold of its status
+    check_in_release(record, config)   releases in which to look for a correction the provider confirmed
     related(findings)                  {id: [ids]}, both directions
     patches_by_finding(patches)        {finding id: [patch, ...]}
     patches_without_finding(patches)   patches that answer no finding
@@ -86,6 +88,7 @@ def load_config(root=ROOT):
         "repository": config["repository"],
         "site_url": config["site_url"],
         "releases": config.get("releases", []),
+        "stale_after_days": config.get("stale_after_days", {}),
     }
 
 
@@ -138,6 +141,9 @@ STATUSES = [
 STAGE_ORDER = {s["key"]: n for n, s in enumerate(STATUSES)}
 # Still on the path: something is expected to happen next.
 OPEN_STAGES = ("filed", "confirmed", "sent", "answered")
+# Days a finding may wait at a status before it is listed as waiting too long. site/config.json
+# sets other numbers under "stale_after_days". Waiting is shown, never chased: no reminder is sent.
+STALE_AFTER_DAYS = {"filed": 30, "confirmed": 30, "sent": 90, "answered": 365}
 KINDS = {
     "defect": {"label": "Defect", "description": "Something in the data looks wrong: an amount, a unit, a link or a label."},
     "question": {"label": "Question", "description": "A question to {provider} about what the data means or intends."},
@@ -400,6 +406,34 @@ def last_change(record):
 def waiting_since(record):
     """Since when nothing has happened to a finding that is still on the path."""
     return last_change(record) if stage(record) in OPEN_STAGES else None
+
+
+def staleness(record, today, thresholds=None):
+    """How long a finding has waited at its status, computed and never stored.
+
+    {"status", "since", "days", "threshold", "stale"}, or None once the finding is corrected
+    or closed, or when its evidence carries no date. `today` is a date; `thresholds` is
+    `stale_after_days` of site/config.json and overrides STALE_AFTER_DAYS per status.
+    """
+    since = waiting_since(record)
+    if not since:
+        return None
+    key = stage(record)
+    threshold = {**STALE_AFTER_DAYS, **(thresholds or {})}[key]
+    days = (today - datetime.date.fromisoformat(since)).days
+    return {"status": key, "since": since, "days": days, "threshold": threshold, "stale": days > threshold}
+
+
+def check_in_release(record, config):
+    """Releases in which to look for a correction: the provider confirmed the finding, no
+    correction is recorded, and a release dated after the answer is registered.
+
+    A release carries its date as `date` in site/config.json; one without a date is never listed.
+    """
+    answer = record.get("answer")
+    if not answer or answer["outcome"] != "confirmed" or record.get("fixed_in") or record.get("closed"):
+        return []
+    return [r["id"] for r in config["releases"] if r.get("date") and r["date"] > answer["date"]]
 
 
 def changes(findings):
