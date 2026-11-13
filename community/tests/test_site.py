@@ -18,8 +18,22 @@ from xml.etree import ElementTree
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 import community  # noqa: E402
 import triage  # noqa: E402
+
+IGNORED = shutil.ignore_patterns(".git", "_site", ".local", "__pycache__", ".venv")
+try:
+    # Frozen records, where the repository has them (community/tests/frozen.py): what the pages
+    # say about a finding is then tested on a copy that does not move when a real finding does.
+    import frozen
+    DATA, copy_repository = frozen.repository(), frozen.copy_repository
+except ModuleNotFoundError:
+    DATA = ROOT
+
+    def copy_repository(target):
+        shutil.copytree(ROOT, target, ignore=IGNORED)
+        return target
 
 try:
     import build_site
@@ -109,11 +123,6 @@ def issue(number, labels, state="open"):
                 comments=2, updated="2026-11-01", url=f"{REPO}/issues/{number}")
 
 
-def copy_repository(target):
-    shutil.copytree(ROOT, target, ignore=shutil.ignore_patterns(".git", "_site", ".local", "__pycache__", ".venv"))
-    return target
-
-
 SUBJECTS = ["Chloride to water", "Nitrogen oxides to air", "Electricity, medium voltage", "Transport, lorry 16-32t",
             "Heat, natural gas", "Polystyrene, expandable", "Tap water, at user", "Wheat grains, at farm"]
 PROBLEMS = ["has no row in the flow list", "carries a unit that differs from its supplier",
@@ -190,8 +199,8 @@ def tracker_steps(page):
 
 class TriageTests(unittest.TestCase):
     def setUp(self):
-        self.findings = community.load_findings(ROOT)
-        self.patches = community.load_patches(ROOT)
+        self.findings = community.load_findings(DATA)
+        self.patches = community.load_patches(DATA)
 
     def test_every_finding_is_placed_in_a_known_stage(self):
         data = triage.assemble(self.findings, REPO, {})
@@ -263,31 +272,37 @@ class TriageTests(unittest.TestCase):
         self.assertEqual(closed["unlisted"], [])
 
     def test_labels_follow_records_and_differences_are_a_list_for_maintainers(self):
-        self.assertEqual(triage.expected_labels("filed"), {"bafu-finding", "stage: filed", "help wanted"})
-        self.assertEqual(triage.expected_labels("answered"), {"bafu-finding", "stage: answered"})
+        finding, wanted = triage.FINDING_LABEL, triage.HELP_LABEL
+        filed, answered, sent = (triage.expected_labels(key) for key in ("filed", "answered", "sent"))
+        self.assertTrue({finding, wanted} <= filed)
+        self.assertEqual(len(filed), 3)
+        self.assertIn(finding, answered)
+        self.assertNotIn(wanted, answered)
+        (is_answered,), (is_sent,) = answered - {finding}, sent - {finding}
+        self.assertNotEqual(is_answered, is_sent)
         placed = {f["id"]: f for f in triage.assemble(self.findings, REPO, {})["findings"]}
-        answered = next(f for f in placed.values() if f["stage"] == "answered" and f["issue"])
-        n = answered["issue"]
+        record = next(f for f in placed.values() if f["stage"] == "answered" and f["issue"])
+        n = record["issue"]
 
         def differences(labels):
             return triage.assemble(self.findings, REPO, {n: issue(n, labels)})["label_differences"]
 
-        self.assertEqual(differences(["bafu-finding", "stage: answered"]), [])
-        (lagging,) = differences(["bafu-finding", "upstream-reported", "needs-triage", "stage: sent", "question"])
+        self.assertEqual(differences([finding, is_answered]), [])
+        (lagging,) = differences([finding, "upstream-reported", "needs-triage", is_sent, "question"])
         self.assertEqual(lagging["issue"], n)
-        self.assertEqual(lagging["findings"], [answered["id"]])
-        self.assertEqual(lagging["add"], ["stage: answered"])
-        # Labels that are not about the stage are left alone.
-        self.assertEqual(lagging["remove"], ["needs-triage", "stage: sent", "upstream-reported"])
+        self.assertEqual(lagging["findings"], [record["id"]])
+        self.assertEqual(lagging["add"], [is_answered])
+        # Labels that are not about the status are left alone.
+        self.assertEqual(lagging["remove"], sorted(["needs-triage", is_sent, "upstream-reported"]))
 
     def test_an_issue_shared_by_two_findings_shows_the_earlier_stage(self):
         shared = copy.deepcopy([f for f in self.findings if f["issue"] == 3])
         self.assertEqual([f["id"] for f in shared], ["F8", "F10"])
         shared[0]["answer"] = {"date": "2026-11-20", "outcome": "confirmed", "summary": "BAFU said yes.", "url": f"{REPO}/issues/3"}
-        (difference,) = triage.assemble(shared, REPO, {3: issue(3, ["bafu-finding"])})["label_differences"]
+        (difference,) = triage.assemble(shared, REPO, {3: issue(3, [triage.FINDING_LABEL])})["label_differences"]
         self.assertEqual(difference["findings"], ["F8", "F10"])
         self.assertEqual(difference["stage"], "filed")
-        self.assertEqual(difference["add"], ["help wanted", "stage: filed"])
+        self.assertEqual(difference["add"], sorted(triage.expected_labels("filed") - {triage.FINDING_LABEL}))
 
     def test_a_required_tracker_that_cannot_be_read_stops_the_build(self):
         original = triage.fetch_issues
@@ -309,9 +324,9 @@ class SiteTests(unittest.TestCase):
     def setUpClass(cls):
         cls.tmp = tempfile.TemporaryDirectory()
         cls.out = Path(cls.tmp.name) / "site"
-        build_site.build(cls.out, offline=True)
-        cls.findings = community.load_findings(ROOT)
-        cls.config = json.loads((ROOT / "site/config.json").read_text())
+        build_site.build(cls.out, offline=True, root=DATA)
+        cls.findings = community.load_findings(DATA)
+        cls.config = json.loads((DATA / "site/config.json").read_text())
 
     @classmethod
     def tearDownClass(cls):
@@ -333,7 +348,7 @@ class SiteTests(unittest.TestCase):
     def test_every_record_has_a_page(self):
         for f in self.findings:
             self.assertTrue((self.out / f"findings/{f['id']}.html").is_file(), f["id"])
-        for c in community.load_contributions(ROOT):
+        for c in community.load_contributions(DATA):
             self.assertTrue((self.out / f"contributions/{c['id']}.html").is_file(), c["id"])
 
     def test_every_dataset_a_record_names_has_a_page_that_leads_to_its_findings(self):
@@ -456,7 +471,7 @@ class SiteTests(unittest.TestCase):
             for login in logins:
                 self.assertNotIn(login, text, page.name)
         # A patch names its author and who authorised it, as the registry does.
-        patch = community.load_patches(ROOT)["patches"][0]
+        patch = community.load_patches(DATA)["patches"][0]
         text = parse(self.out / "findings/F1.html").find("main").text()
         self.assertIn(patch["author"], text)
         self.assertIn(patch["authorised_by"], text)
@@ -527,12 +542,12 @@ class SiteTests(unittest.TestCase):
         text = squash(page.find("main").text())
         self.assertIn("Mapping · stands beside BAFU's numbers", text)
         self.assertNotIn("elementary-flow-crosswalk-and-method-specific-factor-policy", text)
-        record = next(c for c in community.load_contributions(ROOT) if c["id"] == "C002")
+        record = next(c for c in community.load_contributions(DATA) if c["id"] == "C002")
         # Who the work "goes to" is not printed from the record: BAFU decides, nothing is promised.
         self.assertNotIn(record["upstream_project"], text)
 
     def test_a_contribution_page_shows_each_required_check_with_its_result(self):
-        for c in community.load_contributions(ROOT):
+        for c in community.load_contributions(DATA):
             page = parse(self.out / f"contributions/{c['id']}.html")
             rows = page.find("ul", "checks").find_all("li")
             self.assertEqual([r.find("code").text() for r in rows], c["required_checks"])
@@ -552,7 +567,7 @@ class SiteTests(unittest.TestCase):
             self.assertEqual(len(page.find_all("h1")), 1, cid)
 
     def test_patches_are_shown_from_the_snapshot_not_from_the_record(self):
-        patches = community.load_patches(ROOT)
+        patches = community.load_patches(DATA)
         page = (self.out / "findings/F1.html").read_text()
         self.assertIn(patches["patches"][0]["url"], page)
         self.assertIn("Patch 0001", page)
@@ -561,14 +576,14 @@ class SiteTests(unittest.TestCase):
     # ---- lists and generated pages
 
     def test_unlisted_issues_show_a_number_not_their_title(self):
-        site = build_site.Site(self.out, offline=True)
+        site = build_site.Site(self.out, offline=True, root=DATA)
         site.triage = triage.assemble(site.findings, site.repo, {9999: issue(9999, ["bafu-finding"])})
         listing = site.findings_list()
         self.assertIn("#9999", listing)
         self.assertNotIn("issue 9999", listing)
 
     def test_label_differences_stay_out_of_the_pages(self):
-        site = build_site.Site(self.out, offline=True)
+        site = build_site.Site(self.out, offline=True, root=DATA)
         site.triage = triage.assemble(site.findings, site.repo, {35: issue(35, ["bafu-finding", "needs-triage"])})
         self.assertTrue(site.triage["label_differences"])
         page = site.finding_page(next(f for f in site.triage["findings"] if f["id"] == "F17"))
@@ -578,12 +593,13 @@ class SiteTests(unittest.TestCase):
         from sitebuild import pages
         housekeeping = pages.housekeeping(site)
         self.assertIn(f"{REPO}/issues/35", housekeeping)
-        self.assertNotIn("needs-triage", housekeeping)
-        self.assertNotIn("stage:", housekeeping)
+        (difference,) = site.triage["label_differences"]
+        for label in difference["add"] + difference["remove"]:
+            self.assertNotIn(label, housekeeping)
 
     def test_housekeeping_lists_what_needs_a_hand(self):
         text = squash(parse(self.out / "housekeeping.html").find("main").text())
-        loose = community.patches_without_finding(community.load_patches(ROOT))
+        loose = community.patches_without_finding(community.load_patches(DATA))
         self.assertTrue(loose)
         for patch in loose:
             self.assertIn(f"Patch {patch['id']}", text)
@@ -659,7 +675,7 @@ class SiteTests(unittest.TestCase):
     # ---- prose pages
 
     def test_record_links_in_documents_point_to_their_pages(self):
-        site = build_site.Site(self.out, offline=True)
+        site = build_site.Site(self.out, offline=True, root=DATA)
         self.assertEqual(site.target("findings/0/F8.json", "community/workflow.md"), ("findings/F8.html", True))
         self.assertEqual(site.target("contributions/C001.json", "community/workflow.md"), ("contributions/C001.html", True))
         self.assertEqual(site.target("findings/README.md", "community/workflow.md"), ("findings.html", True))
@@ -669,7 +685,7 @@ class SiteTests(unittest.TestCase):
                 site.target(dead, "community/workflow.md")
 
     def test_links_between_page_sources_and_to_built_files(self):
-        site = build_site.Site(self.out, offline=True)
+        site = build_site.Site(self.out, offline=True, root=DATA)
         # A source that became a page under another name still leads to that page.
         self.assertEqual(site.target("import.md", "site/findings.md"), ("patched-release.html", True))
         self.assertEqual(site.target("../docs/terms-of-use.md", "site/findings.md"), ("about/terms.html", True))
@@ -706,7 +722,7 @@ class SiteTests(unittest.TestCase):
             page = site.document(next(d for d in site.docs if d["source"] == "site/data.md"))
             self.assertNotIn("<!--", page)
             text = squash(parse(page).find("main").text())
-            patches = community.load_patches(ROOT)["patches"]
+            patches = community.load_patches(DATA)["patches"]
             self.assertIn(f"There are {len(patches)} patches and {site.triage['counts']['filed']} waiting.", text)
             for patch in patches:
                 self.assertIn(patch["description"].replace("`", ""), text)
@@ -744,7 +760,7 @@ class SiteTests(unittest.TestCase):
         self.assertEqual(prose.tone("does not exist yet")[0], "todo")
 
     def test_record_text_never_puts_another_kind_of_address_on_a_page(self):
-        site = build_site.Site(self.out, offline=True)
+        site = build_site.Site(self.out, offline=True, root=DATA)
         self.assertIn('href="https://example.org/a"', site.record_text("[a](https://example.org/a)"))
         # The validation refuses these first; the renderer refuses them again.
         for text in ("[x](javascript:alert(1))", "[x][1]\n\n[1]: javascript:alert(1)", "![x](http://other.example/p.png)",
@@ -753,7 +769,7 @@ class SiteTests(unittest.TestCase):
                 site.record_text(text)
 
     def test_record_text_links_the_findings_it_names(self):
-        site = build_site.Site(self.out, offline=True)
+        site = build_site.Site(self.out, offline=True, root=DATA)
         linked = site.record_text("F14 and F16 are the same class as `F3`, not F9999.", up="../", link_ids=True, own="F3")
         self.assertEqual([a.attrs["href"] for a in parse(linked).find_all("a")], ["../findings/F14.html", "../findings/F16.html"])
         self.assertNotIn("<a", site.record_text("An F1 score of 0.80."))
@@ -813,7 +829,7 @@ class SiteTests(unittest.TestCase):
         text = (self.out / "api/v1/datasets.json").read_text()
         codes = [line.split(":")[0].strip('"') for line in text.splitlines() if re.match(r'"\d+":\{', line)]
         self.assertEqual(codes, list(json.loads(text)["datasets"]))
-        site = build_site.Site(self.out, offline=True)
+        site = build_site.Site(self.out, offline=True, root=DATA)
         with tempfile.TemporaryDirectory() as tmp:
             site.out = Path(tmp)
             site.write_json("empty.json", {"schema": "x", "findings": []}, one_per_line="findings")
@@ -838,7 +854,7 @@ class SiteTests(unittest.TestCase):
     def test_the_build_is_deterministic(self):
         with tempfile.TemporaryDirectory() as tmp:
             again = Path(tmp) / "site"
-            build_site.build(again, offline=True)
+            build_site.build(again, offline=True, root=DATA)
 
             def files(folder):
                 return sorted(p.relative_to(folder).as_posix() for p in folder.rglob("*") if p.is_file())
@@ -852,24 +868,62 @@ class SiteTests(unittest.TestCase):
             out = Path(tmp) / "site"
             out.mkdir()
             (out / "kept.html").write_text("not ours: no earlier build wrote this folder")
-            build_site.build(out, offline=True)
+            build_site.build(out, offline=True, root=DATA)
             self.assertTrue((out / "kept.html").exists())
             stale = ["findings/F9999.html", "api/v1/findings/F9999.json", "assets/old-script.js", "old-data.json",
                      "feedback/2020-01.html", "gone/page.html"]
             for name in stale:
                 (out / name).parent.mkdir(parents=True, exist_ok=True)
                 (out / name).write_text("left by an earlier build")
-            build_site.build(out, offline=True)
+            build_site.build(out, offline=True, root=DATA)
             for name in stale + ["kept.html"]:
                 self.assertFalse((out / name).exists(), name)
             self.assertFalse((out / "gone").exists())
             self.assertTrue((out / "findings/F3.html").exists())
             self.assertTrue((out / ".nojekyll").exists())
 
+    def test_the_day_of_the_build_can_be_fixed(self):
+        import os
+        before = os.environ.get("SOURCE_DATE_EPOCH")
+        os.environ["SOURCE_DATE_EPOCH"] = "1794528000"  # 13 November 2026, 00:00 UTC
+        try:
+            self.assertEqual(build_site.build_date(), "2026-11-13")
+        finally:
+            if before is None:
+                del os.environ["SOURCE_DATE_EPOCH"]
+            else:
+                os.environ["SOURCE_DATE_EPOCH"] = before
+        self.assertRegex(build_site.build_date(), r"^\d{4}-\d{2}-\d{2}$")
+
+    def test_the_site_check_refuses_what_must_not_be_published(self):
+        cases = {
+            "a link that leads nowhere": lambda out: (out / "changes.html").unlink(),
+            "an anchor that is not there": lambda out: (out / "take-part.html").write_text(
+                (out / "take-part.html").read_text().replace("</main>", '<a href="findings.html#no-such-anchor">x</a></main>')),
+            "an id used twice": lambda out: (out / "housekeeping.html").write_text(
+                (out / "housekeeping.html").read_text().replace("</main>", '<i id="main"></i></main>')),
+            "an inventory file": lambda out: (out / "inventory.parquet").write_text("x"),
+            "a release file in XML": lambda out: (out / "assets/00001.xml").write_text("<ecoSpold/>"),
+            "a broken data file": lambda out: (out / "api/v1/status.json").write_text("{"),
+            "a link from the root of the host that leaves the site": lambda out: (out / "404.html").write_text(
+                (out / "404.html").read_text().replace("</main>", '<a href="/elsewhere/x.html">x</a></main>')),
+            "a script address": lambda out: (out / "index.html").write_text(
+                (out / "index.html").read_text().replace("</main>", '<a href="javascript:alert(1)">x</a></main>')),
+            "a page without a description": lambda out: (out / "changes.html").write_text(
+                re.sub(r'<meta name="description"[^>]*>', "", (out / "changes.html").read_text())),
+        }
+        for name, damage in cases.items():
+            with tempfile.TemporaryDirectory() as tmp:
+                out = Path(tmp) / "site"
+                shutil.copytree(self.out, out)
+                self.assertEqual(check_site.check(out), 0, name)
+                damage(out)
+                self.assertEqual(check_site.check(out), 1, name)
+
     def test_the_page_writer_refuses_a_path_outside_the_output_folder(self):
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp) / "site"
-            site = build_site.Site(out, offline=True)
+            site = build_site.Site(out, offline=True, root=DATA)
             for page in ("../escaped.html", "contributions/../../escaped.html", "/tmp/escaped.html"):
                 with self.assertRaises(ValueError):
                     site.write(page, "x")
@@ -903,7 +957,7 @@ class ScaleTests(unittest.TestCase):
         cls.tmp.cleanup()
 
     def test_three_thousand_findings_build_and_pass_the_link_check(self):
-        self.assertEqual(len(self.findings), self.COUNT + len(community.load_findings(ROOT)))
+        self.assertEqual(len(self.findings), self.COUNT + len(community.load_findings(DATA)))
         self.assertEqual(check_site.check(self.out), 0)
         for f in self.findings[:: 97]:
             self.assertTrue((self.out / f"findings/{f['id']}.html").is_file(), f["id"])

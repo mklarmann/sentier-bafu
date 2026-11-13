@@ -366,7 +366,7 @@ def patch_table(site, up=""):
             f'<td role="cell" data-label="{label}">{cell}</td>' for label, cell in zip(head, cells)
         ) + "</tr>"
     return (
-        '<div class="table-wrap"><table role="table" class="cols-5 key-short many"><thead role="rowgroup"><tr role="row">'
+        '<div class="table-wrap"><table role="table" class="cols-5 key-short"><thead role="rowgroup"><tr role="row">'
         + "".join(f'<th role="columnheader" scope="col">{label}</th>' for label in head)
         + f'</tr></thead><tbody role="rowgroup">{lines}</tbody></table></div>'
     )

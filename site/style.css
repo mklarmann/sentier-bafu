@@ -59,13 +59,14 @@
 *, *::before, *::after { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; scroll-padding-top: 1rem; }
 body {
-  margin: 0;
+  margin: 0; min-height: 100vh; display: flex; flex-direction: column; /* a short page keeps its footer at the bottom */
   background: var(--paper);
   color: var(--ink);
   font: 400 var(--t-md)/1.6 var(--font);
   /* break-word, never anywhere: "anywhere" lets a table shrink a column to one letter */
   overflow-wrap: break-word;
 }
+main { flex: 1 0 auto; }
 img { max-width: 100%; height: auto; display: block; }
 h1, h2, h3, h4, p, ul, ol, dl, dd, pre, blockquote, figure, form { margin: 0; }
 h1, h2, h3, h4 { color: var(--green); line-height: 1.25; text-wrap: balance; }
@@ -273,7 +274,6 @@ select { /* drawn here, so that Safari does not fall back to its small native co
 .pill::before { content: ""; width: .5em; height: .5em; border-radius: 50%; background: currentColor; }
 .pill.ok { background: var(--sage-tint); color: var(--green-dark); }
 .pill.fail { background: var(--fail-tint); color: var(--fail); }
-.pill.wait { background: var(--wait-tint); color: var(--wait-ink); }
 .pill.todo { border-color: var(--line-strong); color: var(--muted); }
 .pill.todo::before { background: none; border: 1.5px solid currentColor; }
 
@@ -653,7 +653,7 @@ td:first-child { font-weight: 600; }
 
 /* --------------------------------------------------------- generated pages */
 /* counts that lead to their lists: the feedback page, a release page */
-.tally { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: var(--s3); margin-top: var(--s5); }
+.tally { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)); gap: var(--s3); margin-top: var(--s5); }
 .tally a {
   display: block; height: 100%; padding: var(--s3) var(--s4); border: 1px solid var(--line); border-radius: var(--radius);
   background: var(--surface); color: var(--ink); font-size: var(--t-sm); line-height: 1.35; text-decoration: none;
@@ -678,9 +678,9 @@ td:first-child { font-weight: 600; }
 .footer-links { display: flex; flex-wrap: wrap; align-content: start; justify-content: flex-end; gap: 0 var(--s5); max-width: 30rem; }
 .footer-links a { padding-block: var(--s1); font-weight: 700; white-space: nowrap; }
 .footer-build { grid-column: 1 / -1; padding-top: var(--s4); border-top: 1px solid var(--line); font-size: var(--t-xs); }
-@media (max-width: 47.99rem) {
+@media (max-width: 61.99rem) {
   .footer-in { grid-template-columns: minmax(0, 1fr); }
-  .footer-links { justify-content: flex-start; }
+  .footer-links { justify-content: flex-start; max-width: none; }
 }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
