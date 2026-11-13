@@ -36,6 +36,7 @@ Options for `run`:
 - `--only ID [ID ...]` / `--skip ID [ID ...]`: choose which patches to apply
 - `--no-extensions`: leave out our additional fields, giving plain EcoSpold 1
 - `--report FILE.html`: write a run report (see below)
+- `--summary FILE.json`: write the same record as JSON (see below)
 - `--placeholder-year`, `--placeholder-number`, `--placeholder-country`,
   `--placeholder-text`: values filled in where required data is missing (defaults `1111`,
   `1111`, `AQ`, `UNKNOWN`). Blank values are kept, since the schema allows them. Placeholders
@@ -82,6 +83,10 @@ external to load. It's meant to be shared with data users. It shows:
 - the schema check results, an input fingerprint (SHA-256), options, and software versions
 
 If a run fails, the report is still written, with the error.
+
+`--summary` writes the record as JSON for programs: the same steps with their authors,
+authorisation, references and counts, and for every changed dataset its number, name,
+location and the ids of the steps that changed it. It holds no amounts.
 
 ## Additional fields
 

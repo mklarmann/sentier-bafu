@@ -53,6 +53,12 @@ def main(argv: list[str] | None = None) -> None:
         metavar="HTML",
         help="Write an HTML report of what changed, who authorised it, and how much",
     )
+    run_p.add_argument(
+        "--summary",
+        type=Path,
+        metavar="JSON",
+        help="Write the same record as JSON, with the steps that changed each dataset",
+    )
     defaults = DEFAULT_PLACEHOLDERS
     group = run_p.add_argument_group("placeholders for missing required data")
     group.add_argument("--placeholder-year", type=int, default=defaults.year, metavar="YEAR")
@@ -98,6 +104,7 @@ def main(argv: list[str] | None = None) -> None:
             xsd_check=args.xsd_check,
             report=args.report,
             placeholders=placeholders,
+            summary=args.summary,
         )
     except (EcoSpoldError, ComplianceError, PatchError) as e:
         if args.report:
@@ -106,6 +113,8 @@ def main(argv: list[str] | None = None) -> None:
     print(f"Wrote {log.written} file(s) to {args.destination}")
     if args.report:
         print(f"Report written to {args.report}")
+    if args.summary:
+        print(f"Summary written to {args.summary}")
 
 
 if __name__ == "__main__":

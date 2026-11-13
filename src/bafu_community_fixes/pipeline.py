@@ -8,7 +8,8 @@
    the datasets it changed are checked against the XSD again.
 5. Write EcoSpold 1 XML, with or without extensions.
 
-Every step's changes go into a `RunLog`, which `report.py` renders as HTML.
+Every step's changes go into a `RunLog`, which `report.py` renders as HTML and
+`summary.py` writes as JSON.
 """
 
 import hashlib
@@ -241,12 +242,14 @@ def run(
     report: Path | str | None = None,
     progress: ProgressCallback | None = None,
     placeholders: Placeholders = DEFAULT_PLACEHOLDERS,
+    summary: Path | str | None = None,
 ) -> RunLog:
     """Run the whole pipeline. With `report`, also write an HTML report there.
 
     `xsd_check` is one of `XSD_CHECKS`. With "end", the result is checked once,
     after all patches and before anything is written. The report is written even if
-    the run fails, so the failure can be shared.
+    the run fails, so the failure can be shared. With `summary`, the same record is
+    written there as JSON (see `summary.py`), also when the run fails.
     """
     if xsd_check not in XSD_CHECKS:
         raise ValueError(f"xsd_check must be one of {', '.join(XSD_CHECKS)}, not {xsd_check!r}")
@@ -261,6 +264,7 @@ def run(
             "placeholders for missing data": placeholders.describe(),
         },
     )
+    db = None
     try:
         db = import_database(
             source, strict=every_step, log=log, progress=progress, placeholders=placeholders
@@ -287,4 +291,8 @@ def run(
 
             tracker(progress, "Writing the report")
             write_report(log, report)
+        if summary is not None:
+            from bafu_community_fixes.summary import write_summary
+
+            write_summary(log, summary, db)
     return log
