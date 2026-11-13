@@ -149,7 +149,7 @@ from bafu_community_fixes.models import UncertaintyType
     authored_by="Jane Doe",  # who wrote this patch
     authorised_by="Chris Mutel",  # who approved it for the release; leave out until then
     reported_by="John Roe, Example AG",  # optional: who found the problem
-    confirmed_by="BAFU (email, 1 November 2026)",  # optional: the data owner's confirmation
+    confirmed_by="BAFU, 1 November 2026",  # optional: the data owner's confirmation
     references=("https://github.com/sentier-dev/sentier-bafu/issues/1",),
 )
 def fix_something(db: Database) -> None:
