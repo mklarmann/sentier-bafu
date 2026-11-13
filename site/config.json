@@ -1,5 +1,5 @@
 {
-  "dataset": "BAFU / UVEK",
+  "dataset": "BAFU/UVEK",
   "provider": "BAFU",
   "releases": [
     {
@@ -14,83 +14,101 @@
   "repository": "https://github.com/sentier-dev/sentier-bafu",
   "site_url": "https://sentier-dev.github.io/sentier-bafu/",
   "source_ref": "main",
-  "description": "Where users of the BAFU/UVEK inventory database report findings, repeat each other's measurements and send them to BAFU, which decides what it changes. Community patches apply corrections for those who need them now.",
+  "home_title": "BAFU/UVEK inventory database: community findings · Sentier",
+  "title_suffix": "BAFU/UVEK findings · Sentier",
+  "description": "Users of the BAFU/UVEK life-cycle inventory database record measured findings here, repeat each other's measurements and report them to BAFU.",
   "sibling_name": "AGRIBALYSE preview",
   "sibling_url": "https://mklarmann.github.io/sentier-agribalyse/",
   "nav": [
-    [
-      "index.html",
-      "Overview"
-    ],
-    [
-      "findings.html",
-      "Findings"
-    ],
-    [
-      "contributions.html",
-      "Contributions"
-    ],
-    [
-      "testing.html",
-      "Evidence"
-    ],
-    [
-      "import.html",
-      "Patched release"
-    ],
-    [
-      "contribute.html",
-      "Take part"
-    ]
+    ["index.html", "Overview"],
+    ["findings.html", "Findings"],
+    ["feedback.html", "Feedback to BAFU"],
+    ["contributions.html", "Contributions"],
+    ["patched-release.html", "Patched release"],
+    ["take-part.html", "Take part"]
+  ],
+  "footer": [
+    ["about/terms.html", "Data and terms"],
+    ["about/checks.html", "How builds are checked"],
+    ["about/data.html", "Data (JSON)"],
+    ["housekeeping.html", "Housekeeping"]
   ],
   "documents": [
     {
       "title": "Findings",
       "source": "site/findings.md",
-      "page": "findings.html"
+      "page": "findings.html",
+      "description": "Measured observations about BAFU's inventory data. Each finding has a status, a record and a public place where it is discussed."
+    },
+    {
+      "title": "Feedback to BAFU",
+      "source": "site/feedback.md",
+      "page": "feedback.html",
+      "description": "What was reported to BAFU and when, what BAFU answered, what a BAFU release corrected, and what is ready to be reported."
     },
     {
       "title": "Contributions",
-      "source": "community/workflow.md",
-      "page": "contributions.html"
+      "source": "site/contributions.md",
+      "page": "contributions.html",
+      "also": ["community/workflow.md"],
+      "description": "Proposals that go beyond a single finding: mappings, models, rebuilt inventories and method variants, each with its checks and reviewers."
     },
     {
-      "title": "The patched release",
-      "source": "site/import.md",
-      "page": "import.html"
-    },
-    {
-      "title": "Evidence",
-      "source": "community/build-validation.md",
-      "page": "testing.html"
+      "title": "Patched release",
+      "source": "site/patched-release.md",
+      "page": "patched-release.html",
+      "also": ["site/import.md"],
+      "description": "BAFU's release with import fixes and community patches applied: what works today, what is planned, and what to check before sharing a build."
     },
     {
       "title": "Take part",
-      "source": "community/README.md",
-      "page": "contribute.html"
+      "source": "site/take-part.md",
+      "page": "take-part.html",
+      "also": ["community/README.md"],
+      "description": "Report a finding, repeat a measurement or propose a contribution. Everything is discussed in public on GitHub."
     },
     {
       "title": "Data and terms",
       "source": "docs/terms-of-use.md",
-      "page": "terms.html"
+      "page": "about/terms.html",
+      "description": "A short reading of BAFU's Terms of Use for people who work with the data here. It is not legal advice."
     },
     {
-      "title": "Apply and test a contribution",
-      "source": "community/application-and-testing.md",
-      "page": "application.html"
+      "title": "How builds are checked",
+      "source": "community/build-validation.md",
+      "page": "about/checks.html",
+      "description": "What was measured about the import of BAFU's release: row accounting, factor coverage and a score comparison with BAFU's published results."
     },
     {
-      "title": "Hackathon assessment",
-      "source": "community/hackathon-assessment.md",
-      "page": "hackathon.html"
-    },
-    {
-      "title": "Mapping import",
-      "source": "community/mutel-mapping-review.md",
-      "page": "mapping-review.html"
+      "title": "Data (JSON)",
+      "source": "site/data.md",
+      "page": "about/data.html",
+      "description": "The findings, datasets and contributions of this site as JSON files for other tools, with their schemas and a feed of changes."
     }
   ],
+  "assessments": {
+    "C001": [
+      "community/hackathon-assessment.md",
+      "community/application-and-testing.md"
+    ],
+    "C002": [
+      "community/mutel-mapping-review.md"
+    ]
+  },
   "redirects": {
-    "consensus.html": "contributions.html"
+    "import.html": "patched-release.html",
+    "contribute.html": "take-part.html",
+    "testing.html": "about/checks.html",
+    "terms.html": "about/terms.html",
+    "application.html": "contributions/C001.html",
+    "hackathon.html": "contributions/C001.html",
+    "mapping-review.html": "contributions/C002.html",
+    "consensus.html": "contributions.html",
+    "findings/index.html": "findings.html",
+    "contributions/index.html": "contributions.html",
+    "datasets/index.html": "findings.html",
+    "releases/index.html": "findings.html",
+    "feedback/index.html": "feedback.html",
+    "about/index.html": "about/data.html"
   }
 }
