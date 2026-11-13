@@ -9,6 +9,7 @@ ID = "0007-flow-names"
 
 @patch(
     ID,
+    findings=(),
     authored_by="Claude Code",
     evidence=evidence("name"),
     authorised_by="Chris Mutel",

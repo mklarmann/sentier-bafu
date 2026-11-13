@@ -12,7 +12,7 @@ from bafu_community_fixes.registry import Patch
 from bafu_community_fixes.summary import SUMMARY_VERSION, fingerprint
 
 PROVENANCE = Provenance(
-    "Ann Author", "Olga Owner", ("https://example.org/issue/1",), "Rita Reporter", "BAFU"
+    "Ann Author", "Olga Owner", ("https://example.org/issue/1",), "Rita Reporter", "BAFU", ("F14",)
 )
 
 
@@ -68,6 +68,7 @@ def test_summary(raw_bafu, tmp_path, monkeypatch):
         "authorised_by": "Olga Owner",
         "reported_by": "Rita Reporter",
         "confirmed_by": "BAFU",
+        "findings": ["F14"],
         "references": ["https://example.org/issue/1"],
         "datasets": 1,
         "exchanges": 2,

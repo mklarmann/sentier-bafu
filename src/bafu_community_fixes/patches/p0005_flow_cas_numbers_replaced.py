@@ -9,6 +9,7 @@ ID = "0005-flow-cas-numbers-replaced"
 
 @patch(
     ID,
+    findings=(),
     authored_by="Claude Code",
     evidence=evidence("cas-replaced"),
     authorised_by="Chris Mutel",

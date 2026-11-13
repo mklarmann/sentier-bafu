@@ -11,6 +11,7 @@ ID = "0009-consistent-cas-numbers"
 
 @patch(
     ID,
+    findings=(),
     authored_by="Claude Code",
     authorised_by="Chris Mutel",
     reported_by="Chris Mutel, Brightway Flows",

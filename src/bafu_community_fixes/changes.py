@@ -102,6 +102,7 @@ class Provenance:
     * `reported_by`: who found the problem, if someone else.
     * `confirmed_by`: who confirmed the problem or the correction for the data owner
       (e.g. BAFU), and how.
+    * `findings`: ids of the findings in the ledger that the change answers, e.g. `F14`.
     """
 
     authored_by: str
@@ -109,6 +110,7 @@ class Provenance:
     references: tuple[str, ...] = ()
     reported_by: str | None = None
     confirmed_by: str | None = None
+    findings: tuple[str, ...] = ()
 
 
 @dataclass

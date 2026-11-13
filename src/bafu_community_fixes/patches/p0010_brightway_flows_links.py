@@ -10,6 +10,7 @@ ID = "0010-brightway-flows-links"
 
 @patch(
     ID,
+    findings=(),
     authored_by="Claude Code",
     authorised_by="Chris Mutel",
     reported_by="Chris Mutel, Brightway Flows",

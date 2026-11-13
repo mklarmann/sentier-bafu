@@ -9,6 +9,7 @@ ID = "0008-flow-compartments"
 
 @patch(
     ID,
+    findings=(),
     authored_by="Claude Code",
     evidence=evidence("compartment"),
     authorised_by="Chris Mutel",

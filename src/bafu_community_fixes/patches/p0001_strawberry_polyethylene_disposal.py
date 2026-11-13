@@ -15,6 +15,7 @@ CORRECTIONS = {
 
 @patch(
     ID,
+    findings=("F1",),
     authored_by="Claude Code",
     authorised_by="Chris Mutel",
     reported_by="Manuel Klarmann, Eaternity",

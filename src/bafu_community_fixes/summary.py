@@ -66,6 +66,7 @@ def _step(step: StepLog) -> dict:
         "authorised_by": provenance.authorised_by,
         "reported_by": provenance.reported_by,
         "confirmed_by": provenance.confirmed_by,
+        "findings": list(provenance.findings),
         "references": list(provenance.references),
         "datasets": step.datasets,
         "exchanges": step.exchanges,

@@ -316,6 +316,7 @@ footer { max-width: 1120px; margin: 0 auto; padding: 24px 32px 40px; color: var(
   {% if step.rationale %}<div class="rationale">{{ step.rationale | prose }}</div>{% endif %}
 
   <dl class="provenance">
+    {% if step.provenance.findings %}<dt>Finding{{ "s" if step.provenance.findings | length != 1 }}</dt><dd>{{ step.provenance.findings | join(", ") }}</dd>{% endif %}
     {% if step.provenance.reported_by %}<dt>Reported by</dt><dd>{{ step.provenance.reported_by }}</dd>{% endif %}
     {% if step.provenance.confirmed_by %}<dt>Confirmed by</dt><dd>{{ step.provenance.confirmed_by }}</dd>{% endif %}
     <dt>Authored by</dt><dd>{{ step.provenance.authored_by }}</dd>

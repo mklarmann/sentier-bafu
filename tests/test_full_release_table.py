@@ -59,7 +59,9 @@ def summarise(raw_bafu, tmp_path, monkeypatch):
 
 def _summary(raw_bafu, folder, monkeypatch, patches):
     registered = {
-        id: Patch(id, "Change something", func, Provenance("Ann Author", authorised_by))
+        id: Patch(
+            id, "Change something", func, Provenance("Ann Author", authorised_by, findings=("F7",))
+        )
         for id, (func, authorised_by) in patches.items()
     }
     monkeypatch.setattr(registry, "_REGISTRY", registered)
@@ -81,7 +83,7 @@ def test_table_of_a_good_run(table, summarise, capsys):
     assert "revision `aaaaaaaaaaaa`" in out
     assert "after import and after every patch" in out
     assert (
-        "| `0001-one` | patch | – | Ann Author | Olga Owner | 1 | 1 | 1 "
+        "| `0001-one` | patch | F7 | Ann Author | Olga Owner | 1 | 1 | 1 "
         "| `exchange/@uncertaintyType` (1) |"
     ) in out
     assert "| `location-codes` | import fix |" in out
@@ -115,7 +117,7 @@ def test_patch_whose_target_is_not_as_expected_fails_the_check(table, summarise,
         "> - `0001-stops` stopped the run; its target was not as expected, or it left "
         "invalid data: Dataset 100: expected 1.5 kg, found 2.5"
     ) in out
-    assert "| `0001-stops` | patch | – | Ann Author | Olga Owner | stopped |" in out
+    assert "| `0001-stops` | patch | F7 | Ann Author | Olga Owner | stopped |" in out
     assert "Patched release: nothing written" in out
     assert "0002-x" not in out  # the run never got there
 

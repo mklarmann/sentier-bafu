@@ -59,6 +59,7 @@ DATASETS = ECO_PROFILES | OTHERS
 
 @patch(
     ID,
+    findings=("F8",),
     authored_by="Claude Code",
     authorised_by="Chris Mutel",
     reported_by="Brightcon 2026 hackathon, reverse-engineering BAFU team",

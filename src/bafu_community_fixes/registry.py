@@ -8,11 +8,13 @@ don't do that themselves.
 
 Every patch names who wrote it, and who authorised it to be applied to the
 community release. Unauthorised patches still run, but the run report flags
-them.
+them. Every patch also names the findings it answers, so that a finding and its
+patch are linked in one place, here.
 """
 
 import importlib
 import pkgutil
+import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from importlib.resources import files
@@ -39,11 +41,14 @@ class Patch:
 
 
 _REGISTRY: dict[str, Patch] = {}
+_ID = re.compile(r"\d{4}-[a-z0-9]+(-[a-z0-9]+)*")
+_FINDING = re.compile(r"F[1-9]\d*")
 
 
 def patch(
     id: str,
     *,
+    findings: tuple[str, ...],
     authored_by: str,
     authorised_by: str | None = None,
     references: tuple[str, ...] = (),
@@ -54,6 +59,8 @@ def patch(
 ) -> Callable[[PatchFunc], PatchFunc]:
     """Register a patch. Its docstring's first line is the description, the rest the rationale.
 
+    `findings` are the ids of the findings in the ledger that the patch answers, like
+    `("F14",)`. They are required: a patch that answers no finding says so with `()`.
     `authored_by` wrote the patch, and `authorised_by` approved it for this community
     release. `reported_by` found the problem, and `confirmed_by` confirmed it for the
     data owner. `references` are links to the issue, discussion or evidence.
@@ -64,12 +71,23 @@ def patch(
     def decorator(func: PatchFunc) -> PatchFunc:
         if id in _REGISTRY:
             raise ValueError(f"Duplicate patch id: {id}")
+        if not _ID.fullmatch(id):
+            raise ValueError(f"Patch id {id!r} must look like '0012-short-name'")
+        if taken := [key for key in _REGISTRY if key[:4] == id[:4]]:
+            raise ValueError(f"Patch {id} has the same number as {taken[0]}")
+        if isinstance(findings, str) or not all(_FINDING.fullmatch(f) for f in findings):
+            raise ValueError(f"Patch {id}: findings must be ids like ('F14',), not {findings!r}")
         lines = (func.__doc__ or "").strip().splitlines()
         if not lines:
             raise ValueError(f"Patch {id} needs a docstring describing what it does")
         rationale = "\n".join(line.strip() for line in lines[1:]).strip()
         provenance = Provenance(
-            authored_by, authorised_by, tuple(references), reported_by, confirmed_by
+            authored_by,
+            authorised_by,
+            tuple(references),
+            reported_by,
+            confirmed_by,
+            tuple(findings),
         )
         _REGISTRY[id] = Patch(
             id, lines[0], func, provenance, rationale, tuple(rules), tuple(evidence)

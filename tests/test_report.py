@@ -20,7 +20,10 @@ def _break_keys(db):
 
 def test_report(raw_bafu, tmp_path, monkeypatch):
     provenance = Provenance(
-        "Ann Author", reported_by="Rita Reporter", confirmed_by="Carl Confirmer, BAFU"
+        "Ann Author",
+        reported_by="Rita Reporter",
+        confirmed_by="Carl Confirmer, BAFU",
+        findings=("F1", "F14"),
     )
     patch = Patch("0001-test", "Set `uncertaintyType`", _set_uncertainty, provenance)
     monkeypatch.setitem(registry._REGISTRY, patch.id, patch)
@@ -35,6 +38,7 @@ def test_report(raw_bafu, tmp_path, monkeypatch):
     assert "Run completed" in html
     assert "Set <code>uncertaintyType</code>" in html
     assert "Ann Author" in html
+    assert "Findings</dt><dd>F1, F14</dd>" in html
     assert "Reported by</dt><dd>Rita Reporter" in html
     assert "Confirmed by</dt><dd>Carl Confirmer, BAFU" in html
     assert "Not yet authorised" in html

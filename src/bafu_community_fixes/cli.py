@@ -77,7 +77,8 @@ def main(argv: list[str] | None = None) -> None:
         print("Patches:")
         for p in available_patches():
             authorised = p.provenance.authorised_by or "NOT YET AUTHORISED"
-            print(f"  {p.id}\t{p.description}\t[{authorised}]")
+            findings = ", ".join(p.provenance.findings) or "no finding"
+            print(f"  {p.id}\t{p.description}\t[{authorised}]\t{findings}")
         return
 
     logging.basicConfig(level=logging.INFO if args.verbose else logging.WARNING)
