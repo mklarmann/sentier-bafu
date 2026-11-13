@@ -10,10 +10,22 @@ The patched release written by `bafu-fixes` differs in two ways that stop that r
   `bcf:extensions/bcf:exchange/@originalNumber`.
 
 This module writes a copy without the namespace, with the original numbers restored, and
-without the `bcf:extensions` block. No name, amount, unit, compartment or location is touched.
-The copy is an intermediate input for the importer. It is not a release: the patched release
-stays as `bafu-fixes` wrote it. A provider release (no namespace, no extensions) passes through
+without the `bcf:extensions` block. No amount, unit or location is touched. The copy is an
+intermediate input for the importer. It is not a release: the patched release stays as
+`bafu-fixes` wrote it. A provider release (no namespace, no extensions) passes through
 unchanged apart from XML serialisation.
+
+**Elementary flows are linked on the flow as BAFU declared it.** The importer derives an
+elementary flow's identifier from its name, compartment, subcompartment and unit, and the
+mapping to EF 3.1 is keyed by that identifier. A patch that corrects one of the four (a name
+without its unit suffix, a compartment) would give the exchange an identifier the mapping
+does not hold, and the exchange would lose its EF 3.1 flow. The patched release does not
+carry the declared values of an exchange it corrected: per exchange its extensions hold
+`originalNumber`, `brightwayFlow` and `brightwayMatch` only. So, given the provider release
+the patched one was made from (`declared`), the adapter compares each elementary exchange
+with the same exchange there and, where the four differ, writes the declared ones into the
+importer's copy. The corrected ones are kept in the receipt as a source observation, with
+the dataset and the exchange's position, for the build to carry beside the data.
 
 Standard library only.
 """
@@ -57,7 +69,11 @@ class Receipt:
     # and patches the patch tool recorded on that dataset, in the order they ran
     steps_by_dataset: dict[str, dict[str, list[str]]] = field(default_factory=dict)
     brightway_flow_links: int = 0
+    # elementary exchanges whose name, compartment, subcompartment or unit a patch changed:
+    # {"dataset", "position" (0-based among the dataset's exchanges), "declared", "patched"}
+    source_observations: list[dict] = field(default_factory=list)
     input_tree_sha256: str = ""
+    declared_tree_sha256: str = ""
     output_zip_sha256: str = ""
 
     def as_dict(self) -> dict:
@@ -155,22 +171,80 @@ def _dataset_id(name: str) -> str:
     return match.group(1)
 
 
-def adapt_document(content: bytes, name: str, receipt: Receipt) -> bytes:
-    """One EcoSpold 1 file as importer input. `name` is used in messages and the receipt."""
-    _dataset_id(name)
+FLOW_IDENTITY = ("name", "category", "subCategory", "unit")
+
+
+def _parse(content: bytes, name: str) -> tuple[ET.Element, bool]:
+    """The document without the EcoSpold namespace, and whether it had one."""
     try:
         root = ET.fromstring(content)
     except ET.ParseError as error:
         raise AdapterError(f"{name}: not well-formed XML ({error})") from None
-    if _strip_namespace(root, name):
-        receipt.namespaced_files += 1
+    namespaced = _strip_namespace(root, name)
     if root.tag != "ecoSpold":
         raise AdapterError(f"{name}: root element is <{root.tag}>, not <ecoSpold>")
-    datasets = root.findall("dataset")
-    if not datasets:
+    if not root.findall("dataset"):
         raise AdapterError(f"{name}: no <dataset> element")
+    return root, namespaced
+
+
+def _link_on_declared_flows(root: ET.Element, declared: ET.Element, name: str, receipt: Receipt):
+    """Give each elementary exchange the flow identity it has in the provider release."""
+    datasets, declared_datasets = root.findall("dataset"), declared.findall("dataset")
+    if len(datasets) != len(declared_datasets):
+        raise AdapterError(f"{name}: the provider release has another number of datasets")
+    for dataset, declared_dataset in zip(datasets, declared_datasets, strict=True):
+        exchanges = dataset.findall("flowData/exchange")
+        declared_exchanges = declared_dataset.findall("flowData/exchange")
+        if len(exchanges) != len(declared_exchanges):
+            raise AdapterError(f"{name}: the provider release has another number of exchanges")
+        pairs = zip(exchanges, declared_exchanges, strict=True)
+        for position, (exchange, original) in enumerate(pairs):
+            # The same exchange: same place, same number (restored), same kind
+            if exchange.get("number") != original.get("number") or _kind(exchange) != _kind(
+                original
+            ):
+                raise AdapterError(
+                    f"{name}: exchange {position + 1} is not the same exchange as in the "
+                    "provider release; the declared flow can't be read from it"
+                )
+            if _kind(exchange) != "biosphere":
+                continue
+            patched = {key: exchange.get(key) for key in FLOW_IDENTITY}
+            as_declared = {key: original.get(key) for key in FLOW_IDENTITY}
+            if patched == as_declared:
+                continue
+            for key, value in as_declared.items():
+                if value is None:
+                    exchange.attrib.pop(key, None)
+                else:
+                    exchange.set(key, value)
+            receipt.source_observations.append(
+                {
+                    "dataset": _dataset_id(name),
+                    "position": position,
+                    "declared": as_declared,
+                    "patched": patched,
+                }
+            )
+
+
+def adapt_document(
+    content: bytes, name: str, receipt: Receipt, declared: bytes | None = None
+) -> bytes:
+    """One EcoSpold 1 file as importer input. `name` is used in messages and the receipt.
+
+    `declared` is the same file in the provider release; with it, elementary exchanges
+    keep the flow identity BAFU declared.
+    """
+    _dataset_id(name)
+    root, namespaced = _parse(content, name)
+    receipt.namespaced_files += namespaced
+    datasets = root.findall("dataset")
     for dataset in datasets:
         _restore_numbers(dataset, name, receipt)
+    if declared is not None:
+        _link_on_declared_flows(root, _parse(declared, name)[0], name, receipt)
     receipt.files += 1
     receipt.datasets += len(datasets)
     return ET.tostring(root, encoding="utf-8", xml_declaration=True)
@@ -196,25 +270,37 @@ def tree_sha256(source: Path) -> str:
     return tree.hexdigest()
 
 
-def adapt_folder(source: Path, destination: Path, prefix: str = "ecospold") -> Receipt:
+def adapt_folder(
+    source: Path, destination: Path, prefix: str = "ecospold", declared: Path | None = None
+) -> Receipt:
     """Write `destination` (a zip) from the EcoSpold files under `source`.
 
+    `declared` is the provider release `source` was patched from; see the module text.
     The zip is the same for the same input: members are sorted and carry a fixed date.
     """
     receipt = Receipt(source=str(source))
-    tree = hashlib.sha256()
+    tree, declared_tree = hashlib.sha256(), hashlib.sha256()
     destination.parent.mkdir(parents=True, exist_ok=True)
     partial = destination.with_name(destination.name + ".part")
     with zipfile.ZipFile(partial, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
         for path in find_files(source):
             content = path.read_bytes()
             _add_to_tree(tree, source, path, content)
+            original = None
+            if declared is not None:
+                twin = declared / path.relative_to(source)
+                if not twin.is_file():
+                    raise AdapterError(f"{path.name} is not in the provider release {declared}")
+                original = twin.read_bytes()
+                _add_to_tree(declared_tree, declared, twin, original)
             info = zipfile.ZipInfo(f"{prefix}/{path.name}", date_time=_ZIP_DATE)
             info.compress_type = zipfile.ZIP_DEFLATED
             info.external_attr = 0o644 << 16
-            archive.writestr(info, adapt_document(content, path.name, receipt))
+            archive.writestr(info, adapt_document(content, path.name, receipt, original))
     partial.replace(destination)
     receipt.input_tree_sha256 = tree.hexdigest()
+    if declared is not None:
+        receipt.declared_tree_sha256 = declared_tree.hexdigest()
     receipt.output_zip_sha256 = sha256_file(destination)
     return receipt
 
@@ -231,10 +317,16 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("source", type=Path, help="Folder with EcoSpold 1 files")
     parser.add_argument("destination", type=Path, help="Zip file to write")
+    parser.add_argument(
+        "--declared",
+        type=Path,
+        help="The provider release `source` was patched from: elementary exchanges keep "
+        "the flow identity they have there",
+    )
     parser.add_argument("--receipt", type=Path, help="Write what was read and changed, as JSON")
     args = parser.parse_args(argv)
     try:
-        receipt = adapt_folder(args.source, args.destination)
+        receipt = adapt_folder(args.source, args.destination, declared=args.declared)
     except AdapterError as error:
         parser.exit(1, f"{error}\n")
     if args.receipt:
@@ -243,7 +335,8 @@ def main(argv: list[str] | None = None) -> int:
     restored = sum(receipt.numbers_restored.values())
     print(
         f"Wrote {receipt.files} file(s) to {args.destination}; "
-        f"{restored} exchange number(s) restored"
+        f"{restored} exchange number(s) restored; "
+        f"{len(receipt.source_observations)} elementary exchange(s) linked on the declared flow"
     )
     return 0
 

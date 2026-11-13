@@ -173,6 +173,145 @@ class AdaptDocument(unittest.TestCase):
         self.assertEqual(kinds, ["production", "technosphere", "technosphere"])
 
 
+DECLARED = b"""<?xml version='1.0' encoding='UTF-8'?>
+<ecoSpold>
+  <dataset number="100" generator="test">
+    <flowData>
+      <exchange number="100" name="Product A" unit="kg" meanValue="1.0">
+        <outputGroup>0</outputGroup>
+      </exchange>
+      <exchange number="200" name="Input B" location="XX" unit="kg" meanValue="0.5">
+        <inputGroup>5</inputGroup>
+      </exchange>
+      <exchange number="631" name="Gas, made up/m3" category="resources" subCategory="in ground"
+          unit="Nm3" meanValue="2.0">
+        <inputGroup>4</inputGroup>
+      </exchange>
+      <exchange number="632" name="Carbon, made up" category="resources" subCategory="biotic"
+          unit="kg" meanValue="3.0">
+        <inputGroup>4</inputGroup>
+      </exchange>
+      <exchange number="633" name="Methane" category="air" subCategory="low" unit="kg"
+          meanValue="4.0">
+        <outputGroup>4</outputGroup>
+      </exchange>
+    </flowData>
+  </dataset>
+</ecoSpold>
+"""
+# What a patch run makes of it: a name without its unit suffix, a moved compartment, a
+# corrected supplier location and a corrected amount
+CORRECTED = (
+    DECLARED.replace(b"<ecoSpold>", f'<ecoSpold xmlns="{NS}">'.encode())
+    .replace(b"Gas, made up/m3", b"Gas, made up")
+    .replace(b'subCategory="biotic"', b'subCategory="in air"')
+    .replace(b'location="XX"', b'location="YY"')
+    .replace(b'meanValue="4.0"', b'meanValue="4.5"')
+)
+
+
+def flows(document: bytes) -> list[tuple]:
+    return [
+        tuple(e.get(key) for key in adapter.FLOW_IDENTITY)
+        for e in ET.fromstring(document).iter("exchange")
+    ]
+
+
+class DeclaredFlows(unittest.TestCase):
+    """Elementary exchanges keep the flow BAFU declared; everything else stays corrected."""
+
+    def adapt(self, content=CORRECTED, declared=DECLARED):
+        receipt = adapter.Receipt()
+        return adapter.adapt_document(content, "process_abc.xml", receipt, declared), receipt
+
+    def test_without_the_provider_release_the_corrected_flow_is_handed_on(self):
+        document, receipt = self.adapt(declared=None)
+        self.assertEqual(flows(document)[2][0], "Gas, made up")
+        self.assertEqual(flows(document)[3][2], "in air")
+        self.assertEqual(receipt.source_observations, [])
+
+    def test_with_it_the_declared_flow_is_handed_on(self):
+        document, receipt = self.adapt()
+        self.assertEqual(flows(document), flows(DECLARED))
+        self.assertEqual(
+            receipt.source_observations,
+            [
+                {
+                    "dataset": "abc",
+                    "position": 2,
+                    "declared": dict(zip(adapter.FLOW_IDENTITY, flows(DECLARED)[2], strict=True)),
+                    "patched": dict(
+                        zip(
+                            adapter.FLOW_IDENTITY,
+                            ("Gas, made up", "resources", "in ground", "Nm3"),
+                            strict=True,
+                        )
+                    ),
+                },
+                {
+                    "dataset": "abc",
+                    "position": 3,
+                    "declared": dict(zip(adapter.FLOW_IDENTITY, flows(DECLARED)[3], strict=True)),
+                    "patched": dict(
+                        zip(
+                            adapter.FLOW_IDENTITY,
+                            ("Carbon, made up", "resources", "in air", "kg"),
+                            strict=True,
+                        )
+                    ),
+                },
+            ],
+        )
+
+    def test_corrections_that_are_not_a_flow_identity_stay(self):
+        document, _ = self.adapt()
+        exchanges = list(ET.fromstring(document).iter("exchange"))
+        self.assertEqual(exchanges[1].get("location"), "YY")  # a technosphere input
+        self.assertEqual(exchanges[4].get("meanValue"), "4.5")  # an elementary amount
+
+    def test_an_unchanged_release_gives_no_observation(self):
+        document, receipt = self.adapt(content=DECLARED)
+        self.assertEqual(flows(document), flows(DECLARED))
+        self.assertEqual(receipt.source_observations, [])
+
+    def test_exchanges_that_do_not_pair_up_are_refused(self):
+        fewer = DECLARED.replace(b'<exchange number="633"', b'<x number="633"').replace(
+            b"</outputGroup>\n      </exchange>\n    </flowData>",
+            b"</outputGroup>\n      </x>\n    </flowData>",
+        )
+        with self.assertRaisesRegex(adapter.AdapterError, "another number of exchanges"):
+            self.adapt(declared=fewer)
+        other = DECLARED.replace(b'number="632"', b'number="999"')
+        with self.assertRaisesRegex(adapter.AdapterError, "not the same exchange"):
+            self.adapt(declared=other)
+        technosphere = DECLARED.replace(
+            b'meanValue="3.0">\n        <inputGroup>4', b'meanValue="3.0">\n        <inputGroup>5'
+        )
+        with self.assertRaisesRegex(adapter.AdapterError, "not the same exchange"):
+            self.adapt(declared=technosphere)
+
+    def test_a_folder_is_read_beside_the_provider_release(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            for folder, content in (("provider", DECLARED), ("patched", CORRECTED)):
+                (root / folder).mkdir()
+                (root / folder / "process_abc.xml").write_bytes(content)
+            receipt = adapter.adapt_folder(
+                root / "patched", root / "out.zip", declared=root / "provider"
+            )
+            self.assertEqual(len(receipt.source_observations), 2)
+            self.assertEqual(receipt.declared_tree_sha256, adapter.tree_sha256(root / "provider"))
+            with zipfile.ZipFile(root / "out.zip") as archive:
+                written = archive.read("ecospold/process_abc.xml")
+            self.assertEqual(flows(written), flows(DECLARED))
+            json.dumps(receipt.as_dict())
+
+            (root / "provider" / "process_abc.xml").unlink()
+            (root / "provider" / "process_other.xml").write_bytes(DECLARED)
+            with self.assertRaisesRegex(adapter.AdapterError, "not in the provider release"):
+                adapter.adapt_folder(root / "patched", root / "x.zip", declared=root / "provider")
+
+
 class AdaptFolder(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
