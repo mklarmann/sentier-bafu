@@ -116,6 +116,30 @@ class Reading(unittest.TestCase):
             layer.validate(made(changes=[change]))
 
 
+class LayersOfTheRepository(unittest.TestCase):
+    """Every layer in `community/layers/` is found and built by the release run."""
+
+    FOLDER = REPOSITORY / "community" / "layers"
+
+    def test_every_layer_file_is_a_layer_with_a_name_of_its_own(self):
+        layers = [layer.load(path) for path in layer.find(self.FOLDER)]
+        for loaded in layers:
+            self.assertEqual(loaded["file"], f"{layer.step_id(loaded)}.json")
+        for key in ("database", "name"):
+            values = [loaded[key] for loaded in layers]
+            self.assertEqual(len(values), len(set(values)), f"two layers with one {key}")
+
+    def test_the_release_run_looks_in_that_folder(self):
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location(
+            "build_release", REPOSITORY / "scripts" / "build_release.py"
+        )
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        self.assertEqual(module.LAYERS, self.FOLDER)
+
+
 class Names(unittest.TestCase):
     def test_a_contribution_never_takes_the_name_of_a_release(self):
         for name in ("bafu-2026", "bafu-2026-v1-patched", "bafu-2026-v1-patched-residual"):

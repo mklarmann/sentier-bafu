@@ -217,11 +217,16 @@ of the raw release, the baseline, until Sentier inventory consumes the patched o
 The findings and contributions are reconciled with the patches in the
 [reconciliation receipt](community/reconciliation.md).
 
-That order can be run locally and in CI: `scripts/build_release.py` builds a Brightway
-database with the EF 3.1 methods from the provider release (`bafu-2026`) or from the patched
-release (`bafu-2026-v1-patched`, labelled Modified Data), audits it and compares the two.
-[From a release to a Brightway database](docs/brightway-build.md) maps the tools it calls,
-gives the measured results and says what is still missing.
+That order can be run locally and in CI, in one command:
+`python3 scripts/build_release.py release` builds a Brightway database with the EF 3.1
+methods from the provider release (`bafu-2026`) and from the patched release
+(`bafu-2026-v1-patched`, labelled Modified Data), audits and compares them, writes the
+exports of the patched release and reads each back, builds every contribution layer beside
+the patched release under the contribution's own name, and writes a manifest.
+[The whole path](docs/release-build.md) says what each step checks and what a release
+publishes; [From a release to a Brightway database](docs/brightway-build.md) maps the tools
+it calls, gives the measured results and says what is still missing;
+[Building a contribution](docs/contribution-builds.md) says what a variant has to deliver.
 
 [Import & use](site/import.md) · [Findings ledger](community/findings.md) ·
 [Reconciliation](community/reconciliation.md) ·

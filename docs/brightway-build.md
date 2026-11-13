@@ -28,6 +28,14 @@ BAFU's `Chlorine` to air (high population).
 ## Run it
 
 ```sh
+python3 scripts/build_release.py release path/to/bafu-2026-v1 output/run
+```
+
+runs the whole path in one command: both builds, the checks of the patch run, the
+comparison, the exports and the manifest ([The whole path](release-build.md)). The builds
+and the comparison can also be run one by one:
+
+```sh
 python3 scripts/build_release.py build path/to/bafu-2026-v1 output/provider --no-patches
 python3 scripts/build_release.py build path/to/bafu-2026-v1 output/patched
 python3 scripts/build_release.py compare output/provider output/patched --out output/comparison.json
@@ -46,6 +54,10 @@ folder. Options:
   mapping.
 - `--fail-on-findings` turns the audit's findings into a failed build.
 - `--sample FILE` names other datasets for the audit to score.
+- `--contribution LAYER` builds the patched release plus one contribution, as a database of
+  the contribution's own name ([Building a contribution](contribution-builds.md)).
+- `--labels FILE` gives the audit and the export another table of unit labels and of known
+  differences of declared units (default: `scripts/release_build/export_labels.toml`).
 
 The output folder holds BAFU's inventory as EcoSpold files, as tables and as a Brightway
 database. It is under [BAFU's Terms of Use](terms-of-use.md): keep it local (`output/` is
@@ -54,8 +66,9 @@ dataset codes, names and single scores. It must not upload the folder.
 
 `OUT/build.json` records the tool commits, the data pins, each step's time and peak memory,
 the audit's errors and findings, and under `export` what an export of the database needs:
-the Brightway folder, the project, the three database names, and `build-steps.json`, the
-build's own changes in the shape of the patch tool's steps.
+the Brightway folder, the project, the three database names, the run summary of the patch
+tool (`release-summary.json`, which the build asks for and keeps), the table of labels, and
+`build-steps.json`, the build's own changes in the shape of the patch tool's steps.
 
 ### Tests
 
@@ -64,10 +77,11 @@ that need pandas, SciPy or bw2data are skipped where those are missing; run them
 sentier-brightway environment to run all but one, and in this package's environment to run
 the one that checks the adapter against the patch tool's output.
 
-The whole path runs on a made-up release of seven datasets (`synthetic_release.py`): patch
-tool, adapter, importer, install and audit, for both builds, with scores checked against
-hand-worked values. It needs `uv`, `git` and, the first time, the network, so it runs only
-when asked:
+The whole path runs on a made-up release of eight datasets (`synthetic_release.py`), from
+the one command to the manifest: both builds with scores checked against hand-worked values,
+the checks of the patch run, the comparison, the exports with their read-back, and a made-up
+contribution built beside the patched release. It needs `uv`, `git` and, the first time,
+the network, so it runs only when asked:
 
 ```sh
 RELEASE_BUILD_WHOLE_PATH=1 python3 -m unittest discover -s release-build-tests -p test_whole_path.py
@@ -75,11 +89,12 @@ RELEASE_BUILD_WHOLE_PATH=1 python3 -m unittest discover -s release-build-tests -
 
 ### In CI
 
-`.github/workflows/release-build.yml` runs the made-up release on pull requests. On pushes to
-`main` and on manual dispatch it fetches BAFU's release as the patch tool does (checked by
-SHA-256, cached under the same key as the Full release workflow), builds and audits both
-releases, compares them, and writes the result as the job summary. The patched build fails on
-any audit finding. The job uploads the two audits and the comparison, and nothing else.
+On pull requests `.github/workflows/full-release.yml` runs the made-up release and these
+tests. On pushes to `main`, on request and for a tag, `.github/workflows/release-build.yml`
+runs the one command on BAFU's full release, fetched as the patch tool does (checked by
+SHA-256, cached), and writes the result as the job summary. The patched build fails on any
+audit finding. The job uploads the manifest, the run summary, the audits and the
+comparisons, and nothing that holds the inventory. See [The whole path](release-build.md).
 
 ## The chain
 
@@ -404,10 +419,11 @@ release took 126 s and 1,005 MB, most of it the install of the EF 3.1 flows and 
 4. **sentier-brightway names the database after the source and looks up flow terms of that
    same source.** The build writes the provider's flow terms again under the patched name. A
    database name independent of the source would make that unnecessary.
-5. **The patch tool has no machine-readable list of changes on this branch.** The comparison
-   attributes changed rows with a table of what each step may change, checked against the
-   data on every run. Where `bafu-fixes run` has `--summary`, the build passes it and keeps
-   the file for an export.
+5. **The patch tool's run summary says which fields a step changed, not which rows.** The
+   comparison attributes changed rows with a table of what each known step may change,
+   checked against the data on every run; a step that is not in the table (a new patch) is
+   explained from the fields the run summary says it changed. A list of the changed rows
+   themselves would make the attribution exact.
 6. **sentier-brightway's export manifest names its own pins** even when `--data-root` supplies
    other data, so the files export behind the comparison with BAFU's results misstates the
    inventory and the mapping commit. `build.json` holds the pins that were used.
