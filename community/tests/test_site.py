@@ -165,6 +165,11 @@ class SiteTests(unittest.TestCase):
         page = (self.out / "contributions/C001.html").read_text()
         self.assertIn(f'{REPO}/blob/main/community/contributions/C001.json', page)
 
+    def test_a_contribution_page_says_what_kind_it_is_in_words(self):
+        page = (self.out / "contributions/C002.html").read_text()
+        self.assertIn("Mapping <small>Stands beside BAFU&#x27;s numbers</small>", page)
+        self.assertNotIn("elementary-flow-crosswalk-and-method-specific-factor-policy", page)
+
     def test_patches_are_shown_from_the_snapshot_not_from_the_record(self):
         patches = community.load_patches(ROOT)
         page = (self.out / "findings/F1.html").read_text()

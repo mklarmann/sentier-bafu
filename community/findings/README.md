@@ -17,7 +17,8 @@ Its number is the number of the issue: issue 48 becomes `F48`. F1 to F32 follow 
 numbering and keep their ids. A pull request then adds one file here, from the
 [template](../templates/finding.json), and a person reviews and merges it.
 
-**How evidence is added.** People add evidence, never a status. Each command writes one record:
+**How evidence is added.** People add evidence, never a status. Each command writes the
+records it names and nothing else:
 
 ```sh
 python3 scripts/community.py repeat F48 --by <login> --date 2026-12-01 --url <comment> --result reproduced

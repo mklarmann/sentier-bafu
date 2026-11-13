@@ -408,7 +408,7 @@ class Site:
             f'<h1>{esc(c["title"])}</h1>'
             f'<p><span class="badge {esc(c["status"])}">{esc(c["status"])}</span></p>'
             + self.facts([
-                ("Kind", f'{esc(kind["label"])} <small>{esc(group.lower())}</small>'),
+                ("Kind", f'{esc(kind["label"])} <small>{esc(group)}</small>'),
                 ("Builds on", f'{esc(baseline["dataset"])} {esc(baseline["release"])}'),
                 ("Implementation", implementation),
                 ("Discussion and evidence",
