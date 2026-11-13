@@ -79,8 +79,22 @@ def expected_labels(key, provider):
 
 
 def owned(label):
-    """Labels only this job writes on a finding issue. Whatever else an issue carries is left alone."""
+    """Labels only this job writes on a finding issue. Whatever else an issue carries is left alone.
+    GitHub tells labels apart without regard to case, and so does this job."""
+    label = label.casefold()
     return label.startswith(STATUS_PREFIX) or label in RETIRED_LABELS or label in (HELP_LABEL, TRIAGE_LABEL)
+
+
+def missing(expected, present):
+    """The expected labels an issue does not carry, whatever the case of those it carries."""
+    carried = {label.casefold() for label in present}
+    return sorted(label for label in expected if label.casefold() not in carried)
+
+
+def surplus(expected, present):
+    """The labels of this job an issue carries and should not."""
+    wanted = {label.casefold() for label in expected}
+    return sorted(label for label in present if owned(label) and label.casefold() not in wanted)
 
 
 def definitions(provider):
@@ -171,7 +185,7 @@ def plan(findings, issues, config):
     "person"}. `person` holds what only a person can decide; this job does not touch it.
     """
     provider = config["provider"]
-    current = status_labels(provider)
+    current = {label.casefold() for label in status_labels(provider)}
     by_issue = {}
     for record in findings:
         if record["issue"]:
@@ -193,21 +207,21 @@ def plan(findings, issues, config):
         if not records:
             # Filed as a finding, no merged record: a maintainer has not accepted it yet.
             expected = expected_labels(None, provider) if issue["state"] == "open" else set()
-            entry["add"] = sorted(expected - present)
-            entry["remove"] = sorted(
-                label for label in present if owned(label) and label not in expected
-                and not (label == TRIAGE_LABEL and issue["state"] != "open")
-            )
+            entry["add"] = missing(expected, present)
+            entry["remove"] = [
+                label for label in surplus(expected, present)
+                if not (label.casefold() == TRIAGE_LABEL and issue["state"] != "open")
+            ]
         else:
             # An issue that holds several findings shows the earliest status among them.
             stage = min((community.stage(record) for record in records), key=community.STAGE_ORDER.get)
             expected = expected_labels(stage, provider)
             entry["stage"] = stage
-            entry["add"] = sorted(expected - present)
-            entry["remove"] = sorted(label for label in present if owned(label) and label not in expected)
-            want = label_for(stage, provider)
-            carried = [label for label in present if label.startswith(STATUS_PREFIX)]
-            if want in present:
+            entry["add"] = missing(expected, present)
+            entry["remove"] = surplus(expected, present)
+            want = label_for(stage, provider).casefold()
+            carried = [label.casefold() for label in present if label.casefold().startswith(STATUS_PREFIX)]
+            if want in carried:
                 changed = False
             elif any(label in current for label in carried):
                 changed = True  # another status of today's vocabulary: the status changed
@@ -272,22 +286,25 @@ def snapshot_issues(path, findings):
 def label_changes(existing, provider):
     """Label definitions to create or to describe again: ([(name, colour, description)], [(name, description)])."""
     wanted = definitions(provider)
-    create = [(name, *wanted[name]) for name in sorted(wanted) if name not in existing]
+    existing = {name.casefold(): label for name, label in existing.items()}
+    create = [(name, *wanted[name]) for name in sorted(wanted) if name.casefold() not in existing]
     describe = [
-        (name, wanted[name][1])
+        (existing[name.casefold()]["name"], wanted[name][1])
         for name in sorted(wanted)
-        if name in existing and (existing[name].get("description") or "") != wanted[name][1]
+        if name.casefold() in existing and (existing[name.casefold()].get("description") or "") != wanted[name][1]
     ]
     return create, describe
 
 
 def apply(differences, api, provider, comments=True, pause=None, reserve=RESERVE):
-    """Write the differences, one issue after another: (issues done, issues left, why it stopped).
+    """Write the differences, one issue after another:
+    (issues done, issues left, why it stopped, [(issue, what failed)]).
 
     Each issue is finished before the next begins, comment first, so a run that stops half
-    way (the rate limit) is continued by the next run and nothing is announced twice.
+    way (the rate limit) is continued by the next run and nothing is announced twice. An
+    issue that cannot be written (it was locked, moved, deleted) does not hold up the others.
     """
-    done, pause = 0, pause or time.sleep
+    done, pause, failed = 0, pause or time.sleep, []
     # What is left for a person is no work for this job.
     differences = [entry for entry in differences if any(entry[key] for key in ("add", "remove", "announce", "close"))]
     try:
@@ -299,24 +316,30 @@ def apply(differences, api, provider, comments=True, pause=None, reserve=RESERVE
             api.patch(f"/labels/{quoted(name)}", {"description": description})
         for entry in differences:
             if api.remaining is not None and api.remaining < reserve:
-                return done, len(differences) - done, "the rate limit is nearly used up"
+                return done, len(differences) - done - len(failed), "the rate limit is nearly used up", failed
             number = entry["issue"]
-            if entry["announce"] and comments:
-                if api.comment_once(number, entry["marker"], entry["comment"]):
-                    pause(1)  # GitHub asks for a pause between writes that notify people
-            if entry["add"]:
-                api.post(f"/issues/{number}/labels", {"labels": entry["add"]})
-            for label in entry["remove"]:
-                try:
-                    api.delete(f"/issues/{number}/labels/{quoted(label)}")
-                except NotFound:
-                    pass
-            if entry["close"]:
-                api.patch(f"/issues/{number}", {"state": "closed", "state_reason": entry["close"]})
+            try:
+                if entry["announce"] and comments:
+                    if api.comment_once(number, entry["marker"], entry["comment"]):
+                        pause(1)  # GitHub asks for a pause between writes that notify people
+                if entry["add"]:
+                    api.post(f"/issues/{number}/labels", {"labels": entry["add"]})
+                for label in entry["remove"]:
+                    try:
+                        api.delete(f"/issues/{number}/labels/{quoted(label)}")
+                    except NotFound:
+                        pass
+                if entry["close"]:
+                    api.patch(f"/issues/{number}", {"state": "closed", "state_reason": entry["close"]})
+            except RateLimited:
+                raise
+            except ApiError as error:
+                failed.append((number, str(error)))
+                continue
             done += 1
     except RateLimited:
-        return done, len(differences) - done, "the rate limit is used up"
-    return done, 0, None
+        return done, len(differences) - done - len(failed), "the rate limit is used up", failed
+    return done, 0, None, failed
 
 
 def names(labels):
@@ -415,10 +438,12 @@ def main(argv=None, env=None, transport=None, out=print, pause=None):
         out("Nothing was written. `--apply` writes the labels, the comments and the state of the issues.")
         return 0
     try:
-        done, left, stopped = apply(differences, api, config["provider"], not args.no_comments, pause)
+        done, left, stopped, failed = apply(differences, api, config["provider"], not args.no_comments, pause)
     except ApiError as error:
         out(f"sync: stopped by an error; what was written stays, and the next run goes on: {error}")
         return 1
+    for number, error in failed:
+        out(f"sync: issue #{number} could not be written; the others were: {error}")
     if stopped:
         # Not a failure: the nightly run takes up where this one stopped.
         out(f"::warning::sync stopped because {stopped}: {done} issues done, {left} left for the next run.")
@@ -426,7 +451,7 @@ def main(argv=None, env=None, transport=None, out=print, pause=None):
         waiting = sum(len(entry["person"]) for entry in differences)
         out(f"sync: {done} issues brought into agreement with their records"
             + (f"; {waiting} points are left for a person." if waiting else "."))
-    return 0
+    return 1 if failed else 0
 
 
 if __name__ == "__main__":

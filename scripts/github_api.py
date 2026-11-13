@@ -106,7 +106,8 @@ class GitHub:
             answer.get("x-ratelimit-remaining") == "0" or "retry-after" in answer or "rate limit" in message.lower()
         ):
             raise RateLimited(method, path, status, message)
-        raise (NotFound if status == 404 else ApiError)(method, path, status, message)
+        # 410 is what an issue answers after it was deleted.
+        raise (NotFound if status in (404, 410) else ApiError)(method, path, status, message)
 
     def get(self, path):
         return self.request("GET", path)

@@ -417,9 +417,13 @@ class FormTests(unittest.TestCase):
 
     def test_who_and_when_come_from_the_issue_and_must_be_plain(self):
         for change in ({"user": {"login": "a b; rm"}}, {"user": None}, {"created_at": "yesterday"},
-                       {"created_at": None}, {"number": "48"}, {"number": 0}, {"number": True}):
+                       {"created_at": None}):
             item = dict(issue(), **change)
-            self.assertEqual(made(item)["result"], "incomplete", change)
+            self.assertEqual(made(item), {"result": "incomplete",
+                                          "problems": ["The issue does not say who filed it and when."]}, change)
+        for change in ({"number": "48"}, {"number": 0}, {"number": True}, {"number": -3}, {"number": None}):
+            item = dict(issue(), **change)
+            self.assertEqual(made(item), {"result": "incomplete", "problems": ["The issue has no number."]}, change)
 
 
 class CommandTests(unittest.TestCase):

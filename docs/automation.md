@@ -268,6 +268,9 @@ branch. It writes `intake/F<n>` and `repeat/F<n>` only, and `main` should be pro
 | A label is set or removed by hand | Put right at the next sync. If the right label was replaced by another status label, the sync reads it as a change and comments once. |
 | The rate limit is reached during a sync | The run stops between two issues, says how many are left, and succeeds with a warning. Each issue is finished before the next begins, comment first, so the next run goes on where this one stopped and announces nothing twice (tested). The job also stops while 25 requests are left, for the other workflows. |
 | The API fails during an intake | The job fails and names the request. Every step can be repeated: running the job again finishes it. |
+| One issue cannot be written during a sync (locked, moved) | The others are written; the job then fails and names the issue, so that a maintainer sees it. An issue that was deleted is listed for a person and is no error. |
+| Two proposals name the same new dataset differently | Each passes alone. After both are merged the check on `main` fails and names the two findings; the name is put right in a pull request. **Limit:** only "require branches to be up to date before merging" prevents it. |
+| A label exists in another case (`Help Wanted`) | Treated as the same label, as GitHub does. |
 | An issue is transferred or its number is reused | **Limit:** not handled. The record names the number. |
 | A finding's issue is closed by hand while the finding is on its way | Listed for a person; the sync does not reopen it. |
 | Two findings share an issue (#3) | The issue shows the earlier status; a comment is posted when that changes. **Limit:** a change of the later one alone is not announced. From F48 on a finding is its issue, so this concerns #3 only. |

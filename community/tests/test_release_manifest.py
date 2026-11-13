@@ -149,6 +149,8 @@ class ManifestTests(ManifestCase):
             lambda d: d.update(inventory=[{"name": "Example", "amount": 1.0}]),
             lambda d: d["patches"][0].update(confirmed_by="A Person"),
             lambda d: d["patches"][0].update(datasets=[100001, 100001]),
+            lambda d: d["patches"][1].update(datasets=[100002, 100001]),
+            lambda d: d["patches"][1].update(datasets=[100001, 100001]),
             lambda d: d["patches"][0].update(datasets=["100001"]),
             lambda d: d["patches"][0].update(result="adopted by the provider"),
             lambda d: d["patches"][0].update(description="line\nline"),

@@ -193,6 +193,18 @@ class PlanTests(unittest.TestCase):
         self.assertFalse(entry["announce"])
         self.assertIsNone(entry["comment"])
 
+    def test_labels_are_told_apart_without_regard_to_case_as_github_does(self):
+        labels = {"bafu-finding", "Help Wanted", "Status: Needs a second measurement"}
+        self.assertEqual(self.plan([finding()], {48: issue(labels)}), [])
+        entry = self.one(finding(**PATH[2]), {"bafu-finding", "Help Wanted", "STATUS: NEEDS A SECOND MEASUREMENT"})
+        self.assertEqual(entry["add"], ["status: reported to BAFU"])
+        self.assertEqual(entry["remove"], ["Help Wanted", "STATUS: NEEDS A SECOND MEASUREMENT"])
+        self.assertTrue(entry["announce"])
+        existing = {"Status: Withdrawn": {"name": "Status: Withdrawn", "description": "x"}}
+        create, describe = sync.label_changes(existing, "BAFU")
+        self.assertNotIn("status: withdrawn", [name for name, _, _ in create])
+        self.assertIn(("Status: Withdrawn", sync.WRITTEN), describe)
+
     def test_labels_of_other_people_are_left_alone(self):
         entry = self.one(finding(), ("bafu-finding", "question", "licence", "good first issue"))
         self.assertEqual(entry["remove"], [])
@@ -270,8 +282,8 @@ class RecordedTests(unittest.TestCase):
         )
         api = GitHub(REPOSITORY, "token", transport=fake)
         differences = sync.plan(self.findings, sync.read_issues(api, self.findings), CONFIG)
-        done, left, stopped = sync.apply(differences, api, "BAFU", pause=lambda seconds: None)
-        self.assertEqual((done, left, stopped), (18, 0, None))
+        done, left, stopped, failed = sync.apply(differences, api, "BAFU", pause=lambda seconds: None)
+        self.assertEqual((done, left, stopped, failed), (18, 0, None, []))
         self.assertEqual(sync.plan(self.findings, sync.read_issues(api, self.findings), CONFIG), [])
         self.assertEqual({n for n, item in fake.issues.items() if item["state"] == "closed"}, {32, 35})
         self.assertEqual(fake.issues[35]["state_reason"], "completed")
@@ -281,7 +293,7 @@ class RecordedTests(unittest.TestCase):
             self.assertEqual(sum(1 for label in item["labels"] if label.startswith("status: ")), 1)
             self.assertFalse(set(item["labels"]) & sync.RETIRED_LABELS)
         writes = len(fake.writes())
-        self.assertEqual(sync.apply([], api, "BAFU"), (0, 0, None))
+        self.assertEqual(sync.apply([], api, "BAFU"), (0, 0, None, []))
         self.assertEqual(len(fake.writes()), writes)
 
 
@@ -351,14 +363,14 @@ class ApplyTests(unittest.TestCase):
             self.fake.add_issue(n, ["bafu-finding", "needs-triage"])
         differences = sync.plan(findings, sync.read_issues(self.api, findings), CONFIG)
         self.fake.remaining = 22  # used up in the middle of an issue
-        done, left, stopped = sync.apply(differences, self.api, "BAFU", pause=self.pauses.append, reserve=0)
-        self.assertEqual(stopped, "the rate limit is used up")
+        done, left, stopped, failed = sync.apply(differences, self.api, "BAFU", pause=self.pauses.append, reserve=0)
+        self.assertEqual((stopped, failed), ("the rate limit is used up", []))
         self.assertEqual(done + left, 10)
         self.assertTrue(0 < done < 10)
         self.fake.remaining = 5000
         again = sync.plan(findings, sync.read_issues(self.api, findings), CONFIG)
         self.assertEqual(len(again), left)
-        self.assertEqual(sync.apply(again, self.api, "BAFU", pause=self.pauses.append), (left, 0, None))
+        self.assertEqual(sync.apply(again, self.api, "BAFU", pause=self.pauses.append), (left, 0, None, []))
         self.assertEqual(sync.plan(findings, sync.read_issues(self.api, findings), CONFIG), [])
         for n in range(48, 58):
             self.assertEqual(len(self.fake.bodies(n)), 1, f"#{n} was told once")
@@ -370,7 +382,7 @@ class ApplyTests(unittest.TestCase):
             self.fake.add_issue(n, ["bafu-finding", "needs-triage"])
         differences = sync.plan(findings, sync.read_issues(self.api, findings), CONFIG)
         self.fake.remaining = 40
-        done, left, stopped = sync.apply(differences, self.api, "BAFU", pause=self.pauses.append, reserve=25)
+        done, left, stopped, _ = sync.apply(differences, self.api, "BAFU", pause=self.pauses.append, reserve=25)
         self.assertEqual(stopped, "the rate limit is nearly used up")
         self.assertGreaterEqual(self.fake.remaining, 20)
         self.assertTrue(0 < done < 5 and left == 5 - done)
@@ -378,7 +390,29 @@ class ApplyTests(unittest.TestCase):
     def test_a_label_that_is_already_gone_is_no_error(self):
         differences = sync.plan([finding()], sync.read_issues(self.api, [finding()]), CONFIG)
         self.fake.issues[48]["labels"].remove("needs-triage")  # someone was faster
-        self.assertEqual(sync.apply(differences, self.api, "BAFU", pause=self.pauses.append), (1, 0, None))
+        self.assertEqual(sync.apply(differences, self.api, "BAFU", pause=self.pauses.append), (1, 0, None, []))
+
+    def test_an_issue_that_cannot_be_written_does_not_hold_up_the_others(self):
+        findings = [finding(n) for n in (48, 49, 50)]
+        for n in (49, 50):
+            self.fake.add_issue(n, ["bafu-finding", "needs-triage"])
+        differences = sync.plan(findings, sync.read_issues(self.api, findings), CONFIG)
+        self.fake.fail = ("POST", "/issues/49/labels", 403)  # a locked or moved issue
+        done, left, stopped, failed = sync.apply(differences, self.api, "BAFU", pause=self.pauses.append)
+        self.assertEqual((done, left, stopped), (2, 0, None))
+        self.assertEqual(failed, [(49, "POST /issues/49/labels: HTTP 403 (injected failure)")])
+        for n in (48, 50):
+            self.assertEqual(set(self.fake.issues[n]["labels"]) - {"question"}, sync.expected_labels("filed", "BAFU"))
+        # The next run finishes the one that failed, and does not announce it a second time.
+        again = sync.plan(findings, sync.read_issues(self.api, findings), CONFIG)
+        self.assertEqual([entry["issue"] for entry in again], [49])
+        self.assertEqual(sync.apply(again, self.api, "BAFU", pause=self.pauses.append), (1, 0, None, []))
+        self.assertEqual(len(self.fake.bodies(49)), 1)
+
+    def test_a_deleted_issue_is_for_a_person_and_no_error(self):
+        self.fake.fail = ("GET", "/issues/77", 410)
+        issues = sync.read_issues(self.api, [finding(77)])
+        self.assertIsNone(issues[77])
 
     def test_issues_a_record_names_are_read_even_without_the_label(self):
         self.fake.add_issue(70, ["question"])
@@ -393,7 +427,7 @@ class ApplyTests(unittest.TestCase):
         self.assertEqual(differences[70]["add"], ["bafu-finding", "help wanted", FILED])
         self.assertTrue(differences[71]["person"] and differences[72]["person"])
         # What is left for a person is not counted as done, and nothing is written for it.
-        self.assertEqual(sync.apply(planned, self.api, "BAFU", pause=self.pauses.append), (1, 0, None))
+        self.assertEqual(sync.apply(planned, self.api, "BAFU", pause=self.pauses.append), (1, 0, None, []))
         self.assertEqual({call[1].split("/")[2] for call in self.fake.writes() if call[1].startswith("/issues/")}, {"70"})
 
     def test_more_than_a_hundred_issues_are_read_page_by_page(self):
@@ -473,6 +507,13 @@ class MainTests(unittest.TestCase):
         code, text = self.run_sync("--apply", "--no-comments")
         self.assertEqual(code, 0)
         self.assertRegex(text, r"::warning::sync stopped because the rate limit is nearly used up: \d+ issues done, \d+ left")
+
+    def test_an_issue_that_fails_makes_the_job_fail_after_the_others_were_written(self):
+        self.fake.fail = ("POST", "/issues/41/labels", 403)
+        code, text = self.run_sync("--apply")
+        self.assertEqual(code, 1)
+        self.assertIn("sync: issue #41 could not be written; the others were: POST /issues/41/labels: HTTP 403", text)
+        self.assertIn("sync: 17 issues brought into agreement with their records.", text)
 
     def test_an_error_of_the_api_fails_the_job_and_names_the_request(self):
         self.fake.fail = ("GET", "/labels", 500)
