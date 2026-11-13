@@ -154,6 +154,24 @@ class StepFields(unittest.TestCase):
                 {"crop": ["a", "b", "C900-other"], "farm": ["C900-other"]},
             )
 
+    def test_a_step_both_builds_share_explains_no_difference_between_them(self):
+        # the patched release and a contribution: the patch is in both, the layer in one
+        candidate = {"crop": ["0007-flow-names", "C900-other"], "farm": ["C900-other"]}
+        patched = {"crop": ["0007-flow-names"], "mill": ["location-codes"]}
+        alone = compare.steps_of_the_candidate_alone(candidate, patched)
+        self.assertEqual(alone, {"crop": ["C900-other"], "farm": ["C900-other"]})
+        fields = compare.step_fields(None, {"step": "C900-other"})
+        # a supplier of the same location: only the flow and its name change
+        changed = {"flow", "name"}
+        self.assertEqual(
+            compare.explain(changed, candidate["crop"], "exchange", fields), ["0007-flow-names"]
+        )
+        self.assertEqual(
+            compare.explain(changed, alone["crop"], "exchange", fields), ["C900-other"]
+        )
+        # the provider release has no step recorded: nothing is taken away
+        self.assertEqual(compare.steps_of_the_candidate_alone(candidate, {}), candidate)
+
 
 Entry = namedtuple("Entry", "target_code conversion_factor")
 Method = namedtuple("Method", "method_id cfs")
@@ -249,6 +267,49 @@ class Tables(unittest.TestCase):
             {(item["dataset"], *item["fields"]) for item in summary["unexplained"]},
             {("farm", "amount"), ("mix", "location")},
         )
+
+    def layered(self, **planted):
+        """The base and a candidate in which a layer repoints the mix's gas input to the
+        farm; `planted` changes the candidate beyond what the layer's receipt lists."""
+        base = self.inventory()
+        processes, exchanges = self.inventory()
+        mix_gas = (exchanges["process_id"] == "mix") & (exchanges["flow"] == "gas")
+        exchanges.loc[mix_gas, ["flow", "flow_name", "location"]] = ["farm", "Fruit", "CH"]
+        for (process, position), values in planted.get("rows", {}).items():
+            row = (exchanges["process_id"] == process) & (exchanges["position"] == position)
+            exchanges.loc[row, list(values)] = list(values.values())
+        receipt = {
+            "step": "C900-other",
+            "datasets_changed": ["mix"],
+            "exchanges": [
+                {"dataset": "mix", "position": 1}
+                | {"before": {"flow": "gas"}, "after": {"flow": "farm"}}
+            ],
+        }
+        steps = {"mix": ["C900-other"], "farm": ["C900-other"]}
+        fields = compare.step_fields(None, receipt)
+        return compare.compare_rows(base, (processes, exchanges), steps, fields, receipt)["summary"]
+
+    def test_a_layer_explains_the_input_its_receipt_lists(self):
+        summary = self.layered()
+        self.assertEqual(summary["exchange_rows_changed"], 1)
+        self.assertEqual(summary["unexplained_count"], 0)
+        self.assertEqual(summary["by_step"]["C900-other"]["rows"], 1)
+
+    def test_an_undeclared_repointing_in_a_dataset_the_layer_touches_is_unexplained(self):
+        # the mix's second input, which the receipt does not list, is repointed too
+        planted = {("mix", 2): {"flow": "gas", "flow_name": "Gas, at production"}}
+        summary = self.layered(rows=planted)
+        self.assertEqual(summary["exchange_rows_changed"], 2)
+        self.assertEqual(summary["by_step"]["C900-other"]["rows"], 1)
+        self.assertEqual(summary["unexplained_count"], 1)
+        self.assertEqual(summary["unexplained"], [{"dataset": "mix", "fields": ["flow", "name"]}])
+
+    def test_a_declared_input_that_took_another_supplier_is_unexplained(self):
+        planted = {("mix", 1): {"flow": "mix", "flow_name": "Mix"}}
+        summary = self.layered(rows=planted)
+        self.assertEqual(summary["unexplained_count"], 1)
+        self.assertNotIn("C900-other", summary["by_step"])
 
     def test_identical_builds_have_no_changes(self):
         summary = compare.compare_rows(self.base, self.base, {})["summary"]

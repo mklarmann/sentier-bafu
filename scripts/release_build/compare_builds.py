@@ -10,6 +10,12 @@ is the patched release and the candidate a contribution built beside it. Reads, 
   recorded on each dataset; its run summary, which says which fields each step changed; and,
   for a contribution, the receipt of its layer.
 
+Two rules keep an explanation honest. A step that both builds have recorded on a dataset
+explains no difference between them: against the patched release only the layer is left.
+And a layer explains an input only if its receipt lists that input, by dataset and
+position, with that supplier before and after: another changed input of a dataset the layer
+touches has no explanation, and the comparison fails.
+
 It answers three questions and fails if it can't answer one of them:
 
 1. Which rows differ, and is every difference explained by a step recorded on that dataset?
@@ -202,6 +208,29 @@ def read_steps(build: Path) -> dict[str, list[str]]:
     return steps
 
 
+def steps_of_the_candidate_alone(
+    candidate: dict[str, list[str]], baseline: dict[str, list[str]]
+) -> dict[str, list[str]]:
+    """The steps recorded on a dataset in the candidate and not in the baseline.
+
+    A step both builds have on a dataset can't explain a difference between them: when the
+    baseline is the patched release and the candidate a contribution, the patches are in
+    both, and only the layer is left to explain a changed row.
+    """
+    return {
+        code: [step for step in steps if step not in baseline.get(code, ())]
+        for code, steps in candidate.items()
+    }
+
+
+def declared_inputs(layer: dict | None) -> dict[tuple[str, int], tuple[str, str]]:
+    """`{(dataset, position): (supplier before, supplier after)}` of a layer's receipt."""
+    return {
+        (entry["dataset"], entry["position"]): (entry["before"]["flow"], entry["after"]["flow"])
+        for entry in (layer or {}).get("exchanges", ())
+    }
+
+
 # --- 1. Rows ---------------------------------------------------------------------------
 
 
@@ -216,8 +245,19 @@ def _differs(before, after):
     return ~((before == after) | (before.isna() & after.isna())).to_numpy(dtype=bool)
 
 
-def compare_rows(base, cand, steps: dict[str, list[str]], fields: dict | None = None) -> dict:
-    """Row-level differences of the two inventories, each attributed to recorded steps."""
+def compare_rows(
+    base,
+    cand,
+    steps: dict[str, list[str]],
+    fields: dict | None = None,
+    layer: dict | None = None,
+) -> dict:
+    """Row-level differences of the two inventories, each attributed to recorded steps.
+
+    `layer` is a contribution's receipt. Its step explains a changed input only if the
+    receipt lists that input with the supplier it had and the one it has; no other row.
+    """
+    declared, layer_step = declared_inputs(layer), (layer or {}).get("step")
     base_processes, base_exchanges = base
     cand_processes, cand_exchanges = cand
     keys = ["process_id", "position"]
@@ -245,7 +285,11 @@ def compare_rows(base, cand, steps: dict[str, list[str]], fields: dict | None = 
 
     by_step, unexplained, rows = defaultdict(Counter), [], []
     for row in changed.itertuples(index=False):
-        found = explain(set(row.groups), steps.get(row.process_id, []), "exchange", fields)
+        recorded = [step for step in steps.get(row.process_id, []) if step != layer_step]
+        if declared.get((row.process_id, row.position)) == (row.flow_before, row.flow_after):
+            found = explain(set(row.groups), [layer_step], "exchange", fields)
+        else:
+            found = explain(set(row.groups), recorded, "exchange", fields)
         label = " + ".join(found) if found else "unexplained"
         for group in sorted(row.groups):
             by_step[label][group] += 1
@@ -265,7 +309,8 @@ def compare_rows(base, cand, steps: dict[str, list[str]], fields: dict | None = 
             continue
         differs = _differs(paired[f"{column}_before"], paired[f"{column}_after"])
         for code in paired.loc[differs, "process_id"]:
-            found = explain({column}, steps.get(code, []), "process", fields)
+            recorded = [step for step in steps.get(code, []) if step != layer_step]
+            found = explain({column}, recorded, "process", fields)
             process_changes[" + ".join(found) if found else "unexplained"][column] += 1
             if not found:
                 process_unexplained.append({"dataset": code, "fields": [column]})
@@ -569,11 +614,12 @@ def compare(baseline: Path, candidate: Path) -> dict:
     from sentier_brightway.methods import load_methods
 
     base, cand = read_inventory(baseline), read_inventory(candidate)
-    steps = read_steps(candidate)
+    recorded = read_steps(candidate)
+    steps = steps_of_the_candidate_alone(recorded, read_steps(baseline))
     summary = read_json(candidate / "release-summary.json")
     layer = read_json(candidate / "layer-receipt.json")
     fields = step_fields(summary, layer)
-    rows = compare_rows(base, cand, steps, fields)
+    rows = compare_rows(base, cand, steps, fields, layer)
     root = candidate / "data-root"
     bridge, methods = load_bridge(root), load_methods(root)
     effective = effective_factors(bridge, methods)
@@ -584,7 +630,7 @@ def compare(baseline: Path, candidate: Path) -> dict:
     observed = declared_flows(
         json.loads(receipt.read_text()) if receipt.is_file() else {},
         cand[1],
-        steps,
+        recorded,  # a corrected flow is the candidate's own; a shared patch explains it
         bridge,
         ef_names,
         fields,

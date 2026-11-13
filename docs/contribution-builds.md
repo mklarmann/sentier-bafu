@@ -30,7 +30,10 @@ builds every layer in `community/layers/` after the patched release.
 4. The audit checks, in the database, that every change the layer declares is there.
 5. The comparison is made against the patched release: which rows the layer changed, and
    which scores moved because of it. A changed row that the layer does not account for
-   fails the comparison.
+   fails the comparison. The layer accounts for an input only if its receipt lists that
+   input, by dataset and position, with the supplier it had and the one it has: another
+   changed input of a dataset the layer touches is unexplained. A patch that both builds
+   carry explains no difference between them.
 6. The exports are written from the contribution's database, under its name. Their
    statement lists the contribution after the patches.
 7. The manifest lists the contribution in its own section, `contributions`, beside the
