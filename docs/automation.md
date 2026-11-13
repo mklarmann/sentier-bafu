@@ -46,7 +46,7 @@ patch into a record, updates a list of findings, or edits a test because a recor
 | 15 | **A maintainer pushes a tag** `patched-…`. `release.yml` runs every patch on BAFU's full release and publishes `manifest.json`. The site reads it. | **maintainer** | a GitHub Release with one file |
 | 16 | BAFU publishes a release. **A maintainer registers it** (section 6). The run on the new release says per patch whether it is still needed. | **maintainer** | one entry in `site/config.json` |
 | 17 | **A maintainer confirms the correction** with `community.py fixed`. | **maintainer** | `fixed_in` in the record |
-| 18 | `sync.yml`: `status: corrected by BAFU`, one comment, and the issue is closed. | workflow | labels, one comment, the issue's state |
+| 18 | `sync.yml`: `status: resolved`, one comment, and the issue is closed. | workflow | labels, one comment, the issue's state |
 
 BAFU decides what it changes. Nothing above promises that it adopts anything: a finding can stay
 "Answered by BAFU" for ever, and a community patch is never a correction by BAFU.
@@ -155,7 +155,7 @@ them. A push and the nightly run apply; a run on request applies only when "appl
 
 | The record says | The issue gets |
 |---|---|
-| a finding with this issue | `bafu-finding` and exactly one of `status: needs a second measurement`, `status: repeated not yet reported`, `status: reported to BAFU`, `status: answered by BAFU`, `status: corrected by BAFU`, `status: for information`, `status: withdrawn` |
+| a finding with this issue | `bafu-finding` and exactly one of `status: needs a second measurement`, `status: repeated not yet reported`, `status: reported to BAFU`, `status: answered by BAFU`, `status: resolved`, `status: for information`, `status: withdrawn` |
 | … that needs a second measurement | also `help wanted` |
 | … whose status changed | one comment, generated from the record. It carries a hidden marker and is never posted twice |
 | … whose status is final (corrected, for information, withdrawn) | closed: "completed" when corrected, "not planned" otherwise |

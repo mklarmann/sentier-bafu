@@ -541,7 +541,8 @@ class StageTests(unittest.TestCase):
             self.assertEqual(status["description"].count(". "), 0, "one sentence")
         self.assertEqual(records.status_label("sent", "BAFU"), "Reported to BAFU")
         self.assertEqual(records.status_label("filed", "BAFU"), "Needs a second measurement")
-        self.assertEqual(records.status_label("fixed", "ecoinvent"), "Corrected by ecoinvent")
+        self.assertEqual(records.status_label("fixed", "ecoinvent"), "Resolved")
+        self.assertEqual(records.status_label("answered", "ecoinvent"), "Answered by ecoinvent")
 
     def test_dates_come_from_the_evidence(self):
         record = finding(repeated=REPEATED, sent=SENT)

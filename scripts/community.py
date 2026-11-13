@@ -120,12 +120,12 @@ STATUSES = [
     {
         "key": "answered",
         "label": "Answered by {provider}",
-        "description": "{provider} has answered; whether its data changes will show in a later release.",
+        "description": "{provider} has answered; its answer is summarised below.",
     },
     {
         "key": "fixed",
-        "label": "Corrected by {provider}",
-        "description": "{provider} has published a correction, and it was checked in the release or file the record names.",
+        "label": "Resolved",
+        "description": "A {provider} release covers this point; the release is named below.",
     },
     {
         "key": "not-a-defect",

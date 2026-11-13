@@ -71,7 +71,7 @@ class LabelTests(unittest.TestCase):
         self.assertEqual(
             [sync.label_for(status["key"], "BAFU") for status in community.STATUSES],
             ["status: needs a second measurement", "status: repeated not yet reported", "status: reported to BAFU",
-             "status: answered by BAFU", "status: corrected by BAFU", "status: for information", "status: withdrawn"],
+             "status: answered by BAFU", "status: resolved", "status: for information", "status: withdrawn"],
         )
         self.assertEqual(sync.label_for("sent", "ADEME"), "status: reported to ADEME")
 
@@ -178,10 +178,10 @@ class PlanTests(unittest.TestCase):
         self.assertEqual((entry["add"], entry["remove"]), ([], ["help wanted", "upstream-fixed"]))
         self.assertFalse(entry["announce"])
         # A second status label set by hand goes; the right one stays.
-        entry = self.one(finding(**PATH[2]), right | {"status: corrected by BAFU"})
-        self.assertEqual((entry["add"], entry["remove"], entry["announce"]), ([], ["status: corrected by BAFU"], False))
+        entry = self.one(finding(**PATH[2]), right | {"status: resolved"})
+        self.assertEqual((entry["add"], entry["remove"], entry["announce"]), ([], ["status: resolved"], False))
         # The right label taken off by hand, another of today's put on: it reads as a change and is said once.
-        entry = self.one(finding(**PATH[2]), {"bafu-finding", "status: corrected by BAFU"})
+        entry = self.one(finding(**PATH[2]), {"bafu-finding", "status: resolved"})
         self.assertEqual(entry["add"], ["status: reported to BAFU"])
         self.assertTrue(entry["announce"])
 
@@ -239,7 +239,7 @@ class PlanTests(unittest.TestCase):
         self.assertFalse(entry["announce"])
         self.assertIsNone(entry["close"])
         (entry,) = self.plan([], {48: issue(sync.expected_labels("fixed", "BAFU"), "closed")})
-        self.assertEqual((entry["add"], entry["remove"]), ([], ["status: corrected by BAFU"]))
+        self.assertEqual((entry["add"], entry["remove"]), ([], ["status: resolved"]))
 
     def test_a_record_that_names_no_issue_of_the_repository_is_for_a_person(self):
         (entry,) = self.plan([finding()], {48: None})
@@ -269,7 +269,7 @@ class RecordedTests(unittest.TestCase):
         self.assertEqual(by_issue[32]["close"], "not_planned")
         self.assertEqual(by_issue[32]["remove"], ["handled-in-layer", "informational"])
         self.assertEqual(by_issue[35]["close"], "completed")
-        self.assertEqual(by_issue[35]["add"], ["status: corrected by BAFU"])
+        self.assertEqual(by_issue[35]["add"], ["status: resolved"])
         self.assertEqual([n for n, entry in by_issue.items() if entry["close"]], [32, 35])
         self.assertTrue(all(entry["announce"] for entry in differences))
         self.assertFalse(any(entry["person"] for entry in differences))
@@ -461,7 +461,7 @@ class MainTests(unittest.TestCase):
         self.assertIn("Records: 23 findings; 19 are discussed in 18 issues of this repository; "
                       "4 have no issue here (F4, F5, F6, F7).", text)
         self.assertIn("Issues that differ from their record: 18.", text)
-        self.assertIn('#35 (F17: Corrected by BAFU): add "status: corrected by BAFU"; remove "needs-triage"; '
+        self.assertIn('#35 (F17: Resolved): add "status: resolved"; remove "needs-triage"; '
                       "comment once; close as completed", text)
         self.assertIn("Nothing was written.", text)
         self.assertEqual(self.fake.writes(), [])
@@ -486,7 +486,7 @@ class MainTests(unittest.TestCase):
     def test_the_summary_is_written_for_the_job_page(self):
         target = self.root / "summary.md"
         self.run_sync("--summary", str(target))
-        self.assertIn("- #35 (F17: Corrected by BAFU)", target.read_text())
+        self.assertIn("- #35 (F17: Resolved)", target.read_text())
 
     def test_records_that_are_not_valid_stop_the_job_before_it_reads_anything(self):
         path = self.root / "community/findings/0/F1.json"
