@@ -16,8 +16,8 @@ patches at revision `053c799`. The records themselves are in
 consistent with the [findings](findings/README.md). It delivers
 [#22](https://github.com/sentier-dev/sentier-bafu/issues/22).
 
-Provider responses are cited as the patches record them ("Marine Manche, BAFU
-(email, 12 October 2026)"); no correspondence is reproduced. A provider
+Provider responses are cited as the patches record them ("BAFU (email,
+12 October 2026)"); no correspondence is reproduced. A provider
 confirmation is not a provider adoption: on 21 October no finding was
 `upstream-fixed`, because no official BAFU release containing a correction had
 been verified. F17 became `upstream-fixed` on 4 November (below).

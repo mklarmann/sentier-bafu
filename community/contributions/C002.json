@@ -1,7 +1,7 @@
 {
   "id": "C002",
   "issue": null,
-  "title": "Integrate the BAFU mapping work with Chris Mutel and reproduce method-specific results",
+  "title": "Integrate the BAFU mapping work and reproduce method-specific results",
   "class": "mapping",
   "status": "proposed",
   "baseline": {
@@ -105,7 +105,7 @@
   "required_reviewers": [],
   "approvals": [],
   "objections": [],
-  "upstream_project": "BAFU / FOEN; GreenDelta and Brightway Flows for implementation findings",
+  "upstream_project": "BAFU / FOEN; an implementation finding goes to the project that owns the implementation",
   "validation_scope": "Mapping file integrity and workbook-JSON parity passed; pins, unit application, method-scoped fallbacks, independent LCIA reproduction and review not run. Flow correspondence alone does not demonstrate LCIA integration.",
   "next_action": "Pin the LCIA package from brightway-flows #386 and the scoring code, then run the missing checks.",
   "review_role": "importer maintainer",
