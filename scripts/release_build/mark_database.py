@@ -4,6 +4,8 @@ A database built from a patched release must not be taken for BAFU's release: it
 says so, and its metadata carries the label "Modified Data", the patch ids and the import
 fix ids. A database built from the provider release keeps BAFU's name and says that its
 amounts are BAFU's. Both say what the build itself changed (the relinking to EF 3.1 flows).
+A database built with a contribution's layer says which contribution, and never carries
+BAFU's name or the patched release's.
 
 The record goes under the key `release_build` of each named database. Run it in the
 sentier-brightway environment, with `BRIGHTWAY2_DIR` set to the folder the build wrote.
@@ -18,6 +20,7 @@ from pathlib import Path
 KEY = "release_build"
 MODIFIED_LABEL = "Modified Data"
 PROVIDER_LABEL = "Provider release"
+PATCHED_SOURCE = "bafu-2026-v1-patched"
 
 
 class MarkError(Exception):
@@ -40,15 +43,25 @@ def release_record(build: dict, credit: str) -> dict:
         "build_steps": build["build_steps"],
         "tools": build["tools"],
         "data": build["data"],
+        "contribution": build.get("contribution"),
     }
 
 
-def check_name(database: str, record: dict, provider_source: str) -> None:
-    """A patched database must not carry the provider's name."""
+def check_name(
+    database: str, record: dict, provider_source: str, patched_source: str = PATCHED_SOURCE
+) -> None:
+    """A patched database must not carry the provider's name, nor a contribution's
+    database the patched release's."""
     names = {provider_source, f"{provider_source}-residual"}
     if record["modified_data"] and database in names:
         raise MarkError(
             f"{database} is the name of BAFU's release; a patched database needs another name"
+        )
+    patched = {patched_source, f"{patched_source}-residual"}
+    if record.get("contribution") and database in names | patched:
+        raise MarkError(
+            f"{database} is the name of the patched release; the changes of contribution "
+            f"{record['contribution'].get('id')} go into a database of its own name"
         )
 
 
