@@ -37,8 +37,13 @@ database and its exports then say "proposed, not authorised".
    input, by dataset and position, with the supplier it had and the one it has: another
    changed input of a dataset the layer touches is unexplained. A patch that both builds
    carry explains no difference between them.
-6. The exports are written from the contribution's database, under its name. Their
-   statement lists the contribution after the patches.
+6. The exports are written from the contribution's database, under its name. Everything
+   a reader sees names it as that contribution's database and never as the patched
+   release: the statement inside every file, the record of modifications, the note of each
+   dataset and the SimaPro project carry the contribution's id and whether somebody
+   authorised it ("proposed, not authorised" if nobody has). Each dataset the layer changed
+   lists the contribution among the steps that changed it, and a dataset that only the layer
+   changed is in the record too.
 7. The manifest lists the contribution in its own section, `contributions`, beside the
    patched release and not among its patches.
 

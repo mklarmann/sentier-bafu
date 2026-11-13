@@ -11,6 +11,12 @@
 # ///
 """Export a Brightway build of the patched release for openLCA, SimaPro and Brightway.
 
+A contribution's database (the patched release plus one contribution's layer) is exported
+too, and never as the patched release: its statement, its record of modifications, the note
+of every dataset and the SimaPro project name it as that contribution's database, with the
+contribution's id and whether somebody authorised it ("proposed, not authorised" if nobody
+has), and each dataset the layer changed names the contribution among its steps.
+
 Reads one or more databases from a Brightway project and writes, into one folder:
 
 * `<name>.bw2package`: the databases for Brightway (`bw2io.BW2Package.import_file`);
@@ -171,6 +177,43 @@ def check_marker(databases, summary):
                 f"(built from {str(marker.get('built_release_tree_sha256'))[:12]}, the summary's "
                 f"output is {str(written)[:12]})"
             )
+
+
+NOT_AUTHORISED = "proposed, not authorised"
+
+
+def contribution_of(databases):
+    """The contribution a database was built with, as its marker names it, or None.
+
+    A contribution's database is the patched release plus one contribution's changes. It
+    is not the patched release, and every file written from it has to say so: which
+    contribution, and whether somebody authorised it.
+    """
+    found = {}
+    for name, database in databases.items():
+        contribution = (database["metadata"].get(MARKER) or {}).get("contribution")
+        if contribution:
+            found[contribution.get("id")] = (name, contribution)
+    if not found:
+        return None
+    if len(found) > 1:
+        raise ExportError(f"The databases name more than one contribution: {sorted(found)}")
+    name, contribution = next(iter(found.values()))
+    if missing := [key for key in ("id", "name") if not contribution.get(key)]:
+        raise ExportError(f"The contribution of {name!r} lacks {', '.join(missing)}")
+    by = contribution.get("authorised_by")
+    return {
+        "id": contribution["id"],
+        "name": contribution["name"],
+        "step": contribution.get("step") or f"{contribution['id']}-{contribution['name']}",
+        "database": contribution.get("database") or name,
+        "title": contribution.get("title"),
+        "authored_by": contribution.get("authored_by"),
+        "authorised_by": by,
+        "standing": f"authorised by {by}" if by else NOT_AUTHORISED,
+        "layer_sha256": contribution.get("layer_sha256"),
+        "datasets": sorted({change["dataset"] for change in contribution.get("changes", ())}),
+    }
 
 
 def load_labels(path=LABELS):
@@ -347,12 +390,16 @@ def read_summary(path):
     return summary
 
 
-def changed_datasets(summary, nodes):
+def changed_datasets(summary, nodes, contribution=None):
     """The summary's changed datasets, each with the name and location the database has.
 
     The summary names a dataset by its file, `process_<code>.xml`, and the build gives
     the node that code. A changed dataset that isn't in the database stops the export:
     the record and the data would not be about the same thing.
+
+    With a `contribution` (`contribution_of`), each dataset its layer changed names the
+    contribution, and a dataset that only the layer changed is listed too (the run summary
+    does not know it, so it has no number here).
     """
     activities = {key[1]: node for key, node in nodes.items() if not is_elementary(node)}
     datasets, missing = [], []
@@ -377,15 +424,32 @@ def changed_datasets(summary, nodes):
             f"The run summary names {len(missing)} changed dataset(s) that are not in the "
             f"database, first {missing[0]!r}"
         )
+    if contribution:
+        by_code = {dataset["code"]: dataset for dataset in datasets}
+        absent = [code for code in contribution["datasets"] if code not in activities]
+        if absent:
+            raise ExportError(
+                f"Contribution {contribution['id']} names {len(absent)} changed dataset(s) "
+                f"that are not in the database, first {absent[0]!r}"
+            )
+        for code in contribution["datasets"]:
+            if code not in by_code:
+                node = activities[code]
+                by_code[code] = {"code": code, "number": None, "name": node.get("name")}
+                by_code[code] |= {"location": node.get("location")}
+                by_code[code] |= {"import_fixes": [], "patches": []}
+                datasets.append(by_code[code])
+            by_code[code]["contribution"] = contribution["step"]
     return datasets
 
 
-def modifications_record(summary, release, credit, extra_steps=(), datasets=()):
+def modifications_record(summary, release, credit, extra_steps=(), datasets=(), contribution=None):
     """The record of modifications: every step that changed data, and each changed dataset.
 
     `extra_steps` are changes made after the patch run, for example by the build of the
     Brightway database, in the same shape as the summary's steps. `datasets` is what
-    `changed_datasets` returns.
+    `changed_datasets` returns. `contribution` is what `contribution_of` returns: the
+    record then says that this is that contribution's database and counts its datasets.
     """
     for step in extra_steps:
         if missing := {"id", "kind", "description"} - set(step):
@@ -399,8 +463,13 @@ def modifications_record(summary, release, credit, extra_steps=(), datasets=()):
         "source_fingerprint_sha256": summary["release"]["fingerprint"],
         "patched_fingerprint_sha256": (summary.get("output") or {}).get("fingerprint"),
         "datasets_in_release": summary["release"]["datasets"],
-        "datasets_changed": summary["totals"]["datasets_changed"],
+        "datasets_changed": len(datasets)
+        if contribution
+        else summary["totals"]["datasets_changed"],
         "patch_tool": summary["software"],
+        "contribution": contribution
+        and {key: value for key, value in contribution.items() if key != "datasets"}
+        | {"datasets_changed": len(contribution["datasets"])},
         "steps": steps,
         "datasets": list(datasets),
     }
@@ -408,15 +477,35 @@ def modifications_record(summary, release, credit, extra_steps=(), datasets=()):
 
 def modifications_markdown(record):
     """The record for readers: every step in full, the dataset list by reference."""
-    lines = [
-        f"# Record of modifications: {record['release']}, patched release",
-        "",
-        f"**{LABEL}.** This is not BAFU's original data. Source: {record['credit']}.",
-        "",
-        f"{record['datasets_changed']} of {record['datasets_in_release']} datasets were "
-        "changed. `MODIFICATIONS.json` lists each changed dataset (code, number, name, "
-        "location) with the steps that changed it.",
-        "",
+    contribution = record.get("contribution")
+    if contribution:
+        lines = [
+            f"# Record of modifications: {record['release']}, contribution "
+            f"{contribution['id']} ({contribution['name']})",
+            "",
+            f"**{LABEL}.** This is the database `{contribution['database']}` of contribution "
+            f"{contribution['id']}, {contribution['standing']}. It is built from the patched "
+            "release and holds that contribution's changes on top: it is not the patched "
+            f"release, and it is not BAFU's original data. Source: {record['credit']}.",
+            "",
+            f"{record['datasets_changed']} of {record['datasets_in_release']} datasets were "
+            f"changed, {contribution['datasets_changed']} of them by the contribution. "
+            "`MODIFICATIONS.json` lists each changed dataset (code, number, name, location) "
+            "with the steps that changed it, the contribution among them.",
+            "",
+        ]
+    else:
+        lines = [
+            f"# Record of modifications: {record['release']}, patched release",
+            "",
+            f"**{LABEL}.** This is not BAFU's original data. Source: {record['credit']}.",
+            "",
+            f"{record['datasets_changed']} of {record['datasets_in_release']} datasets were "
+            "changed. `MODIFICATIONS.json` lists each changed dataset (code, number, name, "
+            "location) with the steps that changed it.",
+            "",
+        ]
+    lines += [
         "| Step | Kind | What it does | Datasets | Values | Written by | Authorised by |",
         "|---|---|---|---|---|---|---|",
     ]
@@ -452,9 +541,17 @@ def attribution(record, terms_url=None):
         by_kind.setdefault(step["kind"], []).append(step["id"])
     changes = ". ".join(f"{kind}: {', '.join(ids)}" for kind, ids in by_kind.items())
     terms = f" ({terms_url})" if terms_url else ""
+    what = f"This is a patched release of {record['release']}, not BAFU's original data."
+    if contribution := record.get("contribution"):
+        what = (
+            f"This is the database {contribution['database']} of contribution "
+            f"{contribution['id']} ({contribution['name']}), {contribution['standing']}. It "
+            f"is built from the patched release of {record['release']} and holds that "
+            "contribution's changes on top. It is not the patched release and not BAFU's "
+            "original data."
+        )
     return (
-        f"{LABEL}. Source: {record['credit']}. This is a patched release of "
-        f"{record['release']}, not BAFU's original data. Modifications ({changes or 'none'}) "
+        f"{LABEL}. Source: {record['credit']}. {what} Modifications ({changes or 'none'}) "
         "are described in MODIFICATIONS.md and MODIFICATIONS.json, which travel with this "
         f"file. Passed on under terms substantially equivalent to BAFU's Terms of Use{terms}."
     )
@@ -466,14 +563,23 @@ def dataset_notes(nodes, record):
     The record names a changed dataset by its code, which is the node's code.
     """
     by_code = {dataset["code"]: dataset for dataset in record["datasets"]}
+    part = f"{LABEL}: part of a patched release of {record['release']}, not BAFU's original."
+    if contribution := record.get("contribution"):
+        part = (
+            f"{LABEL}: part of the database of contribution {contribution['id']} "
+            f"({contribution['name']}), {contribution['standing']}, built from a patched "
+            f"release of {record['release']}. Not the patched release and not BAFU's original."
+        )
     notes, matched = {}, 0
     for key, node in nodes.items():
         if is_elementary(node):
             continue
-        note = f"{LABEL}: part of a patched release of {record['release']}, not BAFU's original."
+        note = part
         if entry := by_code.get(key[1]):
             matched += 1
-            note += f" Changed by: {', '.join(entry['import_fixes'] + entry['patches'])}."
+            steps = entry["import_fixes"] + entry["patches"]
+            steps += [entry["contribution"]] if entry.get("contribution") else []
+            note += f" Changed by: {', '.join(steps)}."
         notes[key] = note
     return notes, matched
 
@@ -953,6 +1059,7 @@ def provenance_record(
         "provider": provider,
         "release": record["release"],
         "credit": record["credit"],
+        "contribution": record.get("contribution"),
         "statement": text,
         "source": {
             "url": source_url,
@@ -1029,8 +1136,14 @@ def export_release(
     if not (credit or year):
         raise ExportError(f"No release year in {release!r}; pass it")
     credit = credit or CREDIT.format(year=year)
+    contribution = contribution_of(databases)
     record = modifications_record(
-        summary, release, credit, extra_steps, changed_datasets(summary, nodes)
+        summary,
+        release,
+        credit,
+        extra_steps,
+        changed_datasets(summary, nodes, contribution),
+        contribution,
     )
     text = attribution(record, terms_url)
     notes, matched = dataset_notes(nodes, record)
@@ -1049,6 +1162,12 @@ def export_release(
         "modifications": out / "MODIFICATIONS.json",
         "modifications_readable": out / "MODIFICATIONS.md",
     }
+    project = f"{release} patched release, {LABEL}"
+    if contribution:
+        project = (
+            f"{release} contribution {contribution['id']} {contribution['name']}, "
+            f"{contribution['standing']}, {LABEL}"
+        )
     tools = tool_versions()
     source_url = source_url or summary["release"].get("url")
     source_sha256 = source_sha256 or summary["release"].get("archive_sha256")
@@ -1145,7 +1264,7 @@ def export_release(
             return write_simapro(
                 files["brightway"],
                 files["simapro"],
-                project=f"{release} patched release, {LABEL}",
+                project=project,
                 text=text,
                 view=interchange_view(
                     notes,
@@ -1183,6 +1302,7 @@ def export_release(
         if all(entry["status"] == "completed" for entry in formats.values())
         else "failed",
         **{k: provenance[k] for k in ("label", "provider", "release", "credit", "statement")},
+        "contribution": provenance["contribution"],
         "source": provenance["source"],
         "modifications": provenance["modifications"],
         "databases": {n: len(db["data"]) for n, db in databases.items()},

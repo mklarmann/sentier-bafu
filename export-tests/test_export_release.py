@@ -159,6 +159,127 @@ def test_simapro_file_names_credit_label_and_changes(base):
     assert comments[f"{INVENTORY}|bread-ch"].endswith("Changed by: 0001-flour-share.")
 
 
+# --- A contribution's database names itself, and never as the patched release ---------
+
+
+def contribution_export(tmp_path, authorised_by=None, changes=("bread-ch", "heat")):
+    """The synthetic database as if the build had made it with a contribution's layer:
+    the bread, which a patch changed too, and the heat, which only the layer changes."""
+    name, names = project()
+    databases = step.load_databases(name, names)
+    databases[INVENTORY]["metadata"][step.MARKER] = marker(
+        contribution={
+            "id": "C900",
+            "name": "other-flour",
+            "step": "C900-other-flour",
+            "database": "synthetic-v1-c900-other-flour",
+            "title": "A made-up contribution",
+            "authored_by": "Ann Author",
+            "authorised_by": authorised_by,
+            "layer_sha256": "0" * 64,
+            "changes": [
+                {"dataset": code, "replaced_supplier": "a", "new_supplier": "b"} for code in changes
+            ],
+        }
+    )
+    out = tmp_path / "out"
+    manifest = step.export_release(
+        databases, run_summary(), out, release=RELEASE, name="synthetic-v1-c900-other-flour"
+    )
+    return manifest, out
+
+
+@pytest.fixture(scope="module")
+def contribution(tmp_path_factory):
+    return contribution_export(tmp_path_factory.mktemp("contribution"))
+
+
+def test_a_contributions_export_says_whose_database_it_is(contribution):
+    manifest, out = contribution
+    assert manifest["status"] == "completed"
+    assert all(check["passed"] for check in manifest["checks"].values())
+    statement = manifest["statement"]
+    assert (
+        "This is the database synthetic-v1-c900-other-flour of contribution C900 "
+        "(other-flour), proposed, not authorised." in statement
+    )
+    assert "It is not the patched release and not BAFU's original data." in statement
+    assert "This is a patched release" not in statement
+    assert CREDIT in statement and "Modified Data" in statement
+    assert manifest["contribution"]["id"] == "C900"
+    assert manifest["contribution"]["standing"] == "proposed, not authorised"
+    assert manifest["files"]["brightway"]["name"] == "synthetic-v1-c900-other-flour.bw2package"
+
+
+def test_a_contributions_record_of_modifications_names_it(contribution):
+    _, out = contribution
+    readable = (out / "MODIFICATIONS.md").read_text()
+    first = readable.splitlines()[0]
+    assert first == f"# Record of modifications: {RELEASE}, contribution C900 (other-flour)"
+    assert "patched release" not in first
+    assert "This is the database `synthetic-v1-c900-other-flour` of contribution C900" in readable
+    assert "proposed, not authorised" in readable and "it is not the patched release" in readable
+    assert "3 of 9 datasets were changed, 2 of them by the contribution." in readable
+    record = json.loads((out / "MODIFICATIONS.json").read_text())
+    assert record["datasets_changed"] == 3
+    assert record["contribution"]["datasets_changed"] == 2
+    assert record["contribution"]["standing"] == "proposed, not authorised"
+    by_code = {dataset["code"]: dataset for dataset in record["datasets"]}
+    assert by_code["bread-ch"]["contribution"] == "C900-other-flour"
+    assert by_code["bread-ch"]["patches"] == ["0001-flour-share"]
+    # a dataset that only the layer changes is in the record; the run summary has no number
+    assert by_code["heat"]["contribution"] == "C900-other-flour"
+    assert by_code["heat"]["number"] is None and by_code["heat"]["patches"] == []
+    assert "contribution" not in by_code["wheat"]
+
+
+def test_every_dataset_of_a_contributions_export_names_the_contribution(contribution):
+    manifest, out = contribution
+    _, process_id = step.olca_ids(step.NAMESPACE)
+    processes = step.read_openlca(path(out, manifest, "openlca"))["processes"]
+    start = "Modified Data: part of the database of contribution C900 (other-flour), proposed, not"
+    for process in processes.values():
+        assert process.description.startswith(start)
+        assert "part of a patched release" not in process.description
+        assert process.process_documentation.restrictions_description == manifest["statement"]
+    bread = processes[process_id((INVENTORY, "bread-ch"))]
+    assert bread.description.endswith("Changed by: 0001-flour-share, C900-other-flour.")
+    heat = processes[process_id((INVENTORY, "heat"))]
+    assert heat.description.endswith("Changed by: C900-other-flour.")
+    wheat = processes[process_id((INVENTORY, "wheat"))]
+    assert wheat.description.endswith("Changed by: unit-names, 0003-waiting.")
+    csv = step.read_simapro(path(out, manifest, "simapro"))
+    project_line = (
+        f"{{Project: {RELEASE} contribution C900 other-flour, proposed, not authorised, "
+        "Modified Data}"
+    )
+    assert project_line in csv["header"]
+    assert "patched release, Modified Data}" not in "".join(csv["header"])
+    comments = {i: p["metadata"]["Comment"] for i, p in csv["processes"].items()}
+    assert all(comment.startswith(start) for comment in comments.values())
+
+
+def test_an_authorised_contribution_says_who_authorised_it(tmp_path):
+    manifest, out = contribution_export(tmp_path, authorised_by="Rita Reviewer")
+    assert "contribution C900 (other-flour), authorised by Rita Reviewer." in manifest["statement"]
+    assert "not authorised" not in manifest["statement"]
+    assert manifest["contribution"]["standing"] == "authorised by Rita Reviewer"
+
+
+def test_a_contribution_that_names_a_dataset_the_database_lacks_is_refused(tmp_path):
+    with pytest.raises(step.ExportError, match="Contribution C900 names 1 changed dataset"):
+        contribution_export(tmp_path, changes=("bread-ch", "not-there"))
+
+
+def test_an_export_of_the_patched_release_names_no_contribution(base):
+    manifest, out, _ = base
+    assert manifest["contribution"] is None
+    assert "This is a patched release of" in manifest["statement"]
+    record = json.loads((out / "MODIFICATIONS.json").read_text())
+    assert record["contribution"] is None
+    assert all("contribution" not in dataset for dataset in record["datasets"])
+
+
 def test_ilcd_package_names_the_credit_in_every_process(base):
     manifest, out, _ = base
     with zipfile.ZipFile(path(out, manifest, "ilcd")) as archive:
