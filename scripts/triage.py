@@ -11,6 +11,7 @@ the records.
                               stage         the stage key (community.stage)
                               path          the record's file in the repository
                               tracker       the issue's data from GitHub, or None
+                              steps         the five steps of its path, from its evidence (steps())
                               patches       the community patches that answer it
                               related       related findings, both directions
                               changed       date of its newest evidence
@@ -19,11 +20,14 @@ the records.
         unlisted            open finding issues that have no record yet
         without_issue       ids of records that have no issue in this repository
         label_differences   for maintainers: issues whose labels do not match their record
+    steps(record)                                         the five steps of a finding's path, each
+                                                          done only when the record holds its evidence
     expected_labels(stage)                                the labels a record's issue should carry
 """
 
 import json
 import os
+import time
 import urllib.request
 from pathlib import Path
 
@@ -43,6 +47,18 @@ def slug(repository):
     return repository.rstrip("/").split("github.com/")[-1]
 
 
+def read_json(request, tries=3):
+    """One request, tried again twice: a deploy must not fail on a single dropped connection."""
+    for attempt in range(tries):
+        try:
+            with urllib.request.urlopen(request, timeout=20) as response:
+                return json.load(response)
+        except OSError:
+            if attempt == tries - 1:
+                raise
+            time.sleep(1 + attempt)
+
+
 def fetch_issues(repository, token=None):
     """The repository's finding issues as {number: issue}: one request per hundred."""
     issues, page = {}, 1
@@ -54,7 +70,7 @@ def fetch_issues(repository, token=None):
         )
         if token:
             request.add_header("Authorization", f"Bearer {token}")
-        batch = json.load(urllib.request.urlopen(request, timeout=20))
+        batch = read_json(request)
         for item in batch:
             if "pull_request" in item:
                 continue
@@ -118,6 +134,44 @@ def label_differences(placed, issues):
     return differences
 
 
+# The path of a finding: one step per piece of dated evidence, in order.
+PATH = ("reported", "repeated", "sent", "answer", "fixed_in")
+
+
+def steps(record):
+    """The five steps of a finding's path: [{key, state, block}], decided by the record's evidence alone.
+
+    state is one of
+        done        the record holds the evidence of this step
+        now         the step the finding waits at
+        help        it waits for a second measurement, which anyone can supply
+        unrecorded  a later step is recorded and this one is not: never shown as done
+        todo        not reached
+    A closed finding, and one the provider declined to change, waits at nothing.
+    """
+    def held(key):
+        block = record.get(key)
+        if key == "repeated":
+            return bool(block) and block.get("result") == "reproduced"
+        return bool(block)
+
+    has = [held(key) for key in PATH]
+    last = max(n for n, yes in enumerate(has) if yes) if any(has) else -1
+    waits = not record.get("closed") and (record.get("answer") or {}).get("outcome") != "declined"
+    placed = []
+    for n, key in enumerate(PATH):
+        if has[n]:
+            state = "done"
+        elif n < last:
+            state = "unrecorded"
+        elif n == last + 1 and waits:
+            state = "help" if key == "repeated" else "now"
+        else:
+            state = "todo"
+        placed.append({"key": key, "state": state, "block": record.get(key)})
+    return placed
+
+
 def assemble(findings, repository, issues, patches=None):
     """Findings with their stage and discussion, plus finding issues that have no record yet."""
     by_finding = community.patches_by_finding(patches)
@@ -132,6 +186,7 @@ def assemble(findings, repository, issues, patches=None):
                 stage=stage,
                 path=getattr(record, "path", None) or community.record_path(record),
                 tracker=issues.get(record["issue"]) if record["issue"] else None,
+                steps=steps(record),
                 patches=by_finding.get(record["id"], []),
                 related=relations[record["id"]],
                 changed=community.last_change(record),
