@@ -1,8 +1,10 @@
 # Reconciliation receipt: findings and community patches, 21 October 2026
 
 > **Historical receipt.** It describes the reconciliations of 21 October and 4 November 2026.
-> Since 13 November 2026 each finding is one record in [findings/](findings/). A record holds the status,
-> patch, provider response and next action that `reconciliation.json` held; that file is retired.
+> Since 13 November 2026 each finding is one record in [findings/](findings/README.md). A record holds the
+> dated evidence (report, second measurement, BAFU's answer, correction) and the next action; its status is
+> computed from that evidence, and community patches are listed in [patches.json](patches.json).
+> `reconciliation.json` is retired.
 > `python3 scripts/community.py check` validates the records.
 
 This receipt accounts for every finding (F1–F17, and since 4 November F19, F21
