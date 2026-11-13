@@ -1,50 +1,80 @@
 name: BAFU data finding
-description: A measured observation about a BAFU/UVEK dataset or release (not a contribution layer)
+description: Something you measured in BAFU's data that looks wrong, or that you cannot explain
 title: "[Finding] "
+# `needs-triage` means: no record of this finding has been merged yet. A workflow takes it off.
 labels: ["bafu-finding", "needs-triage"]
+# The headings below are read by scripts/intake.py. To change one, read the note at the top of
+# that script first; community/tests/test_intake.py compares the two.
 body:
-  - type: input
-    id: dataset
+  - type: markdown
     attributes:
-      label: BAFU activity code(s), name, geography, unit
-      placeholder: "191385 Refrigerant R134a, at plant (RER), kg"
+      value: |
+        Say in the title, in one line, what you observed. Give numbers with their units.
+        Quote dataset names, numbers and single values; never paste text from BAFU's reports.
+
+        **What happens next**
+
+        1. A record of your finding is proposed as a pull request. Its number is the number of this issue: issue 48 is finding F48.
+        2. A maintainer reads the record and merges it. The finding is then listed on the site with the status "Needs a second measurement".
+        3. A second person repeats your measurement on BAFU's release files and comments here, beginning with the line `/repeated reproduced` or `/repeated not-reproduced`.
+        4. Findings are reported to BAFU together. BAFU decides what it changes; its answer is recorded here.
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of finding is it?
+      options:
+        - "Defect: something in the data looks wrong (an amount, a unit, a link, a label)"
+        - "Question: what does the data mean or intend?"
+        - "Difference: a difference in method, scope or convention, not an error"
     validations:
       required: true
   - type: dropdown
-    id: release
+    id: releases
     attributes:
-      label: Release observed in
-      options: ["BAFU:2026 v1", "BAFU:2025 v2", "both", "other (say which below)"]
-    validations:
-      required: true
-  - type: input
-    id: where
-    attributes:
-      label: Where you looked
-      placeholder: "ecoSpold XML / LCIA results workbook / openLCA package / a sentier-inventory parquet at commit …"
+      label: BAFU release it was observed in
+      description: Choose every release in which you saw it.
+      multiple: true
+      # releases:start (written by `python3 scripts/intake.py form` from site/config.json)
+      options:
+        - "2026-v1"
+        - "2025-v2"
+      # releases:end
     validations:
       required: true
   - type: textarea
-    id: measured
+    id: datasets
     attributes:
-      label: What you measured, and how
-      description: The value with its unit, the exchange it sits on, and the command or script that produced it. Numbers, not impressions.
+      label: Datasets, one per line
+      description: "The dataset number, its name and its location, separated by bars. Leave empty if the finding is not about single datasets."
+      placeholder: "191385 | Refrigerant R134a, at plant | RER"
       render: text
+  - type: input
+    id: scope
+    attributes:
+      label: What else it concerns
+      description: "For a finding that is not about single datasets: a group of datasets, a flow, a workbook, a file of the release."
+      placeholder: "1,289 datasets whose name starts with xx"
+  - type: textarea
+    id: observation
+    attributes:
+      label: What the data says
+      description: The value with its unit and the exchange it sits on, what you compared it with, and why it looks wrong. If it is a question to BAFU, put the question here.
     validations:
       required: true
   - type: textarea
-    id: why
+    id: method
     attributes:
-      label: Why it cannot be right
-      description: A physical bound, a mass balance, a literature range, the same dataset in another release or its own report (cite the report by title; do not paste its text).
+      label: How you measured it
+      description: Which files you read (ecoSpold XML, the LCIA results workbook, a database package), and the command or script that produced the numbers. Say also what you did not measure.
     validations:
       required: true
   - type: textarea
     id: exposure
     attributes:
-      label: Exposure, if known
-      description: Which other datasets consume this one; how much of a typical result it drives. "Unknown" is a fine answer.
+      label: What it affects, if known
+      description: Which other datasets use this one, and how much of a typical result it changes.
   - type: textarea
-    id: correction
+    id: notes
     attributes:
-      label: Suggested correction (optional)
+      label: Anything else
+      description: A suggested correction, links to related discussions.
