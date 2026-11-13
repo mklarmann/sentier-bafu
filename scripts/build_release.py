@@ -1,26 +1,38 @@
-"""Build a Brightway database from a BAFU release folder, and audit it.
+"""Build a Brightway database from a BAFU release folder, audit it, and export it.
 
+    python3 scripts/build_release.py release RELEASE OUT          # the whole path, one command
     python3 scripts/build_release.py build RELEASE OUT            # the patched release
     python3 scripts/build_release.py build RELEASE OUT --no-patches   # the provider release
+    python3 scripts/build_release.py build RELEASE OUT --contribution LAYER.json
     python3 scripts/build_release.py build latest OUT             # download the release first
     python3 scripts/build_release.py compare BASELINE CANDIDATE --out comparison.json
 
+`release` runs the whole path and writes `OUT/manifest.json`: the provider build, the
+patched build, the check of the written files and of what each patch matched, the
+comparison, the exports with their read-back, and then the same for every contribution
+layer it is given. A step that fails is recorded as failed, the steps that can still run
+do, and the command ends with status 1.
+
 `build` runs these steps and records each one's time and peak memory in `OUT/build.json`:
 
-1. patch      `bafu-fixes run` writes the patched release (skipped with `--no-patches`)
+1. patch      `bafu-fixes run` writes the patched release and its run summary (skipped
+              with `--no-patches`)
 2. adapt      the release becomes the zip sentier-importers reads (`release_build/adapter.py`);
               elementary exchanges keep the flow BAFU declared
 3. import     sentier-importers writes the inventory tables
-4. label      a patched release gets its own source name on every dataset
-5. data       the pinned flow terms, methods and mapping are fetched and checked
-6. install    sentier-brightway writes the Brightway database and the EF 3.1 methods
-7. mark       the database's metadata says what it was built from ("Modified Data", patch ids)
-8. audit      `release_build/audit_brightway.py` reads the database back and scores it
-9. published  with `--published-results FILE`: the comparison with BAFU's published LCIA
+4. layer      with `--contribution`: the layer's changes are applied to the tables
+5. label      a patched release gets its own source name on every dataset
+6. data       the pinned flow terms, methods and mapping are fetched and checked
+7. install    sentier-brightway writes the Brightway database and the EF 3.1 methods
+8. mark       the database's metadata says what it was built from ("Modified Data", patch ids)
+9. audit      `release_build/audit_brightway.py` reads the database back and scores it
+10. published with `--published-results FILE`: the comparison with BAFU's published LCIA
               results (the workbook is not in this repository; without it the step is skipped)
 
 The database of the provider release is called `bafu-2026`, BAFU's name. The database of a
 patched release is called `bafu-2026-v1-patched`, so that nobody takes it for BAFU's release.
+A contribution is never built into either: `--contribution` builds the patched release plus
+that one layer as a database under the contribution's own name.
 
 sentier-importers and sentier-brightway are used at the commits in `release_build/pins.toml`,
 each in its own `uv` environment. This script needs Python 3.12 or newer, `uv` and `git`.
@@ -44,7 +56,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from release_build import adapter  # noqa: E402
+from release_build import adapter, release_manifest  # noqa: E402
+from release_build import layer as layer_file  # noqa: E402
 
 REPOSITORY = Path(__file__).resolve().parents[1]
 HELPERS = REPOSITORY / "scripts" / "release_build"
@@ -53,7 +66,13 @@ PINS = HELPERS / "pins.toml"
 IMPORTER_INPUT = Path("sources") / "bafu-2026" / "BAFU-2026 v1_ecoSpold v1.zip"
 IMPORTER_SOURCES = ("bafu-processes", "bafu-exchanges")
 PINNED_DATA = ("sentier-vocab", "sentier-methods", "sentier-mappings")
-STEPS = ("patch", "adapt", "import", "label", "data", "install", "mark", "audit", "published")
+STEPS = (
+    *("patch", "adapt", "import", "layer", "label", "data", "install", "mark", "audit"),
+    "published",
+)
+LABELS = HELPERS / "export_labels.toml"
+EXPORT = REPOSITORY / "scripts" / "export_release.py"
+LAYERS = REPOSITORY / "community" / "layers"
 # The source name sentier-importers writes on every dataset, which sentier-brightway uses as
 # the database name: BAFU's release. A patched release gets another.
 PROVIDER_SOURCE = "bafu-2026"
@@ -157,17 +176,41 @@ def plan(args: argparse.Namespace) -> dict:
     """Every path and name of a build, from its options. No file is touched."""
     out = args.out.resolve()
     patched = not args.no_patches
+    contribution = None
+    if getattr(args, "contribution", None):
+        if not patched:
+            raise BuildError("A contribution is built on the patched release, not on BAFU's")
+        try:
+            contribution = layer_file.load(args.contribution)
+        except layer_file.LayerError as error:
+            raise BuildError(f"The contribution's layer can't be used: {error}") from None
+        if args.database and args.database != contribution["database"]:
+            raise BuildError(
+                f"A contribution is built under its own name, {contribution['database']}, "
+                f"and not as {args.database}"
+            )
     database = args.database or (PATCHED_SOURCE if patched else PROVIDER_SOURCE)
+    if contribution:
+        database = contribution["database"]
     if patched and database == PROVIDER_SOURCE:
         raise BuildError(
             f"{PROVIDER_SOURCE} is the name of BAFU's release; a patched database needs another"
         )
     if not patched and database != PROVIDER_SOURCE:
         raise BuildError(f"The provider release keeps BAFU's name, {PROVIDER_SOURCE}")
+    default_label = "patched release (community patches applied)" if patched else "provider release"
+    if contribution:
+        default_label = (
+            f"patched release with contribution {contribution['contribution']} "
+            f"({contribution['name']})"
+        )
     return {
-        "label": args.label
-        or ("patched release (community patches applied)" if patched else "provider release"),
+        "label": args.label or default_label,
         "patched": patched,
+        "contribution": contribution,
+        "layer": args.contribution.resolve() if contribution else None,
+        "layer_receipt": out / "layer-receipt.json",
+        "labels": (getattr(args, "labels", None) or LABELS).resolve(),
         "release": args.release.resolve(),
         "release_name": args.release_name,
         "out": out,
@@ -182,7 +225,8 @@ def plan(args: argparse.Namespace) -> dict:
         "pinned_data": (args.pinned_data or out / "pinned-data").resolve(),
         "data_root": out / "data-root",
         "brightway_dir": (args.brightway_dir or out / "brightway").resolve(),
-        "project": args.project or ("bafu-2026-v1-patched" if patched else "bafu-2026-v1"),
+        "project": args.project
+        or (database if contribution else "bafu-2026-v1-patched" if patched else "bafu-2026-v1"),
         "database": database,
         "residual_database": f"{database}-residual",
         "build_steps": out / "build-steps.json",
@@ -211,17 +255,6 @@ def latest_release(venvs: Path | None) -> Path:
     if done.returncode != 0:
         raise BuildError(f"Could not get the latest release: {done.stderr.strip()[-500:]}")
     return Path(done.stdout.strip().splitlines()[-1])
-
-
-def patch_tool_writes_summary(env: dict[str, str]) -> bool:
-    """Whether this checkout's `bafu-fixes run` has `--summary` (the run's record as JSON)."""
-    done = subprocess.run(
-        ["uv", "run", "--frozen", "--project", str(REPOSITORY), "bafu-fixes", "run", "--help"],
-        capture_output=True,
-        text=True,
-        env={**os.environ, **env},
-    )
-    return done.returncode == 0 and "--summary" in done.stdout
 
 
 def build(args: argparse.Namespace) -> int:
@@ -295,10 +328,11 @@ def build(args: argparse.Namespace) -> int:
         if paths["patched"]:
             patch_env = {"UV_PROJECT_ENVIRONMENT": str(venvs / "bafu-fixes")} if venvs else {}
             options = ["--xsd-check", args.xsd_check, "--report", str(paths["patch_report"])]
-            record["release"]["record_of_changes"].append(paths["patch_report"].name)
-            if patch_tool_writes_summary(patch_env):
-                options += ["--summary", str(paths["patch_summary"])]
-                record["release"]["record_of_changes"].append(paths["patch_summary"].name)
+            options += ["--summary", str(paths["patch_summary"])]
+            record["release"]["record_of_changes"] += [
+                paths["patch_report"].name,
+                paths["patch_summary"].name,
+            ]
             for flag, ids in (("--only", args.only), ("--skip", args.skip)):
                 if ids:
                     options += [flag, *ids]
@@ -352,11 +386,49 @@ def build(args: argparse.Namespace) -> int:
             raise BuildError(f"Expected one inventory folder from the importer, found {folders}")
         tables, folder_name = folders[0], folders[0].name
 
-        # 4. label: a patched release gets its own source name; its version names the
+        # 4. layer: a contribution's changes, applied to the tables of the patched release.
+        # They never reach a database that carries the patched release's name.
+        contribution = paths["contribution"]
+        if contribution:
+            made_for = contribution["release"]["fingerprint"]
+            if made_for not in (None, release["provider_tree_sha256"]):
+                raise BuildError(
+                    f"The layer of {contribution['contribution']} was made for the provider "
+                    f"release {made_for[:12]}, and this is {release['provider_tree_sha256'][:12]}"
+                )
+            step(
+                "layer",
+                importers.command(
+                    *("python", str(HELPERS / "layer.py"), str(tables)),
+                    *("--layer", str(paths["layer"]), "--database", database),
+                    *("--receipt", str(paths["layer_receipt"])),
+                ),
+                importers.env(),
+            )
+            applied = json.loads(paths["layer_receipt"].read_text())
+            record["contribution"] = {
+                "id": contribution["contribution"],
+                "name": contribution["name"],
+                "step": applied["step"],
+                "title": contribution["title"],
+                "database": database,
+                "authored_by": contribution["authored_by"],
+                "authorised_by": contribution["authorised_by"],
+                "references": contribution["references"],
+                "layer_file": contribution["file"],
+                "layer_sha256": contribution["sha256"],
+                "exchanges_changed": applied["exchanges_changed"],
+                "datasets_changed": len(applied["datasets_changed"]),
+                "changes": applied["changes"],
+            }
+
+        # 5. label: a patched release gets its own source name; its version names the
         # patched files, so two different sets of patches are never taken for one another
         metadata = ["python", str(HELPERS / "inventory_metadata.py"), str(tables)]
         if paths["patched"]:
             version = f"tree-{receipt.input_tree_sha256[:8]}"
+            if contribution:
+                version += f"-layer-{contribution['sha256'][:8]}"
             folder_name = f"{database}-{version}"
             step(
                 "label",
@@ -372,7 +444,7 @@ def build(args: argparse.Namespace) -> int:
             metadata += ["--modifications", str(modifications)]
         step("import", importers.command(*metadata), importers.env())
 
-        # 5. data
+        # 6. data
         data_command = [
             *("python", str(HELPERS / "data_root.py"), str(paths["pinned_data"])),
             *("--pins", str(args.pins.resolve()), "--record", str(out / "data-pins.json")),
@@ -399,7 +471,7 @@ def build(args: argparse.Namespace) -> int:
             for pin in pinned["sources"]
         ]
 
-        # 6. install
+        # 7. install
         bw_env = {**brightway.env(), "BRIGHTWAY2_DIR": str(paths["brightway_dir"])}
         paths["brightway_dir"].mkdir(parents=True, exist_ok=True)
         step(
@@ -412,7 +484,7 @@ def build(args: argparse.Namespace) -> int:
         )
         record["coverage"] = _coverage_lines(paths["logs"] / "install.log")
 
-        # 7. mark
+        # 8. mark
         build_steps = _build_steps(record, receipt, inventory)
         paths["build_steps"].write_text(json.dumps(build_steps, indent=2) + "\n")
         marker = out / "release-build.json"
@@ -427,10 +499,11 @@ def build(args: argparse.Namespace) -> int:
             bw_env,
         )
 
-        # 8. audit (exit code 1: the audit wrote its file and found errors)
+        # 9. audit (exit code 1: the audit wrote its file and found errors)
         audit_command = brightway.command(
             *("python", str(HELPERS / "audit_brightway.py"), "--project", paths["project"]),
             *("--database", database, "--out", str(paths["audit"]), "--label", paths["label"]),
+            *("--labels", str(paths["labels"])),
             *(["--sample", str(args.sample.resolve())] if args.sample else []),
         )
         step("audit", audit_command, bw_env, accept=(0, 1))
@@ -445,7 +518,7 @@ def build(args: argparse.Namespace) -> int:
             "findings": audit["findings"],
         }
 
-        # 9. published (optional): against BAFU's published LCIA results
+        # 10. published (optional): against BAFU's published LCIA results
         workbook = args.published_results
         if workbook is None:
             record["published_results"] = {
@@ -494,6 +567,8 @@ def build(args: argparse.Namespace) -> int:
             "summary": str(paths["patch_summary"]) if paths["patch_summary"].is_file() else None,
             "extra_steps": str(paths["build_steps"]),
             "release": paths["release_name"],
+            "labels": str(paths["labels"]),
+            "name": database,
         }
         record["status"] = "completed" if audit["status"] == "passed" else "audit failed"
     except (BuildError, adapter.AdapterError) as error:
@@ -530,6 +605,12 @@ def _modifications(receipt: adapter.Receipt, record: dict) -> dict:
         "datasets_changed_by_patch": dict(sorted(receipt.patches.items())),
         "exchanges_linked_on_the_declared_flow": len(receipt.source_observations),
         "record_of_changes": record["release"]["record_of_changes"],
+        "contribution": {
+            key: record["contribution"][key]
+            for key in ("id", "name", "title", "layer_sha256", "exchanges_changed")
+        }
+        if record.get("contribution")
+        else None,
     }
 
 
@@ -563,6 +644,22 @@ def _build_steps(record: dict, receipt: adapter.Receipt, inventory: Path) -> lis
                 "datasets": len({o["dataset"] for o in receipt.source_observations}),
             }
         )
+    if contribution := record.get("contribution"):
+        steps.append(
+            {
+                "id": contribution["step"],
+                "kind": "contribution",
+                "description": f"{contribution['title'].rstrip('.')}. "
+                f"{contribution['exchanges_changed']} input(s) of "
+                f"{contribution['datasets_changed']} dataset(s) take another supplier, as "
+                f"the layer {contribution['layer_file']} declares. This database is the "
+                "patched release plus that contribution; it is not the patched release.",
+                "datasets": contribution["datasets_changed"],
+                "authored_by": contribution["authored_by"],
+                "authorised_by": contribution["authorised_by"],
+                "references": contribution["references"],
+            }
+        )
     return steps
 
 
@@ -583,6 +680,7 @@ def _marker(record: dict, build_steps: list[dict]) -> dict:
             for name in ("this repository", "sentier-importers", "sentier-brightway")
         },
         "data": record["data_pins"],
+        "contribution": record.get("contribution"),
     }
 
 
@@ -617,6 +715,225 @@ def compare(args: argparse.Namespace) -> int:
     )
     done = subprocess.run(command, env={**os.environ, **brightway.env()})
     return done.returncode
+
+
+# --- The whole path ----------------------------------------------------------------------
+
+
+def _last_line(log: Path) -> str | None:
+    if not log.is_file():
+        return None
+    lines = [line.strip() for line in log.read_text(errors="replace").splitlines() if line.strip()]
+    return lines[-1][:500] if lines else None
+
+
+def _build_reason(folder: Path) -> str | None:
+    """Why a build did not end well, from its own record."""
+    record = release_manifest.load(folder / "build.json")
+    if record is None:
+        return "the build wrote no record"
+    if record.get("error"):
+        return record["error"].strip().splitlines()[0][:500]
+    audit = record.get("audit") or {}
+    found = [*audit.get("errors", []), *audit.get("findings", [])]
+    if found:
+        more = f" (and {len(found) - 1} more)" if len(found) > 1 else ""
+        return f"audit {audit.get('status')}: {found[0][:400]}{more}"
+    return None
+
+
+def export_command(folder: Path, destination: Path) -> list[str] | None:
+    """The export of the database a build wrote, or None if the build didn't get that far."""
+    record = release_manifest.load(folder / "build.json") or {}
+    export = record.get("export")
+    if not export or not export.get("summary"):
+        return None
+    command = ["uv", "run", "--python", "3.12", str(EXPORT)]
+    command += ["--brightway-dir", export["brightway_dir"], "--project", export["project"]]
+    for database in export["databases"]:
+        command += ["--database", database]
+    command += ["--summary", export["summary"], "--extra-steps", export["extra_steps"]]
+    command += ["--release", export["release"], "--name", export["name"]]
+    return [*command, "--labels", export["labels"], "--out", str(destination)]
+
+
+def release(args: argparse.Namespace) -> int:
+    """The whole path in one command; see the module text. Returns 1 if a step failed."""
+    for program in ("uv", "git"):
+        if shutil.which(program) is None:
+            raise BuildError(f"`{program}` is not on the PATH")
+    out = args.out.resolve()
+    if out.exists() and any(out.iterdir()):
+        raise BuildError(f"{out} is not empty; a release run starts in an empty folder")
+    venvs = args.venvs.resolve() if args.venvs else None
+    if str(args.release) == "latest":
+        args.release = latest_release(venvs)
+    source = args.release.resolve()
+    if not source.is_dir():
+        raise BuildError(f"{source} is not a folder")
+    layers = [path.resolve() for path in args.contribution or ()]
+    layers += [] if args.no_layers else layer_file.find(args.layers)
+    contributions = []
+    for path in layers:
+        try:
+            contributions.append((path, layer_file.load(path)))
+        except layer_file.LayerError as error:
+            raise BuildError(f"The contribution's layer can't be used: {error}") from None
+    logs, results = out / "logs", out / "results"
+    logs.mkdir(parents=True)
+    results.mkdir()
+
+    shared = ["--pins", str(args.pins.resolve())]
+    shared += ["--tools", str((args.tools or out / "tools").resolve())]
+    shared += ["--venvs", str(venvs)] if venvs else []
+    shared += ["--allow-unpinned"] if args.allow_unpinned else []
+    options = [*shared, "--pinned-data", str((args.pinned_data or out / "pinned-data").resolve())]
+    options += ["--labels", str(args.labels.resolve()), "--xsd-check", args.xsd_check]
+    options += ["--sample", str(args.sample.resolve())] if args.sample else []
+    if args.published_results:
+        options += ["--published-results", str(args.published_results.resolve())]
+    entry = [sys.executable, str(Path(__file__).resolve())]
+    patch_env = {"UV_PROJECT_ENVIRONMENT": str(venvs / "bafu-fixes")} if venvs else {}
+    patch_tool = ["uv", "run", "--frozen", "--project", str(REPOSITORY), "python"]
+    steps: list[dict] = []
+
+    def done(name: str) -> bool:
+        return any(s["name"] == name and s["status"] == "completed" for s in steps)
+
+    def step(
+        name: str, command: list[str] | None, *, env=None, ready=True, why="", reason=None
+    ) -> bool:
+        """Run one step in its own process and record how it ended. Never raises."""
+        entry_ = {"name": name, "status": "not run", "seconds": None, "peak_memory_mb": None}
+        steps.append(entry_ | {"reason": why or "an earlier step did not get far enough"})
+        if not ready or command is None:
+            print(f"[{name}] not run: {steps[-1]['reason']}", flush=True)
+            return False
+        print(f"[{name}] {' '.join(command[:6])} ...", flush=True)
+        log = logs / f"{name.replace(' ', '-').replace('/', '-')}.log"
+        result = run(command, env, log, accept=tuple(range(256)))
+        ok = result["returncode"] == 0
+        steps[-1] |= {
+            "status": "completed" if ok else "failed",
+            "seconds": result["seconds"],
+            "peak_memory_mb": result["peak_memory_mb"],
+            "reason": None if ok else (reason() if reason else None) or _last_line(log),
+        }
+        if not ok:
+            print(f"[{name}] failed: {steps[-1]['reason']}", flush=True)
+        return ok
+
+    provider, patched = out / "provider", out / "patched"
+    summary = patched / "release-summary.json"
+    step(
+        "provider build",
+        [*entry, "build", str(source), str(provider), "--no-patches", *options],
+        reason=lambda: _build_reason(provider),
+    )
+    step(
+        "patched build",
+        [*entry, "build", str(source), str(patched), "--fail-on-findings", *options],
+        reason=lambda: _build_reason(patched),
+    )
+    step(
+        "written files",
+        [*patch_tool, str(REPOSITORY / "scripts" / "check_patched_release.py")]
+        + [str(patched / "release"), "--summary", str(summary)],
+        env=patch_env,
+        ready=summary.is_file() and (patched / "release").is_dir(),
+        why="the patch tool wrote no patched release",
+    )
+    table = [sys.executable, str(REPOSITORY / "scripts" / "full_release_table.py"), str(summary)]
+    table += ["--check", "--out", str(results / "patch-run.md")]
+    table += ["--matches-out", str(out / "match-check.json")]
+    table += ["--head-revision", _repository_commit().split()[0]]
+    if args.previous:
+        table += ["--previous", str(args.previous.resolve())]
+    if args.partial_release:
+        table += ["--partial"]
+    step("patch run", table, ready=summary.is_file(), why="the patch tool wrote no run summary")
+
+    def scored(folder: Path) -> bool:
+        return (folder / "audit" / "scores.csv").is_file()
+
+    step(
+        "comparison",
+        [*entry, "compare", str(provider), str(patched), "--out", str(out / "comparison.json")]
+        + shared,
+        ready=scored(provider) and scored(patched),
+        why="a build has no audited database to compare",
+    )
+    step(
+        "exports",
+        export_command(patched, out / "exports" / "patched"),
+        why="the patched build wrote no database to export",
+    )
+    for path, contribution in contributions:
+        name = layer_file.step_id(contribution)
+        folder = out / "contributions" / name.lower()
+        build = folder / "build"
+        step(
+            f"{name} build",
+            [*entry, "build", str(source), str(build), "--contribution", str(path)]
+            + ["--fail-on-findings", *options],
+            reason=lambda build=build: _build_reason(build),
+        )
+        step(
+            f"{name} comparison",
+            [*entry, "compare", str(patched), str(build)]
+            + ["--out", str(folder / "comparison.json"), *shared],
+            ready=scored(patched) and scored(build),
+            why="a build has no audited database to compare",
+        )
+        step(
+            f"{name} exports",
+            export_command(build, folder / "exports"),
+            why="the contribution's build wrote no database to export",
+        )
+
+    config = release_manifest.load(REPOSITORY / "site" / "config.json")
+    revision = _repository_commit().split()[0]
+    data = release_manifest.manifest(
+        out, tag=args.tag, revision=revision, steps=steps, config=config
+    )
+    errors = release_manifest.shape_errors(data)
+    if errors:
+        data["status"] = "failed"
+        data["problems"] = [*data["problems"], *(f"manifest: {error}" for error in errors)]
+    release_manifest.write(data, out / "manifest.json")
+    keep = {
+        "manifest.json": out / "manifest.json",
+        "run-summary.json": summary,
+        "provider-audit.json": provider / "audit" / "audit.json",
+        "patched-audit.json": patched / "audit" / "audit.json",
+        "comparison.json": out / "comparison.json",
+        "exports-manifest.json": out / "exports" / "patched" / "manifest.json",
+    }
+    for _, contribution in contributions:
+        name = layer_file.step_id(contribution).lower()
+        folder = out / "contributions" / name
+        keep[f"{name}-audit.json"] = folder / "build" / "audit" / "audit.json"
+        keep[f"{name}-comparison.json"] = folder / "comparison.json"
+        keep[f"{name}-exports-manifest.json"] = folder / "exports" / "manifest.json"
+    for name, path in keep.items():
+        if path.is_file():
+            shutil.copy2(path, results / name)
+    (out / "release.json").write_text(
+        json.dumps({"status": data["status"], "steps": steps}, indent=2) + "\n"
+    )
+
+    print(f"Release run {data['status']}: {out / 'manifest.json'}")
+    for entry_ in steps:
+        seconds, memory = entry_["seconds"], entry_["peak_memory_mb"]
+        print(
+            f"  {entry_['name']:28} {entry_['status']:10} "
+            f"{'' if seconds is None else format(seconds, '8.1f') + ' s'} "
+            f"{'' if memory is None else format(memory, '8.0f') + ' MB'}"
+        )
+    blocked = release_manifest.release_errors(data) if args.tag else []
+    for reason in [*data["problems"], *(f"not a release: {b}" for b in blocked)]:
+        print(f"  {reason}")
+    return int(data["status"] != "completed" or bool(blocked))
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -694,10 +1011,64 @@ def main(argv: list[str] | None = None) -> int:
         "--fail-on-findings",
         action="store_true",
         help="Fail if the audit has findings (a sample score outside its plausible range, "
-        "elementary flows that lost their EF 3.1 flow)",
+        "elementary flows that lost their EF 3.1 flow, an input whose declared unit is "
+        "another quantity than its supplier's and belongs to no finding)",
+    )
+    b.add_argument(
+        "--contribution",
+        type=Path,
+        metavar="LAYER",
+        help="Build the patched release plus this one contribution layer, as a database "
+        "under the contribution's own name (see docs/contribution-builds.md)",
+    )
+    b.add_argument(
+        "--labels",
+        type=Path,
+        default=LABELS,
+        help="The declared table of unit labels and of known differences of declared "
+        "units, for the audit and the export (default: release_build/export_labels.toml)",
     )
     common(b)
     b.set_defaults(run=build)
+
+    r = sub.add_parser("release", help="The whole path: builds, checks, exports, manifest")
+    r.add_argument("release", type=Path, help="Folder with BAFU's EcoSpold 1 files, or 'latest'")
+    r.add_argument("out", type=Path, help="Empty folder for everything the run writes")
+    r.add_argument("--tag", help="The tag of the release, for the manifest")
+    r.add_argument(
+        "--previous",
+        type=Path,
+        help="The manifest of the previous release, or a run summary: what each patch "
+        "matched is compared with it",
+    )
+    r.add_argument(
+        "--layers",
+        type=Path,
+        default=LAYERS,
+        help="Folder with contribution layers; each is built beside the patched release "
+        "(default: community/layers)",
+    )
+    r.add_argument("--no-layers", action="store_true", help="Build no contribution")
+    r.add_argument(
+        "--partial-release",
+        action="store_true",
+        help="RELEASE is not a full release of BAFU (a test release): that it is unknown "
+        "and that patches find nothing to change in it does not fail the run",
+    )
+    r.add_argument(
+        "--contribution",
+        type=Path,
+        action="append",
+        metavar="LAYER",
+        help="One more contribution layer to build (repeatable)",
+    )
+    r.add_argument("--xsd-check", choices=("off", "end", "every-step"), default="every-step")
+    r.add_argument("--sample", type=Path, help="Datasets the audit scores (see `build`)")
+    r.add_argument("--labels", type=Path, default=LABELS, help="See `build`")
+    r.add_argument("--published-results", type=Path, metavar="FILE", help="See `build`")
+    r.add_argument("--pinned-data", type=Path, help="See `build` (default: OUT/pinned-data)")
+    common(r)
+    r.set_defaults(run=release)
 
     c = sub.add_parser("compare", help="Compare a patched build with the provider release's")
     c.add_argument("baseline", type=Path, help="Build folder of the provider release")

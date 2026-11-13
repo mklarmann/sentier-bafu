@@ -1,6 +1,6 @@
 """A made-up release in BAFU's EcoSpold 1 form, for testing the whole path.
 
-Seven invented datasets with invented amounts. No dataset content of BAFU's release is
+Eight invented datasets with invented amounts. No dataset content of BAFU's release is
 used. The elementary flows carry names and compartments that BAFU's release also uses
 (carbon dioxide, methane, natural gas), because the pinned mapping to EF 3.1 is keyed by
 them; and two datasets carry the number and the exchange name that patches 0001 and 0002
@@ -15,7 +15,12 @@ What it exercises:
 - an input that declares `ENTSO` for a supplier in `ENTSO-E` (patch 0002);
 - a dataset in `Europe without Switzerland` (the import fix writes `EURwoCH`);
 - a dataset with the number and input that patch 0001 corrects;
-- a dataset whose name starts with `xx` (patch 0003 flags it).
+- a dataset whose name starts with `xx` (patch 0003 flags it);
+- an input declared in kWh from a dataset whose unit is MJ: the build takes the amount as
+  written, the audit lists it, and `LABELS` names the made-up finding it belongs to.
+
+`LAYER` is a made-up contribution: the crop takes its electricity from the plant instead of
+from the mix. It is built beside the patched release, as a database of its own.
 
 `EXPECTED` holds scores worked by hand from the amounts below and the EF 3.1 factors
 (carbon dioxide 1, fossil methane 29.8, dinitrogen monoxide 273 kg CO2 eq per kg; natural
@@ -100,6 +105,16 @@ DATASETS = (
         "kg",
         (("input", 106, DISPOSAL, "CH", "kg", 126.22),),
     ),
+    (
+        "syn-tomatoes",
+        107,
+        "Synthetic tomatoes, heated",
+        "agricultural",
+        "CH",
+        "kg",
+        # declared in kWh; the supplier's unit is MJ
+        (("input", 105, "xx Synthetic heat, obsolete", "CH", "kWh", 0.5),),
+    ),
 )
 
 _GAS_SCORE = 0.001 * 29.8
@@ -114,8 +129,12 @@ EXPECTED = {
         "syn-old": 0.07,
         "syn-disposal": 3.0,
         "syn-berries": 126.22 * 3.0,
+        # 0.5 of the heat dataset as it is, whatever the two unit labels say: not 0.5 x 3.6
+        "syn-tomatoes": 0.5 * 0.07,
     },
     "climate, patched": {"syn-berries": 0.00957 * 3.0},
+    # The contribution: the crop's 0.05 kWh come from the plant, not from the mix
+    "climate, contribution": {"syn-crop": 0.05 * _POWER_SCORE + 0.001 * 273},
     "fossils": {
         "syn-gas": 35.98,
         "syn-power": 0.2 * 35.98,
@@ -124,7 +143,45 @@ EXPECTED = {
         "syn-old": 0.0,
         "syn-disposal": 0.0,
         "syn-berries": 0.0,
+        "syn-tomatoes": 0.0,
     },
+}
+# Appended to the repository's table of labels for a build of this release: the finding the
+# kWh input belongs to. Without it the audit reports that input as a finding of its own.
+LABELS = """
+[[declared_unit_difference]]
+finding = "F900"
+supplier_number = 105
+supplier = "syn-old"
+declared = "kilowatt hour"
+supplier_unit = "megajoule"
+"""
+LAYER = {
+    "schema": "sentier-bafu/contribution-layer/1",
+    "contribution": "C900",
+    "name": "direct-plant-supply",
+    "database": "bafu-2026-v1-c900-direct-plant-supply",
+    "title": "A made-up variant: the crop takes its electricity from the plant, not the mix",
+    "authored_by": "A. Tester",
+    "authorised_by": None,
+    "references": ["https://example.org/contributions/C900"],
+    "changes": [
+        {
+            "kind": "supplier-substitution",
+            "dataset": {"code": "syn-crop", "name": "Synthetic crop, at farm", "location": "CH"},
+            # the patched release, which the layer changes, writes this location as EURwoCH
+            "replaced_supplier": {
+                "code": "syn-mix",
+                "name": "Synthetic electricity mix",
+                "location": "EURwoCH",
+            },
+            "new_supplier": {
+                "code": "syn-power",
+                "name": "Synthetic electricity, at plant",
+                "location": "ENTSO-E",
+            },
+        }
+    ],
 }
 SAMPLE = {
     "datasets": [

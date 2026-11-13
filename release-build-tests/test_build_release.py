@@ -6,6 +6,8 @@ test files and by a full run on the release.
 
 import argparse
 import importlib.util
+import json
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -60,6 +62,48 @@ class Plan(unittest.TestCase):
             build_release.plan(options(database="bafu-2026"))
         with self.assertRaisesRegex(build_release.BuildError, "keeps BAFU's name"):
             build_release.plan(options(no_patches=True, database="mine"))
+
+    def layer(self, **changes) -> Path:
+        import synthetic_release
+
+        folder = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, folder)
+        path = Path(folder) / "C900-direct-plant-supply.json"
+        path.write_text(json.dumps(synthetic_release.LAYER | changes))
+        return path
+
+    def test_a_contribution_is_built_under_its_own_name(self):
+        paths = build_release.plan(options(contribution=self.layer()))
+        self.assertEqual(paths["database"], "bafu-2026-v1-c900-direct-plant-supply")
+        self.assertEqual(
+            paths["residual_database"], "bafu-2026-v1-c900-direct-plant-supply-residual"
+        )
+        self.assertEqual(paths["project"], "bafu-2026-v1-c900-direct-plant-supply")
+        self.assertIn("contribution C900 (direct-plant-supply)", paths["label"])
+        self.assertEqual(paths["contribution"]["contribution"], "C900")
+        self.assertEqual(paths["layer_receipt"], paths["out"] / "layer-receipt.json")
+
+    def test_a_contribution_never_goes_into_a_releases_database(self):
+        with self.assertRaisesRegex(build_release.BuildError, "under its own name"):
+            build_release.plan(options(contribution=self.layer(), database="bafu-2026-v1-patched"))
+        for name in ("bafu-2026-v1-patched", "bafu-2026"):
+            with self.assertRaisesRegex(build_release.BuildError, "built under its own name"):
+                build_release.plan(options(contribution=self.layer(database=name)))
+        with self.assertRaisesRegex(build_release.BuildError, "on the patched release"):
+            build_release.plan(options(contribution=self.layer(), no_patches=True))
+        with self.assertRaisesRegex(build_release.BuildError, "layer can't be used"):
+            build_release.plan(options(contribution=self.layer(changes=[])))
+
+    def test_the_marker_step_refuses_a_contribution_under_a_releases_name(self):
+        from release_build import mark_database
+
+        record = {"modified_data": True, "contribution": {"id": "C900"}}
+        mark_database.check_name("bafu-2026-v1-c900-x", record, "bafu-2026")
+        for name in ("bafu-2026-v1-patched", "bafu-2026-v1-patched-residual"):
+            with self.assertRaisesRegex(mark_database.MarkError, "a database of its own name"):
+                mark_database.check_name(name, record, "bafu-2026")
+        # without a contribution, the patched release keeps its name
+        mark_database.check_name("bafu-2026-v1-patched", {"modified_data": True}, "bafu-2026")
 
     def test_the_importer_finds_its_input_below_its_data_root(self):
         paths = build_release.plan(options())
@@ -235,6 +279,10 @@ class Syntax(unittest.TestCase):
         import ast
 
         files = [REPOSITORY / "scripts" / "build_release.py"]
+        # run by the entry point with its own interpreter, or in the export's environment
+        files += [REPOSITORY / "scripts" / "full_release_table.py"]
+        files += [REPOSITORY / "scripts" / "export_release.py"]
+        files += sorted((REPOSITORY / "export-tests").glob("*.py"))
         files += sorted((REPOSITORY / "scripts" / "release_build").glob("*.py"))
         files += sorted((REPOSITORY / "release-build-tests").glob("*.py"))
         self.assertGreater(len(files), 10)
