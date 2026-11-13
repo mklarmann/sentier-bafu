@@ -1,0 +1,42 @@
+{
+  "id": "F1",
+  "title": "Strawberries in plastic tunnel: 126 / 18 / 18 kg of polyethylene disposal per kg of fruit",
+  "datasets": "188725 (ES), 178351 (CH), 242090 (CH) strawberries, plastic tunnel",
+  "release": "2025 v2, 2026 v1",
+  "status": "upstream-reported",
+  "awaiting_second_measurement": false,
+  "observation": "126.22 / 18.085 / 18.079 kg `Disposal, polyethylene, 0.4% water, to municipal incineration` per kg fruit, against 0.0096 / 0.042 / 0.036 kg of polyethylene granulate entering; the tunnel film is already disposed of in the tunnel dataset (per m²·a). The LCIA workbook scores them at 383 / 55 / 55 kg CO₂-eq per kg; the heated greenhouse in the same group scores 2.6. Identical in both releases; not in the 2026 change log. BAFU confirmed the error by email on 12 October 2026 and announced a correction for its next release; community-fixes [patch 0001](https://github.com/sentier-dev/bafu-community-fixes/blob/053c799a4d3e129747f47d6775ea88647c0bec78/src/bafu_community_fixes/patches/p0001_strawberry_polyethylene_disposal.py) applies the corrected amounts until then.",
+  "links": [
+    "https://github.com/sentier-dev/sentier-bafu/issues/6",
+    "https://gitlab.com/eos-lci/lci-bafu-catalog/-/issues/1"
+  ],
+  "community_patch": {
+    "id": "0001-strawberry-polyethylene-disposal",
+    "url": "https://github.com/sentier-dev/bafu-community-fixes/blob/053c799a4d3e129747f47d6775ea88647c0bec78/src/bafu_community_fixes/patches/p0001_strawberry_polyethylene_disposal.py",
+    "authorisation": {
+      "by": "Chris Mutel",
+      "evidence_url": "https://github.com/sentier-dev/bafu-community-fixes/blob/053c799a4d3e129747f47d6775ea88647c0bec78/src/bafu_community_fixes/patches/p0001_strawberry_polyethylene_disposal.py"
+    }
+  },
+  "provider_response": {
+    "by": "Marine Manche, BAFU",
+    "channel": "email",
+    "date": "2026-10-12",
+    "public_summary": "Confirmed the error and gave the corrected amounts, which equal each dataset's own polyethylene granulate input; to be corrected in the next release.",
+    "evidence_url": "https://github.com/sentier-dev/bafu-community-fixes/blob/053c799a4d3e129747f47d6775ea88647c0bec78/src/bafu_community_fixes/patches/p0001_strawberry_polyethylene_disposal.py"
+  },
+  "provider_correction_shipped": null,
+  "reviewer_consensus": null,
+  "pipeline_run_evidence": null,
+  "validation_scope": "Re-measured on the release files; the patch stops if a dataset does not carry the expected amount.",
+  "next_action": "Verify the corrected amounts in the next BAFU release; then mark upstream-fixed and retire patch 0001.",
+  "review_role": "maintainer",
+  "evidence_url": "https://github.com/sentier-dev/sentier-bafu/issues/6",
+  "retained": [
+    {
+      "kind": "earlier-interpretation",
+      "text": "An earlier mass-balance framing of the finding was wrong and was corrected.",
+      "evidence_url": "https://gitlab.com/eos-lci/lci-bafu-catalog/-/issues/1"
+    }
+  ]
+}

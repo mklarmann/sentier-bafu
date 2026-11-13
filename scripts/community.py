@@ -134,126 +134,215 @@ def validate(record):
 
 
 FINDING_STATES = {
-    "open",
-    "upstream-reported",
-    "upstream-fixed",
-    "informational",
-    "handled-in-layer",
-    "withdrawn",
+    "open": "observed and measured; not yet sent to BAFU",
+    "upstream-reported": "sent to BAFU (date on the issue)",
+    "upstream-fixed": "BAFU corrected it in a named release",
+    "informational": "a method or scope difference, not a defect; recorded so nobody derives it again",
+    "handled-in-layer": "a layer applies it in a candidate build; the question to BAFU stays open",
+    "withdrawn": "did not survive re-measurement on BAFU's own files; kept so nobody finds it again",
 }
 ROLES = {"data user", "partner", "reviewer", "maintainer", "flow curator", "importer maintainer"}
-
-
-def ledger_rows(text):
-    rows = {}
-    for line in text.splitlines():
-        if line.startswith("| F"):
-            cells = [c.strip() for c in line.strip().strip("|").split(" | ")]
-            rows[cells[0]] = {"status": cells[4], "links": set(re.findall(r"\((https://[^)]+)\)", cells[5]))}
-    return rows
-
-
-RECORD_FIELDS = {
+RETAINED_KINDS = {"ask", "objection", "earlier-interpretation"}
+FINDING_FIELDS = {
     "id",
-    "kind",
+    "title",
+    "datasets",
+    "release",
+    "status",
+    "awaiting_second_measurement",
+    "observation",
     "links",
-    "ledger_status",
     "community_patch",
+    "provider_response",
+    "provider_correction_shipped",
     "reviewer_consensus",
     "pipeline_run_evidence",
     "validation_scope",
-    "provider_response",
-    "provider_correction_shipped",
     "next_action",
     "review_role",
     "evidence_url",
     "retained",
 }
-RETAINED_KINDS = {"ask", "objection", "earlier-interpretation"}
+# A table cell holds one line; a record holds Markdown, never raw HTML.
+BREAKS_A_ROW = re.compile(r"[|\r\n\x0b\x0c\x1c-\x1e\x85\u2028\u2029]")
+RAW_HTML = re.compile(r"<[A-Za-z/!]")
+INDEX_HEAD = """# Findings about the BAFU/UVEK data
+
+<!-- Generated from community/findings/ by `python3 scripts/community.py index`. Do not edit. -->
+
+One line per finding. The full record of a finding is its file in [findings/](findings/), for
+example [findings/F3.json](findings/F3.json); the [site](https://sentier-dev.github.io/sentier-bafu/findings.html)
+shows every record with its discussion. Dataset values and names are quoted; text from the
+LCI reports is never pasted (Terms of Use clause 4).
+
+Numbers are shared with the [lci-bafu-catalog ledger](https://gitlab.com/eos-lci/lci-bafu-catalog/-/blob/main/docs/bafu_findings.md),
+so a finding has one number in both places. A number missing here is a finding recorded
+there that has no record in this repository yet.
+
+## Status vocabulary
+
+| Status | Meaning |
+|---|---|
+"""
+INDEX_TABLE = """
+## Ledger
+
+| # | Dataset(s) | Observation | Release | Status | Thread here · derivation |
+|---|---|---|---|---|---|
+"""
 
 
-def validate_reconciliation(reconciliation, rows, contributions):
-    errors, seen, records = [], set(), {}
-    for r in reconciliation["records"]:
-        rid = r.get("id", "?")
-        if RECORD_FIELDS - r.keys():
-            errors.append(f"{rid}: missing fields: " + ", ".join(sorted(RECORD_FIELDS - r.keys())))
-            continue
-        if rid in seen:
-            errors.append(f"{rid}: duplicate reconciliation record")
-        seen.add(rid)
-        records[rid] = r
-        before, after = r["ledger_status"].get("before"), r["ledger_status"].get("after")
-        if r["kind"] == "finding":
-            if {before, after} - FINDING_STATES:
-                errors.append(f"{rid}: invalid status {before} -> {after}")
-            row = rows.get(rid)
-            if not row:
-                errors.append(f"{rid}: not in the findings ledger")
-                continue
-            if after != row["status"]:
-                errors.append(f"{rid}: ledger says {row['status']}, reconciliation says {after}")
-            if row["links"] != set(r["links"]):
-                errors.append(f"{rid}: ledger and reconciliation links differ")
-        elif r["kind"] == "contribution":
-            if {before, after} - STATES:
-                errors.append(f"{rid}: invalid status {before} -> {after}")
-            if contributions.get(rid) != after:
-                errors.append(f"{rid}: contribution status differs from its record")
-        else:
-            errors.append(f"{rid}: unknown kind {r['kind']}")
-        # A patch or a provider confirmation never closes a finding; only a shipped release does.
-        shipped = r["provider_correction_shipped"]
-        if after == "upstream-fixed" and not shipped:
-            errors.append(f"{rid}: upstream-fixed needs a shipped provider correction")
-        if shipped and not (shipped.get("release") and shipped.get("evidence_url")):
-            errors.append(f"{rid}: shipped correction needs a release and evidence")
-        if shipped and r["kind"] == "finding" and after != "upstream-fixed":
-            errors.append(f"{rid}: a shipped correction makes the finding upstream-fixed")
-        patch = r["community_patch"]
-        if patch and not (patch.get("url") and patch.get("authorisation", {}).get("evidence_url")):
-            errors.append(f"{rid}: patch needs a pinned url and authorisation evidence")
-        provider = r["provider_response"]
-        if provider and not all(provider.get(k) for k in ("by", "date", "public_summary", "evidence_url")):
-            errors.append(f"{rid}: provider response needs who, when, a public summary and evidence")
-        if after not in {"withdrawn", "upstream-fixed"} and not (
-            r["next_action"] and r["review_role"] in ROLES and r["evidence_url"]
-        ):
-            errors.append(f"{rid}: open record needs a next action, review role and evidence")
-        if any(
-            not isinstance(x, dict)
-            or x.get("kind") not in RETAINED_KINDS
-            or not x.get("text")
-            or not x.get("evidence_url")
-            for x in r["retained"]
-        ):
-            errors.append(f"{rid}: retained items need a kind, text and evidence")
-    for rid in set(rows) - seen:
-        errors.append(f"{rid}: ledger finding has no reconciliation record")
-    for rid in set(contributions) - seen:
-        errors.append(f"{rid}: contribution has no reconciliation record")
-    # The patch list and the records must name the same patch for each finding, both ways.
-    listed = {}
-    for entry in reconciliation["patches"]:
-        if entry.get("id") in listed:
-            errors.append(f"patch {entry.get('id')} listed twice")
-        listed[entry.get("id")] = set(entry.get("findings", []))
-    for rid, r in records.items():
-        pid = (r["community_patch"] or {}).get("id")
-        if pid and rid not in listed.get(pid, set()):
-            errors.append(f"{rid}: cites patch {pid}, which does not list it")
-    for pid, findings in listed.items():
-        for rid in findings:
-            if (records.get(rid, {}).get("community_patch") or {}).get("id") != pid:
-                errors.append(f"patch {pid} lists {rid}, which does not cite it")
+def finding_number(record):
+    match = re.fullmatch(r"F([1-9][0-9]*)", str(record.get("id", "")))
+    return int(match.group(1)) if match else 0
+
+
+def load_findings(root):
+    """Every finding record, in number order. One file per finding scales; one table does not."""
+    records = [read(p) for p in (Path(root) / "community/findings").rglob("F*.json")]
+    return sorted(records, key=finding_number)
+
+
+def retained_errors(rid, items):
+    if not isinstance(items, list) or any(
+        not isinstance(x, dict)
+        or x.get("kind") not in RETAINED_KINDS
+        or not x.get("text")
+        or not x.get("evidence_url")
+        for x in items
+    ):
+        return [f"{rid}: retained items need a kind, text and evidence"]
+    return []
+
+
+def validate_finding(record, filename=None):
+    if not isinstance(record, dict):
+        return [f"{filename or '?'}: a finding record is a JSON object"]
+    rid = record.get("id", "?")
+    if FINDING_FIELDS - record.keys():
+        return [f"{rid}: missing fields: " + ", ".join(sorted(FINDING_FIELDS - record.keys()))]
+    errors = []
+    if not finding_number(record):
+        errors.append(f"{rid}: the id is F followed by a number")
+    if filename and filename != f"{rid}.json":
+        errors.append(f"{rid}: the file is named {filename}")
+    status = record["status"]
+    if not isinstance(status, str) or status not in FINDING_STATES:
+        return errors + [f"{rid}: invalid status {status}"]
+    for key in ("title", "datasets", "release", "observation"):
+        if not isinstance(record[key], str) or not record[key].strip():
+            errors.append(f"{rid}: {key} is empty")
+        elif key != "observation" and BREAKS_A_ROW.search(record[key]):
+            errors.append(f"{rid}: {key} must be one line without a table bar")
+    for key in ("title", "datasets", "release", "observation", "notes"):
+        if isinstance(record.get(key), str) and RAW_HTML.search(record[key]):
+            errors.append(f"{rid}: {key} holds raw HTML; write Markdown")
+    if not isinstance(record.get("notes", ""), str):
+        errors.append(f"{rid}: notes is text")
+    links = record["links"]
+    if (
+        not isinstance(links, list)
+        or not links
+        or any(not re.fullmatch(r"https://[^\s()<>\"|]+", str(u)) for u in links)
+    ):
+        errors.append(f"{rid}: needs at least one plain https link to its thread")
+    awaiting = record["awaiting_second_measurement"]
+    if not isinstance(awaiting, bool):
+        errors.append(f"{rid}: awaiting_second_measurement is true or false")
+    elif awaiting and status != "open":
+        errors.append(f"{rid}: only an open finding can await its second measurement")
+    for key in ("community_patch", "provider_response", "provider_correction_shipped"):
+        if record[key] is not None and not isinstance(record[key], dict):
+            errors.append(f"{rid}: {key} is an object or null")
+            return errors
+    # A patch or a provider confirmation never closes a finding; only a shipped release does.
+    shipped = record["provider_correction_shipped"]
+    if status == "upstream-fixed" and not shipped:
+        errors.append(f"{rid}: upstream-fixed needs a shipped provider correction")
+    if shipped and not (shipped.get("release") and shipped.get("evidence_url")):
+        errors.append(f"{rid}: shipped correction needs a release and evidence")
+    if shipped and status != "upstream-fixed":
+        errors.append(f"{rid}: a shipped correction makes the finding upstream-fixed")
+    patch = record["community_patch"]
+    if patch and not (
+        patch.get("id")
+        and patch.get("url")
+        and isinstance(patch.get("authorisation"), dict)
+        and patch["authorisation"].get("evidence_url")
+    ):
+        errors.append(f"{rid}: patch needs an id, a pinned url and authorisation evidence")
+    provider = record["provider_response"]
+    if provider and not all(
+        provider.get(k) for k in ("by", "date", "public_summary", "evidence_url")
+    ):
+        errors.append(
+            f"{rid}: provider response needs who, when, a public summary and evidence"
+        )
+    if status not in {"withdrawn", "upstream-fixed"} and not (
+        record["next_action"] and record["review_role"] in ROLES and record["evidence_url"]
+    ):
+        errors.append(f"{rid}: open record needs a next action, review role and evidence")
+    return errors + retained_errors(rid, record["retained"])
+
+
+def validate_contribution_triage(record):
+    """What the triage view needs from a contribution that is still in progress."""
+    rid = record.get("id", "?")
+    errors = retained_errors(rid, record.get("retained", []))
+    if not isinstance(record.get("validation_scope", ""), str):
+        errors.append(f"{rid}: validation_scope is text")
+    if record.get("status") not in {"accepted", "rejected", "superseded"} and not (
+        record.get("next_action") and record.get("review_role") in ROLES and record.get("evidence_url")
+    ):
+        errors.append(f"{rid}: open contribution needs a next action, review role and evidence")
     return errors
 
 
+def link_label(url):
+    """#12 for an issue here, "lci-bafu-catalog #3" for one elsewhere, the host for the rest."""
+    issue = re.search(r"/([^/]+)/(?:-/)?issues/(\d+)$", url)
+    if not issue:
+        return url.split("/")[2]
+    here = "github.com/sentier-dev/sentier-bafu/" in url
+    return f"#{issue.group(2)}" if here else f"{issue.group(1)} #{issue.group(2)}"
+
+
+def link_cell(record):
+    return " · ".join(f"[{link_label(url)}]({url})" for url in record["links"])
+
+
+def index_text(findings):
+    """The one-line-per-finding ledger, generated from the records."""
+    vocabulary = "".join(f"| **{k}** | {v} |\n" for k, v in FINDING_STATES.items())
+    rows = "".join(
+        f"| {r['id']} | {r['datasets']} | {r['title']} | {r['release']} | {r['status']} | {link_cell(r)} |\n"
+        for r in findings
+    )
+    return INDEX_HEAD + vocabulary + INDEX_TABLE + rows
+
+
+def ledger_rows(text):
+    """Rows of the generated ledger: {id: {status, links}}. Other projects read the same table."""
+    rows, inside = {}, False
+    for line in text.splitlines():
+        if line.startswith("## "):
+            inside = line.startswith("## Ledger")
+        if inside and line.startswith("| F"):
+            cells = [c.strip() for c in line.strip().strip("|").split(" | ")]
+            rows[cells[0]] = {
+                "status": cells[4],
+                "links": set(re.findall(r"\((https://[^)]+)\)", cells[5])),
+            }
+    return rows
+
+
 def check(root):
+    root = Path(root)
     errors, records = [], {}
     for path in sorted((root / "community/contributions").glob("*.json")):
         record = read(path)
         errors += [f"{path.name}: {e}" for e in validate(record)]
+        errors += [f"{path.name}: {e}" for e in validate_contribution_triage(record)]
         if record.get("id") in records:
             errors.append(f"duplicate contribution {record.get('id')}")
         records[record.get("id")] = record
@@ -274,17 +363,31 @@ def check(root):
             errors.append("sent recommendation needs delivery evidence")
         if state in {"acknowledged", "resolved"} and not packet.get("response_url"):
             errors.append("provider response needs evidence")
-    rows = ledger_rows((root / "community/findings.md").read_text())
-    errors += validate_reconciliation(
-        read(root / "community/reconciliation.json"),
-        rows,
-        {k: v["status"] for k, v in records.items()},
-    )
+    findings, seen = [], set()
+    for path in sorted((root / "community/findings").rglob("*.json")):
+        try:
+            record = read(path)
+            problems = validate_finding(record, path.name)
+        except Exception as error:  # name the file; never stop at the first broken record
+            errors.append(f"{path.name}: unreadable record ({type(error).__name__}: {error})")
+            continue
+        errors += problems
+        if not isinstance(record, dict):
+            continue
+        if record.get("id") in seen:
+            errors.append(f"duplicate finding {record.get('id')}")
+        seen.add(record.get("id"))
+        if not problems:
+            findings.append(record)
+    findings.sort(key=finding_number)
+    index = root / "community/findings.md"
+    if not errors and (not index.exists() or index.read_text() != index_text(findings)):
+        errors.append("community/findings.md is out of date: run `python3 scripts/community.py index`")
     print(
         "\n".join(errors)
         if errors
-        else f"Validated {len(records)} contribution records, recommendation references "
-        f"and the reconciliation of {len(rows)} findings."
+        else f"Validated {len(findings)} findings, {len(records)} contribution records "
+        "and the recommendation references."
     )
     return int(bool(errors))
 
@@ -353,13 +456,19 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("check")
+    sub.add_parser("index")
     command = sub.add_parser("compare")
     command.add_argument("baseline", type=Path)
     command.add_argument("candidate", type=Path)
     command.add_argument("--out", type=Path, required=True)
     args = parser.parse_args()
+    root = Path(__file__).resolve().parents[1]
     if args.command == "check":
-        return check(Path(__file__).resolve().parents[1])
+        return check(root)
+    if args.command == "index":
+        (root / "community/findings.md").write_text(index_text(load_findings(root)))
+        print("community/findings.md")
+        return 0
     # Refuse overwrite: old evidence must remain available for review.
     report = compare(args.baseline, args.candidate)
     args.out.parent.mkdir(parents=True, exist_ok=True)

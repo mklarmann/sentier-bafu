@@ -103,5 +103,10 @@
   "required_reviewers": [],
   "approvals": [],
   "objections": [],
-  "upstream_project": "BAFU / FOEN; GreenDelta and Brightway Flows for implementation findings"
+  "upstream_project": "BAFU / FOEN; GreenDelta and Brightway Flows for implementation findings",
+  "validation_scope": "Mapping file integrity and workbook-JSON parity passed; pins, unit application, method-scoped fallbacks, independent LCIA reproduction and review not run. Flow correspondence alone does not demonstrate LCIA integration.",
+  "next_action": "Pin the LCIA package from brightway-flows #386 and the scoring code, then run the missing checks.",
+  "review_role": "importer maintainer",
+  "evidence_url": "https://github.com/sentier-dev/sentier-bafu/blob/main/community/runs/mutel-mapping-audit.json",
+  "retained": []
 }

@@ -21,5 +21,10 @@
   "required_reviewers": [],
   "approvals": [],
   "objections": [],
-  "upstream_project": ""
+  "upstream_project": "",
+  "validation_scope": "",
+  "next_action": "",
+  "review_role": "",
+  "evidence_url": "",
+  "retained": []
 }

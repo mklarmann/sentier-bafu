@@ -1,0 +1,22 @@
+{
+  "id": "F5",
+  "title": "Chloride to water: seven sub-compartments in the files, one entry without sub-compartment in the flow list",
+  "datasets": "flow list, all releases",
+  "release": "2026 v1",
+  "status": "informational",
+  "awaiting_second_measurement": false,
+  "observation": "The XML declares chloride to water with seven sub-compartments (ocean, river, groundwater …); the published flow list carries one `Chloride` without sub-compartment. A structure question, not a value defect.",
+  "links": [
+    "https://gitlab.com/eos-lci/lci-bafu-catalog/-/issues/5"
+  ],
+  "community_patch": null,
+  "provider_response": null,
+  "provider_correction_shipped": null,
+  "reviewer_consensus": null,
+  "pipeline_run_evidence": null,
+  "validation_scope": "Structure question about the published flow list; no value defect.",
+  "next_action": "Check whether the Brightway Flows crosswalk keeps the seven chloride sub-compartments distinct.",
+  "review_role": "flow curator",
+  "evidence_url": "https://gitlab.com/eos-lci/lci-bafu-catalog/-/issues/5",
+  "retained": []
+}

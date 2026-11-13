@@ -1,0 +1,37 @@
+{
+  "id": "F8",
+  "title": "102 flagged aggregated datasets and 37 unflagged candidates",
+  "datasets": "102 flagged and 37 structurally aggregated candidates",
+  "release": "2026 v1",
+  "status": "handled-in-layer",
+  "awaiting_second_measurement": false,
+  "observation": "102 datasets are cumulative LCIs flagged ecoSpold `dataSetInformation@type=2` (no supplier links); 37 more PlasticsEurope-era eco-profiles are aggregated by structure (no supply input, > 50 elementary flows) but not flagged. Matters for every disaggregation or copied-process layer. Community-fixes [patch 0011](https://github.com/sentier-dev/bafu-community-fixes/pull/5) flags 40 datasets `type=2`: the 37, plus one more eco-profile and two inventories without inputs (see the notes).",
+  "notes": "The hackathon's [extended dataset list](https://github.com/LouisFreboeuf/brightcon-hacktlon_reverse-engineering-bafu/blob/f4784965c12b82f2731e7cdcd696c11afaf434a6/results/system_terminated_extended.csv)\ncontains **37 distinct dataset UUIDs with `detected_by=structure`**. Each row\nprovides its name, location, unit, input count and elementary-flow count. This\nsubset includes four names prefixed `xx`; excluding those gives 33, not 22.\n\nThe [detection script](https://github.com/LouisFreboeuf/brightcon-hacktlon_reverse-engineering-bafu/blob/f4784965c12b82f2731e7cdcd696c11afaf434a6/scripts/find_system_processes.py)\nselects datasets outside the flagged list with more than 50 elementary exchanges\nand no production-supply inputs after excluding waste-treatment services and\ninfrastructure inputs measured in `unit`. It also excludes emission-only,\ndisposal, discharge, provision and resource-correction activities by name.\nThese are structural candidates; the rule and source generation matter when\ncomparing another search.\n\nCommunity-fixes [patch 0011](https://github.com/sentier-dev/bafu-community-fixes/pull/5)\n(merged 15 October 2026) sets `type=2` on 40 datasets, matched by number: the\n37 structural candidates; `xxx Acrylonitrile, at plant`, which has the same\nstructure but which the hackathon's rule missed because one of its disposal\ninputs starts with `xxx`; `Iridium production` (GLO), whose comment calls it an\naggregated inventory; and `Cabinet panel` (CH), which has no inputs but 17 kg\nfossil CO₂ per m² of panel. After the patch, 142 datasets are `type=2`. The patch\nrecords this as a community convention, not schema compliance, and the\nquestion to BAFU stays open.\n\nThe table contains 101 flagged rows plus these 37 structural rows, for 138 total.\nThe separate 102nd flagged dataset, `196588 Disposal, rectangular straw bale`,\nis omitted from that survey because it has no elementary-flow vector (F10).\n\nThe hackathon's [rebuild documentation](https://github.com/LouisFreboeuf/brightcon-hacktlon_reverse-engineering-bafu/blob/f4784965c12b82f2731e7cdcd696c11afaf434a6/exports/README.md#L415)\nreports **22 of the 37 rebuilt**, with 15 remaining. That 22 describes rebuild\ncoverage. An independently identified set of 22 still needs a UUID comparison;\nequal counts do not establish that they are the same subset.\n\nCount provenance checked on 13 October 2026 against the published table at\ncommit `f4784965c12b82f2731e7cdcd696c11afaf434a6`. This check verifies the list\nbehind the reported count; it is not a new census of raw ecoSpold files, a\nvalidation of the reconstructed inventories, or an acceptance threshold for a\ncurrent import. Continue the source comparison in\n[#3](https://github.com/sentier-dev/sentier-bafu/issues/3).",
+  "links": [
+    "https://github.com/sentier-dev/sentier-bafu/issues/3",
+    "https://gitlab.com/eos-lci/lci-bafu-catalog/-/issues/11"
+  ],
+  "community_patch": {
+    "id": "0011-flag-aggregated",
+    "url": "https://github.com/sentier-dev/bafu-community-fixes/blob/053c799a4d3e129747f47d6775ea88647c0bec78/src/bafu_community_fixes/patches/p0011_flag_aggregated.py",
+    "authorisation": {
+      "by": "Chris Mutel",
+      "evidence_url": "https://github.com/sentier-dev/bafu-community-fixes/blob/053c799a4d3e129747f47d6775ea88647c0bec78/src/bafu_community_fixes/patches/p0011_flag_aggregated.py"
+    }
+  },
+  "provider_response": null,
+  "provider_correction_shipped": null,
+  "reviewer_consensus": null,
+  "pipeline_run_evidence": "https://github.com/sentier-dev/bafu-community-fixes/pull/5",
+  "validation_scope": "Patch 0011 matches 40 datasets by number; all 37 structural candidates of the hackathon list are among them (UUID membership checked 2026-10-21), plus xxx Acrylonitrile, Iridium production and Cabinet panel. The 37 candidates stay distinct from the 22 the hackathon reports rebuilt. A full --strict pipeline run on the release is recorded in the patch PR: 142 datasets type 2 afterwards, 40 carrying 0011-flag-aggregated.",
+  "next_action": "Ask BAFU whether these 40 should be flagged type 2 in the release; the patch records this as a community convention, not schema compliance.",
+  "review_role": "maintainer",
+  "evidence_url": "https://github.com/sentier-dev/bafu-community-fixes/pull/5",
+  "retained": [
+    {
+      "kind": "ask",
+      "text": "An `aggregated` column (flag / structure / none) in sentier-inventory processes, with 102 + 37 as the acceptance test.",
+      "evidence_url": "https://github.com/sentier-dev/sentier-bafu/issues/3"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "id": "F0",
+  "title": "",
+  "datasets": "",
+  "release": "",
+  "status": "open",
+  "awaiting_second_measurement": true,
+  "observation": "",
+  "links": [],
+  "community_patch": null,
+  "provider_response": null,
+  "provider_correction_shipped": null,
+  "reviewer_consensus": null,
+  "pipeline_run_evidence": null,
+  "validation_scope": "",
+  "next_action": "",
+  "review_role": "reviewer",
+  "evidence_url": "",
+  "retained": []
+}

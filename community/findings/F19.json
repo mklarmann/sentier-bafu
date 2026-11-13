@@ -1,0 +1,22 @@
+{
+  "id": "F19",
+  "title": "Asparagus seedling 491975: 14 of 20 input amounts sit on the wrong row",
+  "datasets": "491975 Asparagus seedling, open field, at production site (GLO, p)",
+  "release": "2025 v2, 2026 v1",
+  "status": "open",
+  "awaiting_second_measurement": true,
+  "observation": "14 of its 20 technosphere and land rows carry the amount, with its pedigree comment, of a different row of the report's Figure 6 (*Life cycle assessment of strawberry and asparagus production*, Kägi et al., 2022). `Pesticide unspecified` reads 0.04 kg per seedling against the figure's 3.35E-06 kg. That one row is 89 % of the seedling's GWP100 in the workbook (0.392 kg CO₂-eq/p; about 0.024 with the figure's assignment) and 22–37 % of its three consumers, `Asparagus, conventional` 435703 (CH), 378451 (PE) and 202096 (MX).",
+  "links": [
+    "https://github.com/sentier-dev/sentier-bafu/issues/41"
+  ],
+  "community_patch": null,
+  "provider_response": null,
+  "provider_correction_shipped": null,
+  "reviewer_consensus": null,
+  "pipeline_run_evidence": null,
+  "validation_scope": "Measured on the ecoSpold XML of 2025 v2 and 2026 v1 against the report figure, row by row by amount, and on the LCIA workbook; filed 31 October 2026. Not yet re-measured by a second person.",
+  "next_action": "Independent re-measurement (drop needs-triage), then send to BAFU with the next batch.",
+  "review_role": "reviewer",
+  "evidence_url": "https://github.com/sentier-dev/sentier-bafu/issues/41",
+  "retained": []
+}

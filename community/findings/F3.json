@@ -1,0 +1,36 @@
+{
+  "id": "F3",
+  "title": "23 supplier links declare location ENTSO (registered as ENTSO-E); two declare CH for GLO/RER suppliers",
+  "datasets": "hard-coal supply chains + 2 others",
+  "release": "2026 v1",
+  "status": "upstream-reported",
+  "awaiting_second_measurement": false,
+  "observation": "23 exchanges declare the supplier location `ENTSO`; no dataset is registered as ENTSO, 25 as ENTSO-E, and every one of the 23 suppliers exists as ENTSO-E. Two more exchanges declare `CH` for suppliers that exist only as GLO / RER (`Disposal, concrete, 5% water, to inert material landfill`; `Direct air capture system, sorbent-based, 100ktCO2`). An importer linking by name + location drops all 25 silently; one linking by dataset number does not. BAFU confirmed this by email on 12 October 2026 and announced a correction for its next release; community-fixes [patch 0002](https://github.com/sentier-dev/bafu-community-fixes/blob/053c799a4d3e129747f47d6775ea88647c0bec78/src/bafu_community_fixes/patches/p0002_supplier_locations.py) uses the suppliers' locations until then.",
+  "links": [
+    "https://github.com/sentier-dev/sentier-bafu/issues/8",
+    "https://gitlab.com/eos-lci/lci-bafu-catalog/-/issues/3"
+  ],
+  "community_patch": {
+    "id": "0002-supplier-locations",
+    "url": "https://github.com/sentier-dev/bafu-community-fixes/blob/053c799a4d3e129747f47d6775ea88647c0bec78/src/bafu_community_fixes/patches/p0002_supplier_locations.py",
+    "authorisation": {
+      "by": "Chris Mutel",
+      "evidence_url": "https://github.com/sentier-dev/bafu-community-fixes/blob/053c799a4d3e129747f47d6775ea88647c0bec78/src/bafu_community_fixes/patches/p0002_supplier_locations.py"
+    }
+  },
+  "provider_response": {
+    "by": "Marine Manche, BAFU",
+    "channel": "email",
+    "date": "2026-10-12",
+    "public_summary": "Confirmed the 25 supplier locations; to be corrected in the next release.",
+    "evidence_url": "https://github.com/sentier-dev/bafu-community-fixes/blob/053c799a4d3e129747f47d6775ea88647c0bec78/src/bafu_community_fixes/patches/p0002_supplier_locations.py"
+  },
+  "provider_correction_shipped": null,
+  "reviewer_consensus": null,
+  "pipeline_run_evidence": null,
+  "validation_scope": "Re-measured on the release files; the patch changes a location only when a supplier with the new location exists.",
+  "next_action": "Verify the 25 locations in the next BAFU release; then mark upstream-fixed and retire patch 0002. F14 and F16 are the same class but not part of patch 0002.",
+  "review_role": "maintainer",
+  "evidence_url": "https://github.com/sentier-dev/sentier-bafu/issues/8",
+  "retained": []
+}

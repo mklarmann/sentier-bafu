@@ -1,7 +1,10 @@
+import contextlib
 import copy
 import importlib.util
+import io
 import json
 from pathlib import Path
+import shutil
 import tempfile
 import unittest
 
@@ -104,84 +107,194 @@ class ContributionTests(unittest.TestCase):
                     records.compare(before, after)
 
 
-class ReconciliationTests(unittest.TestCase):
+class FindingRecordTests(unittest.TestCase):
     def setUp(self):
-        self.reconciliation = records.read(ROOT / "community/reconciliation.json")
-        self.rows = records.ledger_rows((ROOT / "community/findings.md").read_text())
-        self.contributions = {
-            p.stem: records.read(p)["status"]
-            for p in (ROOT / "community/contributions").glob("*.json")
-        }
+        self.findings = {r["id"]: r for r in records.load_findings(ROOT)}
 
-    def errors(self):
-        return records.validate_reconciliation(self.reconciliation, self.rows, self.contributions)
+    def errors(self, rid):
+        return records.validate_finding(self.findings[rid], f"{rid}.json")
 
-    def record(self, rid):
-        return next(r for r in self.reconciliation["records"] if r["id"] == rid)
+    def test_committed_records_are_valid(self):
+        self.assertTrue(self.findings)
+        for rid in self.findings:
+            self.assertEqual(self.errors(rid), [], rid)
 
-    def test_committed_reconciliation_matches_ledger(self):
-        self.assertEqual(self.errors(), [])
+    def test_committed_index_is_generated_from_the_records(self):
+        index = (ROOT / "community/findings.md").read_text()
+        self.assertEqual(index, records.index_text(list(self.findings.values())))
+        rows = records.ledger_rows(index)
+        self.assertEqual(set(rows), set(self.findings))
+        for rid, row in rows.items():
+            self.assertEqual(row["status"], self.findings[rid]["status"])
+            self.assertEqual(row["links"], set(self.findings[rid]["links"]))
 
-    def test_status_drift_is_reported(self):
-        self.record("F1")["ledger_status"]["after"] = "open"
-        self.assertTrue(self.errors())
+    def test_unknown_status_is_reported(self):
+        self.findings["F2"]["status"] = "Open"
+        self.assertTrue(self.errors("F2"))
 
     def test_patch_cannot_mark_a_finding_fixed(self):
-        self.rows["F1"]["status"] = "upstream-fixed"
-        self.record("F1")["ledger_status"]["after"] = "upstream-fixed"
-        self.assertTrue(self.errors())
-        self.record("F1")["provider_correction_shipped"] = {
+        self.findings["F1"]["status"] = "upstream-fixed"
+        self.assertTrue(self.errors("F1"))
+        self.findings["F1"]["provider_correction_shipped"] = {
             "release": "BAFU:2027 v1",
             "evidence_url": "https://example.org/release",
         }
-        self.assertEqual(self.errors(), [])
-
-    def test_every_ledger_finding_needs_a_record(self):
-        self.rows["F99"] = {"status": "open", "links": set()}
-        self.assertTrue(self.errors())
-
-    def test_ledger_links_are_preserved(self):
-        self.rows["F2"]["links"].add("https://example.org/thread")
-        self.assertTrue(self.errors())
-
-    def test_open_record_needs_next_action_and_role(self):
-        self.record("F9")["review_role"] = "anyone"
-        self.assertTrue(self.errors())
-
-    def test_provider_response_needs_public_evidence(self):
-        self.record("F3")["provider_response"]["evidence_url"] = ""
-        self.assertTrue(self.errors())
-
-    def test_contribution_status_follows_its_record(self):
-        self.contributions["C002"] = "accepted"
-        self.assertTrue(self.errors())
-
-    def test_link_dropped_from_ledger_is_reported(self):
-        self.rows["F1"]["links"].pop()
-        self.assertTrue(self.errors())
-
-    def test_unknown_kind_is_reported(self):
-        self.record("F2")["kind"] = "Finding"
-        self.assertTrue(self.errors())
-
-    def test_patch_ids_must_agree_both_ways(self):
-        self.record("F1")["community_patch"]["id"] = "0002-supplier-locations"
-        self.assertTrue(self.errors())
-        self.setUp()
-        self.reconciliation["patches"].append({"id": "9999-invented", "findings": ["F2"]})
-        self.assertTrue(self.errors())
-
-    def test_malformed_record_is_reported_not_raised(self):
-        del self.record("F9")["provider_correction_shipped"]
-        self.assertTrue(self.errors())
-
-    def test_retained_items_need_evidence(self):
-        self.record("F14")["retained"][0]["evidence_url"] = ""
-        self.assertTrue(self.errors())
+        self.assertEqual(self.errors("F1"), [])
 
     def test_shipped_correction_requires_upstream_fixed(self):
-        self.record("F1")["provider_correction_shipped"] = {
+        self.findings["F9"]["provider_correction_shipped"] = {
             "release": "BAFU:2027 v1",
             "evidence_url": "https://example.org/release",
         }
-        self.assertTrue(self.errors())
+        self.assertTrue(self.errors("F9"))
+
+    def test_open_record_needs_next_action_and_role(self):
+        self.findings["F9"]["review_role"] = "anyone"
+        self.assertTrue(self.errors("F9"))
+
+    def test_provider_response_needs_public_evidence(self):
+        self.findings["F3"]["provider_response"]["evidence_url"] = ""
+        self.assertTrue(self.errors("F3"))
+
+    def test_patch_needs_pinned_url_and_authorisation(self):
+        self.findings["F1"]["community_patch"]["authorisation"] = {}
+        self.assertTrue(self.errors("F1"))
+
+    def test_retained_items_need_evidence(self):
+        self.findings["F14"]["retained"][0]["evidence_url"] = ""
+        self.assertTrue(self.errors("F14"))
+
+    def test_malformed_record_is_reported_not_raised(self):
+        del self.findings["F9"]["provider_correction_shipped"]
+        self.assertTrue(self.errors("F9"))
+
+    def test_record_needs_a_thread_and_one_line_fields(self):
+        self.findings["F2"]["links"] = []
+        self.assertTrue(self.errors("F2"))
+        self.setUp()
+        self.findings["F2"]["title"] = "two | cells"
+        self.assertTrue(self.errors("F2"))
+
+    def test_file_name_must_match_the_id(self):
+        self.assertTrue(records.validate_finding(self.findings["F2"], "F3.json"))
+
+    def test_rules_one_by_one(self):
+        cases = {
+            "patch without an id": lambda r: r["community_patch"].pop("id"),
+            "patch without a url": lambda r: r["community_patch"].pop("url"),
+            "patch that is not an object": lambda r: r.update(community_patch="0001"),
+            "link that is not https": lambda r: r.update(links=["http://example.org/x"]),
+            "link with a bracket": lambda r: r.update(links=["https://example.org/a)b"]),
+            "empty title": lambda r: r.update(title=" "),
+            "title over two lines": lambda r: r.update(title="one\ntwo"),
+            "title with a line separator": lambda r: r.update(title="one\u2028two"),
+            "raw HTML in the observation": lambda r: r.update(observation="see <script>x</script>"),
+            "raw HTML in the datasets": lambda r: r.update(datasets="<img src=x onerror=y>"),
+            "retained item of an unknown kind": lambda r: r["retained"].append(
+                {"kind": "rumour", "text": "t", "evidence_url": "https://example.org"}
+            ),
+            "id that is not F and a number": lambda r: r.update(id="F01"),
+            "awaiting flag that is not a boolean": lambda r: r.update(awaiting_second_measurement="no"),
+            "awaiting a second measurement after being reported": lambda r: r.update(
+                awaiting_second_measurement=True
+            ),
+            "status that is a list": lambda r: r.update(status=["open"]),
+        }
+        for name, change in cases.items():
+            self.setUp()
+            record = self.findings["F1"]  # upstream-reported, with a patch
+            change(record)
+            self.assertTrue(records.validate_finding(record), name)
+
+    def test_shipped_correction_needs_release_and_evidence(self):
+        self.findings["F17"]["provider_correction_shipped"].pop("evidence_url")
+        self.assertTrue(self.errors("F17"))
+
+    def test_a_record_that_is_not_an_object_is_reported(self):
+        self.assertTrue(records.validate_finding(["F1"], "F1.json"))
+
+    def test_index_holds_thousands_of_records(self):
+        many = [dict(self.findings["F2"], id=f"F{n}") for n in range(1, 5001)]
+        self.assertEqual(len(records.ledger_rows(records.index_text(many))), 5000)
+
+
+class ContributionTriageTests(unittest.TestCase):
+    def setUp(self):
+        self.record = records.read(ROOT / "community/contributions/C001.json")
+
+    def test_committed_contributions_carry_triage_fields(self):
+        for path in (ROOT / "community/contributions").glob("*.json"):
+            self.assertEqual(
+                records.validate_contribution_triage(records.read(path)), [], path.name
+            )
+
+    def test_open_contribution_needs_next_action_and_role(self):
+        self.record["next_action"] = ""
+        self.assertTrue(records.validate_contribution_triage(self.record))
+
+    def test_accepted_contribution_needs_no_next_action(self):
+        self.record.update(status="accepted", next_action=None, review_role=None)
+        self.assertEqual(records.validate_contribution_triage(self.record), [])
+
+
+class CheckTests(unittest.TestCase):
+    """The whole check, on a copy of the records with one thing wrong."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        shutil.copytree(ROOT / "community", self.root / "community")
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def result(self):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = records.check(self.root)
+        return code, out.getvalue()
+
+    def test_committed_tree_passes(self):
+        self.assertEqual(self.result()[0], 0)
+
+    def test_stale_index_is_reported(self):
+        path = self.root / "community/findings/F2.json"
+        record = records.read(path)
+        record["title"] += " (edited)"
+        path.write_text(json.dumps(record))
+        code, text = self.result()
+        self.assertEqual(code, 1)
+        self.assertIn("out of date", text)
+
+    def test_duplicate_and_misnamed_record_are_reported(self):
+        shutil.copy(self.root / "community/findings/F2.json", self.root / "community/findings/F9000.json")
+        code, text = self.result()
+        self.assertEqual(code, 1)
+        self.assertIn("duplicate finding F2", text)
+        self.assertIn("the file is named F9000.json", text)
+
+    def test_broken_file_is_named_and_does_not_stop_the_check(self):
+        (self.root / "community/findings/F9001.json").write_text("{not json")
+        (self.root / "community/findings/F9002.json").write_text("[1, 2]")
+        code, text = self.result()
+        self.assertEqual(code, 1)
+        self.assertIn("F9001.json: unreadable record", text)
+        self.assertIn("F9002.json", text)
+
+    def test_invalid_finding_is_reported_through_check(self):
+        path = self.root / "community/findings/F2.json"
+        record = records.read(path)
+        record["status"] = "Open"
+        path.write_text(json.dumps(record))
+        self.assertIn("F2: invalid status", self.result()[1])
+
+    def test_contribution_without_next_action_is_reported_through_check(self):
+        path = self.root / "community/contributions/C001.json"
+        record = records.read(path)
+        record["next_action"] = ""
+        path.write_text(json.dumps(record))
+        self.assertIn("open contribution needs a next action", self.result()[1])
+
+    def test_finding_template_is_a_valid_start(self):
+        template = records.read(ROOT / "community/templates/finding.json")
+        self.assertEqual(set(template), records.FINDING_FIELDS)

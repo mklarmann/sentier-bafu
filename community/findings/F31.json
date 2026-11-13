@@ -1,0 +1,22 @@
+{
+  "id": "F31",
+  "title": "Eight exchanges on two flows have no row in the 2025 flow list",
+  "datasets": "304227 Polystyrene, expandable, at plant (RER): `Nitrogen dioxide, RAF` to air; seven RER eco-profiles: `Uranium` to water",
+  "release": "2025 v2, 2026 v1",
+  "status": "open",
+  "awaiting_second_measurement": true,
+  "observation": "Counted by name and compartment, 8 of 293,747 elementary exchanges have no row in the flow list (`SetupDatabase_file.CSV` of the BAFU:2025 SimaPro import guide; the 2026 download has no such file): it has no `Nitrogen dioxide, RAF` and lists waterborne uranium only by isotope. For 2026 the uranium gap is in that 2025 file, not in the release: the release's openLCA package has `Uranium` to water in kg with all seven amounts. Only the RAF name is a real difference, and the package carries that row as `Nitrogen dioxide`. 304227 has no `Nitrogen oxides` row while 13 of the 14 datasets from its generator do, so the row looks like its NOx under a name nothing else uses, and the published `Main air pollutants and PM` appears not to count it. Refines F4, which counted by name.",
+  "links": [
+    "https://github.com/sentier-dev/sentier-bafu/issues/45"
+  ],
+  "community_patch": null,
+  "provider_response": null,
+  "provider_correction_shipped": null,
+  "reviewer_consensus": null,
+  "pipeline_run_evidence": null,
+  "validation_scope": "Every elementary exchange of the ecoSpold XML matched on name and compartment against the 2025 flow list (SetupDatabase_file.CSV of the BAFU:2025 SimaPro import guide; the 2026 download has no such file); the release's openLCA package read on 6 November for all 7 uranium exchanges (kg) and the 304227 row. Filed 31 October 2026. Not yet re-measured by a second person.",
+  "next_action": "Independent re-measurement (drop needs-triage), then send to BAFU with the next batch.",
+  "review_role": "reviewer",
+  "evidence_url": "https://github.com/sentier-dev/sentier-bafu/issues/45",
+  "retained": []
+}

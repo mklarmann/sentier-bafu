@@ -1,0 +1,31 @@
+{
+  "id": "F17",
+  "title": "LCIA workbook (June file): ecotoxicity inorganics and organics columns swapped",
+  "datasets": "published LCIA workbook 2026 v1, `Ecotoxicity freshwater (inorganics)` / `(organics)`",
+  "release": "2026 v1 (June file)",
+  "status": "upstream-fixed",
+  "awaiting_second_measurement": false,
+  "observation": "In the June 2026 file (sha256 `a213ab5a…`) the two sub-indicator columns carry each other's header: `Copper, primary, at refinery` (GLO) shows 0.60 inorganics against 170 organics CTUe/kg, and organics is larger in 11,600 of 11,947 rows. BAFU's corrected file of 15 July 2026 (`BAFU-2026 v1 LCIA Results_corrected.xlsx`, sha256 `7e9f1c9f…`) exchanges the two header labels. Compared cell by cell, only the date cell and those two headers differ, and every value is identical. We measured the June file, so this row was filed after BAFU had corrected it. A tool that reads the columns by position keeps the swap on either file, and both files say `BAFU:2026 v1`: only the date cell or the sha256 tells them apart. The total is unaffected.",
+  "links": [
+    "https://github.com/sentier-dev/sentier-bafu/issues/35"
+  ],
+  "community_patch": null,
+  "provider_response": null,
+  "provider_correction_shipped": {
+    "release": "BAFU:2026 v1 LCIA results workbook, corrected file of 15 July 2026 (BAFU-2026 v1 LCIA Results_corrected.xlsx, sha256 7e9f1c9f9c171f847b5d445c8d939896cc7594571a77029ca6c098f1dde7b672)",
+    "evidence_url": "https://github.com/sentier-dev/sentier-bafu/issues/35#issuecomment-6416361584"
+  },
+  "reviewer_consensus": null,
+  "pipeline_run_evidence": "https://github.com/sentier-dev/sentier-bafu/blob/main/community/runs/sentier-brightway-backtest-2026-10-21.json",
+  "validation_scope": "Measured on the June workbook (sha256 a213ab5a…) and three method sources on 2026-10-21; on 2026-10-26 the June and July files were compared cell by cell: three cells differ (the date and the two exchanged sub-indicator headers), every value is identical.",
+  "next_action": null,
+  "review_role": null,
+  "evidence_url": "https://github.com/sentier-dev/sentier-bafu/issues/35#issuecomment-6416361584",
+  "retained": [
+    {
+      "kind": "earlier-interpretation",
+      "text": "Filed on 21 October as a swap in the published workbook. It was measured on the June file, which BAFU had already replaced on 15 July by relabelling the two headers; a tool reading the columns by position still has the swap.",
+      "evidence_url": "https://github.com/sentier-dev/sentier-bafu/issues/35#issuecomment-6416361584"
+    }
+  ]
+}

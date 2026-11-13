@@ -47,7 +47,7 @@ decision about an official distribution.
 
 ## Aggregated dataset list
 
-The [F8 source list and counting criteria](findings.md#f8-the-list-behind-the-37-unflagged-candidates)
+The [F8 source list and counting criteria](findings/F8.json)
 identify the 37 unflagged structural candidates, including their UUIDs. The
 hackathon separately reports 22 of those candidates rebuilt. These counts
 describe different stages; a comparison with another search should use the
@@ -59,5 +59,5 @@ The existing `mapping-review.html` URL stays useful for links already shared.
 It now points to implementation and issue status rather than a standalone
 assessment of Chris’s reports. The earlier file-consistency receipt remains
 in C002’s history; it does not establish score reproduction, adoption or team
-consensus. [Import & use](../site/import.md) and
+consensus. [The patched release](../site/import.md) and
 [application tests](application-and-testing.md) describe the general workflow.

@@ -1,0 +1,23 @@
+{
+  "id": "F21",
+  "title": "Four gas-combustion datasets take 0.5 MJ of gas per MJ burned but emit the CO₂ of 1 MJ",
+  "datasets": "219148 (LU), 491188 (LT), 369980 (RME), 232890 (KR) `Natural gas, burned in power plant or heat plant` (MJ)",
+  "release": "2025 v2, 2026 v1",
+  "status": "open",
+  "awaiting_second_measurement": true,
+  "observation": "One gas input of 0.5 MJ per MJ burned. The other 34 datasets of this name take 1.0 MJ, and all 38 emit 0.0561 kg fossil CO₂, the CO₂ of 1 MJ. The workbook scores the four 11.3 % (LU, LT, RME) and 15.4 % (KR) below their same-supplier siblings, which is the missing half of the supply chain. Eleven datasets consume them directly.",
+  "links": [
+    "https://github.com/sentier-dev/sentier-bafu/issues/42",
+    "https://gitlab.com/eos-lci/lci-bafu-catalog/-/issues/36"
+  ],
+  "community_patch": null,
+  "provider_response": null,
+  "provider_correction_shipped": null,
+  "reviewer_consensus": null,
+  "pipeline_run_evidence": null,
+  "validation_scope": "Measured on all 38 datasets of the name in the ecoSpold XML of 2025 v2 and 2026 v1 and on the LCIA workbook; filed 31 October 2026. Not yet re-measured by a second person.",
+  "next_action": "Independent re-measurement (drop needs-triage), then send to BAFU with the next batch.",
+  "review_role": "reviewer",
+  "evidence_url": "https://github.com/sentier-dev/sentier-bafu/issues/42",
+  "retained": []
+}

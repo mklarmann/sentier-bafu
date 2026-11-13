@@ -1,0 +1,29 @@
+{
+  "id": "F12",
+  "title": "The same elementary flow is declared in two units across datasets (Bq/kBq, m/km, kWh/MJ, Nm3/m3)",
+  "datasets": "radionuclide, noise and waste-heat flows",
+  "release": "2026 v1",
+  "status": "informational",
+  "awaiting_second_measurement": false,
+  "observation": "The same flow is declared in two units in different datasets. Counted by name and compartment, 112 flows: 107 radionuclides in Bq (3,171 exchanges on 20 cumulative datasets) and kBq, 2 road-noise flows in m (43 exchanges) and km, `Heat, waste` in kWh (3) and MJ, and 2 gas resources in Nm3 (127 exchanges) and m3; the first count listed three unit pairs. The flow list (`SetupDatabase_file.CSV` of the BAFU:2025 SimaPro import guide; the 2026 download has no such file) carries one unit per flow and gives the factors (kBq = 1000 Bq, km = 1000 m, kWh = 3.6 MJ, Nm3 = 1 m3); whether 1 Nm3 = 1 m3 holds for those 127 exchanges is open. An importer that compares unit labels only either writes Bq amounts against kBq flows (EF 3.1 ionising radiation ×1,000; GWP unaffected) or drops the exchanges. Not a value error; every importer must convert explicitly. The lci-bafu-catalog layer converts Bq, m and kWh and records it per exchange; its Nm3 route is a label mapping that records nothing.",
+  "links": [
+    "https://github.com/sentier-dev/sentier-bafu/issues/32",
+    "https://gitlab.com/eos-lci/lci-bafu-catalog/-/issues/28"
+  ],
+  "community_patch": null,
+  "provider_response": null,
+  "provider_correction_shipped": null,
+  "reviewer_consensus": null,
+  "pipeline_run_evidence": null,
+  "validation_scope": "Counted on the release files. The lci-bafu-catalog layer converts Bq/kBq, m/km and kWh/MJ and records it per exchange; its Nm3 route is a label mapping that records nothing, and whether 1 Nm3 = 1 m3 holds for those 127 exchanges is open. sentier-brightway #4 (open) adds file-export tests for Bq→kBq, km→m and kWh→MJ; whether they cover the release's m-declared noise exchanges is not verified. Re-counted on the 2026 v1 files on 31 October by name and compartment: 112 flows in two units, including 2 gas resources in Nm3 and m3 (127 exchanges); the first count listed three unit pairs.",
+  "next_action": "Run the Cobalt-58 parity check against sentier-importers.",
+  "review_role": "importer maintainer",
+  "evidence_url": "https://github.com/sentier-dev/sentier-bafu/issues/32",
+  "retained": [
+    {
+      "kind": "earlier-interpretation",
+      "text": "The first count listed three unit pairs. Counted by name and compartment, 112 flows.",
+      "evidence_url": "https://github.com/sentier-dev/sentier-bafu/issues/32"
+    }
+  ]
+}
