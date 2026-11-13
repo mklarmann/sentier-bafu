@@ -211,3 +211,110 @@ def test_appends_to_a_file_and_annotates_on_github(table, summarise, tmp_path, m
     assert capsys.readouterr().out.startswith(
         "::error title=Full release run::0001-none changed nothing on the full release"
     )
+
+
+# --- What each patch matched, against an earlier run -----------------------------------
+
+
+def _with_counts(path, id, **counts):
+    summary = json.loads(path.read_text())
+    next(s for s in summary["steps"] if s["id"] == id).update(counts)
+    path.write_text(json.dumps(summary))
+    return path
+
+
+def test_every_patch_is_listed_with_what_it_matched_before(table, summarise, capsys):
+    base = summarise("base", {"0001-one": (_lognormal, "O"), "0002-two": (_mean_value, "O")})
+    head = summarise("head", {"0001-one": (_lognormal, "O"), "0002-two": (_mean_value, "O")})
+    assert table.main([str(head), "--base", str(base), "--check"]) == 0
+    out = capsys.readouterr().out
+    assert "### What each patch matched" in out
+    assert "| `0001-one` | 1 | 1 | 1 | 1 | 1 | 1 | as before |" in out
+    assert "| `0002-two` | 1 | 1 | 1 | 1 | 1 | 1 | as before |" in out
+    assert "[!CAUTION]" not in out and "[!WARNING]" not in out
+
+
+def test_patch_whose_matches_fell_to_zero_fails_and_says_what_it_matched_before(
+    table, summarise, capsys
+):
+    base = summarise("base", {"0001-one": (_lognormal, "O"), "0002-two": (_mean_value, "O")})
+    head = summarise("head", {"0001-one": (_lognormal, "O"), "0002-two": (_nothing, "O")})
+    assert table.main([str(head), "--base", str(base), "--check"]) == 1
+    captured = capsys.readouterr()
+    assert "> [!CAUTION]\n> - `0002-two` changed nothing on the full release" in captured.out
+    assert "it changed 1 dataset(s)." in captured.out
+    assert "| `0002-two` | 0 | 0 | 0 | 1 | 1 | 1 | **matched nothing** |" in captured.out
+    assert "error: 0002-two changed nothing on the full release" in captured.err
+
+
+def test_patch_that_matched_fewer_than_before_is_a_warning(table, summarise, capsys):
+    base = summarise("base", {"0001-one": (_lognormal, "O")})
+    _with_counts(base, "0001-one", datasets=25, exchanges=25, changes=25)
+    head = summarise("head", {"0001-one": (_lognormal, "O")})
+    _with_counts(head, "0001-one", datasets=24, exchanges=24, changes=24)
+    assert table.main([str(head), "--base", str(base), "--check"]) == 0  # said, not failed
+    out = capsys.readouterr().out
+    assert (
+        "> [!WARNING]\n> - `0001-one` changed 24 dataset(s), 24 exchange(s) and 24 value(s);" in out
+    )
+    assert "it changed 25, 25 and 25." in out
+    assert "| `0001-one` | 24 | 24 | 24 | 25 | 25 | 25 | **fewer than before** |" in out
+
+
+def test_counts_are_compared_with_the_manifest_of_the_previous_release(
+    table, summarise, tmp_path, capsys
+):
+    head = summarise("head", {"0001-one": (_lognormal, "O"), "0003-new": (_mean_value, "O")})
+    fingerprint = json.loads(head.read_text())["release"]["fingerprint"]
+    manifest = {
+        "tag": "patched-2026-v1.1",
+        "provider_release": {"fingerprint": fingerprint},
+        "patches": [
+            {"id": "0001-one", "datasets_changed": 1, "exchanges_changed": 1, "values_changed": 1},
+            {"id": "0002-gone", "datasets_changed": 3, "exchanges_changed": 3, "values_changed": 3},
+        ],
+    }
+    previous = tmp_path / "previous.json"
+    previous.write_text(json.dumps(manifest))
+    matches = tmp_path / "nested" / "matches.json"
+    arguments = [str(head), "--previous", str(previous), "--matches-out", str(matches), "--check"]
+    assert table.main(arguments) == 0
+    out = capsys.readouterr().out
+    assert "beside its counts in release patched-2026-v1.1 on the provider release" in out
+    assert "| `0001-one` | 1 | 1 | 1 | 1 | 1 | 1 | as before |" in out
+    assert "| `0003-new` | 1 | 1 | 1 | – | – | – | new |" in out
+    assert "`0002-gone` ran in release patched-2026-v1.1" in out
+    check = json.loads(matches.read_text())
+    assert check["failures"] == []
+    assert [row["result"] for row in check["patches"]] == ["as before", "new"]
+    assert check["patches"][0] == {
+        "id": "0001-one",
+        "now": {"datasets": 1, "exchanges": 1, "changes": 1},
+        "previous": {"datasets": 1, "exchanges": 1, "changes": 1},
+        "result": "as before",
+    }
+
+
+def test_without_an_earlier_run_a_patch_is_only_checked_for_matching_nothing(
+    table, summarise, tmp_path, capsys
+):
+    head = summarise("head", {"0001-one": (_lognormal, "O")})
+    assert table.main([str(head), "--previous", str(tmp_path / "none.json"), "--check"]) == 0
+    out = capsys.readouterr().out
+    assert "There is no earlier run to compare with" in out
+    assert "| `0001-one` | 1 | 1 | 1 | – | – | – | no earlier run |" in out
+    assert "No earlier run at `none.json`" in out
+
+
+def test_a_test_release_may_be_unknown_and_leave_patches_without_a_target(
+    table, summarise, monkeypatch, capsys
+):
+    monkeypatch.delitem(download.FINGERPRINTS, URL)
+    head = summarise("head", {"0001-one": (_lognormal, "O"), "0002-none": (_nothing, "O")})
+    assert table.main([str(head), "--check"]) == 1
+    capsys.readouterr()
+    assert table.main([str(head), "--check", "--partial"]) == 0
+    out = capsys.readouterr().out
+    assert "[!CAUTION]" not in out
+    assert "These patches found nothing to change in it: `0002-none`." in out
+    assert "| `0002-none` | 0 | 0 | 0 | – | – | – | **matched nothing** |" in out
