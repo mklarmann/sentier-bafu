@@ -21,7 +21,9 @@ patch that changed something before and nothing now fails the check; one that ch
 less, or more, is a warning. `--matches-out` writes the comparison as JSON.
 
 Only the standard library is used, and only counts, checksums and file names are
-printed, so the result can be published.
+printed, so the result can be published. A summary is read through
+`release_build/public_summary.py`: who confirmed a problem for the provider is the
+organisation and the date here, never a person.
 """
 
 import argparse
@@ -30,6 +32,10 @@ import json
 import os
 import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from release_build import public_summary  # noqa: E402
 
 MAX_FILES_SHOWN = 20
 MAX_FIELDS_SHOWN = 3
@@ -54,9 +60,10 @@ def cell(text: object) -> str:
 
 
 def load(path: Path | None) -> dict | None:
+    """A summary in its public form: what this script prints is published."""
     if path is None or not path.exists():
         return None
-    return json.loads(path.read_text(encoding="utf-8"))
+    return public_summary.public(json.loads(path.read_text(encoding="utf-8")))
 
 
 def patches(summary: dict) -> list[dict]:

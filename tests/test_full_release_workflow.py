@@ -69,9 +69,9 @@ def test_one_composite_action_gets_the_release_for_every_job_that_reads_it():
 
 def test_only_summaries_and_results_without_inventory_are_uploaded():
     (upload,) = re.findall(r"uses: actions/upload-artifact@.*\n((?: {8,}.*\n)+)", PROPOSED)
-    assert re.findall(r"\bpath: (.*)", upload) == ["${{ runner.temp }}/summaries/"]
-    # Only the two summaries are ever written to that folder
-    assert set(re.findall(r"summaries/([\w.-]+)", PROPOSED)) == {"head.json", "base.json"}
+    assert re.findall(r"\bpath: (.*)", upload) == ["${{ runner.temp }}/public-summaries/"]
+    # Only the two summaries are ever written, and only their public form is uploaded
+    assert set(re.findall(r"/summaries/([\w.-]+)", PROPOSED)) == {"head.json", "base.json"}
     uploads = re.findall(r"uses: actions/upload-artifact@.*\n((?: {8,}.*\n)+)", BUILD)
     assert [re.findall(r"\bpath: (.*)", upload) for upload in uploads] == [
         ["${{ runner.temp }}/release-run/results/"],
@@ -80,6 +80,66 @@ def test_only_summaries_and_results_without_inventory_are_uploaded():
     for text in EVERYTHING:
         assert "--report" not in text  # the HTML report quotes the data
         assert "exports/" not in text  # the export files stay in the run folder
+
+
+def test_what_is_uploaded_or_summarised_names_nobody_who_confirmed_for_the_provider():
+    """A run summary says who confirmed a problem for the provider, by name. An artifact
+    and a job summary are public: they get the organisation and the date."""
+    public = "scripts/release_build/public_summary.py"
+    # Proposed patches: the public form is written, and that folder is what is uploaded
+    written = PROPOSED.index(f'{public} \\\n            "$RUNNER_TEMP/summaries" --out')
+    upload = PROPOSED.index("uses: actions/upload-artifact@")
+    assert written < upload
+    assert '--out "$RUNNER_TEMP/public-summaries"' in PROPOSED
+    assert "path: ${{ runner.temp }}/summaries/" not in PROPOSED
+    # Release build: what the run set aside is checked before either upload
+    check = BUILD.index(f'{public} \\\n            --check "$RUNNER_TEMP/release-run/results"')
+    uploads = [match.start() for match in re.finditer("uses: actions/upload-artifact@", BUILD)]
+    assert len(uploads) == 2 and all(check < upload for upload in uploads)
+    # An upload that runs after a failed step waits for that check all the same
+    for text in (PROPOSED, BUILD):
+        for condition in re.findall(r"if: (.*)\n +uses: actions/upload-artifact@", text):
+            assert (
+                "!cancelled()" not in condition or "steps.public.outcome == 'success'" in condition
+            )
+    # The two scripts that write a job summary read their input in the public form
+    scripts = REPO / "scripts"
+    for script in (scripts / "full_release_table.py", scripts / "release_build" / "job_summary.py"):
+        text = script.read_text()
+        assert "public_summary.public(" in text, script.name
+    assert "set_aside(keep, results)" in (scripts / "build_release.py").read_text()
+
+
+def test_every_upload_and_job_summary_of_the_repository_is_one_we_know():
+    """A new artifact or job summary has to say whether it reads a run summary."""
+    sinks = {}
+    for path in sorted([*GITHUB.glob("workflows/*.yml"), *GITHUB.glob("actions/*/action.yml")]):
+        text = path.read_text()
+        name = path.parent.name if path.name == "action.yml" else path.name
+        found = re.findall(r"uses: actions/(upload-[\w-]*artifact)@", text)
+        found += ["job summary"] * text.count("$GITHUB_STEP_SUMMARY")
+        if found:
+            sinks[name] = sorted(found)
+    assert sinks == {
+        # reads run summaries: through the public form (the test above)
+        "full-release.yml": ["job summary", "upload-artifact"],
+        "release-build.yml": ["job summary", "upload-artifact", "upload-artifact"],
+        # the site, built from the records, and the result of the issue sync: no run summary
+        "pages.yml": ["upload-pages-artifact"],
+        "sync.yml": ["job summary"],
+    }
+    for script in ("build_site.py", "sync.py"):
+        text = (REPO / "scripts" / script).read_text()
+        assert "release-summary" not in text and "confirmed_by" not in text, script
+
+
+def test_no_record_of_the_repository_names_who_confirmed_for_the_provider():
+    import sys
+
+    sys.path.insert(0, str(REPO / "scripts"))
+    from release_build import public_summary
+
+    assert public_summary.check([REPO / "community", REPO / "site"]) == []
 
 
 def test_a_release_is_one_file_and_it_is_checked_before_it_is_published():

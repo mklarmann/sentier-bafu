@@ -58,7 +58,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from release_build import adapter, release_manifest  # noqa: E402
+from release_build import adapter, public_summary, release_manifest  # noqa: E402
 from release_build import layer as layer_file  # noqa: E402
 
 REPOSITORY = Path(__file__).resolve().parents[1]
@@ -794,6 +794,37 @@ def export_command(folder: Path, destination: Path) -> list[str] | None:
     return [*command, "--labels", export["labels"], "--out", str(destination)]
 
 
+def set_aside(keep: dict[str, Path], results: Path) -> list[str]:
+    """Copy the files that may leave the machine into `results`; return what was held back.
+
+    The run summary is written in its public form (`release_build/public_summary.py`): it
+    names who confirmed a problem for the provider, and what a CI job uploads names no
+    person but a patch's author and authoriser. The other files are copied as they are,
+    because the manifest holds their checksums. Then every file is checked: one that still
+    names who confirmed otherwise than as the provider and a date is removed again and
+    listed, and the run fails.
+    """
+    held_back = []
+    for name, path in keep.items():
+        if not path.is_file():
+            continue
+        if name == "run-summary.json":
+            try:
+                summary = public_summary.public(json.loads(path.read_text(encoding="utf-8")))
+            except ValueError:
+                # what can't be read can't be shown to name nobody: it stays on the machine
+                held_back.append(f"{name}: not a JSON record")
+                continue
+            text = json.dumps(summary, indent=2, ensure_ascii=False) + "\n"
+            (results / name).write_text(text, encoding="utf-8")
+        else:
+            shutil.copy2(path, results / name)
+    named = public_summary.check([results])
+    for place in named:
+        (results / place.partition(":")[0]).unlink(missing_ok=True)
+    return [*held_back, *named]
+
+
 def release(args: argparse.Namespace) -> int:
     """The whole path in one command; see the module text. Returns 1 if a step failed."""
     for program in ("uv", "git"):
@@ -971,9 +1002,7 @@ def release(args: argparse.Namespace) -> int:
         keep[f"{name}-audit.json"] = folder / "build" / "audit" / "audit.json"
         keep[f"{name}-comparison.json"] = folder / "comparison.json"
         keep[f"{name}-exports-manifest.json"] = folder / "exports" / "manifest.json"
-    for name, path in keep.items():
-        if path.is_file():
-            shutil.copy2(path, results / name)
+    held_back = set_aside(keep, results)
     (out / "release.json").write_text(
         json.dumps({"status": data["status"], "steps": steps}, indent=2) + "\n"
     )
@@ -989,7 +1018,9 @@ def release(args: argparse.Namespace) -> int:
     blocked = release_manifest.release_errors(data) if args.tag else []
     for reason in [*data["problems"], *(f"not a release: {b}" for b in blocked)]:
         print(f"  {reason}")
-    return int(data["status"] != "completed" or bool(blocked))
+    for place in held_back:
+        print(f"  not kept (it is unreadable, or names who confirmed by name): {place}")
+    return int(data["status"] != "completed" or bool(blocked) or bool(held_back))
 
 
 def main(argv: list[str] | None = None) -> int:

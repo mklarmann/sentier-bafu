@@ -15,6 +15,11 @@ import argparse
 import json
 from pathlib import Path
 
+try:
+    from release_build import public_summary
+except ImportError:  # run as a script, from its own folder
+    import public_summary
+
 CLIMATE = "ef-3.1:climate-change"
 NOT_PUBLISHED = (
     "The export files are produced and read back in CI but are not published until a download "
@@ -23,7 +28,8 @@ NOT_PUBLISHED = (
 
 
 def load(path: Path) -> dict | None:
-    return json.loads(path.read_text()) if path.is_file() else None
+    """A record of the run in its public form: a job summary is published."""
+    return public_summary.public(json.loads(path.read_text())) if path.is_file() else None
 
 
 def build_lines(name: str, folder: Path) -> list[str]:

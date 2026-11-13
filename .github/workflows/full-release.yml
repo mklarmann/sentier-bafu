@@ -89,13 +89,21 @@ jobs:
               --head-output "$RUNNER_TEMP/head" --base-output "$RUNNER_TEMP/base"
           fi
           uv run --no-sync python scripts/full_release_table.py "$@"
-      - name: Keep the summaries (counts, checksums and dataset numbers, no inventory)
+      - name: Write the summaries in their public form
+        # A summary names who confirmed a problem for BAFU. What is uploaded names the
+        # organisation and the date, and no person but a patch's author and authoriser.
+        id: public
         if: ${{ !cancelled() }}
+        run: |
+          uv run --no-sync python scripts/release_build/public_summary.py \
+            "$RUNNER_TEMP/summaries" --out "$RUNNER_TEMP/public-summaries"
+      - name: Keep the summaries (counts, checksums and dataset numbers, no inventory)
+        if: ${{ !cancelled() && steps.public.outcome == 'success' }}
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: full-release-summary
-          # This folder only ever holds the summary files written above.
-          path: ${{ runner.temp }}/summaries/
+          # This folder only ever holds the public form of the summary files written above.
+          path: ${{ runner.temp }}/public-summaries/
           if-no-files-found: warn
           retention-days: 90
 

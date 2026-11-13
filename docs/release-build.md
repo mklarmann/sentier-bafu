@@ -176,6 +176,14 @@ The manifest names the author and the authoriser of a patch, and of a contributi
 and nobody else. Who reported a finding and who answered for BAFU are in the run summary
 and never reach the manifest.
 
+The run summary itself leaves the machine in a public form. A patch may say which person
+confirmed a problem for BAFU; what a workflow uploads or writes to its job summary says
+`BAFU` and the date instead. One function does that
+(`scripts/release_build/public_summary.py`): the release run writes `results/run-summary.json`
+through it and holds back a kept file that still names who confirmed otherwise, the pull
+request workflow uploads the public form of its two summaries, and both job summaries read
+their input through it.
+
 ## In CI
 
 [Automation](automation.md) describes every workflow of the repository. These two run the

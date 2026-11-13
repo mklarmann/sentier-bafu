@@ -98,8 +98,16 @@ jobs:
         run: |
           uv run --no-project --python 3.12 python scripts/release_build/job_summary.py \
             "$RUNNER_TEMP/release-run" --out "$GITHUB_STEP_SUMMARY"
-      - name: Keep the manifest, the audits and the comparisons (no inventory)
+      - name: Check that what is kept names nobody who confirmed for BAFU
+        # The run writes its summary in the public form and checks the folder itself; this
+        # is the same check again, on what the next two steps upload.
+        id: public
         if: ${{ !cancelled() }}
+        run: |
+          uv run --no-project --python 3.12 python scripts/release_build/public_summary.py \
+            --check "$RUNNER_TEMP/release-run/results"
+      - name: Keep the manifest, the audits and the comparisons (no inventory)
+        if: ${{ !cancelled() && steps.public.outcome == 'success' }}
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: release-build-results
