@@ -1,148 +1,151 @@
 name: Release build
 
-# Stage 2: from BAFU's release to a Brightway database with the EF 3.1 methods.
-# The release as BAFU ships it and the patched release are each built and audited
-# (scripts/build_release.py), then compared. On pull requests a lighter job runs
-# the same path on seven made-up datasets instead.
+# For patches that are accepted (main), on request, and for releases (a tag `patched-…`
+# pushed by a person): one command runs the whole path on BAFU's full release.
 #
-# Nothing from the inventory leaves the runner. The job summary and the uploaded
-# files hold counts, dataset codes, names and single scores; the release, the
-# patched release, the importer's tables, the Brightway databases and the scores
-# of every dataset are never uploaded.
+#   provider build -> patched build -> written files and patch run checked ->
+#   comparison -> exports, each read back -> every contribution layer in
+#   community/layers, built beside the patched release -> manifest
+#
+# A tag then publishes a GitHub Release that holds ONE file, manifest.json: the provider
+# release and its checksum, the tool revision, each patch with its findings, author,
+# authoriser, result and the numbers of the datasets it changed, the name and checksum
+# of every export file, and the audit results. Never an inventory file and never an
+# export file: BAFU's terms ask that whoever receives the data accepts them first, and a
+# release page can't ask for that. The export files are produced and read back here and
+# stay on the runner.
+#
+# Nothing from the inventory leaves the runner. The job summary and the uploaded files
+# hold counts, checksums, dataset codes, names and single scores.
 
 on:
-  pull_request:
-    paths:
-      - "src/bafu_community_fixes/**"
-      - "scripts/build_release.py"
-      - "scripts/release_build/**"
-      - "release-build-tests/**"
-      - "pyproject.toml"
-      - "uv.lock"
-      - ".python-version"
-      - ".github/workflows/release-build.yml"
   push:
     branches: [main]
     paths:
       - "src/bafu_community_fixes/**"
+      - "scripts/full_release_table.py"
+      - "scripts/check_patched_release.py"
       - "scripts/build_release.py"
+      - "scripts/export_release.py"
       - "scripts/release_build/**"
-      - "release-build-tests/**"
+      - "community/layers/**"
       - "pyproject.toml"
       - "uv.lock"
       - ".python-version"
+      - ".github/actions/**"
       - ".github/workflows/release-build.yml"
+    tags: ["patched-*"]
   workflow_dispatch:
 
-permissions:
-  contents: read
+permissions: {}
 
 concurrency:
   group: release-build-${{ github.ref }}
-  # A newer push to a pull request replaces its run; runs on main all finish.
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  # Runs on main and of a tag all finish.
+  cancel-in-progress: false
 
 jobs:
-  made-up-release:
-    name: Whole path on a made-up release
-    if: ${{ github.event_name == 'pull_request' }}
+  build:
+    name: Provider release, patched release, exports and manifest
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 90
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
+          # The whole history: a release is built from a commit of main, and this is checked.
+          fetch-depth: 0
           persist-credentials: false
-      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
-        with:
-          enable-cache: false
-      - name: Install the patch tool
-        run: uv sync --locked
-      - name: Patch, adapt, import, install and audit seven made-up datasets
-        # Clones sentier-importers and sentier-brightway at the commits in
-        # scripts/release_build/pins.toml and downloads the pinned flow terms,
-        # methods and mapping (37 MB, checked by SHA-256). No BAFU data.
+      - name: Build releases from main only
+        if: ${{ github.ref_type == 'tag' }}
+        run: git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+      - name: Install the patch tool and get BAFU's release
+        uses: ./.github/actions/bafu-release
+      - name: Get the manifest of the previous release, to compare what each patch matched
+        # Read-only, and never fatal: without a previous release the run says so.
         env:
-          RELEASE_BUILD_WHOLE_PATH: "1"
-          RELEASE_BUILD_TOOLS: ${{ runner.temp }}/tools
-          RELEASE_BUILD_PINNED_DATA: ${{ runner.temp }}/pinned-data
+          GH_TOKEN: ${{ github.token }}
         run: |
-          uv run --no-project --python 3.12 python -m unittest discover \
-            -s release-build-tests -p test_whole_path.py
-      - name: Run the build's tests that need pandas, SciPy and bw2data
-        if: ${{ !cancelled() }}
-        run: |
-          uv run --frozen --project "$RUNNER_TEMP/tools/sentier-brightway" --python 3.12 \
-            --extra testing python -m unittest discover -s release-build-tests
-      - name: Check the adapter against what the patch tool writes
-        if: ${{ !cancelled() }}
-        run: uv run --no-sync python -m unittest discover -s release-build-tests -p test_adapter.py
-
-  release:
-    name: Provider and patched release
-    if: ${{ github.event_name != 'pull_request' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
-        with:
-          persist-credentials: false
-      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
-        with:
-          enable-cache: false
-      - name: Install the patch tool
-        run: uv sync --locked
-      - name: Identify BAFU's release
-        id: release
-        # The tool knows the release, its checksum and where it keeps the download.
-        run: |
-          uv run --no-sync python - >> "$GITHUB_OUTPUT" <<'EOF'
-          from bafu_community_fixes.download import CHECKSUMS, LATEST_RELEASE, cache_dir
-
-          print(f"sha256={CHECKSUMS[LATEST_RELEASE]}")
-          print(f"cache={cache_dir()}")
-          EOF
-      - name: Reuse the downloaded release
-        # The same key and path as the Full release workflow, so one download serves both.
-        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
-        with:
-          path: ${{ steps.release.outputs.cache }}
-          key: bafu-release-${{ steps.release.outputs.sha256 }}
-      - name: Build and audit the release as BAFU ships it
+          mkdir -p "$RUNNER_TEMP/previous"
+          previous="$(gh release list --repo "$GITHUB_REPOSITORY" --limit 30 \
+            --json tagName,isDraft \
+            --jq '[.[] | select(.isDraft | not) | .tagName | select(startswith("patched-"))][0] // ""' \
+            || true)"
+          if [ -n "$previous" ] && [ "$previous" != "$GITHUB_REF_NAME" ]; then
+            gh release download "$previous" --repo "$GITHUB_REPOSITORY" \
+              --pattern manifest.json --dir "$RUNNER_TEMP/previous" \
+              || echo "The manifest of $previous could not be read."
+          else
+            echo "No previous release to compare with."
+          fi
+      - name: Run the whole path
         # `latest` lets the patch tool download the release if it isn't there, and check
-        # its SHA-256. The audit's findings on BAFU's own release are reported, and do not
-        # fail the job: they are BAFU's data. Errors do.
+        # its SHA-256. Every step is recorded; a step that fails fails this job after the
+        # steps that can still run have run.
+        env:
+          RELEASE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
         run: |
-          uv run --no-project --python 3.12 python scripts/build_release.py build latest \
-            "$RUNNER_TEMP/builds/provider" --no-patches \
+          set -- release latest "$RUNNER_TEMP/release-run" \
             --tools "$RUNNER_TEMP/tools" --pinned-data "$RUNNER_TEMP/pinned-data"
-      - name: Build and audit the patched release
-        # Fails on any finding of the audit: an elementary flow that lost its EF 3.1
-        # flow, a sample score outside its plausible range.
-        if: ${{ !cancelled() }}
-        run: |
-          uv run --no-project --python 3.12 python scripts/build_release.py build latest \
-            "$RUNNER_TEMP/builds/patched" --fail-on-findings \
-            --tools "$RUNNER_TEMP/tools" --pinned-data "$RUNNER_TEMP/pinned-data"
-      - name: Compare the patched release with BAFU's
-        # Fails if a changed row or a moved score has no explanation.
-        if: ${{ !cancelled() }}
-        run: |
-          uv run --no-project --python 3.12 python scripts/build_release.py compare \
-            "$RUNNER_TEMP/builds/provider" "$RUNNER_TEMP/builds/patched" \
-            --out "$RUNNER_TEMP/builds/comparison.json" --tools "$RUNNER_TEMP/tools"
-      - name: Say what was built, and set aside the audits and the comparison
+          if [ -n "$RELEASE_TAG" ]; then set -- "$@" --tag "$RELEASE_TAG"; fi
+          if [ -f "$RUNNER_TEMP/previous/manifest.json" ]; then
+            set -- "$@" --previous "$RUNNER_TEMP/previous/manifest.json"
+          fi
+          uv run --no-project --python 3.12 python scripts/build_release.py "$@"
+      - name: Say what was built
         if: ${{ !cancelled() }}
         run: |
           uv run --no-project --python 3.12 python scripts/release_build/job_summary.py \
-            --provider "$RUNNER_TEMP/builds/provider" --patched "$RUNNER_TEMP/builds/patched" \
-            --comparison "$RUNNER_TEMP/builds/comparison.json" \
-            --out "$GITHUB_STEP_SUMMARY" --results "$RUNNER_TEMP/release-build-results"
-      - name: Keep the audits and the comparison (no inventory)
+            "$RUNNER_TEMP/release-run" --out "$GITHUB_STEP_SUMMARY"
+      - name: Keep the manifest, the audits and the comparisons (no inventory)
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: release-build-results
-          # This folder only ever holds the three files set aside above.
-          path: ${{ runner.temp }}/release-build-results/
+          # The run sets aside in this folder the only files that may leave the runner.
+          path: ${{ runner.temp }}/release-run/results/
           if-no-files-found: warn
           retention-days: 90
+      - name: Hand the manifest to the job that publishes
+        if: ${{ github.ref_type == 'tag' }}
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: patched-release-manifest
+          path: ${{ runner.temp }}/release-run/results/manifest.json
+          if-no-files-found: error
+          retention-days: 90
+
+  publish:
+    name: Publish the manifest, and nothing else
+    if: ${{ github.ref_type == 'tag' }}
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write # the GitHub Release of the tag, which holds manifest.json
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          name: patched-release-manifest
+          path: ${{ runner.temp }}/release
+      - name: Check that the one file is a manifest, of a release, and nothing else
+        # Refuses a file with any other field, a run that failed, a patch that changed
+        # data without an authoriser, an audit with findings, an export that did not
+        # read back.
+        run: |
+          test "$(find "$RUNNER_TEMP/release" -type f | wc -l)" -eq 1
+          python3 -I scripts/release_build/release_manifest.py \
+            --verify "$RUNNER_TEMP/release/manifest.json" --release \
+            --notes "$RUNNER_TEMP/notes.md"
+      - name: Publish the release with the manifest only
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # A tag is released once: this fails when the release exists already.
+        run: |
+          gh release create "$GITHUB_REF_NAME" "$RUNNER_TEMP/release/manifest.json" \
+            --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" \
+            --notes-file "$RUNNER_TEMP/notes.md" --verify-tag

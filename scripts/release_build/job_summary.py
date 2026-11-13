@@ -1,20 +1,25 @@
-"""Write a CI job summary of two builds and their comparison, and collect what may be kept.
+"""Write a CI job summary of a release run (`build_release.py release`).
 
-Reads the provider build, the patched build and the comparison, writes a Markdown summary
-(counts, findings, the steps' times, what the patches change), and copies the two audits and
-the comparison into one folder: the only files a CI job keeps. They hold counts, dataset
-codes, names and single scores. The build folders hold BAFU's inventory and stay on the
-runner.
+Reads the run folder and writes Markdown: every step with its result, time and peak
+memory; the provider build, the patched build and their comparison; the inputs whose
+declared unit is not their supplier's; the export files with their checksums and whether
+each read back; every contribution built beside the patched release; and the table of the
+patch run. Everything it prints is counts, checksums, dataset codes, names and single
+scores. The run folder holds BAFU's inventory and stays on the runner; the files a job may
+keep are the ones the run set aside in its `results` folder.
 
-Standard library only. A build that did not get as far as its audit is reported as such.
+Standard library only. A step that did not run is reported as such.
 """
 
 import argparse
 import json
-import shutil
 from pathlib import Path
 
 CLIMATE = "ef-3.1:climate-change"
+NOT_PUBLISHED = (
+    "The export files are produced and read back in CI but are not published until a download "
+    "exists that asks for acceptance of BAFU's terms."
+)
 
 
 def load(path: Path) -> dict | None:
@@ -66,13 +71,17 @@ def build_lines(name: str, folder: Path) -> list[str]:
     return [*lines, ""]
 
 
-def comparison_lines(comparison: dict | None) -> list[str]:
+def comparison_lines(
+    comparison: dict | None, title: str = "Patched against provider release"
+) -> list[str]:
     if comparison is None:
-        return ["### Patched against provider release", "", "No comparison was written.", ""]
+        return [f"### {title}", "", "No comparison was written.", ""]
     rows, flows = comparison["rows"], comparison["elementary_flows"]
     observed = comparison.get("linked_on_the_declared_flow") or {"exchanges": 0}
+    before = comparison["builds"]["baseline"]["database"]
+    after = comparison["builds"]["candidate"]["database"]
     lines = [
-        "### Patched against provider release",
+        f"### {title}",
         "",
         f"Comparison **{comparison['status']}**.",
         "",
@@ -94,7 +103,7 @@ def comparison_lines(comparison: dict | None) -> list[str]:
     climate = next((m for m in comparison["scores"]["methods"] if m["method"] == CLIMATE), None)
     if climate and climate["moved"]:
         lines += ["", "Climate change, kg CO2 eq per unit:", ""]
-        lines += ["| dataset | provider | patched |", "|---|---:|---:|"]
+        lines += [f"| dataset | `{before}` | `{after}` |", "|---|---:|---:|"]
         for entry in climate["moved"][:10]:
             lines.append(
                 f"| {entry['name']} ({entry['location']}) | {entry['before']:.4g} | "
@@ -103,47 +112,113 @@ def comparison_lines(comparison: dict | None) -> list[str]:
     return [*lines, ""]
 
 
-def summarise(provider: Path, patched: Path, comparison: Path) -> str:
-    lines = ["## Release build", ""]
-    lines += build_lines("Provider release", provider)
-    lines += build_lines("Patched release", patched)
-    lines += comparison_lines(load(comparison))
-    lines += [
-        "Kept from this run: the two audits and the comparison (counts, dataset codes, names "
-        "and single scores). The build folders hold BAFU's inventory and are not uploaded.",
+def step_lines(manifest: dict | None) -> list[str]:
+    if manifest is None:
+        return ["The run wrote no manifest.", ""]
+    lines = [
+        f"Run **{manifest['status']}**"
+        + (f", tag `{manifest['tag']}`." if manifest["tag"] else ".")
+    ]
+    lines += ["", *(f"- {problem}" for problem in manifest["problems"])]
+    if manifest["tag"] and manifest["not_releasable"]:
+        lines += ["", "> [!CAUTION]", "> This run can't be published as a release:"]
+        lines += [f"> - {reason}" for reason in manifest["not_releasable"]]
+    lines += ["", "| step | result | seconds | peak memory, MB | |", "|---|---|---:|---:|---|"]
+    for step in manifest["steps"]:
+        seconds, memory = step["seconds"], step["peak_memory_mb"]
+        lines.append(
+            f"| {step['name']} | {step['status']} | "
+            f"{'' if seconds is None else format(seconds, ',.0f')} | "
+            f"{'' if memory is None else format(memory, ',.0f')} | "
+            f"{(step['reason'] or '').replace('|', '/')} |"
+        )
+    return [*lines, ""]
+
+
+def declared_unit_lines(manifest: dict | None) -> list[str]:
+    declared = (manifest or {}).get("declared_units")
+    if not declared:
+        return []
+    total = declared["exchanges_whose_declared_unit_is_not_the_suppliers"]
+    lines = [
+        "### Inputs whose declared unit is not their supplier's",
+        "",
+        f"{total:,} in the patched database. The build uses each amount as written; no unit "
+        "is converted.",
         "",
     ]
+    lines += [
+        f"- {count:,}: {pair} (the same quantity under another label)"
+        for pair, count in declared["same_quantity_other_label"].items()
+    ]
+    for row in declared["another_quantity"]:
+        lines.append(
+            f"- `{row['dataset_name']}` ({row['dataset_location']}) takes `{row['supplier_name']}` "
+            f"({row['supplier_location']}): declared in {row['declared_unit']}, the supplier's "
+            f"unit is {row['supplier_unit']}; amount used {row['amount_brightway_uses']:.6g}; "
+            f"finding {row['finding'] or '**none recorded**'}"
+        )
+    return [*lines, ""]
+
+
+def export_lines(title: str, folder: Path) -> list[str]:
+    export = load(folder / "manifest.json")
+    if export is None:
+        return [f"### {title}", "", "No export was written.", ""]
+    lines = [f"### {title}", "", f"Exports **{export['status']}**, labelled {export['label']}.", ""]
+    lines += ["| format | written | read back | |", "|---|---|---|---|"]
+    for kind, entry in export["formats"].items():
+        check = export["checks"][kind]
+        back = "matches" if check["passed"] else f"{check['total']:,} difference(s)"
+        failed_to_write = entry.get("stage") == "write"
+        lines.append(
+            f"| {kind} | {'no' if failed_to_write else 'yes'} | "
+            f"{'' if failed_to_write else back} | {(entry.get('error') or '').replace('|', '/')} |"
+        )
+    lines += ["", "| file | bytes | SHA-256 |", "|---|---:|---|"]
+    lines += [
+        f"| {entry['name']} | {entry['bytes']:,} | `{entry['sha256']}` |"
+        for entry in export["files"].values()
+    ]
+    return [*lines, ""]
+
+
+def summarise(run: Path) -> str:
+    manifest = load(run / "manifest.json")
+    lines = ["## Release build", "", *step_lines(manifest)]
+    lines += build_lines("Provider release", run / "provider")
+    lines += build_lines("Patched release", run / "patched")
+    lines += comparison_lines(load(run / "comparison.json"))
+    lines += declared_unit_lines(manifest)
+    lines += export_lines("Exports of the patched release", run / "exports" / "patched")
+    for folder in sorted((run / "contributions").glob("*/")):
+        name = folder.name.upper()
+        lines += build_lines(f"Contribution {name}, beside the patched release", folder / "build")
+        lines += comparison_lines(
+            load(folder / "comparison.json"), f"{name} against the patched release"
+        )
+        lines += export_lines(f"Exports of {name}", folder / "exports")
+    kept = sorted(path.name for path in (run / "results").glob("*")) if run.is_dir() else []
+    lines += [
+        f"Kept from this run: {', '.join(kept) or 'nothing'} (counts, checksums, dataset "
+        "codes, names and single scores). The build folders and the export files hold BAFU's "
+        f"inventory and are not uploaded. {NOT_PUBLISHED}",
+        "",
+    ]
+    table = run / "results" / "patch-run.md"
+    if table.is_file():
+        lines += [table.read_text(encoding="utf-8")]
     return "\n".join(lines)
-
-
-def collect(provider: Path, patched: Path, comparison: Path, results: Path) -> list[str]:
-    """Copy the audits and the comparison into `results`; return the names written."""
-    results.mkdir(parents=True, exist_ok=True)
-    wanted = {
-        "provider-audit.json": provider / "audit" / "audit.json",
-        "patched-audit.json": patched / "audit" / "audit.json",
-        "comparison.json": comparison,
-    }
-    written = []
-    for name, source in wanted.items():
-        if source.is_file():
-            shutil.copyfile(source, results / name)
-            written.append(name)
-    return written
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--provider", type=Path, required=True, help="Provider build folder")
-    parser.add_argument("--patched", type=Path, required=True, help="Patched build folder")
-    parser.add_argument("--comparison", type=Path, required=True, help="comparison.json")
+    parser.add_argument("run", type=Path, help="Folder of a release run")
     parser.add_argument("--out", type=Path, required=True, help="Markdown file to append to")
-    parser.add_argument("--results", type=Path, required=True, help="Folder for the kept files")
     args = parser.parse_args(argv)
     with args.out.open("a", encoding="utf-8") as stream:
-        stream.write(summarise(args.provider, args.patched, args.comparison))
-    written = collect(args.provider, args.patched, args.comparison, args.results)
-    print(f"Summary appended to {args.out}; kept: {', '.join(written) or 'nothing'}")
+        stream.write(summarise(args.run))
+    print(f"Summary appended to {args.out}")
     return 0
 
 

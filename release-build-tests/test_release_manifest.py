@@ -177,8 +177,17 @@ def comparison(baseline, candidate, step_id="0001-amount"):
                     "method": "ef-3.1:climate-change",
                     "datasets_moved": 2,
                     "moved_by_step": {step_id: 2},
+                    "moved": [
+                        {"name": "User", "location": "FI", "before": 2.0, "after": 1.5},
+                        {"name": "Plant", "location": "FI", "before": 1.0, "after": 0.5},
+                    ],
                 },
-                {"method": "ef-3.1:land-use", "datasets_moved": 0, "moved_by_step": {}},
+                {
+                    "method": "ef-3.1:land-use",
+                    "datasets_moved": 0,
+                    "moved_by_step": {},
+                    "moved": [],
+                },
             ],
             "unexplained_moves": 0,
         },

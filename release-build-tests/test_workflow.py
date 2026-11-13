@@ -1,6 +1,8 @@
-"""Rules the Release build workflow has to keep (`.github/workflows/release-build.yml`)."""
+"""The job summary of a release run, written by `scripts/release_build/job_summary.py`.
 
-import re
+The rules the workflows keep are in `tests/test_full_release_workflow.py`.
+"""
+
 import sys
 import tempfile
 import unittest
@@ -8,75 +10,72 @@ from pathlib import Path
 
 REPOSITORY = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from release_build import job_summary  # noqa: E402
-
-WORKFLOW = (REPOSITORY / ".github" / "workflows" / "release-build.yml").read_text()
-KEPT = "${{ runner.temp }}/release-build-results/"
-
-
-class Workflow(unittest.TestCase):
-    def test_actions_are_pinned_by_commit(self):
-        uses = re.findall(r"uses: (\S+)", WORKFLOW)
-        self.assertEqual(len(uses), 6)
-        for action in uses:
-            self.assertRegex(action, r"^[\w./-]+@[0-9a-f]{40}$")
-
-    def test_the_token_can_only_read(self):
-        self.assertIn("\npermissions:\n  contents: read\n\n", WORKFLOW)
-        self.assertEqual(WORKFLOW.count("permissions:"), 1)  # no job asks for more
-        self.assertNotIn("pull_request_target", WORKFLOW)
-        self.assertNotIn("secrets.", WORKFLOW)
-
-    def test_only_the_audits_and_the_comparison_are_uploaded(self):
-        (upload,) = re.findall(r"uses: actions/upload-artifact@.*\n((?: {8,}.*\n)+)", WORKFLOW)
-        self.assertEqual(re.findall(r"\bpath: (.*)", upload), [KEPT])
-        # The builds are written elsewhere, and nothing but the summary step writes there
-        self.assertEqual(WORKFLOW.count("release-build-results"), 3)  # written, named, uploaded
-        self.assertIn('--results "$RUNNER_TEMP/release-build-results"', WORKFLOW)
-        self.assertNotIn("release-build-results/builds", WORKFLOW)
-        for build in ("provider", "patched"):
-            self.assertIn(f'"$RUNNER_TEMP/builds/{build}"', WORKFLOW)
-
-    def test_the_patched_build_fails_on_findings_and_the_release_is_checked(self):
-        patched = WORKFLOW.split("name: Build and audit the patched release")[1]
-        patched = patched.split("- name:")[0]
-        self.assertIn("--fail-on-findings", patched)
-        self.assertEqual(WORKFLOW.count("build latest"), 2)  # downloaded and checked by the tool
-        self.assertIn("key: bafu-release-${{ steps.release.outputs.sha256 }}", WORKFLOW)
-
-    def test_the_full_release_runs_on_main_and_the_made_up_one_on_pull_requests(self):
-        self.assertIn("if: ${{ github.event_name == 'pull_request' }}", WORKFLOW)
-        self.assertIn("if: ${{ github.event_name != 'pull_request' }}", WORKFLOW)
-        self.assertIn("workflow_dispatch:", WORKFLOW)
-        self.assertIn("concurrency:\n  group: release-build-${{ github.ref }}", WORKFLOW)
-        self.assertEqual(WORKFLOW.count('- "scripts/release_build/**"'), 2)
+from release_build import job_summary, release_manifest  # noqa: E402
+from test_release_manifest import write_run  # noqa: E402
 
 
-class Kept(unittest.TestCase):
-    def test_only_three_named_files_are_set_aside(self):
-        with tempfile.TemporaryDirectory() as temp:
-            root = Path(temp)
-            for build in ("provider", "patched"):
-                (root / build / "audit").mkdir(parents=True)
-                (root / build / "audit" / "audit.json").write_text("{}")
-                (root / build / "audit" / "scores.csv").write_text("every score")
-                (root / build / "build.json").write_text("{}")
-            (root / "comparison.json").write_text("{}")
-            written = job_summary.collect(
-                root / "provider", root / "patched", root / "comparison.json", root / "kept"
-            )
-            names = sorted(path.name for path in (root / "kept").iterdir())
-        self.assertEqual(names, ["comparison.json", "patched-audit.json", "provider-audit.json"])
-        self.assertEqual(sorted(written), names)
+class Summary(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.run_folder = Path(self.temp.name)
 
-    def test_a_build_that_did_not_start_is_said_so(self):
-        with tempfile.TemporaryDirectory() as temp:
-            root = Path(temp)
-            text = job_summary.summarise(root / "a", root / "b", root / "c.json")
-            self.assertEqual(job_summary.collect(root / "a", root / "b", root / "c.json", root), [])
+    def tearDown(self):
+        self.temp.cleanup()
+
+    def write(self, **options):
+        steps = write_run(self.run_folder, **options)
+        data = release_manifest.manifest(self.run_folder, tag="patched-x", steps=steps)
+        release_manifest.write(data, self.run_folder / "manifest.json")
+        (self.run_folder / "results").mkdir()
+        (self.run_folder / "results" / "manifest.json").write_text("{}")
+        (self.run_folder / "results" / "patch-run.md").write_text("## Full release run\n")
+        return data
+
+    def test_it_says_what_every_step_did_and_what_was_built(self):
+        self.write(contribution=True)
+        text = job_summary.summarise(self.run_folder)
+        self.assertIn("Run **completed**, tag `patched-x`.", text)
+        self.assertIn("| provider build | completed | 2 | 100 |  |", text)
+        self.assertIn("### Provider release", text)
+        self.assertIn("### Patched against provider release", text)
+        self.assertIn("### Inputs whose declared unit is not their supplier's", text)
+        self.assertIn("declared in kilowatt hour, the supplier's unit is megajoule", text)
+        self.assertIn("finding F13", text)
+        self.assertIn("### Exports of the patched release", text)
+        self.assertIn("| brightway | yes | matches |  |", text)
+        self.assertIn("| bafu-2026-v1-patched-simapro.csv | 20 | `", text)
+        self.assertIn("### Contribution C900-OTHER, beside the patched release", text)
+        self.assertIn("### C900-OTHER against the patched release", text)
+        self.assertIn("Kept from this run: manifest.json, patch-run.md", text)
+        self.assertIn(release_manifest.NOT_PUBLISHED, text)
+        self.assertEqual(job_summary.NOT_PUBLISHED, release_manifest.NOT_PUBLISHED)
+        self.assertTrue(text.rstrip().endswith("## Full release run"))
+
+    def test_a_tag_that_can_not_be_released_is_said_at_the_top(self):
+        self.write(steps=[])  # a run of the patch tool without any step is still a run
+        manifest = release_manifest.load(self.run_folder / "manifest.json")
+        manifest["not_releasable"] = ["patch 0001-x changed data and names nobody"]
+        release_manifest.write(manifest, self.run_folder / "manifest.json")
+        text = job_summary.summarise(self.run_folder)
+        self.assertIn("> [!CAUTION]\n> This run can't be published as a release:", text)
+        self.assertIn("> - patch 0001-x changed data and names nobody", text)
+
+    def test_a_run_that_did_not_start_is_said_so(self):
+        text = job_summary.summarise(self.run_folder / "nothing")
+        self.assertIn("The run wrote no manifest.", text)
         self.assertEqual(text.count("The build did not start."), 2)
         self.assertIn("No comparison was written.", text)
+        self.assertIn("No export was written.", text)
+        self.assertIn("Kept from this run: nothing", text)
+
+    def test_the_command_appends_to_the_summary_file(self):
+        self.write()
+        out = self.run_folder / "summary.md"
+        out.write_text("before\n")
+        self.assertEqual(job_summary.main([str(self.run_folder), "--out", str(out)]), 0)
+        self.assertTrue(out.read_text().startswith("before\n## Release build"))
 
 
 if __name__ == "__main__":
