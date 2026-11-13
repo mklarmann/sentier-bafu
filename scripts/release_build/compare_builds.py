@@ -48,6 +48,8 @@ EXCHANGE_GROUPS = {
     "unit": ("unit",),
     "kind": ("flow_type", "direction"),
 }
+# Dataset columns that name the release a build was made from, not the dataset
+RELEASE_NAME_COLUMNS = ("process_id", "source", "source_version")
 # Changes that can move a score. A name or a declared location alone does not: technosphere
 # inputs are linked by dataset number, elementary flows by their identity.
 SCORE_RELEVANT = {"flow", "amount", "unit", "kind"}
@@ -186,7 +188,7 @@ def compare_rows(base, cand, steps: dict[str, list[str]]) -> dict:
     paired = base_processes.merge(cand_processes, on="process_id", suffixes=("_before", "_after"))
     process_changes, process_unexplained = defaultdict(Counter), []
     for column in base_processes.columns:
-        if column == "process_id" or f"{column}_after" not in paired:
+        if column in RELEASE_NAME_COLUMNS or f"{column}_after" not in paired:
             continue
         differs = _differs(paired[f"{column}_before"], paired[f"{column}_after"])
         for code in paired.loc[differs, "process_id"]:
@@ -304,6 +306,66 @@ def compare_flows(rows, bridge, effective, ef_names: dict[str, str]) -> dict:
         "flows_that_changed_identity": flows,
         "exchanges_that_lost_their_ef_3_1_flow": lost,
         "flows_that_lost_their_ef_3_1_flow": len(lost_flows),
+    }
+
+
+def declared_flows(receipt: dict, exchanges, steps: dict, bridge, ef_names: dict) -> dict:
+    """Elementary exchanges a patch corrected, linked on the flow as BAFU declared it."""
+    observations = receipt.get("source_observations", [])
+    flow_of = {
+        (owner, position): flow
+        for owner, position, flow in zip(
+            exchanges["process_id"], exchanges["position"], exchanges["flow"], strict=True
+        )
+    }
+    groups = defaultdict(lambda: {"exchanges": 0, "datasets": set(), "steps": set(), "on": set()})
+    for observation in observations:
+        declared, patched = observation["declared"], observation["patched"]
+        changed = {"flow", "name"} if declared["name"] != patched["name"] else {"flow"}
+        found = explain(changed, steps.get(observation["dataset"], []), "exchange")
+        key = (tuple(declared.values()), tuple(patched.values()))
+        group = groups[key]
+        group["exchanges"] += 1
+        group["datasets"].add(observation["dataset"])
+        group["steps"].update(found or ["unexplained"])
+        entry = bridge.get(flow_of.get((observation["dataset"], observation["position"])))
+        group["on"].add(_target_name(entry, ef_names))
+    flows = [
+        {
+            "declared": list(declared),
+            "patched": list(patched),
+            "steps": sorted(group["steps"]),
+            "exchanges": group["exchanges"],
+            "datasets": len(group["datasets"]),
+            "ef_3_1_flow": sorted(str(name) for name in group["on"]),
+            "linked_to_ef_3_1": None not in group["on"],
+        }
+        for (declared, patched), group in sorted(groups.items())
+    ]
+    return {
+        "exchanges": len(observations),
+        "datasets": len({o["dataset"] for o in observations}),
+        "unexplained": sum(f["exchanges"] for f in flows if "unexplained" in f["steps"]),
+        "flows": flows,
+    }
+
+
+def published_results(baseline: Path, candidate: Path) -> dict | None:
+    """Both builds against BAFU's published results, side by side, if both were compared."""
+    files = [build / "published-results.json" for build in (baseline, candidate)]
+    if not all(file.is_file() for file in files):
+        return None
+    base, cand = (json.loads(file.read_text()) for file in files)
+    return {
+        "joined": {"baseline": base["joined"], "candidate": cand["joined"]},
+        "not_joined": {"baseline": base["not_joined"], "candidate": cand["not_joined"]},
+        "within_1_percent": {
+            category: {
+                "baseline": base["categories"][category].get("within_1_percent"),
+                "candidate": cand["categories"].get(category, {}).get("within_1_percent"),
+            }
+            for category in base["categories"]
+        },
     }
 
 
@@ -425,6 +487,14 @@ def compare(baseline: Path, candidate: Path) -> dict:
     ef_flows = load_ef_flows(root)
     ef_names = dict(zip(ef_flows["code"], ef_flows["name"], strict=True))
     flows = compare_flows(rows["rows"], bridge, effective, ef_names)
+    receipt = candidate / "adapter-receipt.json"
+    observed = declared_flows(
+        json.loads(receipt.read_text()) if receipt.is_file() else {},
+        cand[1],
+        steps,
+        bridge,
+        ef_names,
+    )
 
     base_scores, cand_scores = read_scores(baseline), read_scores(candidate)
     seeds = relevant_seeds(rows["rows"], effective, list(base_scores.columns))
@@ -441,6 +511,8 @@ def compare(baseline: Path, candidate: Path) -> dict:
         errors.append(f"{rows['summary']['unexplained_count']} changed row(s) no step explains")
     if scores["unexplained_moves"]:
         errors.append(f"{scores['unexplained_moves']} moved score(s) no changed dataset explains")
+    if observed["unexplained"]:
+        errors.append(f"{observed['unexplained']} corrected flow(s) no step explains")
     for key in ("exchange_rows_only_in_baseline", "exchange_rows_only_in_candidate"):
         if rows["summary"][key]:
             errors.append(f"{rows['summary'][key]} {key.replace('_', ' ')}")
@@ -450,11 +522,13 @@ def compare(baseline: Path, candidate: Path) -> dict:
         "builds": {
             label: {
                 "label": audit["label"],
+                "database": audit["databases"]["inventory"],
+                "built_from": audit.get("built_from"),
                 "audit_status": audit["status"],
                 "datasets": audit["datasets"],
                 "exchanges": audit["exchanges"],
                 "biosphere_targets": audit["biosphere_targets"],
-                "range_flags": audit["scores"]["range_flags"],
+                "findings": audit["findings"],
             }
             for label, audit in audits.items()
         },
@@ -464,7 +538,9 @@ def compare(baseline: Path, candidate: Path) -> dict:
             "candidate": declared_against_linked(*cand),
         },
         "elementary_flows": flows,
+        "linked_on_the_declared_flow": observed,
         "scores": scores,
+        "published_results": published_results(baseline, candidate),
     }
 
 

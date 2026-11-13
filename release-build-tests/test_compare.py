@@ -230,6 +230,50 @@ class Tables(unittest.TestCase):
         self.assertEqual(result["unexplained_moves"], 1)
         self.assertEqual(result["methods"][0]["moved_by_step"], {AMOUNT: 1, "unexplained": 1})
 
+    def test_corrected_flows_are_listed_with_the_ef_flow_they_stay_on(self):
+        receipt = {
+            "source_observations": [
+                {
+                    "dataset": "gas",
+                    "position": 1,
+                    "declared": {"name": "Gas, natural/m3", "category": "resources"},
+                    "patched": {"name": "Gas, natural", "category": "resources"},
+                },
+                {
+                    "dataset": "farm",
+                    "position": 2,
+                    "declared": {"name": "Carbon dioxide", "category": "biotic"},
+                    "patched": {"name": "Carbon dioxide", "category": "in air"},
+                },
+            ]
+        }
+        steps = {"gas": [NAMES], "farm": [COMPARTMENTS, AMOUNT]}
+        result = compare.declared_flows(
+            receipt, self.base[1], steps, self.bridge, {"ef-gas": "Natural Gas"}
+        )
+        self.assertEqual(
+            (result["exchanges"], result["datasets"], result["unexplained"]), (2, 2, 0)
+        )
+        by_step = {flow["steps"][0]: flow for flow in result["flows"]}
+        self.assertEqual(by_step[NAMES]["ef_3_1_flow"], ["Natural Gas"])
+        self.assertTrue(by_step[NAMES]["linked_to_ef_3_1"])
+        self.assertEqual(by_step[COMPARTMENTS]["ef_3_1_flow"], ["EF 3.1 flow ef-co2"])
+
+        result = compare.declared_flows(receipt, self.base[1], {}, self.bridge, {})
+        self.assertEqual(result["unexplained"], 2)
+        self.assertEqual(
+            compare.declared_flows({}, self.base[1], {}, self.bridge, {})["exchanges"], 0
+        )
+
+    def test_the_name_of_the_release_is_not_a_changed_row(self):
+        processes = self.base[0].assign(source="bafu-2026", source_version="v1")
+        patched = self.base[0].assign(source="bafu-2026-v1-patched", source_version="tree-1")
+        summary = compare.compare_rows((processes, self.base[1]), (patched, self.base[1]), {})[
+            "summary"
+        ]
+        self.assertEqual(summary["dataset_rows_changed_by_step"], {})
+        self.assertEqual(summary["unexplained_count"], 0)
+
     def test_declared_supplier_location_is_compared_with_the_linked_dataset(self):
         before = compare.declared_against_linked(*self.base)
         after = compare.declared_against_linked(*self.cand)
@@ -239,6 +283,29 @@ class Tables(unittest.TestCase):
         self.assertEqual(
             before["declared_location_differs"] - after["declared_location_differs"], 1
         )
+
+
+class Published(unittest.TestCase):
+    def test_two_builds_are_put_side_by_side_only_when_both_were_compared(self):
+        import json
+        import tempfile
+
+        def summary(share):
+            categories = {"energy": {"compared": 9, "within_1_percent": share}}
+            return {"joined": 9, "not_joined": 1, "categories": categories}
+
+        with tempfile.TemporaryDirectory() as temp:
+            base, cand = Path(temp) / "base", Path(temp) / "cand"
+            base.mkdir()
+            cand.mkdir()
+            (base / "published-results.json").write_text(json.dumps(summary(97.75)))
+            self.assertIsNone(compare.published_results(base, cand))
+            (cand / "published-results.json").write_text(json.dumps(summary(11.56)))
+            result = compare.published_results(base, cand)
+        self.assertEqual(
+            result["within_1_percent"]["energy"], {"baseline": 97.75, "candidate": 11.56}
+        )
+        self.assertEqual(result["not_joined"], {"baseline": 1, "candidate": 1})
 
 
 if __name__ == "__main__":
