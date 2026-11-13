@@ -2,6 +2,7 @@
 # requires-python = ">=3.12"
 # dependencies = [
 #     "bw-interchange-export @ git+https://gitlab.com/eos-lci/bw-interchange-export.git@db7af57cabd59b4256d00516027cc298bbcfc2ad",
+#     "bw-ilcd-bridge @ git+https://gitlab.com/eos-lci/bw-ilcd-bridge.git@c7377e3e207e48b35f10cf38e6e408726c4eee87",
 #     "bw-simapro-csv==0.5",
 #     "bw2data==4.8",
 #     "bw2io==0.9.17",
@@ -22,10 +23,20 @@ Reads one or more databases from a Brightway project and writes, into one folder
 The patched release is Modified Data under BAFU's Terms of Use: each file carries the
 credit, the label and the ids of the modifications inside it, and the full record
 travels beside it. The list of modifications comes from `bafu-fixes run --summary`.
+The step exports only a database that the build marked as Modified Data and that was
+built from the files that summary describes.
+
+Unit and compartment labels come from a declared table (`release_build/export_labels.toml`).
+A label is a name: no amount is converted. A technosphere input whose declared unit is
+another quantity or magnitude than its supplier's unit is written with the amount the
+database holds, in the supplier's unit, with the declared unit in the exchange's comment,
+and is listed in the manifest with the finding it belongs to.
 
 Every file is read back after writing (`olca_schema`, `bw_simapro_csv`, `bw2io`) and
 compared with the database: same datasets, exchanges, amounts and units, links intact,
-provenance present. A failed check is recorded in the manifest and the step exits 1.
+provenance present. Each format is written and checked on its own: one that can't be
+written, or that reads back differently, is recorded as failed in the manifest with
+the reason, the others are still written, and the step exits 1.
 
 Usage:
 
@@ -44,16 +55,33 @@ import math
 import os
 import platform
 import re
+import resource
 import sys
 import tempfile
+import time
+import tomllib
 import uuid
 import zipfile
 from collections import Counter
 from importlib import metadata
 from pathlib import Path
 
-SCHEMA = "sentier-bafu/export-manifest/1"
+SCHEMA = "sentier-bafu/export-manifest/2"
 LABEL = "Modified Data"
+#: Where the build says what a database was built from (`release_build/mark_database.py`).
+MARKER = "release_build"
+LABELS = Path(__file__).resolve().parent / "release_build" / "export_labels.toml"
+#: The compartment names the CSV writer knows, by the section it writes them to.
+SIMAPRO_COMPARTMENT = {
+    "Emissions to air": "air",
+    "Emissions to water": "water",
+    "Emissions to soil": "soil",
+    "Resources": "natural resource",
+    "Economic issues": "economic issue",
+    "Social issues": "social issue",
+    "Final waste flows": "final waste flows",
+    "Non material emissions": "non material",
+}
 CREDIT = "Life Cycle Inventory database of the Swiss Federal Administration, BAFU:{year}"
 NAMESPACE = "https://github.com/sentier-dev/sentier-bafu"
 #: Database metadata that changes with every write and says nothing about the data.
@@ -121,6 +149,167 @@ def all_nodes(databases):
     return {key: node for db in databases.values() for key, node in db["data"].items()}
 
 
+def check_marker(databases, summary):
+    """Refuse an inventory the build did not mark as Modified Data built from this run."""
+    written = (summary.get("output") or {}).get("fingerprint")
+    for name, database in databases.items():
+        if all(is_elementary(node) for node in database["data"].values()):
+            continue  # a list of elementary flows, not an inventory
+        marker = database["metadata"].get(MARKER) or {}
+        if marker.get("label") != LABEL or marker.get("modified_data") is not True:
+            raise ExportError(
+                f"Database {name!r} does not carry the {LABEL!r} marker of a patched build "
+                f"(metadata `{MARKER}`). Only a database that says what it is gets exported."
+            )
+        if marker.get("built_release_tree_sha256") != written:
+            raise ExportError(
+                f"Database {name!r} was built from other files than the run summary describes "
+                f"(built from {str(marker.get('built_release_tree_sha256'))[:12]}, the summary's "
+                f"output is {str(written)[:12]})"
+            )
+
+
+def load_labels(path=LABELS):
+    """The declared table: unit labels, compartments, known differences of declared units."""
+    path = Path(path)
+    table = tomllib.loads(path.read_text(encoding="utf-8"))
+    compartments = {
+        tuple(part.strip().lower() for part in row["categories"]): row["simapro"]
+        for row in table.get("compartment", ())
+    }
+    if unknown := sorted(set(compartments.values()) - set(SIMAPRO_COMPARTMENT)):
+        raise ExportError(f"{path.name}: not a section of the SimaPro CSV: {', '.join(unknown)}")
+    return {
+        "file": path.name,
+        "sha256": sha256(path),
+        "units": {row["brightway"]: row for row in table.get("unit", ())},
+        "compartments": compartments,
+        "differences": list(table.get("declared_unit_difference", ())),
+    }
+
+
+NO_LABELS = {"file": None, "sha256": None, "units": {}, "compartments": {}, "differences": []}
+
+
+def unit_labels(labels, kind, extra=None):
+    """`{Brightway unit: label}` for one format (`openlca` or `simapro`), where they differ."""
+    declared = {unit: row[kind] for unit, row in labels["units"].items() if row[kind] != unit}
+    return declared | dict(extra or {})
+
+
+def used_flows(nodes):
+    """Keys of the elementary flows that an exchange of an activity points at."""
+    used = set()
+    for node in nodes.values():
+        if is_elementary(node):
+            continue
+        for exchange in node.get("exchanges", ()):
+            key = tuple(exchange.get("input") or ())
+            if key in nodes and is_elementary(nodes[key]):
+                used.add(key)
+    return used
+
+
+def simapro_flows(nodes, labels):
+    """`{flow key: (section, name, subcompartment)}` for the elementary flows in use.
+
+    The section is the declared one of the flow's compartment; without a declaration the
+    CSV writer's own rule applies (it knows `air`, `water`, `soil`, `natural resource`).
+    A compartment neither knows stops the export: the writer would put it under air.
+    SimaPro tells flows apart by name and compartment, so two flows that would be written
+    alike get their code appended and stay two flows in the file.
+    """
+    writer = {name: section for section, name in SIMAPRO_COMPARTMENT.items()}
+    writer |= {"resource": "Resources", "land": "Resources", "biotic": "Resources"}
+    writer |= {"in ground": "Resources", "in water": "Resources", "in air": "Resources"}
+    rows, unknown = {}, Counter()
+    for key in used_flows(nodes):
+        categories = tuple(str(c) for c in nodes[key].get("categories") or ())
+        lowered = tuple(c.strip().lower() for c in categories)
+        depth = next((n for n in (2, 1) if lowered[:n] in labels["compartments"]), None)
+        if depth is not None:
+            section = labels["compartments"][lowered[:depth]]
+        elif lowered[:1] and lowered[0] in writer:
+            section, depth = writer[lowered[0]], 1
+        else:
+            unknown[" / ".join(categories[:2]) or "(none)"] += 1
+            continue
+        sub = categories[-1] if len(categories) > depth else ""
+        rows[key] = (section, _clean(nodes[key].get("name")), _clean(sub))
+    if unknown:
+        listed = ", ".join(f"{name!r} ({count} flows)" for name, count in sorted(unknown.items()))
+        raise ExportError(
+            f"No SimaPro section is declared for these compartments: {listed}. "
+            f"Add them to {LABELS.name}."
+        )
+    shared = Counter(rows.values())
+    return {
+        key: row if shared[row] == 1 else (row[0], f"{row[1]} | {key[1]}", row[2])
+        for key, row in rows.items()
+    }
+
+
+def declared_unit_differences(nodes, labels):
+    """Exchanges whose declared unit is not the unit of the node they take from.
+
+    Brightway links by node and uses the amount as written, whatever the two labels say.
+    `same_quantity` is true where the declared table gives both labels the same quantity
+    and size (`cubic meter` for a dataset in `normal cubic meter`). Where it is false the
+    amount would change if a tool converted it; the row then names the finding it belongs
+    to, or None if nobody has declared one.
+    """
+    known = {
+        (row["supplier"], row["declared"], row["supplier_unit"]): row["finding"]
+        for row in labels["differences"]
+    }
+
+    def quantity(unit):
+        row = labels["units"].get(unit)
+        return (row["quantity"], row["per_reference"]) if row else None
+
+    rows = []
+    for key in sorted(nodes):
+        node = nodes[key]
+        for position, exchange in enumerate(node.get("exchanges", ())):
+            target_key = tuple(exchange.get("input") or ())
+            target, declared = nodes.get(target_key), exchange.get("unit")
+            if target is None or not declared or declared == target.get("unit"):
+                continue
+            same = quantity(declared) is not None and quantity(declared) == quantity(
+                target.get("unit")
+            )
+            finding = known.get((target_key[1], declared, target.get("unit")))
+            rows.append(
+                {
+                    "dataset": key[1],
+                    "dataset_name": node.get("name"),
+                    "dataset_location": node.get("location"),
+                    "position": position,
+                    "kind": exchange.get("type"),
+                    "supplier": target_key[1],
+                    "supplier_name": target.get("name"),
+                    "supplier_location": target.get("location"),
+                    "declared_unit": declared,
+                    "supplier_unit": target.get("unit"),
+                    "amount_as_built": exchange.get("amount"),
+                    "same_quantity": same,
+                    "finding": None if same else finding,
+                    "key": key,
+                }
+            )
+    return rows
+
+
+def difference_note(row):
+    """What the exchange's comment says about a declared unit that is another quantity."""
+    finding = f" Finding {row['finding']}." if row["finding"] else ""
+    return (
+        f"Declared unit in the provider release: {row['declared_unit']}. The supplying "
+        f"dataset's unit is {row['supplier_unit']}. The amount is written as the Brightway "
+        f"build uses it and is not converted.{finding}"
+    )
+
+
 def check_closure(nodes):
     """Refuse a selection whose exchanges point outside it: the writers drop such rows."""
     outside = Counter()
@@ -135,7 +324,7 @@ def check_closure(nodes):
 
 
 def check_units(nodes, labels):
-    """Refuse units the JSON-LD writer has no quantity for, before anything is written."""
+    """Refuse units the JSON-LD writer has no quantity for, before it writes anything."""
     from bw_ilcd.units import resolve_unit
 
     unknown = Counter()
@@ -176,14 +365,50 @@ def read_summary(path):
         raise ExportError(f"{path} is not a `bafu-fixes run --summary` file (schema {schema!r})")
     if summary.get("status") != "completed":
         raise ExportError(f"{path} records a run that did not complete: {summary.get('status')}")
+    if missing := [key for key in ("release", "steps", "totals", "output") if key not in summary]:
+        raise ExportError(f"{path} lacks {', '.join(missing)}: written by another patch tool?")
     return summary
 
 
-def modifications_record(summary, release, credit, extra_steps=()):
+def changed_datasets(summary, nodes):
+    """The summary's changed datasets, each with the name and location the database has.
+
+    The summary names a dataset by its file, `process_<code>.xml`, and the build gives
+    the node that code. A changed dataset that isn't in the database stops the export:
+    the record and the data would not be about the same thing.
+    """
+    activities = {key[1]: node for key, node in nodes.items() if not is_elementary(node)}
+    datasets, missing = [], []
+    for entry in summary.get("datasets") or ():
+        code = Path(entry["file"]).stem.removeprefix("process_")
+        node = activities.get(code)
+        if node is None:
+            missing.append(code)
+            continue
+        datasets.append(
+            {
+                "code": code,
+                "number": entry["number"],
+                "name": node.get("name"),
+                "location": node.get("location"),
+                "import_fixes": list(entry["import_fixes"]),
+                "patches": list(entry["patches"]),
+            }
+        )
+    if missing:
+        raise ExportError(
+            f"The run summary names {len(missing)} changed dataset(s) that are not in the "
+            f"database, first {missing[0]!r}"
+        )
+    return datasets
+
+
+def modifications_record(summary, release, credit, extra_steps=(), datasets=()):
     """The record of modifications: every step that changed data, and each changed dataset.
 
     `extra_steps` are changes made after the patch run, for example by the build of the
-    Brightway database, in the same shape as the summary's steps.
+    Brightway database, in the same shape as the summary's steps. `datasets` is what
+    `changed_datasets` returns.
     """
     for step in extra_steps:
         if missing := {"id", "kind", "description"} - set(step):
@@ -194,12 +419,13 @@ def modifications_record(summary, release, credit, extra_steps=()):
         "label": LABEL,
         "release": release,
         "credit": credit,
-        "source_fingerprint_sha256": summary["source"]["fingerprint_sha256"],
-        "datasets_in_release": summary["source"]["datasets"],
-        "datasets_changed": summary["changed_datasets"],
+        "source_fingerprint_sha256": summary["release"]["fingerprint"],
+        "patched_fingerprint_sha256": (summary.get("output") or {}).get("fingerprint"),
+        "datasets_in_release": summary["release"]["datasets"],
+        "datasets_changed": summary["totals"]["datasets_changed"],
         "patch_tool": summary["software"],
         "steps": steps,
-        "datasets": summary["datasets"] or [],
+        "datasets": list(datasets),
     }
 
 
@@ -211,8 +437,8 @@ def modifications_markdown(record):
         f"**{LABEL}.** This is not BAFU's original data. Source: {record['credit']}.",
         "",
         f"{record['datasets_changed']} of {record['datasets_in_release']} datasets were "
-        "changed. `MODIFICATIONS.json` lists each changed dataset (number, name, location) "
-        "with the steps that changed it.",
+        "changed. `MODIFICATIONS.json` lists each changed dataset (code, number, name, "
+        "location) with the steps that changed it.",
         "",
         "| Step | Kind | What it does | Datasets | Values | Written by | Authorised by |",
         "|---|---|---|---|---|---|---|",
@@ -258,24 +484,19 @@ def attribution(record, terms_url=None):
 
 
 def dataset_notes(nodes, record):
-    """`{key: note}` for every activity: the label, and the steps that changed it if known.
+    """`{key: note}` for every activity: the label, and the steps that changed it.
 
-    The record names datasets by name and location. A node is matched only when exactly
-    one record entry has its name and location.
+    The record names a changed dataset by its code, which is the node's code.
     """
-    by_identity = {}
-    for dataset in record["datasets"]:
-        by_identity.setdefault((dataset["name"], dataset["location"]), []).append(dataset)
+    by_code = {dataset["code"]: dataset for dataset in record["datasets"]}
     notes, matched = {}, 0
     for key, node in nodes.items():
         if is_elementary(node):
             continue
         note = f"{LABEL}: part of a patched release of {record['release']}, not BAFU's original."
-        entries = by_identity.get((node.get("name"), node.get("location")), ())
-        if len(entries) == 1:
+        if entry := by_code.get(key[1]):
             matched += 1
-            steps = entries[0]["import_fixes"] + entries[0]["patches"]
-            note += f" Changed by: {', '.join(steps)}."
+            note += f" Changed by: {', '.join(entry['import_fixes'] + entry['patches'])}."
         notes[key] = note
     return notes, matched
 
@@ -336,31 +557,70 @@ def write_bw2package(databases, provenance, path):
     path.chmod(0o644)  # written owner-only; this file is for handing on
 
 
-def interchange_view(notes, unit_labels=None, disambiguate=False):
+def interchange_view(
+    notes,
+    unit_labels=None,
+    disambiguate=False,
+    *,
+    differences=(),
+    flows=None,
+    labels=NO_LABELS,
+    note_units=False,
+):
     """A pass over the nodes as the interchange writers load them, in memory only.
 
-    Adds the dataset note to each activity's comment (it becomes the openLCA description
-    and the SimaPro comment), applies the unit labels, and, for SimaPro's linked naming,
-    gives a product name with the node's code to activities whose default name collides.
+    * Leaves out the elementary flows that no exchange uses: the flow list of a method
+      has tens of thousands that the inventory never touches.
+    * An exchange whose declared unit is another quantity than its supplier's gets a
+      comment saying what was declared, and loses the declared label, so that the writer
+      writes the supplier's unit with the amount as the database has it.
+    * Applies the unit labels; with `note_units`, a dataset whose unit gets another
+      label says so in its note.
+    * Adds the dataset note to each activity's comment (it becomes the openLCA
+      description and the SimaPro comment).
+    * `flows` (SimaPro): each elementary flow gets the compartment name of its section,
+      its subcompartment, and its name, with its code where two would be written alike.
+    * `disambiguate` (SimaPro's linked naming): a product name with the node's code for
+      activities whose default name collides.
     """
     from bw_interchange_export import product_name
 
     unit_labels = unit_labels or {}
 
     def transform(nodes):
+        used = used_flows(nodes)
+        for key in [k for k, node in nodes.items() if is_elementary(node) and k not in used]:
+            del nodes[key]
+        for row in differences:
+            exchange = nodes[row["key"]]["exchanges"][row["position"]]
+            exchange.pop("unit", None)
+            exchange["comment"] = " ".join(
+                filter(None, [exchange.get("comment"), difference_note(row)])
+            )
         names = Counter(
             _clean(product_name(node, key))
             for key, node in nodes.items()
             if not is_elementary(node)
         )
         for key, node in nodes.items():
+            note = notes.get(key)
             if node.get("unit") in unit_labels:
-                node["unit"] = unit_labels[node["unit"]]
+                old, node["unit"] = node["unit"], unit_labels[node["unit"]]
+                if note and note_units:
+                    bafu = " or ".join(labels["units"].get(old, {}).get("bafu", [old]))
+                    note += (
+                        f" Unit in BAFU's release: {bafu}. It is written here as "
+                        f"{node['unit']}; the amounts are unchanged."
+                    )
             for exchange in node.get("exchanges", ()):
                 if exchange.get("unit") in unit_labels:
                     exchange["unit"] = unit_labels[exchange["unit"]]
-            if key in notes:
-                node["comment"] = "\n\n".join(filter(None, [node.get("comment"), notes[key]]))
+            if note:
+                node["comment"] = "\n\n".join(filter(None, [node.get("comment"), note]))
+            if flows and key in flows:
+                section, name, sub = flows[key]
+                node["name"] = name
+                node["categories"] = (SIMAPRO_COMPARTMENT[section], *([sub] if sub else []))
             if not (disambiguate and not is_elementary(node)):
                 continue
             if names[_clean(product_name(node, key))] > 1:
@@ -467,8 +727,13 @@ def read_openlca(path):
         }
 
 
-def check_openlca(path, nodes, namespace, marks, unit_labels=None):
-    """Problems found when the JSON-LD archive is read back and compared with the database."""
+def check_openlca(path, nodes, namespace, marks, unit_labels=None, differences=()):
+    """Problems found when the JSON-LD archive is read back and compared with the database.
+
+    The archive holds a flow for every activity and for every elementary flow in use.
+    `differences` are the exchanges whose declared unit is another quantity than their
+    supplier's: each must say so in its description.
+    """
     import olca_schema as o
 
     unit_labels = unit_labels or {}
@@ -481,11 +746,13 @@ def check_openlca(path, nodes, namespace, marks, unit_labels=None):
         return unit_labels.get(node.get("unit"), node.get("unit"))
 
     activities = {key: node for key, node in nodes.items() if not is_elementary(node)}
+    written_nodes = {**activities, **{key: nodes[key] for key in used_flows(nodes)}}
     if len(processes) != len(activities):
         problems.append(f"{len(processes)} processes instead of {len(activities)}")
-    if len(flows) != len(nodes):
-        problems.append(f"{len(flows)} flows instead of {len(nodes)}")
-    for key, node in nodes.items():
+    if len(flows) != len(written_nodes):
+        problems.append(f"{len(flows)} flows instead of {len(written_nodes)}")
+    noted = {(row["key"], flow_id((row["key"][0], row["supplier"]))) for row in differences}
+    for key, node in written_nodes.items():
         flow = flows.get(flow_id(key))
         if flow is None:
             problems.append(f"{key}: no flow")
@@ -542,6 +809,10 @@ def check_openlca(path, nodes, namespace, marks, unit_labels=None):
                 continue
             provider = exchange.default_provider.id if exchange.default_provider else None
             written[(*row, provider, exchange.amount)] += 1
+            if (key, exchange.flow.id) in noted and "Declared unit" not in (
+                exchange.description or ""
+            ):
+                problems.append(f"{key}: an exchange lacks the note of its declared unit")
         if _amounts(written) != _amounts(expected):
             problems.append(f"{key}: exchanges differ from the database")
     return problems
@@ -608,8 +879,13 @@ def simapro_links(csv):
     return providers, dict(counts)
 
 
-def check_simapro(path, nodes, marks):
-    """Problems found when the CSV is parsed again and compared with the database."""
+def check_simapro(path, nodes, marks, labels=NO_LABELS):
+    """Problems found when the CSV is parsed again and compared with the database.
+
+    Elementary rows are compared by section, name, subcompartment, unit and amount, and
+    inputs by the process their name links to, unit and amount. A unit is compared where
+    the declared table gives its SimaPro symbol.
+    """
     csv = read_simapro(path)
     providers, counts = simapro_links(csv)
     problems = []
@@ -631,6 +907,11 @@ def check_simapro(path, nodes, marks):
         if _clean(mark) not in described:
             problems.append(f"literature reference lacks {mark!r}")
 
+    def symbol(node):
+        """The unit symbol the table declares for a node's unit, or None: not compared."""
+        return labels["units"].get(node.get("unit"), {}).get("simapro")
+
+    flow_of = {row: key for key, row in simapro_flows(nodes, labels).items()}
     for identifier, process in csv["processes"].items():
         key = identifiers.get(identifier)
         if key is None:
@@ -646,23 +927,20 @@ def check_simapro(path, nodes, marks):
             target = tuple(exchange["input"])
             if target == key or exchange["type"] == "production":
                 continue
-            if is_elementary(nodes[target]):
-                flow = nodes[target]
-                sub = (flow.get("categories") or ("", ""))[1:2]
-                elementary[
-                    (_clean(flow["name"]), _clean(sub[0] if sub else ""), exchange["amount"])
-                ] += 1
-            else:
-                technosphere[(f"{target[0]}|{target[1]}", exchange["amount"])] += 1
-        linked = Counter(
-            (providers[(identifier, index)], row["amount"])
-            for index, row in enumerate(process["inputs"])
-        )
+            row = (target, symbol(nodes[target]), exchange["amount"])
+            (elementary if is_elementary(nodes[target]) else technosphere)[row] += 1
+        linked = Counter()
+        for index, row in enumerate(process["inputs"]):
+            provider = identifiers.get(providers[(identifier, index)])
+            compared = provider is not None and symbol(nodes[provider]) is not None
+            linked[(provider, row["unit"] if compared else None, row["amount"])] += 1
         if _amounts(linked) != _amounts(technosphere):
             problems.append(f"{key}: inputs differ from the database, or link elsewhere")
-        emitted = Counter(
-            (row["name"], row["context"][1], row["amount"]) for row in process["elementary"]
-        )
+        emitted = Counter()
+        for row in process["elementary"]:
+            flow = flow_of.get((row["context"][0], row["name"], row["context"][1]))
+            compared = flow is not None and symbol(nodes[flow]) is not None
+            emitted[(flow, row["unit"] if compared else None, row["amount"])] += 1
         if _amounts(emitted) != _amounts(elementary):
             problems.append(f"{key}: elementary flows differ from the database")
     return problems, counts
@@ -685,8 +963,13 @@ def check_ilcd(path, activities, marks):
 
 # --- The step ----------------------------------------------------------------------
 
+FAILED = object()
+FORMATS = ("brightway", "openlca", "ilcd", "simapro")
 
-def provenance_record(record, text, files, tools, *, provider, source_url, source_sha256):
+
+def provenance_record(
+    record, text, files, tools, *, provider, source_url, source_sha256, differences=()
+):
     """What every export says about itself: who, which release, what changed, with what."""
     return {
         "label": LABEL,
@@ -698,6 +981,7 @@ def provenance_record(record, text, files, tools, *, provider, source_url, sourc
             "url": source_url,
             "sha256": source_sha256,
             "fingerprint_sha256": record["source_fingerprint_sha256"],
+            "patched_fingerprint_sha256": record["patched_fingerprint_sha256"],
         },
         "modifications": {
             "record": files["modifications"].name,
@@ -707,8 +991,24 @@ def provenance_record(record, text, files, tools, *, provider, source_url, sourc
                 for step in record["steps"]
             ],
         },
+        "declared_units_of_another_quantity": list(differences),
         "tools": tools,
     }
+
+
+def _first_line(error):
+    lines = str(error).strip().splitlines()
+    return f"{type(error).__name__}: {lines[0] if lines else ''}"[:500]
+
+
+def _peak_memory_mb():
+    """The largest resident size of this process so far (bytes on macOS, kilobytes on Linux)."""
+    peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    return round(peak / (1024 * 1024 if sys.platform == "darwin" else 1024), 1)
+
+
+def _public(row):
+    return {key: value for key, value in row.items() if key != "key"}
 
 
 def export_release(
@@ -729,25 +1029,40 @@ def export_release(
     simapro_naming="linked",
     openlca_unit_labels=None,
     extra_steps=(),
+    labels=None,
 ):
     """Write the exports with their provenance into `out`, read them back, and return
-    the manifest. Raises before anything stays written when the database can't be
-    exported; a read-back that differs is in the manifest (`status: failed`).
+    the manifest.
+
+    Raises, before anything is written, when the database is not one to export: no
+    Modified Data marker, built from other files than the summary describes, exchanges
+    that point outside the selection, a record that names datasets the database lacks.
+    After that each format stands on its own: one that can't be written or that reads
+    back differently is `failed` in the manifest with the stage and the reason, its file
+    is removed if it could not be written, and the others are still written and checked.
     """
     out = Path(out)
     if out.exists() and any(out.iterdir()):
         raise ExportError(f"{out} is not empty")
+    labels = labels or load_labels()
+    check_marker(databases, summary)
     nodes = all_nodes(databases)
-    labels = dict(openlca_unit_labels or {})
     check_closure(nodes)
-    check_units(nodes, labels)
     year = year or (re.search(r"\b(\d{4})\b", release) or [None, None])[1]
     if not (credit or year):
         raise ExportError(f"No release year in {release!r}; pass it")
     credit = credit or CREDIT.format(year=year)
-    record = modifications_record(summary, release, credit, extra_steps)
+    record = modifications_record(
+        summary, release, credit, extra_steps, changed_datasets(summary, nodes)
+    )
     text = attribution(record, terms_url)
     notes, matched = dataset_notes(nodes, record)
+    activities = {key: node for key, node in nodes.items() if not is_elementary(node)}
+    used = used_flows(nodes)
+    openlca_labels = unit_labels(labels, "openlca", openlca_unit_labels)
+    simapro_labels = unit_labels(labels, "simapro")
+    differences = declared_unit_differences(nodes, labels)
+    other_quantity = [row for row in differences if not row["same_quantity"]]
     name = name or re.sub(r"[^a-z0-9]+", "-", release.lower()).strip("-") + "-patched"
     files = {
         "brightway": out / f"{name}.bw2package",
@@ -758,88 +1073,202 @@ def export_release(
         "modifications_readable": out / "MODIFICATIONS.md",
     }
     tools = tool_versions()
+    source_url = source_url or summary["release"].get("url")
+    source_sha256 = source_sha256 or summary["release"].get("archive_sha256")
 
     out.mkdir(parents=True, exist_ok=True)
-    try:
-        files["modifications"].write_text(
-            json.dumps(record, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
-        )
-        files["modifications_readable"].write_text(modifications_markdown(record), encoding="utf-8")
-        provenance = provenance_record(
-            record, text, files, tools,
-            provider=provider, source_url=source_url, source_sha256=source_sha256,
-        )  # fmt: skip
-        write_bw2package(databases, provenance, files["brightway"])
-        with tempfile.TemporaryDirectory() as scratch:
-            no_methods = Path(scratch) / "methods.json"
-            no_methods.write_text("{}")
-            openlca_stats = write_openlca(
-                files["brightway"],
-                methods or no_methods,
-                files["openlca"],
-                files["ilcd"],
-                namespace=namespace,
-                text=text,
-                view=interchange_view(notes, labels),
-                stamp=summary.get("finished"),
-            )
-        simapro_stats = write_simapro(
-            files["brightway"],
-            files["simapro"],
-            project=f"{release} patched release, {LABEL}",
-            text=text,
-            view=interchange_view(notes, disambiguate=simapro_naming == "linked"),
-            naming=simapro_naming,
-        )
-    except Exception:
-        # Nothing half-written stays behind: the folder was empty when the step began.
-        for path in files.values():
-            path.unlink(missing_ok=True)
-        raise
+    files["modifications"].write_text(
+        json.dumps(record, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
+    files["modifications_readable"].write_text(modifications_markdown(record), encoding="utf-8")
+    provenance = provenance_record(
+        record, text, files, tools,
+        provider=provider, source_url=source_url, source_sha256=source_sha256,
+        differences=[_public(row) for row in other_quantity],
+    )  # fmt: skip
+
+    formats = {kind: {"status": "completed", "seconds": {}} for kind in FORMATS}
+    checks, stats = {}, {}
+
+    def attempt(kinds, stage, action):
+        """One stage of one or two formats. A failure is recorded, and not raised."""
+        started = time.perf_counter()
+        try:
+            return action()
+        except Exception as error:  # the writers and readers raise errors of many kinds
+            for kind in kinds:
+                formats[kind] |= {"status": "failed", "stage": stage, "error": _first_line(error)}
+                checks[kind] = [f"{stage} stopped: {_first_line(error)}"]
+                if stage == "write":
+                    files[kind].unlink(missing_ok=True)
+            return FAILED
+        finally:
+            for kind in kinds:
+                formats[kind]["seconds"][stage] = round(time.perf_counter() - started, 1)
+                formats[kind]["peak_memory_mb_so_far"] = _peak_memory_mb()
+
+    def read_back(kind, action):
+        problems = attempt((kind,), "read back", action)
+        if problems is not FAILED:
+            checks[kind] = problems
+            if problems:
+                formats[kind] |= {
+                    "status": "failed",
+                    "stage": "read back",
+                    "error": f"{len(problems)} difference(s) from the database",
+                }
+
+    def skip(kinds, reason):
+        for kind in kinds:
+            formats[kind] = {"status": "not written", "stage": "write", "error": reason}
+            checks[kind] = [f"not written: {reason}"]
 
     marks = (credit, LABEL)
-    activities = sum(1 for node in nodes.values() if not is_elementary(node))
-    simapro_problems, links = check_simapro(files["simapro"], nodes, marks)
-    checks = {
-        "brightway": check_bw2package(files["brightway"], databases, marks),
-        "openlca": check_openlca(files["openlca"], nodes, namespace, marks, labels),
-        "ilcd": check_ilcd(files["ilcd"], activities, marks),
-        "simapro": simapro_problems,
-    }
+    package = attempt(
+        ("brightway",), "write", lambda: write_bw2package(databases, provenance, files["brightway"])
+    )
+    if package is FAILED:
+        skip(FORMATS[1:], "the Brightway package, which the other writers read, was not written")
+    else:
+        read_back("brightway", lambda: check_bw2package(files["brightway"], databases, marks))
+
+        def openlca():
+            check_units({key: nodes[key] for key in [*activities, *used]}, openlca_labels)
+            with tempfile.TemporaryDirectory() as scratch:
+                no_methods = Path(scratch) / "methods.json"
+                no_methods.write_text("{}")
+                return write_openlca(
+                    files["brightway"],
+                    methods or no_methods,
+                    files["openlca"],
+                    files["ilcd"],
+                    namespace=namespace,
+                    text=text,
+                    view=interchange_view(
+                        notes,
+                        openlca_labels,
+                        differences=other_quantity,
+                        labels=labels,
+                        note_units=True,
+                    ),
+                    stamp=summary.get("finished"),
+                )
+
+        stats["openlca"] = attempt(("openlca", "ilcd"), "write", openlca)
+        if stats["openlca"] is not FAILED:
+            read_back(
+                "openlca",
+                lambda: check_openlca(
+                    files["openlca"], nodes, namespace, marks, openlca_labels, other_quantity
+                ),
+            )
+            read_back("ilcd", lambda: check_ilcd(files["ilcd"], len(activities), marks))
+
+        def simapro():
+            return write_simapro(
+                files["brightway"],
+                files["simapro"],
+                project=f"{release} patched release, {LABEL}",
+                text=text,
+                view=interchange_view(
+                    notes,
+                    simapro_labels,
+                    disambiguate=simapro_naming == "linked",
+                    differences=other_quantity,
+                    flows=simapro_flows(nodes, labels),
+                ),
+                naming=simapro_naming,
+            )
+
+        links = {}
+        stats["simapro"] = attempt(("simapro",), "write", simapro)
+        if stats["simapro"] is not FAILED:
+
+            def check():
+                problems, counts = check_simapro(files["simapro"], nodes, marks, labels)
+                links.update(counts)
+                return problems
+
+            read_back("simapro", check)
+
+    pairs = Counter(
+        f"{row['declared_unit']} for a {'flow' if row['kind'] == 'biosphere' else 'dataset'} "
+        f"in {row['supplier_unit']}"
+        for row in differences
+        if row["same_quantity"]
+    )
+    flows = Counter()
+    if formats["simapro"]["status"] != "not written" and stats.get("simapro") is not FAILED:
+        flows = Counter(" | " in row[1] for row in simapro_flows(nodes, labels).values())
     manifest = {
         "schema": SCHEMA,
-        "status": "failed" if any(checks.values()) else "completed",
+        "status": "completed"
+        if all(entry["status"] == "completed" for entry in formats.values())
+        else "failed",
         **{k: provenance[k] for k in ("label", "provider", "release", "credit", "statement")},
         "source": provenance["source"],
         "modifications": provenance["modifications"],
         "databases": {n: len(db["data"]) for n, db in databases.items()},
+        "built_from": {
+            n: {
+                k: db["metadata"][MARKER].get(k)
+                for k in ("label", "provider_release", "patches", "import_fixes", "contribution")
+            }
+            for n, db in databases.items()
+            if db["metadata"].get(MARKER)
+        },
         "counts": {
-            "activities": activities,
-            "elementary_flows": len(nodes) - activities,
+            "activities": len(activities),
+            "elementary_flows": len(nodes) - len(activities),
+            "elementary_flows_in_use": len(used),
             "exchanges": sum(len(node.get("exchanges", ())) for node in nodes.values()),
             "datasets_matched_to_the_record": matched,
         },
+        "labels": {
+            "file": labels["file"],
+            "sha256": labels["sha256"],
+            "amounts_converted": 0,
+            "openlca_units": openlca_labels,
+            "simapro_units": simapro_labels,
+            "datasets_by_unit": dict(
+                sorted(Counter(node.get("unit") for node in activities.values()).items())
+            ),
+        },
+        "declared_units": {
+            "exchanges_whose_declared_unit_is_not_the_suppliers": len(differences),
+            "same_quantity_other_label": dict(sorted(pairs.items())),
+            "another_quantity_written_as_built": [_public(row) for row in other_quantity],
+        },
+        "formats": formats,
         "openlca": {
             "ids": "minted: uuid5 of the namespace, the database name and the node code",
             "namespace": namespace,
-            "unit_labels": labels,
+            "unit_labels": openlca_labels,
+            "elementary_flows": "the flows in use; the Brightway package holds the whole list",
             "last_change": summary.get("finished"),
-            "written": openlca_stats,
+            "written": None if stats.get("openlca") in (None, FAILED) else stats["openlca"],
         },
         "simapro": {
-            "flow_names": "elementary flows keep the Brightway names and subcompartments",
+            "flow_names": "elementary flows keep the Brightway names and subcompartments; "
+            "flows that share both carry their code",
+            "flows_named_with_their_code": flows[True],
             "product_naming": simapro_naming,
             "links": links,
-            "written": simapro_stats,
+            "written": None if stats.get("simapro") in (None, FAILED) else stats["simapro"],
         },
         "tools": tools,
         "files": {
             kind: {"name": path.name, "bytes": path.stat().st_size, "sha256": sha256(path)}
             for kind, path in files.items()
+            if path.is_file()
         },
         "checks": {
-            kind: {"passed": not problems, "problems": problems[:50], "total": len(problems)}
-            for kind, problems in checks.items()
+            kind: {
+                "passed": not checks.get(kind, ["not checked"]),
+                "problems": checks.get(kind, ["not checked"])[:50],
+                "total": len(checks.get(kind, ["not checked"])),
+            }
+            for kind in FORMATS
         },
     }
     (out / "manifest.json").write_text(
@@ -876,18 +1305,26 @@ def main(argv=None):
     parser.add_argument("--release", required=True, help='For example "BAFU:2026 v1"')
     parser.add_argument("--out", type=Path, required=True, help="An empty or new folder")
     parser.add_argument("--name", help="File name stem (default: from the release)")
-    parser.add_argument("--source-url", help="Where the provider release was downloaded")
-    parser.add_argument("--source-sha256", help="Checksum of that download")
+    parser.add_argument(
+        "--source-url", help="Where the provider release was downloaded (default: the summary's)"
+    )
+    parser.add_argument("--source-sha256", help="Checksum of that download (default: the same)")
     parser.add_argument("--terms-url", help="Where BAFU's Terms of Use can be read")
     parser.add_argument("--credit", help="Default: BAFU's credit with the release year")
     parser.add_argument("--methods-cf", type=Path, help="Impact factors for the openLCA export")
     parser.add_argument("--namespace", default=NAMESPACE, help="Seed of the openLCA ids")
     parser.add_argument("--simapro-product-naming", choices=("linked", "legacy"), default="linked")
     parser.add_argument(
+        "--labels",
+        type=Path,
+        default=LABELS,
+        help="The declared table of unit and compartment labels (default: %(default)s)",
+    )
+    parser.add_argument(
         "--openlca-unit-label",
         action="append",
         metavar="FROM=TO",
-        help="Write a unit the JSON-LD writer does not know under another label",
+        help="One more unit label for the JSON-LD writer, beside the declared table",
     )
     parser.add_argument(
         "--extra-steps", type=Path, help="JSON list of further modification steps to record"
@@ -914,13 +1351,27 @@ def main(argv=None):
             simapro_naming=args.simapro_product_naming,
             openlca_unit_labels=_pairs(args.openlca_unit_label, "--openlca-unit-label"),
             extra_steps=extra,
+            labels=load_labels(args.labels),
         )
     except (ExportError, ValueError) as error:
         sys.exit(f"Not exported: {error}")
     for kind, check in manifest["checks"].items():
-        print(f"{kind}: {'read back and matches' if check['passed'] else 'DIFFERS'}")
+        entry = manifest["formats"][kind]
+        if check["passed"]:
+            print(f"{kind}: read back and matches")
+        elif entry.get("stage") == "write":
+            print(f"{kind}: NOT WRITTEN ({entry['error']})")
+        else:
+            print(f"{kind}: DIFFERS")
         for problem in check["problems"][:10]:
             print(f"  {problem}")
+    for row in manifest["declared_units"]["another_quantity_written_as_built"]:
+        print(
+            f"declared {row['declared_unit']}, supplier in {row['supplier_unit']}, written as "
+            f"built: {row['dataset_name']} ({row['dataset_location']}) takes "
+            f"{row['supplier_name']} ({row['supplier_location']}); "
+            f"finding {row['finding'] or 'none recorded'}"
+        )
     print(f"Wrote {len(manifest['files'])} files and manifest.json to {args.out}")
     if manifest["status"] != "completed":
         sys.exit(1)

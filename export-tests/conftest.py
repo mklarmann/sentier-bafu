@@ -40,6 +40,9 @@ def _script():
 step = _script()
 
 
+PATCHED_FILES = "cd" * 32
+
+
 def run_summary():
     """What `bafu-fixes run --summary` would write for a run over the synthetic data."""
 
@@ -53,18 +56,20 @@ def run_summary():
             "authorised_by": authorised_by,
             "reported_by": None,
             "confirmed_by": None,
+            "findings": [],
             "references": [f"https://example.org/{id}"],
             "datasets": datasets,
+            "exchanges": datasets,
             "changes": datasets * 2,
             "fields": {"flowData/exchange/@unit": datasets * 2},
+            "xsd_checked": None,
+            "error": None,
         }
 
-    def dataset(number, name, location, import_fixes=(), patches=()):
+    def dataset(number, code, import_fixes=(), patches=()):
         return {
-            "file": f"process_{number}.xml",
+            "file": f"process_{code}.xml",
             "number": number,
-            "name": name,
-            "location": location,
             "import_fixes": list(import_fixes),
             "patches": list(patches),
         }
@@ -75,27 +80,43 @@ def run_summary():
         "error": None,
         "started": "2026-11-13T10:00:00+01:00",
         "finished": "2026-11-13T10:01:00+01:00",
-        "source": {
-            "location": "input/",
-            "fingerprint_sha256": "ab" * 32,
+        "duration_seconds": 60.0,
+        "release": {
+            "url": None,
+            "archive_sha256": None,
+            "fingerprint": "ab" * 32,
             "files": 9,
             "datasets": 9,
             "exchanges": 39,
         },
-        "options": {},
         "software": {"bafu-community-fixes": "0.1.0"},
-        "changed_datasets": 2,
+        "options": {},
         "steps": [
             entry("unit-names", "import fix", "Write unit names the schema allows", 1),
             entry("0001-flour-share", "patch", "Correct the flour input of bread", 1),
             entry("0002-no-effect", "patch", "A patch that changed nothing here", 0),
             entry("0003-waiting", "patch", "Correct a location", 1, authorised_by=None),
         ],
+        "totals": {"steps": 4, "datasets_changed": 2, "values_changed": 6},
+        "output": {"files": 9, "bytes": 9000, "fingerprint": PATCHED_FILES},
         "datasets": [
-            dataset(101, "bread production", "CH", patches=["0001-flour-share"]),
-            dataset(102, "wheat grains, at farm", "CH", ["unit-names"], ["0003-waiting"]),
+            dataset(101, "bread-ch", patches=["0001-flour-share"]),
+            dataset(102, "wheat", ["unit-names"], ["0003-waiting"]),
         ],
     }
+
+
+def marker(**changes):
+    """What the build writes into the metadata of a database of a patched release."""
+    record = {
+        "label": "Modified Data",
+        "modified_data": True,
+        "provider_release": RELEASE,
+        "built_release_tree_sha256": PATCHED_FILES,
+        "patches": ["0001-flour-share", "0003-waiting"],
+        "import_fixes": ["unit-names"],
+    }
+    return record | changes
 
 
 _projects = {}
@@ -109,6 +130,8 @@ def project(*variants):
         data = synthetic.databases(*variants)
         for database, nodes in data.items():
             bd.Database(database).write(nodes)
+        bd.databases[synthetic.INVENTORY][step.MARKER] = marker()
+        bd.databases.flush()
         _projects[name] = list(data)
     return name, _projects[name]
 

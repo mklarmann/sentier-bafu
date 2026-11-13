@@ -17,7 +17,7 @@ import pytest
 import recompute
 import synthetic
 from bw2io import BW2Package
-from conftest import BRIGHTWAY_DIR, RELEASE, export, project, run_summary, step
+from conftest import BRIGHTWAY_DIR, RELEASE, export, marker, project, run_summary, step
 
 CREDIT = "Life Cycle Inventory database of the Swiss Federal Administration, BAFU:2026"
 CLIMATE = synthetic.methods()[("synthetic", "climate change")][1]
@@ -51,10 +51,18 @@ def test_every_export_reads_back_and_matches_the_database(base):
     assert manifest["counts"] == {
         "activities": 9,
         "elementary_flows": 8,
+        "elementary_flows_in_use": 8,
         "exchanges": 40,
         "datasets_matched_to_the_record": 2,
     }
     assert manifest["simapro"]["links"] == {"resolved": 15, "ambiguous": 0, "missing": 0}
+    assert {kind: entry["status"] for kind, entry in manifest["formats"].items()} == {
+        "brightway": "completed",
+        "openlca": "completed",
+        "ilcd": "completed",
+        "simapro": "completed",
+    }
+    assert set(manifest["formats"]["simapro"]["seconds"]) == {"write", "read back"}
 
 
 def test_manifest_holds_release_credit_label_tools_and_checksums(base):
@@ -82,10 +90,12 @@ def test_record_of_modifications_travels_with_the_files(base):
     assert [s["id"] for s in record["steps"]] == ["unit-names", "0001-flour-share", "0003-waiting"]
     assert record["steps"][1]["authored_by"] == "Ann Author"
     assert record["steps"][1]["rationale"] == "Why 0001-flour-share is needed."
-    assert [(d["name"], d["location"]) for d in record["datasets"]] == [
-        ("bread production", "CH"),
-        ("wheat grains, at farm", "CH"),
+    # The summary names a changed dataset by file and number; the database adds the rest.
+    assert [(d["code"], d["number"], d["name"], d["location"]) for d in record["datasets"]] == [
+        ("bread-ch", 101, "bread production", "CH"),
+        ("wheat", 102, "wheat grains, at farm", "CH"),
     ]
+    assert record["patched_fingerprint_sha256"] == run_summary()["output"]["fingerprint"]
     readable = (out / "MODIFICATIONS.md").read_text()
     assert "**Modified Data.**" in readable and CREDIT in readable
     assert (
@@ -168,6 +178,48 @@ def test_step_refuses_a_run_summary_that_is_missing_or_incomplete(tmp_path):
     summary.write_text(json.dumps(run_summary() | {"status": "failed"}))
     with pytest.raises(step.ExportError, match="did not complete"):
         step.read_summary(summary)
+    incomplete = {k: v for k, v in run_summary().items() if k not in ("release", "output")}
+    summary.write_text(json.dumps(incomplete))
+    with pytest.raises(step.ExportError, match="lacks release, output"):
+        step.read_summary(summary)
+
+
+def test_step_refuses_a_database_without_the_modified_data_marker(tmp_path):
+    name, names = project()
+    databases = step.load_databases(name, names)
+
+    def refused(metadata, summary=None):
+        changed = copy.deepcopy(databases)
+        changed[INVENTORY]["metadata"] = metadata
+        with pytest.raises(step.ExportError) as error:
+            step.export_release(
+                changed, summary or run_summary(), tmp_path / "out", release=RELEASE
+            )
+        assert not (tmp_path / "out").exists()
+        return str(error.value)
+
+    meta = databases[INVENTORY]["metadata"]
+    unmarked = {k: v for k, v in meta.items() if k != step.MARKER}
+    assert "does not carry the 'Modified Data' marker" in refused(unmarked)
+    provider = meta | {step.MARKER: marker(label="Provider release", modified_data=False)}
+    assert "does not carry the 'Modified Data' marker" in refused(provider)
+    relabelled = meta | {step.MARKER: marker(modified_data=False)}
+    assert "does not carry the 'Modified Data' marker" in refused(relabelled)
+    # Marked, but built from other patched files than the run summary describes.
+    other = run_summary() | {"output": {"files": 9, "bytes": 1, "fingerprint": "ef" * 32}}
+    assert "built from other files than the run summary describes" in refused(meta, other)
+
+
+def test_step_refuses_a_record_that_names_a_dataset_the_database_lacks(tmp_path):
+    summary = run_summary()
+    summary["datasets"].append(
+        {"file": "process_gone.xml", "number": 103, "import_fixes": [], "patches": ["0003-waiting"]}
+    )
+    name, names = project()
+    with pytest.raises(step.ExportError, match="1 changed dataset.*not in the database.*'gone'"):
+        step.export_release(
+            step.load_databases(name, names), summary, tmp_path / "out", release=RELEASE
+        )
 
 
 def test_files_written_without_provenance_are_found_out(base, tmp_path):
@@ -217,8 +269,10 @@ def test_checks_notice_data_that_differs_from_the_database(base):
     nodes[(INVENTORY, "heat")]["exchanges"].pop()  # its emission
 
     openlca = step.check_openlca(path(out, manifest, "openlca"), nodes, step.NAMESPACE, marks)
+    # The dropped emission was the only use of its flow, which the file still holds.
     assert sorted(openlca) == [
-        f"{(INVENTORY, code)}: exchanges differ from the database" for code in ("heat", "wheat")
+        *(f"{(INVENTORY, code)}: exchanges differ from the database" for code in ("heat", "wheat")),
+        "17 flows instead of 16",
     ]
     simapro, _ = step.check_simapro(path(out, manifest, "simapro"), nodes, marks)
     assert sorted(simapro) == [
@@ -409,10 +463,21 @@ def test_two_activities_with_one_name_and_location_get_distinct_simapro_products
 # --- A unit the JSON-LD writer does not know -----------------------------------------------
 
 
-def test_normal_cubic_metre_is_refused_before_anything_is_written(tmp_path):
-    with pytest.raises(step.ExportError, match=r"'Nm3' \(2 nodes\).*--openlca-unit-label"):
-        export(tmp_path, synthetic.with_normal_cubic_metre)
-    assert not (tmp_path / "out").exists()
+def test_unit_without_a_label_fails_the_openlca_formats_and_leaves_the_others(tmp_path):
+    manifest, out, _ = export(tmp_path, synthetic.with_normal_cubic_metre)
+    assert manifest["status"] == "failed"
+    for kind in ("openlca", "ilcd"):
+        entry = manifest["formats"][kind]
+        assert (entry["status"], entry["stage"]) == ("failed", "write")
+        assert "'Nm3' (2 nodes)" in entry["error"] and "--openlca-unit-label" in entry["error"]
+        assert not manifest["checks"][kind]["passed"]
+        assert kind not in manifest["files"]
+    assert not list(out.glob("*-openlca.zip")) and not list(out.glob("*-ilcd.zip"))
+    # The Brightway package and the SimaPro file are written and read back all the same.
+    for kind in ("brightway", "simapro"):
+        assert manifest["formats"][kind]["status"] == "completed"
+        assert manifest["checks"][kind] == {"passed": True, "problems": [], "total": 0}
+        assert (out / manifest["files"][kind]["name"]).is_file()
 
 
 def test_normal_cubic_metre_exports_under_a_declared_label(tmp_path):
@@ -420,7 +485,10 @@ def test_normal_cubic_metre_exports_under_a_declared_label(tmp_path):
         tmp_path, synthetic.with_normal_cubic_metre, openlca_unit_labels={"Nm3": "m3"}
     )
     assert manifest["status"] == "completed"
-    assert manifest["openlca"]["unit_labels"] == {"Nm3": "m3"}
+    assert manifest["openlca"]["unit_labels"] == {
+        "normal cubic meter": "cubic meter",  # from the declared table
+        "Nm3": "m3",  # given for this export
+    }
     flow_id, process_id = step.olca_ids(step.NAMESPACE)
     archive = step.read_openlca(path(out, manifest, "openlca"))
     boiler = archive["processes"][process_id((INVENTORY, "heat-gas"))]
@@ -449,13 +517,269 @@ def test_openlca_writer_accepts_normal_cubic_metre(tmp_path):
     )  # fmt: skip
 
 
+# --- Labels come from a declared table, and never change an amount ---------------------------
+
+
+def test_every_unit_of_the_table_is_written_under_its_declared_label(tmp_path):
+    labels = step.load_labels()
+    units = list(labels["units"])
+    assert len(units) == 19  # the 20 strings of BAFU's files; `p` and `unit` are one
+    manifest, out, _ = export(tmp_path, synthetic.with_every_unit(units))
+    assert manifest["status"] == "completed", manifest["checks"]
+    assert manifest["labels"]["amounts_converted"] == 0
+    assert manifest["labels"]["file"] == "export_labels.toml"
+
+    flow_id, process_id = step.olca_ids(step.NAMESPACE)
+    archive = step.read_openlca(path(out, manifest, "openlca"))
+    assembly = archive["processes"][process_id((INVENTORY, "all-units"))]
+    written = {e.flow.id: (e.amount, archive["units"][e.unit.id].name) for e in assembly.exchanges}
+    csv = step.read_simapro(path(out, manifest, "simapro"))
+    rows = csv["processes"][f"{INVENTORY}|all-units"]["inputs"]
+    by_amount = {row["amount"]: row["unit"] for row in rows}
+    for position, unit in enumerate(units):
+        row, amount = labels["units"][unit], 1.5 + position
+        assert written[flow_id((INVENTORY, f"unit-{position}"))] == (amount, row["openlca"])
+        assert by_amount[amount] == row["simapro"]
+        product = csv["processes"][f"{INVENTORY}|unit-{position}"]["products"][0]
+        assert (product["amount"], product["unit"]) == (1.0, row["simapro"])
+    # The one label that is not the Brightway spelling: BAFU's Nm3.
+    assert manifest["labels"]["openlca_units"] == {"normal cubic meter": "cubic meter"}
+    gas = archive["processes"][process_id((INVENTORY, f"unit-{units.index('normal cubic meter')}"))]
+    assert "Unit in BAFU's release: Nm3. It is written here as cubic meter" in gas.description
+    # The Brightway package keeps the database's own spelling.
+    restored = BW2Package.load_file(str(path(out, manifest, "brightway")))
+    data = {obj["name"]: obj["data"] for obj in restored}[INVENTORY]
+    assert [data[(INVENTORY, f"unit-{i}")]["unit"] for i in range(len(units))] == units
+
+
+def test_the_table_gives_two_labels_the_same_quantity_only_where_one_unit_is_one_unit():
+    units = step.load_labels()["units"]
+
+    def same(a, b):
+        size = lambda unit: (units[unit]["quantity"], units[unit]["per_reference"])  # noqa: E731
+        return size(a) == size(b)
+
+    assert same("cubic meter", "normal cubic meter")
+    assert not same("kilowatt hour", "megajoule")  # one quantity, 3.6 apart
+    assert not same("kilometer", "meter") and not same("kilogram", "unit")
+    # What the table says of a unit is what the JSON-LD writer's own table says.
+    from bw_ilcd.units import resolve_unit
+
+    for row in units.values():
+        identity = resolve_unit(row["openlca"])
+        assert (identity.property_name, identity.factor) == (row["quantity"], row["per_reference"])
+
+
+# --- An input whose declared unit is another quantity than its supplier's ----------------------
+
+
+def test_writer_refuses_a_declared_unit_of_another_quantity(tmp_path):
+    from bw_interchange_export import export_openlca_ilcd
+
+    manifest, out, _ = export(tmp_path, synthetic.with_a_declared_unit_of_another_quantity)
+    (tmp_path / "m.json").write_text("{}")
+    with pytest.raises(ValueError, match="Conflicting units 'kilowatt hour' and 'megajoule'"):
+        export_openlca_ilcd(
+            path(out, manifest, "brightway"), tmp_path / "m.json", tmp_path / "o.zip",
+            tmp_path / "i.zip", namespace=step.NAMESPACE, quiet=True,
+        )  # fmt: skip
+
+
+def test_declared_unit_of_another_quantity_is_written_as_built_and_listed(tmp_path):
+    labels = step.load_labels()
+    labels["differences"] = [
+        {
+            "finding": "F99",
+            "supplier": "plant",
+            "declared": "kilowatt hour",
+            "supplier_unit": "megajoule",
+        }
+    ]
+    manifest, out, databases = export(
+        tmp_path, synthetic.with_a_declared_unit_of_another_quantity, labels=labels
+    )
+    assert manifest["status"] == "completed", manifest["checks"]
+    assert manifest["declared_units"] == {
+        "exchanges_whose_declared_unit_is_not_the_suppliers": 1,
+        "same_quantity_other_label": {},
+        "another_quantity_written_as_built": [
+            {
+                "dataset": "supply",
+                "dataset_name": "electricity, from gas",
+                "dataset_location": "FI",
+                "position": 1,
+                "kind": "technosphere",
+                "supplier": "plant",
+                "supplier_name": "electricity, gas, at power plant",
+                "supplier_location": "FI",
+                "declared_unit": "kilowatt hour",
+                "supplier_unit": "megajoule",
+                "amount_as_built": 0.0157,
+                "same_quantity": False,
+                "finding": "F99",
+            }
+        ],
+    }
+    # openLCA: the amount the database holds, in the supplier's unit, and a note beside it.
+    flow_id, process_id = step.olca_ids(step.NAMESPACE)
+    archive = step.read_openlca(path(out, manifest, "openlca"))
+    supply = archive["processes"][process_id((INVENTORY, "supply"))]
+    (edge,) = [e for e in supply.exchanges if e.flow.id == flow_id((INVENTORY, "plant"))]
+    assert (edge.amount, archive["units"][edge.unit.id].name) == (0.0157, "megajoule")
+    assert edge.description == (
+        "Declared unit in the provider release: kilowatt hour. The supplying dataset's unit "
+        "is megajoule. The amount is written as the Brightway build uses it and is not "
+        "converted. Finding F99."
+    )
+    # SimaPro: the same.
+    csv = step.read_simapro(path(out, manifest, "simapro"))
+    (row,) = [r for r in csv["processes"][f"{INVENTORY}|supply"]["inputs"] if r["amount"] == 0.0157]
+    assert row["unit"] == "MJ" and "Declared unit in the provider release" in row["comment"]
+    # Brightway: the package is the database, declared unit included.
+    restored = BW2Package.load_file(str(path(out, manifest, "brightway")))
+    data = {obj["name"]: obj["data"] for obj in restored}[INVENTORY]
+    assert data[(INVENTORY, "supply")]["exchanges"][1]["unit"] == "kilowatt hour"
+    assert (
+        restored[-1]["metadata"]["provenance"]["declared_units_of_another_quantity"][0]["finding"]
+        == "F99"
+    )
+    # Scores from the files equal Brightway's: nothing was converted on the way.
+    nodes = step.all_nodes(databases)
+    name, _ = project(synthetic.with_a_declared_unit_of_another_quantity)
+    expected = recompute.brightway(name, INVENTORY, CLIMATE)
+    assert math.isclose(expected["supply"], 0.0157 * 0.15 + 0.9843 * 0.4798, rel_tol=1e-6)
+    assert close(
+        recompute.openlca(path(out, manifest, "openlca"), nodes, step.NAMESPACE, CLIMATE), expected
+    )
+    assert close(recompute.simapro(path(out, manifest, "simapro"), nodes, CLIMATE), expected)
+
+
+def test_declared_unit_of_another_quantity_without_a_finding_says_so(tmp_path):
+    manifest, out, _ = export(tmp_path, synthetic.with_a_declared_unit_of_another_quantity)
+    (row,) = manifest["declared_units"]["another_quantity_written_as_built"]
+    assert row["finding"] is None
+    assert manifest["status"] == "completed"  # written as built; the audit raises the finding
+
+
+def test_a_missing_note_of_the_declared_unit_is_found_out(tmp_path):
+    manifest, out, databases = export(tmp_path, synthetic.with_a_declared_unit_of_another_quantity)
+    nodes = step.all_nodes(databases)
+    rows = [r for r in step.declared_unit_differences(nodes, step.load_labels())]
+    assert [(r["dataset"], r["same_quantity"]) for r in rows] == [("supply", False)]
+    marks = (CREDIT, "Modified Data")
+    # The check passes on the file as written, and fails if it is asked for a note on an
+    # exchange that has none.
+    assert (
+        step.check_openlca(path(out, manifest, "openlca"), nodes, step.NAMESPACE, marks, None, rows)
+        == []
+    )
+    other = [rows[0] | {"supplier": "electricity-de"}]
+    assert step.check_openlca(
+        path(out, manifest, "openlca"), nodes, step.NAMESPACE, marks, None, other
+    ) == [f"{(INVENTORY, 'supply')}: an exchange lacks the note of its declared unit"]
+
+
+# --- Elementary flows: the ones in use, in the compartment they are in -------------------------
+
+
+def test_flow_that_nothing_uses_stays_in_the_brightway_package_only(tmp_path):
+    manifest, out, _ = export(tmp_path, synthetic.with_an_unused_flow)
+    assert manifest["status"] == "completed", manifest["checks"]
+    assert manifest["counts"]["elementary_flows"] == 9
+    assert manifest["counts"]["elementary_flows_in_use"] == 8
+    flow_id, _ = step.olca_ids(step.NAMESPACE)
+    flows = step.read_openlca(path(out, manifest, "openlca"))["flows"]
+    assert flow_id((FLOWS, "krypton-air")) not in flows and len(flows) == 9 + 8
+    assert "Krypton-85" not in path(out, manifest, "simapro").read_text(encoding="cp1252")
+    restored = BW2Package.load_file(str(path(out, manifest, "brightway")))
+    assert (FLOWS, "krypton-air") in {obj["name"]: obj["data"] for obj in restored}[FLOWS]
+
+
+def test_compartments_of_the_build_go_to_their_simapro_section(tmp_path):
+    manifest, out, databases = export(tmp_path, synthetic.with_ef_compartments)
+    assert manifest["status"] == "completed", manifest["checks"]
+    csv = step.read_simapro(path(out, manifest, "simapro"))
+    rows = {
+        (row["name"], *row["context"], row["unit"], row["amount"])
+        for row in csv["processes"][f"{INVENTORY}|farm"]["elementary"]
+    }
+    assert rows == {
+        ("sulfur dioxide", "Emissions to air", "Emissions to air, unspecified", "kg", 0.5),
+        ("nitrate", "Emissions to water", "Emissions to fresh water", "kg", 1.5),
+        ("zinc", "Emissions to soil", "Emissions to agricultural soil", "kg", 2.5),
+        ("from arable", "Resources", "", "m2", 3.5),
+        ("natural gas", "Resources", "Non-renewable energy resources from ground", "MJ", 4.5),
+        # Two flows with one name in one compartment carry their code, and stay two.
+        ("waste heat | heat-1", "Emissions to air", "", "MJ", 5.5),
+        ("waste heat | heat-2", "Emissions to air", "", "MJ", 6.5),
+        ("Uranium alpha", "Emissions to water", "river", "kBq", 7.5),
+        ("Noise, road", "Non material emissions", "unspecified", "km", 8.5),
+    }
+    assert manifest["simapro"]["flows_named_with_their_code"] == 2
+    # openLCA keeps the compartment as the database has it, and each flow its own id.
+    flow_id, _ = step.olca_ids(step.NAMESPACE)
+    flows = step.read_openlca(path(out, manifest, "openlca"))["flows"]
+    assert flows[flow_id((FLOWS, "nitrate-ef"))].category == (
+        "Emissions/Emissions to water/Emissions to fresh water"
+    )
+    assert flows[flow_id((FLOWS, "heat-1"))].name == flows[flow_id((FLOWS, "heat-2"))].name
+
+
+def test_writer_alone_puts_those_compartments_under_air_and_the_check_says_so(tmp_path):
+    from bw_interchange_export import export_simapro_csv
+
+    manifest, out, databases = export(tmp_path, synthetic.with_ef_compartments)
+    nodes, marks = step.all_nodes(databases), (CREDIT, "Modified Data")
+    export_simapro_csv(
+        path(out, manifest, "brightway"), tmp_path / "bare.csv", quiet=True, product_naming="linked"
+    )
+    csv = step.read_simapro(tmp_path / "bare.csv")
+    sections = {
+        row["name"]: row["context"][0]
+        for row in csv["processes"][f"{INVENTORY}|farm"]["elementary"]
+    }
+    assert sections["nitrate"] == "Emissions to air"  # a water emission
+    problems, _ = step.check_simapro(tmp_path / "bare.csv", nodes, marks, step.load_labels())
+    assert f"{(INVENTORY, 'farm')}: elementary flows differ from the database" in problems
+    # The file the step wrote passes the same check.
+    assert (
+        step.check_simapro(path(out, manifest, "simapro"), nodes, marks, step.load_labels())[0]
+        == []
+    )
+
+
+def test_compartment_that_no_table_names_fails_simapro_and_leaves_the_others(tmp_path):
+    manifest, out, _ = export(tmp_path, synthetic.with_an_undeclared_compartment)
+    assert manifest["status"] == "failed"
+    entry = manifest["formats"]["simapro"]
+    assert (entry["status"], entry["stage"]) == ("failed", "write")
+    assert (
+        "No SimaPro section is declared for these compartments: 'sky' (1 flows)" in entry["error"]
+    )
+    assert not list(out.glob("*.csv"))
+    for kind in ("brightway", "openlca", "ilcd"):
+        assert manifest["formats"][kind]["status"] == "completed"
+        assert manifest["checks"][kind]["passed"]
+
+
 # --- An activity with a second product -----------------------------------------------------
 
 
-def test_co_product_is_refused_by_simapro_linked_naming_and_nothing_stays_behind(tmp_path):
-    with pytest.raises(ValueError, match="co-product row names a product another block"):
-        export(tmp_path, synthetic.with_co_product)
-    assert list((tmp_path / "out").iterdir()) == []
+def test_co_product_is_refused_by_simapro_linked_naming_and_the_other_formats_complete(
+    tmp_path,
+):
+    manifest, out, _ = export(tmp_path, synthetic.with_co_product)
+    assert manifest["status"] == "failed"
+    entry = manifest["formats"]["simapro"]
+    assert (entry["status"], entry["stage"]) == ("failed", "write")
+    assert "co-product row names a product another block" in entry["error"]
+    assert manifest["checks"]["simapro"]["problems"][0].startswith("write stopped: ValueError")
+    assert "simapro" not in manifest["files"] and not list(out.glob("*.csv"))
+    for kind in ("brightway", "openlca", "ilcd"):
+        assert manifest["formats"][kind]["status"] == "completed"
+        assert manifest["checks"][kind]["passed"]
+    listed = {line.split("  ")[1] for line in (out / "SHA256SUMS").read_text().splitlines()}
+    assert listed == {p.name for p in out.iterdir()} - {"SHA256SUMS"}
 
 
 def test_co_product_is_written_as_an_allocated_output_not_as_a_credit(tmp_path):

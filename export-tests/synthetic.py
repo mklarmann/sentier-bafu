@@ -7,7 +7,14 @@ be compared in full. The variants add the shapes a writer refuses or changes:
 * `with_normal_cubic_metre`: a unit (`Nm3`) outside the JSON-LD writer's unit table;
 * `with_co_product`: an activity with a second product, which Brightway credits
   against that product's own producer;
-* `with_a_namesake`: two activities with the same name and location.
+* `with_a_namesake`: two activities with the same name and location;
+* `with_a_declared_unit_of_another_quantity`: an input declared in kWh from a dataset
+  whose unit is MJ;
+* `with_an_unused_flow`: an elementary flow that no activity uses;
+* `with_ef_compartments`: flows with the three-level compartments of the EF 3.1 flow
+  list and with BAFU's own, and two flows with one name in one compartment;
+* `with_an_undeclared_compartment`: a flow whose compartment no table names;
+* `with_every_unit(units)`: one activity per unit of the declared table.
 """
 
 import copy
@@ -189,6 +196,91 @@ def with_a_namesake(flows, inventory):
         "transport, lorry", "RER", "kilometer", [("biosphere", "co2-air", 0.8)]
     )
     inventory["bread-de"]["_exchanges"].append(("technosphere", "transport-km", 0.05))
+
+
+def with_a_declared_unit_of_another_quantity(flows, inventory):
+    """Add a power plant whose unit is MJ and a consumer that takes it in kWh."""
+    inventory["plant"] = _process(
+        "electricity, gas, at power plant", "FI", "megajoule", [("biosphere", "co2-air", 0.15)]
+    )
+    inventory["supply"] = _process(
+        "electricity, from gas",
+        "FI",
+        "kilowatt hour",
+        [
+            ("technosphere", "plant", 0.0157, {"unit": "kilowatt hour"}),
+            ("technosphere", "electricity-de", 0.9843),
+        ],
+    )
+
+
+def with_an_unused_flow(flows, inventory):
+    """Add an elementary flow that nothing emits."""
+    flows["krypton-air"] = _flow("Krypton-85", ("air",), "kilo Becquerel")
+
+
+def with_ef_compartments(flows, inventory):
+    """Add flows named as the Brightway build names them, and a farm that uses them all."""
+    resource = "natural resource"
+    emissions = "Emissions"
+    added = {
+        "so2-ef": _flow(
+            "sulfur dioxide",
+            (emissions, "Emissions to air", "Emissions to air, unspecified"),
+            "kilogram",
+        ),
+        "nitrate-ef": _flow(
+            "nitrate", (emissions, "Emissions to water", "Emissions to fresh water"), "kilogram"
+        ),
+        "zinc-ef": _flow(
+            "zinc", (emissions, "Emissions to soil", "Emissions to agricultural soil"), "kilogram"
+        ),
+        "arable-ef": _flow(
+            "from arable", ("Land use", "Land transformation"), "square meter", resource
+        ),
+        "gas-ef": _flow(
+            "natural gas",
+            ("Resources", "Resources from ground", "Non-renewable energy resources from ground"),
+            "megajoule",
+            resource,
+        ),
+        # The same name in the same compartment: two flows that must stay two.
+        "heat-1": _flow("waste heat", ("air",), "megajoule"),
+        "heat-2": _flow("waste heat", ("air",), "megajoule"),
+        # BAFU's own compartments, on flows without an EF 3.1 flow.
+        "uranium-river": _flow("Uranium alpha", ("emissions to water", "river"), "kilo Becquerel"),
+        "noise": _flow("Noise, road", ("non material emissions", "unspecified"), "kilometer"),
+    }
+    flows.update(added)
+    inventory["farm"] = _process(
+        "field work",
+        "CH",
+        "hectare",
+        [("biosphere", code, 0.5 + position) for position, code in enumerate(added)],
+    )
+
+
+def with_an_undeclared_compartment(flows, inventory):
+    """Add an emission into a compartment that no table names."""
+    flows["glow"] = _flow("Light, at night", ("sky",), "square meter")
+    inventory["heat"]["_exchanges"].append(("biosphere", "glow", 0.25))
+
+
+def with_every_unit(units):
+    """A variant that adds one activity per unit, and one that takes an input of each."""
+
+    def variant(flows, inventory):
+        inputs = []
+        for position, unit in enumerate(units):
+            code = f"unit-{position}"
+            inventory[code] = _process(
+                f"service {position}", "GLO", unit, [("biosphere", "co2-air", 0.1)]
+            )
+            inputs.append(("technosphere", code, 1.5 + position))
+        inventory["all-units"] = _process("assembly", "GLO", "kilogram", inputs)
+
+    variant.__name__ = "with_every_unit"
+    return variant
 
 
 def databases(*variants):

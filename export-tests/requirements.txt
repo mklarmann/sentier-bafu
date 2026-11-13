@@ -1,5 +1,6 @@
 # The export step's own requirements (as in scripts/export_release.py) and pytest.
 bw-interchange-export @ git+https://gitlab.com/eos-lci/bw-interchange-export.git@db7af57cabd59b4256d00516027cc298bbcfc2ad
+bw-ilcd-bridge @ git+https://gitlab.com/eos-lci/bw-ilcd-bridge.git@c7377e3e207e48b35f10cf38e6e408726c4eee87
 bw-simapro-csv==0.5
 bw2data==4.8
 bw2io==0.9.17
