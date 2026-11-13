@@ -108,6 +108,10 @@ def form_fields(text):
     return [(f["id"], f["label"], f["required"]) for f in fields if f["type"] != "markdown"]
 
 
+# A token, a home folder or a private key. The folder name is joined from two parts so that this
+# file does not contain the string it searches for.
+PRIVATE = r"gh[pousr]_[A-Za-z0-9]{20,}|/" + "Users/|BEGIN [A-Z ]*PRIVATE KEY"
+
 class FormFileTests(unittest.TestCase):
     def test_the_form_and_the_script_name_the_same_fields(self):
         self.assertEqual(tuple(form_fields(FORM_TEXT)), intake.FORM)
@@ -257,7 +261,7 @@ class SavedIssueTests(unittest.TestCase):
     def test_the_saved_bodies_hold_nothing_private(self):
         for path in sorted(FIXTURES.glob("*.json")):
             text = path.read_text()
-            self.assertIsNone(re.search(r"gh[pousr]_[A-Za-z0-9]{20,}|/Users/|BEGIN [A-Z ]*PRIVATE KEY", text), path.name)
+            self.assertIsNone(re.search(PRIVATE, text), path.name)
             # The only address in them is the provider's public contact, in a label's description.
             self.assertEqual(set(re.findall(r"[\w.+-]+@[\w-]+\.[\w.]+", text)) - {"lca@bafu.admin.ch"}, set(), path.name)
 
