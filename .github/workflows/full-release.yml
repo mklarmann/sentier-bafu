@@ -1,0 +1,121 @@
+name: Full release
+
+# Runs the import fixes and every patch on BAFU's full release: for patches that
+# are proposed (pull requests) and for patches that are accepted (main). The CI
+# workflow next to this one runs on a small fixture only.
+#
+# Nothing from the inventory leaves the runner. The job summary and the uploaded
+# file hold counts, checksums and file names; the release, the patched release
+# and the HTML report (which quotes the data) are never uploaded.
+
+on:
+  pull_request:
+    paths:
+      - "src/bafu_community_fixes/**"
+      - "scripts/full_release_table.py"
+      - "scripts/check_patched_release.py"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".python-version"
+      - ".github/workflows/full-release.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/bafu_community_fixes/**"
+      - "scripts/full_release_table.py"
+      - "scripts/check_patched_release.py"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".python-version"
+      - ".github/workflows/full-release.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: full-release-${{ github.ref }}
+  # A newer push to a pull request replaces its run; runs on main all finish.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  run:
+    name: Patches on BAFU's full release
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          # A pull request also runs the revision it starts from.
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          enable-cache: false
+      - name: Install the patch tool
+        run: uv sync --locked
+      - name: Identify BAFU's release
+        id: release
+        # The tool knows the release, its checksum and where it keeps the download.
+        run: |
+          uv run --no-sync python - >> "$GITHUB_OUTPUT" <<'EOF'
+          from bafu_community_fixes.download import CHECKSUMS, LATEST_RELEASE, cache_dir
+
+          print(f"sha256={CHECKSUMS[LATEST_RELEASE]}")
+          print(f"cache={cache_dir()}")
+          EOF
+      - name: Reuse the downloaded release
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: ${{ steps.release.outputs.cache }}
+          key: bafu-release-${{ steps.release.outputs.sha256 }}
+      - name: Run the import fixes and patches, strictly
+        # `latest` downloads the release if it isn't there, and checks its SHA-256.
+        # `--strict` checks against the EcoSpold 1 schema after the import and after
+        # every patch. Any step that fails stops the run, and this job.
+        run: |
+          mkdir -p "$RUNNER_TEMP/summaries"
+          uv run --no-sync bafu-fixes run latest "$RUNNER_TEMP/head" --strict \
+            --summary "$RUNNER_TEMP/summaries/head.json"
+      - name: Check the files that were written
+        run: |
+          uv run --no-sync python scripts/check_patched_release.py "$RUNNER_TEMP/head" \
+            --summary "$RUNNER_TEMP/summaries/head.json"
+      - name: Run the revision this pull request starts from
+        if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          git worktree add --detach "$RUNNER_TEMP/base-source" "$BASE_SHA"
+          cd "$RUNNER_TEMP/base-source"
+          if [ ! -f uv.lock ] || ! uv sync --locked; then
+            echo "The base revision has no patch tool to run."
+          elif ! uv run --no-sync bafu-fixes run --help | grep -q -e --summary; then
+            echo "The base revision's patch tool can't write a summary yet."
+          else
+            uv run --no-sync bafu-fixes run latest "$RUNNER_TEMP/base" --strict \
+              --summary "$RUNNER_TEMP/summaries/base.json" \
+              || echo "The base revision's run failed. Its summary says where."
+          fi
+      - name: Say what the run did, and what this pull request changes
+        if: ${{ !cancelled() }}
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -- "$RUNNER_TEMP/summaries/head.json" --head-revision "$HEAD_SHA" \
+            --out "$GITHUB_STEP_SUMMARY" --check
+          if [ -n "$BASE_SHA" ]; then
+            set -- "$@" --base "$RUNNER_TEMP/summaries/base.json" --base-revision "$BASE_SHA" \
+              --head-output "$RUNNER_TEMP/head" --base-output "$RUNNER_TEMP/base"
+          fi
+          uv run --no-sync python scripts/full_release_table.py "$@"
+      - name: Keep the summaries (counts and checksums, no inventory)
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: full-release-summary
+          # This folder only ever holds the summary files written above.
+          path: ${{ runner.temp }}/summaries/
+          if-no-files-found: warn
+          retention-days: 90

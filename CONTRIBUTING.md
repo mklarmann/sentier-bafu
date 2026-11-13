@@ -15,6 +15,11 @@ uv run pytest
 uv run ruff check && uv run ruff format --check
 ```
 
+These run on a small fixture. A pull request that touches the package is also run on
+BAFU's full release, and its checks show what it changes there; see
+[Full release run](community/ci/README.md#full-release-run) for what the job does and how
+to run the same locally.
+
 How to write a patch, record who authored and authorised it, add supporting data and a
 test is explained in the README under [Writing a patch](README.md#writing-a-patch) and
 [Patches](README.md#patches). Leave `authorised_by` out until the patch is approved; the
