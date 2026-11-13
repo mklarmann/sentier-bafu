@@ -168,8 +168,10 @@ def contribution_page(site, c):
         rows += (f'<li><span class="check-name">{esc(words(name))} <code>{esc(name)}</code></span>'
                  f'<span class="pill {tone}">{said}</span><span class="check-link">{evidence}</span></li>')
     layer, links = c["layer"], []
+    # An assessment file is shown on this page: a link to the same file would lead back here.
+    shown = tuple("/" + source for source in site.config.get("assessments", {}).get(c["id"], []))
     for url in ([f'{site.repo}/issues/{int(c["issue"])}'] if c.get("issue") else []) + list(c["evidence"]):
-        if url not in links:
+        if url not in links and not (shown and url.endswith(shown)):
             links.append(url)
     button = ""
     if c.get("issue"):

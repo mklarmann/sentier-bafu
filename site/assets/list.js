@@ -47,7 +47,6 @@
   }
   function fromUrl() {
     var params = new URLSearchParams(location.search), hash = location.hash.slice(1);
-    note = "";
     state.q = params.get("q") || "";
     state.status = (params.get("status") || "").split(",").filter(Boolean);
     ["release", "kind", "patch"].forEach(function (name) {
@@ -64,7 +63,7 @@
     }
     var asked = state.status.length;
     state.status = state.status.filter(function (key) { return known("status", key); });
-    if (asked && !state.status.length) note = " No such status; showing all.";
+    if (asked) note = state.status.length ? "" : " No such status; showing all.";
     if (old || /^[FC]\d+$/.test(hash)) toUrl();
   }
   function toUrl() {
@@ -206,14 +205,14 @@
     }
     return loading;
   }
-  function run(append) {
-    if (!append) limit = page;
+  function run() {
+    limit = page;
     toControls();
     // The rows of the page are already the default view: nothing is loaded until it is needed.
-    if (!domRows && !index && isDefault() && !append) { announce(total); if (more) more.hidden = total <= page; return; }
-    load().then(function () { draw(append); }, function () {});
+    if (!domRows && !index && isDefault()) { announce(total); return; }
+    load().then(function () { draw(false); }, function () {});
   }
-  function change() { toUrl(); run(false); }
+  function change() { toUrl(); run(); }
 
   // ---------------------------------------------------------------- events
   q.addEventListener("input", function () { state.q = q.value; change(); });
@@ -248,11 +247,11 @@
     q.focus();
   });
   // Back and Reload can restore a page with other field values than its address: read it again.
-  window.addEventListener("pageshow", function () { fromUrl(); run(false); });
-  window.addEventListener("hashchange", function () { fromUrl(); run(false); });
+  window.addEventListener("pageshow", function () { fromUrl(); run(); });
+  window.addEventListener("hashchange", function () { fromUrl(); run(); });
 
   document.documentElement.classList.add("js");
   controls.hidden = false;
   fromUrl();
-  run(false);
+  run();
 })();

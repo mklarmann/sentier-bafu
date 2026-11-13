@@ -104,6 +104,11 @@ a.ext:not(.button) {
   -webkit-mask: var(--arrow-on) center / contain no-repeat; mask: var(--arrow-on) center / contain no-repeat;
 }
 
+/* A link that stands alone (not in a sentence) is at least 24 px high to the finger; the
+   padding of an inline box does not move the line. */
+:is(.crumb, .record-thread, .path-detail, .links, .plain, .check-link, .facts, .rail, .list-more, .source, .note, .step-where, td) > a,
+.thread-line > a, .panel dd > a { padding-block: .25rem; }
+
 /* ------------------------------------------------------------------ layout */
 .wrap { width: 100%; max-width: calc(var(--wrap) + 2 * var(--gutter)); margin-inline: auto; padding-inline: var(--gutter); }
 .page { padding-block: var(--s7) var(--s8); }
@@ -286,7 +291,8 @@ select { /* drawn here, so that Safari does not fall back to its small native co
 .tag { font-size: var(--t-xs); font-weight: 700; color: var(--muted); white-space: nowrap; }
 
 /* path: the tracker. Across from 40rem, down below. */
-.path { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(var(--steps, 5), minmax(0, 1fr)); }
+.path { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+@media (min-width: 40rem) { .path.of-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 .path > li { position: relative; padding: 2.25rem var(--s4) 0 0; display: flex; flex-direction: column; min-width: 0; }
 .path-dot {
   position: absolute; top: 0; left: 0; z-index: 1;

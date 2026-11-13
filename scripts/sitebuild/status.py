@@ -71,7 +71,8 @@ def path(steps, label, modifier=""):
             + (f'<span class="path-detail">{detail}</span>' if detail else "")
             + extra + "</li>"
         )
-    return f'<ol class="path {modifier}" style="--steps:{len(steps)}" aria-label="{esc(label)}">{items}</ol>'
+    classes = f"path of-{len(steps)} {modifier}".strip()
+    return f'<ol class="{classes}" aria-label="{esc(label)}">{items}</ol>'
 
 
 def dated(block, what, text=None):
