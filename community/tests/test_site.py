@@ -726,6 +726,11 @@ class SiteTests(unittest.TestCase):
             self.assertIn(f"There are {len(patches)} patches and {site.triage['counts']['filed']} waiting.", text)
             for patch in patches:
                 self.assertIn(patch["description"].replace("`", ""), text)
+            # The status vocabulary names every status with the sentence that explains it.
+            (root / "site/data.md").write_text("# X\n\n<!-- generated: status-vocabulary -->\n")
+            words = parse(site.document(next(d for d in site.docs if d["source"] == "site/data.md"))).find("dl", "vocabulary")
+            self.assertEqual([squash(dt.text()) for dt in words.find_all("dt")], [x["label"] for x in community.statuses("BAFU")])
+            self.assertEqual([squash(dd.text()) for dd in words.find_all("dd")], [x["description"] for x in community.statuses("BAFU")])
             (root / "site/data.md").write_text("# X\n\n<!-- count:no-such-number -->\n")
             with self.assertRaises(ValueError):
                 site.document(next(d for d in site.docs if d["source"] == "site/data.md"))
@@ -756,6 +761,11 @@ class SiteTests(unittest.TestCase):
         self.assertEqual(steps[0].find("h3").text(), "Release")
         self.assertNotIn("ok:", steps[3].text())
         self.assertEqual(prose.tone("works on BAFU's release; not yet on the patched one")[0], "part")
+        # The states as the patched-release page words them.
+        for state, mark in (("Works", "ok"), ("Two ways exist. They do not agree yet.", "part"),
+                            ("Works for BAFU's release. Not yet for the patched release.", "part"),
+                            ("Done on a build of BAFU's release only.", "part"), ("Does not exist yet.", "todo")):
+            self.assertEqual(prose.tone(state)[0], mark, state)
         self.assertEqual(prose.tone("11 patches, 4 of them for a finding")[0], "ok")
         self.assertEqual(prose.tone("does not exist yet")[0], "todo")
 
