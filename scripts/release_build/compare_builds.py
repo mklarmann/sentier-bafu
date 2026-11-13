@@ -226,11 +226,15 @@ def declared_against_linked(processes, exchanges) -> dict:
         how="left",
         suffixes=("", "_supplier"),
     )
+    declared = linked["location"].notna()
     return {
         "technosphere_inputs": int(len(inputs)),
         "without_a_linked_dataset": int(linked["name"].isna().sum()),
         "declared_name_differs": int((linked["flow_name"] != linked["name"]).sum()),
-        "declared_location_differs": int((linked["location"] != linked["location_supplier"]).sum()),
+        "no_declared_location": int((~declared).sum()),
+        "declared_location_differs": int(
+            (declared & (linked["location"] != linked["location_supplier"])).sum()
+        ),
     }
 
 

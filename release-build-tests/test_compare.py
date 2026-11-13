@@ -235,6 +235,7 @@ class Tables(unittest.TestCase):
         after = compare.declared_against_linked(*self.cand)
         self.assertEqual(before["technosphere_inputs"], 3)
         self.assertEqual(before["without_a_linked_dataset"], 1)  # "waste" is not a dataset here
+        self.assertEqual(before["no_declared_location"], 0)
         self.assertEqual(
             before["declared_location_differs"] - after["declared_location_differs"], 1
         )
