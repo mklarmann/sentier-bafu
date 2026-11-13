@@ -11,7 +11,7 @@ against the public metadata of the
 [bafu-community-fixes](https://github.com/sentier-dev/bafu-community-fixes)
 patches at revision `053c799`. The records themselves are in
 `reconciliation.json` (retired); `scripts/community.py check` keeps them
-consistent with the [findings ledger](findings.md). It delivers
+consistent with the [findings](findings/README.md). It delivers
 [#22](https://github.com/sentier-dev/sentier-bafu/issues/22).
 
 Provider responses are cited as the patches record them ("Marine Manche, BAFU

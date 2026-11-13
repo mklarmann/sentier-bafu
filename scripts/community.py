@@ -168,12 +168,13 @@ BREAKS_A_ROW = re.compile(r"[|\r\n\x0b\x0c\x1c-\x1e\x85\u2028\u2029]")
 RAW_HTML = re.compile(r"<[A-Za-z/!]")
 INDEX_HEAD = """# Findings about the BAFU/UVEK data
 
-<!-- Generated from community/findings/ by `python3 scripts/community.py index`. Do not edit. -->
+<!-- Generated from community/findings/ when the site is built (`python3 scripts/community.py index --out FILE`). Not kept in the repository. -->
 
-One line per finding. The full record of a finding is its file in [findings/](findings/), for
-example [findings/F3.json](findings/F3.json); the [site](https://sentier-dev.github.io/sentier-bafu/findings.html)
-shows every record with its discussion. Dataset values and names are quoted; text from the
-LCI reports is never pasted (Terms of Use clause 4).
+One line per finding. The full record of a finding is its file in
+[community/findings/](https://github.com/sentier-dev/sentier-bafu/tree/main/community/findings);
+the [site](https://sentier-dev.github.io/sentier-bafu/findings.html) shows every record with
+its discussion. Dataset values and names are quoted; text from the LCI reports is never
+pasted (Terms of Use clause 4).
 
 Numbers are shared with the [lci-bafu-catalog ledger](https://gitlab.com/eos-lci/lci-bafu-catalog/-/blob/main/docs/bafu_findings.md),
 so a finding has one number in both places. A number missing here is a finding recorded
@@ -312,7 +313,7 @@ def link_cell(record):
 
 
 def index_text(findings):
-    """The one-line-per-finding ledger, generated from the records."""
+    """The one-line-per-finding table, generated from the records; the site publishes it."""
     vocabulary = "".join(f"| **{k}** | {v} |\n" for k, v in FINDING_STATES.items())
     rows = "".join(
         f"| {r['id']} | {r['datasets']} | {r['title']} | {r['release']} | {r['status']} | {link_cell(r)} |\n"
@@ -322,7 +323,7 @@ def index_text(findings):
 
 
 def ledger_rows(text):
-    """Rows of the generated ledger: {id: {status, links}}. Other projects read the same table."""
+    """Rows of the generated table: {id: {status, links}}. Other projects read the published copy."""
     rows, inside = {}, False
     for line in text.splitlines():
         if line.startswith("## "):
@@ -380,9 +381,6 @@ def check(root):
         if not problems:
             findings.append(record)
     findings.sort(key=finding_number)
-    index = root / "community/findings.md"
-    if not errors and (not index.exists() or index.read_text() != index_text(findings)):
-        errors.append("community/findings.md is out of date: run `python3 scripts/community.py index`")
     print(
         "\n".join(errors)
         if errors
@@ -456,7 +454,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("check")
-    sub.add_parser("index")
+    command = sub.add_parser("index", help="write the one-line-per-finding table for the site")
+    command.add_argument("--out", type=Path, required=True)
     command = sub.add_parser("compare")
     command.add_argument("baseline", type=Path)
     command.add_argument("candidate", type=Path)
@@ -466,8 +465,11 @@ def main():
     if args.command == "check":
         return check(root)
     if args.command == "index":
-        (root / "community/findings.md").write_text(index_text(load_findings(root)))
-        print("community/findings.md")
+        # The table is a build output: two pull requests that each add a finding
+        # would always conflict on a committed copy.
+        args.out.parent.mkdir(parents=True, exist_ok=True)
+        args.out.write_text(index_text(load_findings(root)))
+        print(args.out)
         return 0
     # Refuse overwrite: old evidence must remain available for review.
     report = compare(args.baseline, args.candidate)

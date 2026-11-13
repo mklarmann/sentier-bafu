@@ -14,7 +14,7 @@ body:
     id: context
     attributes:
       label: Context
-      description: Links — a ledger row in community/findings.md, a BAFU release note, a contribution record, a paper.
+      description: Links — a finding (its record in community/findings/), a BAFU release note, a contribution record, a paper.
   - type: textarea
     id: positions
     attributes:

@@ -5,6 +5,8 @@ import io
 import json
 from pathlib import Path
 import shutil
+import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -119,14 +121,17 @@ class FindingRecordTests(unittest.TestCase):
         for rid in self.findings:
             self.assertEqual(self.errors(rid), [], rid)
 
-    def test_committed_index_is_generated_from_the_records(self):
-        index = (ROOT / "community/findings.md").read_text()
-        self.assertEqual(index, records.index_text(list(self.findings.values())))
-        rows = records.ledger_rows(index)
+    def test_index_is_generated_from_the_records(self):
+        rows = records.ledger_rows(records.index_text(list(self.findings.values())))
         self.assertEqual(set(rows), set(self.findings))
         for rid, row in rows.items():
             self.assertEqual(row["status"], self.findings[rid]["status"])
             self.assertEqual(row["links"], set(self.findings[rid]["links"]))
+
+    def test_no_generated_ledger_is_kept_in_the_repository(self):
+        # Two pull requests that each add a finding would conflict on a committed table.
+        self.assertFalse((ROOT / "community/findings.md").exists())
+        self.assertTrue((ROOT / "community/findings/README.md").is_file())
 
     def test_unknown_status_is_reported(self):
         self.findings["F2"]["status"] = "Open"
@@ -257,14 +262,26 @@ class CheckTests(unittest.TestCase):
     def test_committed_tree_passes(self):
         self.assertEqual(self.result()[0], 0)
 
-    def test_stale_index_is_reported(self):
+    def test_an_edited_record_needs_no_regenerated_file(self):
         path = self.root / "community/findings/F2.json"
         record = records.read(path)
         record["title"] += " (edited)"
         path.write_text(json.dumps(record))
         code, text = self.result()
-        self.assertEqual(code, 1)
-        self.assertIn("out of date", text)
+        self.assertEqual(code, 0, text)
+
+    def test_index_command_writes_the_table_where_it_is_told(self):
+        out = self.root / "build/ledger.md"
+        done = subprocess.run(
+            [sys.executable, str(ROOT / "scripts/community.py"), "index", "--out", str(out)],
+            capture_output=True, text=True,
+        )
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertEqual(set(records.ledger_rows(out.read_text())), {r["id"] for r in records.load_findings(ROOT)})
+        missing = subprocess.run(
+            [sys.executable, str(ROOT / "scripts/community.py"), "index"], capture_output=True, text=True
+        )
+        self.assertNotEqual(missing.returncode, 0)
 
     def test_duplicate_and_misnamed_record_are_reported(self):
         shutil.copy(self.root / "community/findings/F2.json", self.root / "community/findings/F9000.json")

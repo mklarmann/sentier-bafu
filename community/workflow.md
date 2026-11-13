@@ -16,7 +16,7 @@ Name what a change does to BAFU's release. Its class decides where it ends up. T
 | **D** value change or variant | an amount BAFU has not confirmed, a rebuilt or disaggregated inventory, a method variant such as residual electricity mixes | a separate database under its own name, **never under BAFU's**; it says what it replaces, how, and how well |
 | **E** downstream workaround | a fix in a user's own inventory | not in this repository |
 
-Classes A to C go into the patched release; B and C answer a [finding](findings.md). Class D stays beside it. It can be excellent and still not be BAFU's number, so users choose it knowingly.
+Classes A to C go into the patched release; B and C answer a [finding](findings/README.md). Class D stays beside it. It can be excellent and still not be BAFU's number, so users choose it knowingly.
 
 ## How a contribution moves
 

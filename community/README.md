@@ -11,7 +11,7 @@ You measured something in BAFU's data that cannot be right, or that you cannot e
 3. A second person repeats the measurement on BAFU's release files, never on an import. Then the mark and the `needs-triage` label come off.
 4. Findings go to BAFU in batches. BAFU decides what it changes. Its answer is recorded, and so is the release that contains a correction.
 
-A finding that does not survive re-measurement stays in the ledger as withdrawn, so nobody finds it again.
+A finding that does not survive re-measurement stays listed as withdrawn, so nobody finds it again.
 
 ## Propose a contribution
 
@@ -34,8 +34,7 @@ Not sure where something belongs? [Start a discussion](https://github.com/sentie
 ## Check a change
 
 ```sh
-python3 scripts/community.py check   # the records and the generated ledger
-python3 scripts/community.py index   # regenerate community/findings.md after editing a record
+python3 scripts/community.py check   # the records
 python3 -m unittest discover -s community/tests
 ```
 

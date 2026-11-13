@@ -24,6 +24,8 @@ import triage  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 RECORD_PAGES = {"community/findings": "findings", "community/contributions": "contributions"}
+# Links in a record's text resolve against the records folder.
+RECORD_TEXT = "community/findings/README.md"
 
 
 def esc(value):
@@ -59,7 +61,7 @@ class Site:
         self.provider = self.config["provider"]
         self.docs = self.config["documents"]
         self.routes = {d["source"]: d["page"] for d in self.docs}
-        self.routes["community/findings.md"] = "findings.html"  # the generated ledger
+        self.routes["community/findings/README.md"] = "findings.html"
         self.findings = community.load_findings(ROOT)
         self.contributions = sorted(
             (json.loads(p.read_text()) for p in (ROOT / "community/contributions").glob("C*.json")),
@@ -172,7 +174,7 @@ class Site:
                 f'<tr id="{f["id"]}" data-stage="{f["stage"]}" data-text="{esc(text)}">'
                 f'<td class="id"><a href="findings/{f["id"]}.html">{f["id"]}</a></td>'
                 f'<td><a class="title" href="findings/{f["id"]}.html">{esc(f["title"])}</a>'
-                f'<small>{self.render(f["datasets"], "community/findings.md", inline=True)} · {esc(f["release"])}</small></td>'
+                f'<small>{self.render(f["datasets"], RECORD_TEXT, inline=True)} · {esc(f["release"])}</small></td>'
                 f'<td><span class="badge status-{esc(f["status"])}">{esc(f["status"])}</span>'
                 + ('<br><small>awaiting a second measurement</small>' if f["stage"] == "needs-triage" else "")
                 + f'</td><td class="thread">{self.issue_link(f["issue"], f["issue_number"]) or "<small>external thread</small>"}</td></tr>'
@@ -227,7 +229,7 @@ class Site:
             f'<p><span class="badge status-{esc(f["status"])}">{esc(f["status"])}</span> '
             f'<span class="stage-note">{self.named(stage[2])}</span></p>'
             + self.facts([
-                ("Dataset(s)", self.render(f["datasets"], "community/findings.md", 1, True)),
+                ("Dataset(s)", self.render(f["datasets"], RECORD_TEXT, 1, True)),
                 ("Release", esc(f["release"])),
                 ("Discussion", thread),
                 ("Community patch",
@@ -241,10 +243,10 @@ class Site:
                 ("Next", f'{esc(f["next_action"])} <small>({esc(f["review_role"])})</small>' if f["next_action"] else ""),
             ])
             + "<h2>Observation</h2>"
-            + self.render(f["observation"], "community/findings.md", 1)
+            + self.render(f["observation"], RECORD_TEXT, 1)
             + (f"<h2>How it was checked</h2><p>{esc(f['validation_scope'])}</p>" if f["validation_scope"] else "")
             + (f"<h2>Kept on record</h2><ul>{retained}</ul>" if retained else "")
-            + (f"<h2>Notes</h2>{self.render(f['notes'], 'community/findings.md', 1)}" if f.get("notes") else "")
+            + (f"<h2>Notes</h2>{self.render(f['notes'], RECORD_TEXT, 1)}" if f.get("notes") else "")
             + f'<p class="source">Record: <a href="{self.source_repo}/blob/{self.ref}/community/findings/{f["id"]}.json">community/findings/{f["id"]}.json ↗</a></p>'
         )
         return self.shell(f'{f["id"]} · {f["title"]}', body, "findings.html", depth=1)
@@ -387,6 +389,8 @@ class Site:
             for f in sorted(self.triage["findings"], key=community.finding_number)
         ]
         (out / "findings.json").write_text(json.dumps(index, indent=1, ensure_ascii=False) + "\n")
+        # The one-line-per-finding table is a build output, never a committed file.
+        (out / "ledger.md").write_text(community.index_text(self.findings))
         (out / "status.json").write_text(json.dumps({
             "dataset": self.dataset,
             "findings": len(self.findings),

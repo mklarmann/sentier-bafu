@@ -6,7 +6,7 @@
 
 This public Sentier project connects partner evidence, Brightcon hackathon work, candidate improvements and the discussion around BAFU/UVEK. It spans releases and preserves the provider's canonical source alongside traceable, separately identified candidate layers.
 
-[Import & use](site/import.md) · [Findings ledger](community/findings.md) · [Evidence & testing](community/build-validation.md) · [Contribute](community/README.md) · [Consensus](community/workflow.md)
+[Import & use](site/import.md) · [Findings](community/findings/README.md) · [Evidence & testing](community/build-validation.md) · [Contribute](community/README.md) · [Consensus](community/workflow.md)
 
 ## Consolidating the community work
 
@@ -42,14 +42,14 @@ Record the release, input hashes, manifest pins and residual coverage. The build
 | Reviewed consensus | Actual reviewer decisions, objections and their disposition |
 | Recommendations to BAFU | Agreed findings, delivery evidence and provider responses |
 
-A **finding** starts with the source release, dataset code, what you measured and how. Read [the ledger](community/findings.md), then [open an issue](https://github.com/sentier-dev/sentier-bafu/issues/new/choose). Reproduce observations against the provider's source files before concluding that BAFU's data is wrong. An importer defect belongs to the component that introduced it.
+A **finding** starts with the source release, dataset code, what you measured and how. Read [the findings](https://sentier-dev.github.io/sentier-bafu/findings.html), then [open an issue](https://github.com/sentier-dev/sentier-bafu/issues/new/choose). Reproduce observations against the provider's source files before concluding that BAFU's data is wrong. An importer defect belongs to the component that introduced it.
 
 A **contribution layer** gets a [record](community/templates/contribution.json), isolated candidate build and [validation plan](community/build-validation.md). A reconstruction of an aggregated inventory is a new inventory claim; representation parity, inventory correction and forecasting require different tests.
 
 ## Current work
 
 - The [hackathon copied-process contribution](community/contributions/C001.json) remains proposed. Its [round-trip run](community/runs/hackathon-roundtrip.json) passed across 766 families; units/mass balance, score parity and held-out forecasting validation remain open.
-- The [lci-bafu-catalog findings](community/findings.md) connect source observations with their discussion threads. [Importer parity](https://github.com/sentier-dev/sentier-bafu/issues/2), [aggregation](https://github.com/sentier-dev/sentier-bafu/issues/3), [maintenance](https://github.com/sentier-dev/sentier-bafu/issues/4) and [method/build identity](https://github.com/sentier-dev/sentier-bafu/issues/5) have separate evidence and follow-up requirements.
+- The [findings](community/findings/README.md) connect source observations with their discussion threads. [Importer parity](https://github.com/sentier-dev/sentier-bafu/issues/2), [aggregation](https://github.com/sentier-dev/sentier-bafu/issues/3), [maintenance](https://github.com/sentier-dev/sentier-bafu/issues/4) and [method/build identity](https://github.com/sentier-dev/sentier-bafu/issues/5) have separate evidence and follow-up requirements.
 - The [measured BAFU export audit](community/runs/bafu-export-audit.json) passes identity/count checks and core-gas characterization coverage on the pinned 420,063-row registry; it does not claim raw-source or score parity.
 - Shared tooling checks named row-count deltas, required characterization, exact artifact-hash metadata and portable summary identity. Passing a supplied audit does not establish source parity or partner agreement.
 

@@ -130,4 +130,8 @@ class SiteTests(unittest.TestCase):
     def test_record_links_in_documents_point_to_their_pages(self):
         site = build_site.Site(self.out, offline=True)
         self.assertEqual(site.target("findings/F8.json", "community/workflow.md"), ("findings/F8.html", True))
-        self.assertEqual(site.target("findings.md", "community/workflow.md"), ("findings.html", True))
+        self.assertEqual(site.target("findings/README.md", "community/workflow.md"), ("findings.html", True))
+
+    def test_the_ledger_table_is_published_not_committed(self):
+        rows = community.ledger_rows((self.out / "ledger.md").read_text())
+        self.assertEqual(set(rows), {f["id"] for f in community.load_findings(ROOT)})
