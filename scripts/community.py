@@ -1061,6 +1061,64 @@ def validate_contribution(record, path=None):
     return errors + contribution_text_errors(record) + validate(record) + validate_contribution_triage(record)
 
 
+LAYERS_FOLDER = "community/layers"
+
+
+def layer_module():
+    """scripts/release_build/layer.py: what a contribution's layer file is, as the build reads it.
+    One definition serves the build and this check. Reading a file needs the standard library only."""
+    name = "release_build_layer"
+    if name not in sys.modules:
+        spec = importlib.util.spec_from_file_location(name, Path(__file__).parent / "release_build/layer.py")
+        sys.modules[name] = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(sys.modules[name])
+    return sys.modules[name]
+
+
+def layer_errors(root, contributions):
+    """Errors of the layer files in community/layers and of the records that name them.
+
+    A contribution that changes the inventory is built as a database of its own, beside the
+    patched release, from a file in community/layers. Its record names that file in
+    `layer.file`. The file must be there, pass the rules of the build and name the record's
+    contribution. The release build builds every file of the folder, so a file that no record
+    names is an error as well.
+    """
+    root, errors, named = Path(root), [], {}
+    for record in contributions:
+        layer = record.get("layer") if isinstance(record, dict) else None
+        file = layer.get("file") if isinstance(layer, dict) else None
+        if not isinstance(file, str) or not file:
+            continue
+        rid = record.get("id", "?")
+        path = Path(file)
+        if path.parent.as_posix() != LAYERS_FOLDER or not path.name.startswith(f"{rid}-"):
+            errors.append(f"{rid}: layer.file must be {LAYERS_FOLDER}/{rid}-<name>.json, not {file}")
+            continue
+        if path.name in named:
+            errors.append(f"{rid}: {file} is also the layer file of {named[path.name]}")
+            continue
+        named[path.name] = rid
+        if not (root / path).is_file():
+            errors.append(f"{rid}: layer.file names {file}, which is not there")
+            continue
+        try:
+            read_layer = layer_module().load(root / path)
+        except Exception as error:  # LayerError says what is wrong; anything else is named too
+            errors.append(f"{rid}: {LAYERS_FOLDER}/{error}")
+            continue
+        if read_layer["contribution"] != rid:
+            errors.append(f"{rid}: {file} is the layer of {read_layer['contribution']}, not of {rid}")
+    folder = root / LAYERS_FOLDER
+    for path in sorted(folder.glob("*.json")) if folder.is_dir() else []:
+        if path.name not in named:
+            errors.append(
+                f"{LAYERS_FOLDER}/{path.name}: no contribution record names this file in layer.file; "
+                "the release build would build it all the same"
+            )
+    return errors
+
+
 # ------------------------------------------------------------------------------------ check
 
 
@@ -1087,6 +1145,7 @@ def problems(root=ROOT):
             if record.get("id") in records:
                 errors.append(f"{where}: duplicate contribution {record.get('id')}")
             records[record.get("id")] = record
+    errors += layer_errors(root, records.values())
     for packet in read(root / "community/recommendations/tracker.json"):
         record = records.get(packet.get("contribution_id"))
         state = packet.get("status")

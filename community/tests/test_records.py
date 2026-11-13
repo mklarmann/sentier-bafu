@@ -1243,6 +1243,19 @@ class PatchRegistryTests(WorkspaceCase):
             self.assertEqual(self.snapshot.listing(self.root)[1], "the source of the patch modules")
 
 
+LAYER = {
+    "schema": "sentier-bafu/contribution-layer/1", "contribution": "C001", "name": "other-supplier",
+    "database": "bafu-2026-v1-c001-other-supplier", "title": "A made-up change of one supplier",
+    "authored_by": "A. Author", "authorised_by": None,
+    "changes": [{
+        "kind": "supplier-substitution",
+        "dataset": {"code": "a", "name": "Made-up crop", "location": "CH"},
+        "replaced_supplier": {"code": "b", "name": "Made-up mix", "location": "CH"},
+        "new_supplier": {"code": "c", "name": "Made-up plant", "location": "CH"},
+    }],
+}
+
+
 class OlderNumberingTests(unittest.TestCase):
     """The whole check under both values of `older_numbering_until`."""
 
@@ -1299,6 +1312,70 @@ class OlderNumberingTests(unittest.TestCase):
 
     def test_committed_configuration_says_where_the_older_numbering_ends(self):
         self.assertEqual(records.read(ROOT / "site/config.json")["older_numbering_until"], 47)
+
+
+class LayerTests(WorkspaceCase):
+    """A contribution that changes the inventory names its layer file in community/layers."""
+
+    FILE = "community/layers/C001-other-supplier.json"
+
+    def name_it(self, file=FILE, rid="C001"):
+        path = self.root / f"community/contributions/{rid}.json"
+        record = records.read(path)
+        record["layer"]["file"] = file
+        path.write_text(json.dumps(record))
+
+    def layer(self, name="C001-other-supplier.json", **changes):
+        folder = self.root / "community/layers"
+        folder.mkdir(exist_ok=True)
+        (folder / name).write_text(json.dumps(dict(LAYER, **changes)))
+
+    def test_a_record_that_names_a_layer_that_is_there_and_parses_passes(self):
+        self.layer()
+        self.name_it()
+        code, text = self.result()
+        self.assertEqual(code, 0, text)
+
+    def test_a_folder_with_its_readme_and_no_layer_is_fine(self):
+        (self.root / "community/layers").mkdir()
+        (self.root / "community/layers/README.md").write_text("# Contribution layers\n")
+        self.assertEqual(self.result()[0], 0)
+
+    def test_what_is_wrong_with_a_layer_or_its_record_fails_the_check(self):
+        def unreadable():
+            (self.root / self.FILE).write_text("{not json")
+
+        cases = {
+            "the file is not there": (lambda: self.name_it(), "C001: layer.file names community/layers/C001-other-supplier.json, which is not there"),
+            "the file is not JSON": (lambda: (self.layer(), self.name_it(), unreadable()), "C001: community/layers/C001-other-supplier.json: "),
+            "the file breaks a rule of the build": (lambda: (self.layer(database="bafu-2026-v1-patched"), self.name_it()),
+                                                    "is the name of BAFU's release or of the patched release"),
+            "the file has no change": (lambda: (self.layer(changes=[]), self.name_it()), "`changes` must list at least one change"),
+            "the file is another contribution's": (lambda: (self.layer(contribution="C002", database="bafu-2026-v1-c002-x"), self.name_it()),
+                                                   "is the layer of C002, not of C001"),
+            "no record names the file": (lambda: self.layer(), "community/layers/C001-other-supplier.json: no contribution record names this file"),
+            "two records name one file": (lambda: (self.layer(), self.name_it(), self.name_it(rid="C002")), "layer.file must be community/layers/C002-<name>.json"),
+            "a file outside the folder": (lambda: self.name_it("community/contributions/C001.json"), "layer.file does not have the required form"),
+            "a path that climbs out": (lambda: self.name_it("community/layers/../C001-x.json"), "layer.file does not have the required form"),
+        }
+        for name, (change, message) in cases.items():
+            with self.subTest(name):
+                self.tearDown()
+                self.setUp()
+                change()
+                code, text = self.result()
+                self.assertEqual(code, 1, name)
+                self.assertIn(message, text, name)
+
+    def test_the_rules_of_a_layer_are_the_builds_own(self):
+        """One definition: the check reads a layer with the module the build reads it with."""
+        module = records.layer_module()
+        self.assertEqual(Path(module.__file__).resolve(), ROOT / "scripts/release_build/layer.py")
+        self.assertEqual(module.validate(dict(LAYER))["contribution"], "C001")
+
+    def test_committed_records_name_only_layers_that_are_there(self):
+        self.assertEqual(records.layer_errors(ROOT, records.load_contributions(ROOT)), [])
+        self.assertTrue((ROOT / "community/layers/README.md").is_file())
 
 
 class CommittedPatchesTests(unittest.TestCase):

@@ -26,7 +26,14 @@
     "layer": {
       "type": "object",
       "required": ["kind", "implementation_url", "implementation_revision", "payloads"],
-      "description": "The implementation, pinned to a revision."
+      "description": "The implementation, pinned to a revision.",
+      "properties": {
+        "file": {
+          "type": ["string", "null"],
+          "pattern": "^community/layers/C[0-9]{3,}-[a-z0-9]+(-[a-z0-9]+)*\\.json$",
+          "description": "For a contribution that changes the inventory: the file that states its changes, from which the release build makes a database of its own beside the patched release. Null or absent for any other contribution."
+        }
+      }
     },
     "evidence": {"type": "array", "items": {"type": "string"}},
     "required_checks": {"type": "array", "items": {"type": "string"}},
