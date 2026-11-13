@@ -59,18 +59,22 @@ import resource
 import sys
 import tempfile
 import time
-import tomllib
 import uuid
 import zipfile
 from collections import Counter
 from importlib import metadata
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from release_build import labels as label_table  # noqa: E402
+
 SCHEMA = "sentier-bafu/export-manifest/2"
 LABEL = "Modified Data"
 #: Where the build says what a database was built from (`release_build/mark_database.py`).
 MARKER = "release_build"
-LABELS = Path(__file__).resolve().parent / "release_build" / "export_labels.toml"
+LABELS = label_table.TABLE
+NO_LABELS = label_table.EMPTY
 #: The compartment names the CSV writer knows, by the section it writes them to.
 SIMAPRO_COMPARTMENT = {
     "Emissions to air": "air",
@@ -171,24 +175,10 @@ def check_marker(databases, summary):
 
 def load_labels(path=LABELS):
     """The declared table: unit labels, compartments, known differences of declared units."""
-    path = Path(path)
-    table = tomllib.loads(path.read_text(encoding="utf-8"))
-    compartments = {
-        tuple(part.strip().lower() for part in row["categories"]): row["simapro"]
-        for row in table.get("compartment", ())
-    }
-    if unknown := sorted(set(compartments.values()) - set(SIMAPRO_COMPARTMENT)):
-        raise ExportError(f"{path.name}: not a section of the SimaPro CSV: {', '.join(unknown)}")
-    return {
-        "file": path.name,
-        "sha256": sha256(path),
-        "units": {row["brightway"]: row for row in table.get("unit", ())},
-        "compartments": compartments,
-        "differences": list(table.get("declared_unit_difference", ())),
-    }
-
-
-NO_LABELS = {"file": None, "sha256": None, "units": {}, "compartments": {}, "differences": []}
+    try:
+        return label_table.load(path)
+    except (label_table.LabelError, OSError, ValueError) as error:
+        raise ExportError(f"The table of labels can't be read: {error}") from None
 
 
 def unit_labels(labels, kind, extra=None):
@@ -258,15 +248,6 @@ def declared_unit_differences(nodes, labels):
     amount would change if a tool converted it; the row then names the finding it belongs
     to, or None if nobody has declared one.
     """
-    known = {
-        (row["supplier"], row["declared"], row["supplier_unit"]): row["finding"]
-        for row in labels["differences"]
-    }
-
-    def quantity(unit):
-        row = labels["units"].get(unit)
-        return (row["quantity"], row["per_reference"]) if row else None
-
     rows = []
     for key in sorted(nodes):
         node = nodes[key]
@@ -275,10 +256,6 @@ def declared_unit_differences(nodes, labels):
             target, declared = nodes.get(target_key), exchange.get("unit")
             if target is None or not declared or declared == target.get("unit"):
                 continue
-            same = quantity(declared) is not None and quantity(declared) == quantity(
-                target.get("unit")
-            )
-            finding = known.get((target_key[1], declared, target.get("unit")))
             rows.append(
                 {
                     "dataset": key[1],
@@ -292,11 +269,10 @@ def declared_unit_differences(nodes, labels):
                     "declared_unit": declared,
                     "supplier_unit": target.get("unit"),
                     "amount_as_built": exchange.get("amount"),
-                    "same_quantity": same,
-                    "finding": None if same else finding,
                     "key": key,
                 }
             )
+    label_table.classify(labels, rows)
     return rows
 
 
