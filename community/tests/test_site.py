@@ -271,6 +271,15 @@ class SiteTests(unittest.TestCase):
             self.assertNotIn("provider_response", text, path.name)
             self.assertNotIn('"channel"', text, path.name)
 
+    def test_record_text_never_puts_another_kind_of_address_on_a_page(self):
+        site = build_site.Site(self.out, offline=True)
+        self.assertIn('href="https://example.org/a"', site.record_text("[a](https://example.org/a)"))
+        # The validation refuses these first; the renderer refuses them again.
+        for text in ("[x](javascript:alert(1))", "[x][1]\n\n[1]: javascript:alert(1)", "![x](http://other.example/p.png)",
+                     "[x](data:text/html,hello)", "[x](../../etc/passwd)"):
+            with self.assertRaises(ValueError):
+                site.record_text(text)
+
     def test_the_page_writer_refuses_a_path_outside_the_output_folder(self):
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp) / "site"

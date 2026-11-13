@@ -130,6 +130,11 @@ class Site:
         """Markdown of a record. Records hold no raw HTML, no image, no heading and only
         full https links (the build refused them above), so nothing here needs a source file."""
         rendered = markdown.markdown(text, extensions=["tables", "fenced_code", "sane_lists"])
+        # Second line of defence behind the validation: whatever the Markdown turned into,
+        # a record puts no address on a page that is not a plain https link.
+        for address in re.findall(r'(?:href|src)="([^"]*)"', rendered):
+            if not community.HTTPS_URL.fullmatch(html.unescape(address)):
+                raise ValueError(f"Record text would link to {address!r}; only https addresses are written")
         rendered = rendered.replace("<table>", '<div class="table-scroll"><table>').replace(
             "</table>", "</table></div>"
         )
@@ -140,7 +145,7 @@ class Site:
             return f'<a href="{esc(self.repo)}/issues/{int(number)}">#{int(number)} ↗</a>' if number else ""
         return (
             f'<a href="{esc(issue["url"])}">#{int(issue["number"])} ↗</a> '
-            f'<small>{plural(issue["comments"], "comment")} · updated {esc(issue["updated"])}'
+            f'<small>{esc(plural(issue["comments"], "comment"))} · updated {esc(issue["updated"])}'
             f'{" · closed" if issue["state"] == "closed" else ""}</small>'
         )
 

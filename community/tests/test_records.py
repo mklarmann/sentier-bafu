@@ -372,6 +372,8 @@ CODE_RULES = {
     "an image in the method": (finding(method="x ![y](https://other.example/p.png)"), "method embeds an image"),
     "a heading in the observation": (finding(observation="# Second title\n\ntext"), "observation has a heading"),
     "a heading in the notes": (finding(notes="text\n\n## Part\n\nmore"), "notes has a heading"),
+    "a link defined apart from its text": (finding(observation="See [this][1].\n\n[1]: javascript:alert(1)"), "observation defines a link apart from its text"),
+    "a script address in a link": (finding(observation="[click](javascript:alert(1))"), "observation has a link that is not a full https address"),
 }
 # What the ids that predate the format may leave open, and nobody else:
 # (the same gap on an old id, which is accepted; on a new id, which is not).
@@ -593,6 +595,10 @@ class JoinTests(unittest.TestCase):
             "an id that is the whole slug": (lambda d: d["patches"][0].update(id="0001-strawberry"), "needs a four-digit id"),
             "findings that are not ids": (lambda d: d["patches"][0].update(findings=["#6"]), "needs a four-digit id"),
             "no list": (lambda d: d.pop("patches"), "needs a list of patches"),
+            "raw HTML in a description": (lambda d: d["patches"][0].update(description="Fix <script>x</script>"), "description holds raw HTML"),
+            "raw HTML in an author": (lambda d: d["patches"][0].update(author="<b>A</b>"), "author holds raw HTML"),
+            "an image in a description": (lambda d: d["patches"][0].update(description="![x](https://other.example/p.png)"), "description embeds an image"),
+            "a source that is not https": (lambda d: d["patches"][0].update(url="javascript:alert(1)//" + d["source"]["revision"]), "pinned to the snapshot's revision"),
         }
         for name, (change, message) in cases.items():
             data = copy.deepcopy(self.patches)

@@ -225,6 +225,8 @@ RELATIVE_LINK = re.compile(r"\]\((?!https://)")
 # An image loads from another host when the page opens; a heading breaks the page's outline.
 MARKDOWN_IMAGE = re.compile(r"!\[")
 MARKDOWN_HEADING = re.compile(r"(?m)^ {0,3}#{1,6}(\s|$)")
+# A link defined apart from its text ("[1]: address") would escape the rule for links.
+MARKDOWN_REFERENCE = re.compile(r"(?m)^ {0,3}\[[^\]\n]+\]:")
 HTTPS_URL = re.compile(r"https://[^\s()<>\"|]+")
 
 
@@ -451,6 +453,8 @@ def markdown_errors(texts):
             errors.append(f"{where} embeds an image; link to it instead")
         if MARKDOWN_HEADING.search(text):
             errors.append(f"{where} has a heading; the page sets the headings")
+        if MARKDOWN_REFERENCE.search(text):
+            errors.append(f"{where} defines a link apart from its text; write [text](https://…)")
     return errors
 
 
@@ -630,8 +634,13 @@ def patch_errors(data):
                 "who authorised it (or null) and the findings it answers"
             )
             continue
-        if not re.fullmatch(r"https://[^\s()<>\"|]+", str(patch.get("url", ""))) or revision not in patch["url"]:
+        if not HTTPS_URL.fullmatch(str(patch.get("url", ""))) or revision not in patch["url"]:
             errors.append(f"patch {pid}: the source url is pinned to the snapshot's revision")
+        # The site writes these texts into pages, so the rules for record text hold here too.
+        for key in ("description", "author", "authorised_by"):
+            if RAW_HTML.search(patch.get(key) or ""):
+                errors.append(f"patch {pid}: {key} holds raw HTML; write Markdown")
+        errors += [f"patch {pid}: {e}" for e in markdown_errors({"description": patch["description"]})]
         if pid in seen:
             errors.append(f"patch {pid} is listed twice")
         seen.add(pid)
