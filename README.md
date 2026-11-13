@@ -86,7 +86,9 @@ If a run fails, the report is still written, with the error.
 
 `--summary` writes the record as JSON for programs: the same steps with their authors,
 authorisation, references and counts, and for every changed dataset its number, name,
-location and the ids of the steps that changed it. It holds no amounts.
+location and the ids of the steps that changed it. It holds no amounts. The export step
+(`scripts/export_release.py`, see [docs/exports.md](docs/exports.md)) reads it to label
+its files as modified and to carry the list of changes.
 
 ## Additional fields
 
