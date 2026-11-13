@@ -22,7 +22,7 @@ You measured something in BAFU's data that looks wrong, or that you cannot expla
 1. [Open a finding](https://github.com/sentier-dev/sentier-bafu/issues/new?template=bafu-data-finding.yml) and fill in the form: the dataset code, the release, where you looked, what you measured and how, and why it looks wrong. Give numbers with their units.
 2. A maintainer reads the report and adds a record. The finding gets a number, which is the number of its issue with an F in front.
 3. The finding has the status "Needs a second measurement" until a second person has repeated it.
-4. Then the finding is reported to BAFU. BAFU decides what it changes. BAFU's answer is recorded, and so is a BAFU release that contains a correction.
+4. Then the finding is reported to BAFU. BAFU decides what it changes. BAFU's answer is recorded. The finding is resolved once a BAFU release covers the point.
 
 A finding that does not hold when it is measured again stays listed as "Withdrawn", so that nobody reports it a second time.
 

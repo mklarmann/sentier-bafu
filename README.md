@@ -4,7 +4,7 @@
 
 This workspace collects measured findings on the BAFU/UVEK life-cycle inventory database as feedback to BAFU, the Swiss Federal Office for the Environment (FOEN), which decides what it changes. People who work with the database record here what they measure in BAFU's data, and a second person is asked to repeat each measurement.
 
-Beside the findings, this workspace holds contributions (mappings, models and variants, which keep their own name) and community patches for users who need a change before BAFU's next release.
+Beside the findings, this workspace holds contributions (mappings, models and variants, which keep their own name) and community patches for users who need a change now.
 
 **The site: <https://sentier-dev.github.io/sentier-bafu/>.** It lists every finding with its status and its discussion, and it shows what was reported to BAFU and what BAFU answered. It is built from the records in this repository.
 
@@ -24,7 +24,7 @@ A contribution is a mapping, a model, a rebuilt inventory or a method variant, w
 
 ## The patched release
 
-The patched release is BAFU's release with import fixes and community patches applied. It is a convenience for users who need a change before BAFU's next release. A community patch is not BAFU's correction.
+The patched release is BAFU's release with import fixes and community patches applied. It is a convenience for users who need a change now. A community patch is not BAFU's correction.
 
 Its state:
 

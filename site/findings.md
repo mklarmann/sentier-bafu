@@ -10,7 +10,7 @@ Findings are feedback to BAFU, the Swiss Federal Office for the Environment (FOE
 
 - **A row is one finding.** It shows the number, the title, what the finding concerns, its status and where it is discussed. You can search by dataset code, by finding number or by word, and you can show one status at a time.
 - **What a finding concerns.** Datasets are named by code, name and location. A finding about a group of datasets, an elementary flow or a published file says so in words.
-- **The status is computed from the record.** A record holds dated evidence: who reported the finding, who repeated the measurement, when it was reported to BAFU, what BAFU answered, and which BAFU release contains a correction. Nobody sets a status by hand. A step that the record does not hold is shown as "not recorded", never as done.
+- **The status is computed from the record.** A record holds dated evidence: who reported the finding, who repeated the measurement, when it was reported to BAFU, what BAFU answered, and which BAFU release covers the point. Nobody sets a status by hand. A step that the record does not hold is shown as "not recorded", never as done.
 
 ## What a status means
 
@@ -18,8 +18,8 @@ A status says how far a finding has come on its way to BAFU. Each finding's page
 
 <!-- generated: status-vocabulary -->
 
-- **"Answered by BAFU" is not "Corrected by BAFU".** An answer says what BAFU said. It does not show that the data has changed. A finding becomes "Corrected by BAFU" only after the correction was checked in a BAFU release or file that the record names.
-- **A community patch is not a status.** It can change a copy of BAFU's release for users who need the change before BAFU's next release. It is not BAFU's correction, and it does not change the status of a finding. The [patched release](patched-release.md) page lists the patches.
+- **"Answered by BAFU" is not "Resolved".** An answer says what BAFU said. A finding is resolved once a BAFU release or file that the record names covers the point.
+- **A community patch is not a status.** It can change a copy of BAFU's release for users who need the change now. It is not BAFU's correction, and it does not change the status of a finding. The [patched release](patched-release.md) page lists the patches.
 
 ## About this list
 

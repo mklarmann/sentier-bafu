@@ -1,6 +1,6 @@
 # Patched release
 
-The patched release is BAFU's release with import fixes and community patches applied. It is a convenience for users who need a change before BAFU's next release. The main purpose of this workspace is the [feedback to BAFU](feedback.md).
+The patched release is BAFU's release with import fixes and community patches applied. It is a convenience for users who need a change now. The main purpose of this workspace is the [feedback to BAFU](feedback.md).
 
 A community patch is not BAFU's correction. BAFU decides what it changes in its own releases.
 

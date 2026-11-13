@@ -6,8 +6,8 @@ is built from these files. A file lies at `<number // 1000>/F<number>.json`, for
 
 **What a record holds.** What was observed and how it was measured, the datasets and releases
 it concerns, and dated evidence of what happened to it: who reported it, who repeated the
-measurement, when it was reported to BAFU, what BAFU answered, and which BAFU release contains
-a correction.
+measurement, when it was reported to BAFU, what BAFU answered, and which BAFU release covers
+the point.
 A record holds no status. The status is computed from the evidence, so nobody has to keep a
 status, a flag and the issue's labels in agreement. The fields are described in
 [`schema/finding.schema.json`](../../schema/finding.schema.json), and
