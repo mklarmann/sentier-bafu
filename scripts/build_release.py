@@ -7,18 +7,27 @@
 
 `build` runs these steps and records each one's time and peak memory in `OUT/build.json`:
 
-1. patch    `bafu-fixes run` writes the patched release (skipped with `--no-patches`)
-2. adapt    the release becomes the zip sentier-importers reads (`release_build/adapter.py`)
-3. import   sentier-importers writes the inventory tables
-4. data     the pinned flow terms, methods and mapping are fetched and checked
-5. install  sentier-brightway writes the Brightway database and the EF 3.1 methods
-6. audit    `release_build/audit_brightway.py` reads the database back and scores it
+1. patch      `bafu-fixes run` writes the patched release (skipped with `--no-patches`)
+2. adapt      the release becomes the zip sentier-importers reads (`release_build/adapter.py`);
+              elementary exchanges keep the flow BAFU declared
+3. import     sentier-importers writes the inventory tables
+4. label      a patched release gets its own source name on every dataset
+5. data       the pinned flow terms, methods and mapping are fetched and checked
+6. install    sentier-brightway writes the Brightway database and the EF 3.1 methods
+7. mark       the database's metadata says what it was built from ("Modified Data", patch ids)
+8. audit      `release_build/audit_brightway.py` reads the database back and scores it
+9. published  with `--published-results FILE`: the comparison with BAFU's published LCIA
+              results (the workbook is not in this repository; without it the step is skipped)
+
+The database of the provider release is called `bafu-2026`, BAFU's name. The database of a
+patched release is called `bafu-2026-v1-patched`, so that nobody takes it for BAFU's release.
 
 sentier-importers and sentier-brightway are used at the commits in `release_build/pins.toml`,
 each in its own `uv` environment. This script needs Python 3.12 or newer, `uv` and `git`.
 
 Everything is written under `OUT`. The built database holds BAFU's inventory, which is under
-BAFU's Terms of Use: keep `OUT` local, and never upload it from a CI job.
+BAFU's Terms of Use: keep `OUT` local, and never upload it from a CI job. `build.json`, the
+audit and the comparison hold counts, dataset codes, names and single scores.
 """
 
 import argparse
@@ -44,7 +53,13 @@ PINS = HELPERS / "pins.toml"
 IMPORTER_INPUT = Path("sources") / "bafu-2026" / "BAFU-2026 v1_ecoSpold v1.zip"
 IMPORTER_SOURCES = ("bafu-processes", "bafu-exchanges")
 PINNED_DATA = ("sentier-vocab", "sentier-methods", "sentier-mappings")
-STEPS = ("patch", "adapt", "import", "data", "install", "audit")
+STEPS = ("patch", "adapt", "import", "label", "data", "install", "mark", "audit", "published")
+# The source name sentier-importers writes on every dataset, which sentier-brightway uses as
+# the database name: BAFU's release. A patched release gets another.
+PROVIDER_SOURCE = "bafu-2026"
+PATCHED_SOURCE = "bafu-2026-v1-patched"
+BIOSPHERE_DB = "ef-3.1-biosphere"
+RELEASE_NAME = "BAFU:2026 v1"
 
 
 class BuildError(Exception):
@@ -139,17 +154,26 @@ def load_pins(path: Path = PINS) -> dict:
 
 
 def plan(args: argparse.Namespace) -> dict:
-    """Every path of a build, from its options. No file is touched."""
+    """Every path and name of a build, from its options. No file is touched."""
     out = args.out.resolve()
     patched = not args.no_patches
+    database = args.database or (PATCHED_SOURCE if patched else PROVIDER_SOURCE)
+    if patched and database == PROVIDER_SOURCE:
+        raise BuildError(
+            f"{PROVIDER_SOURCE} is the name of BAFU's release; a patched database needs another"
+        )
+    if not patched and database != PROVIDER_SOURCE:
+        raise BuildError(f"The provider release keeps BAFU's name, {PROVIDER_SOURCE}")
     return {
         "label": args.label
         or ("patched release (community patches applied)" if patched else "provider release"),
         "patched": patched,
         "release": args.release.resolve(),
+        "release_name": args.release_name,
         "out": out,
         "patched_release": out / "release",
         "patch_report": out / "release-report.html",
+        "patch_summary": out / "release-summary.json",
         "importer_root": out / "importer-root",
         "importer_zip": out / "importer-root" / IMPORTER_INPUT,
         "importer_output": out / "importer-output",
@@ -159,7 +183,12 @@ def plan(args: argparse.Namespace) -> dict:
         "data_root": out / "data-root",
         "brightway_dir": (args.brightway_dir or out / "brightway").resolve(),
         "project": args.project or ("bafu-2026-v1-patched" if patched else "bafu-2026-v1"),
+        "database": database,
+        "residual_database": f"{database}-residual",
+        "build_steps": out / "build-steps.json",
         "audit": out / "audit",
+        "published": out / "published",
+        "published_summary": out / "published-results.json",
         "logs": out / "logs",
         "record": out / "build.json",
     }
@@ -182,6 +211,17 @@ def latest_release(venvs: Path | None) -> Path:
     if done.returncode != 0:
         raise BuildError(f"Could not get the latest release: {done.stderr.strip()[-500:]}")
     return Path(done.stdout.strip().splitlines()[-1])
+
+
+def patch_tool_writes_summary(env: dict[str, str]) -> bool:
+    """Whether this checkout's `bafu-fixes run` has `--summary` (the run's record as JSON)."""
+    done = subprocess.run(
+        ["uv", "run", "--frozen", "--project", str(REPOSITORY), "bafu-fixes", "run", "--help"],
+        capture_output=True,
+        text=True,
+        env={**os.environ, **env},
+    )
+    return done.returncode == 0 and "--summary" in done.stdout
 
 
 def build(args: argparse.Namespace) -> int:
@@ -207,12 +247,13 @@ def build(args: argparse.Namespace) -> int:
     brightway = Tool(
         "sentier-brightway", pins["sentier-brightway"], tools_dir / "sentier-brightway", venvs
     )
+    database, residual = paths["database"], paths["residual_database"]
     record = {
         "label": paths["label"],
         "patched": paths["patched"],
         "started": datetime.now(UTC).isoformat(timespec="seconds"),
         "status": "running",
-        "release": {"folder": str(paths["release"])},
+        "release": {"name": paths["release_name"], "folder": str(paths["release"])},
         "tools": {
             "this repository": _repository_commit(),
             importers.name: importers.ensure(args.allow_unpinned),
@@ -224,6 +265,7 @@ def build(args: argparse.Namespace) -> int:
             "platform": platform.platform(terse=True),
         },
         "project": paths["project"],
+        "databases": {"inventory": database, "flows": BIOSPHERE_DB, "no_ef_3_1_flow": residual},
         "steps": {},
     }
 
@@ -249,12 +291,17 @@ def build(args: argparse.Namespace) -> int:
     try:
         # 1. patch
         source = paths["release"]
+        record["release"]["record_of_changes"] = []
         if paths["patched"]:
+            patch_env = {"UV_PROJECT_ENVIRONMENT": str(venvs / "bafu-fixes")} if venvs else {}
             options = ["--xsd-check", args.xsd_check, "--report", str(paths["patch_report"])]
+            record["release"]["record_of_changes"].append(paths["patch_report"].name)
+            if patch_tool_writes_summary(patch_env):
+                options += ["--summary", str(paths["patch_summary"])]
+                record["release"]["record_of_changes"].append(paths["patch_summary"].name)
             for flag, ids in (("--only", args.only), ("--skip", args.skip)):
                 if ids:
                     options += [flag, *ids]
-            patch_env = {"UV_PROJECT_ENVIRONMENT": str(venvs / "bafu-fixes")} if venvs else {}
             step(
                 "patch",
                 [
@@ -265,10 +312,13 @@ def build(args: argparse.Namespace) -> int:
             )
             source = paths["patched_release"]
 
-        # 2. adapt (in this process: standard library only)
+        # 2. adapt (in this process: standard library only). A patched release is read
+        # beside the provider release, so that elementary exchanges keep the declared flow.
         started = time.perf_counter()
         print(f"[adapt] {source} -> {paths['importer_zip']}", flush=True)
-        receipt = adapter.adapt_folder(source, paths["importer_zip"])
+        receipt = adapter.adapt_folder(
+            source, paths["importer_zip"], declared=paths["release"] if paths["patched"] else None
+        )
         paths["receipt"].write_text(json.dumps(receipt.as_dict(), indent=2) + "\n")
         record["steps"]["adapt"] = {
             "commands": [["release_build.adapter.adapt_folder"]],
@@ -276,14 +326,14 @@ def build(args: argparse.Namespace) -> int:
             "peak_memory_mb": None,  # runs inside this process
             "returncode": 0,
         }
-        record["release"]["provider_tree_sha256"] = (
-            adapter.tree_sha256(paths["release"]) if paths["patched"] else receipt.input_tree_sha256
-        )
-        record["release"]["built_tree_sha256"] = receipt.input_tree_sha256
-        record["release"]["importer_zip_sha256"] = receipt.output_zip_sha256
-        record["release"]["exchange_numbers_restored"] = dict(receipt.numbers_restored)
-        record["release"]["patches"] = dict(sorted(receipt.patches.items()))
-        record["release"]["import_fixes"] = dict(sorted(receipt.import_fixes.items()))
+        release = record["release"]
+        release["provider_tree_sha256"] = receipt.declared_tree_sha256 or receipt.input_tree_sha256
+        release["built_tree_sha256"] = receipt.input_tree_sha256
+        release["importer_zip_sha256"] = receipt.output_zip_sha256
+        release["exchange_numbers_restored"] = dict(receipt.numbers_restored)
+        release["patches"] = dict(sorted(receipt.patches.items()))
+        release["import_fixes"] = dict(sorted(receipt.import_fixes.items()))
+        release["exchanges_linked_on_the_declared_flow"] = len(receipt.source_observations)
 
         # 3. import
         for name in IMPORTER_SOURCES:
@@ -300,51 +350,88 @@ def build(args: argparse.Namespace) -> int:
         folders = sorted((paths["importer_output"] / "sentier_inventory").glob("*/"))
         if len(folders) != 1:
             raise BuildError(f"Expected one inventory folder from the importer, found {folders}")
-        metadata = ["python", str(HELPERS / "inventory_metadata.py"), str(folders[0])]
+        tables, folder_name = folders[0], folders[0].name
+
+        # 4. label: a patched release gets its own source name; its version names the
+        # patched files, so two different sets of patches are never taken for one another
+        metadata = ["python", str(HELPERS / "inventory_metadata.py"), str(tables)]
         if paths["patched"]:
+            version = f"tree-{receipt.input_tree_sha256[:8]}"
+            folder_name = f"{database}-{version}"
+            step(
+                "label",
+                importers.command(
+                    *("python", str(HELPERS / "label_release.py"), str(tables)),
+                    *("--receipt", str(paths["receipt"])),
+                    *("--source", database, "--source-version", version),
+                ),
+                importers.env(),
+            )
             modifications = out / "modifications.json"
             modifications.write_text(json.dumps(_modifications(receipt, record), indent=2) + "\n")
             metadata += ["--modifications", str(modifications)]
         step("import", importers.command(*metadata), importers.env())
 
-        # 4. data
-        step(
-            "data",
-            brightway.command(
-                *("python", str(HELPERS / "data_root.py"), str(paths["pinned_data"])),
-                *("--pins", str(args.pins.resolve()), "--record", str(out / "data-pins.json")),
-            ),
-            brightway.env(),
-        )
+        # 5. data
+        data_command = [
+            *("python", str(HELPERS / "data_root.py"), str(paths["pinned_data"])),
+            *("--pins", str(args.pins.resolve()), "--record", str(out / "data-pins.json")),
+        ]
+        terms = paths["data_root"] / "sentier-vocab" / "terms"
+        if paths["patched"]:
+            # sentier-brightway looks up the flow terms of the inventory's own source
+            data_command += ["--flow-terms", PROVIDER_SOURCE, database]
+            data_command += [str(terms / f"{database}.parquet")]
+        step("data", brightway.command(*data_command), brightway.env())
         pinned = json.loads((out / "data-pins.json").read_text())
-        inventory = paths["data_root"] / "sentier-inventory" / "data" / folders[0].name
+        inventory = paths["data_root"] / "sentier-inventory" / "data" / folder_name
         inventory.mkdir(parents=True)
-        for file in sorted(folders[0].iterdir()):
+        for file in sorted(tables.iterdir()):
             shutil.copy2(file, inventory / file.name)
         for name in PINNED_DATA:
-            (paths["data_root"] / name).symlink_to(Path(pinned["folder"]) / name)
+            if name == "sentier-vocab" and paths["patched"]:
+                for file in sorted((Path(pinned["folder"]) / name / "terms").glob("*.parquet")):
+                    (terms / file.name).symlink_to(file)
+            else:
+                (paths["data_root"] / name).symlink_to(Path(pinned["folder"]) / name)
         record["data_pins"] = [
             {key: value for key, value in pin.items() if key != "files"}
             for pin in pinned["sources"]
         ]
 
-        # 5. install
+        # 6. install
         bw_env = {**brightway.env(), "BRIGHTWAY2_DIR": str(paths["brightway_dir"])}
         paths["brightway_dir"].mkdir(parents=True, exist_ok=True)
         step(
             "install",
             brightway.command(
                 *("sentier-brightway", "db", "--project", paths["project"]),
-                *("--data-root", str(paths["data_root"])),
+                *("--source", database, "--data-root", str(paths["data_root"])),
             ),
             bw_env,
         )
         record["coverage"] = _coverage_lines(paths["logs"] / "install.log")
 
-        # 6. audit (exit code 1: the audit wrote its file and found errors)
+        # 7. mark
+        build_steps = _build_steps(record, receipt, inventory)
+        paths["build_steps"].write_text(json.dumps(build_steps, indent=2) + "\n")
+        marker = out / "release-build.json"
+        marker.write_text(json.dumps(_marker(record, build_steps), indent=2) + "\n")
+        step(
+            "mark",
+            brightway.command(
+                *("python", str(HELPERS / "mark_database.py"), "--project", paths["project"]),
+                *("--database", database, "--database", residual),
+                *("--build", str(marker), "--provider-source", PROVIDER_SOURCE),
+            ),
+            bw_env,
+        )
+
+        # 8. audit (exit code 1: the audit wrote its file and found errors)
         audit_command = brightway.command(
             *("python", str(HELPERS / "audit_brightway.py"), "--project", paths["project"]),
-            *("--out", str(paths["audit"]), "--label", paths["label"]),
+            *("--database", database, "--out", str(paths["audit"]), "--label", paths["label"]),
+            *(["--sample", str(args.sample.resolve())] if args.sample else []),
         )
         step("audit", audit_command, bw_env, accept=(0, 1))
         if not (paths["audit"] / "audit.json").is_file():
@@ -357,6 +444,57 @@ def build(args: argparse.Namespace) -> int:
             "errors": audit["errors"],
             "findings": audit["findings"],
         }
+
+        # 9. published (optional): against BAFU's published LCIA results
+        workbook = args.published_results
+        if workbook is None:
+            record["published_results"] = {
+                "status": "skipped",
+                "reason": "no workbook given (--published-results FILE)",
+            }
+        elif not workbook.is_file():
+            record["published_results"] = {
+                "status": "skipped",
+                "reason": f"{workbook} is not a file; BAFU's workbook is not in this repository",
+            }
+        else:
+            step(
+                "published",
+                brightway.command(
+                    *("sentier-brightway", "backtest", "--out", str(paths["published"])),
+                    *("--source", database, "--data-root", str(paths["data_root"])),
+                    *("--xlsx", str(workbook.resolve())),
+                ),
+                brightway.env(),
+            )
+            step(
+                "published",
+                brightway.command(
+                    *("python", str(HELPERS / "published_results.py"), str(paths["published"])),
+                    *("--out", str(paths["published_summary"])),
+                ),
+                brightway.env(),
+            )
+            record["published_results"] = {
+                "status": "compared",
+                "workbook_sha256": adapter.sha256_file(workbook),
+                "file": str(paths["published_summary"]),
+            } | {
+                key: value
+                for key, value in json.loads(paths["published_summary"].read_text()).items()
+                if key != "categories"
+            }
+        if record["published_results"]["status"] == "skipped":
+            print(f"[published] skipped: {record['published_results']['reason']}", flush=True)
+
+        record["export"] = {
+            "brightway_dir": str(paths["brightway_dir"]),
+            "project": paths["project"],
+            "databases": [database, BIOSPHERE_DB, residual],
+            "summary": str(paths["patch_summary"]) if paths["patch_summary"].is_file() else None,
+            "extra_steps": str(paths["build_steps"]),
+            "release": paths["release_name"],
+        }
         record["status"] = "completed" if audit["status"] == "passed" else "audit failed"
     except (BuildError, adapter.AdapterError) as error:
         record["status"], record["error"] = "failed", str(error)
@@ -365,11 +503,11 @@ def build(args: argparse.Namespace) -> int:
         record["finished"] = datetime.now(UTC).isoformat(timespec="seconds")
         paths["record"].write_text(json.dumps(record, indent=2) + "\n")
 
-    print(f"Built {paths['project']} in {paths['brightway_dir']}")
+    print(f"Built {database} in project {paths['project']}, {paths['brightway_dir']}")
     for name, result in record["steps"].items():
         memory = result["peak_memory_mb"]
         print(
-            f"  {name:8} {result['seconds']:7.1f} s  {memory if memory is not None else '-':>8} MB"
+            f"  {name:9} {result['seconds']:7.1f} s  {memory if memory is not None else '-':>8} MB"
         )
     print(f"Audit {record['audit']['status']}: {record['audit']['file']}")
     for error in record["audit"]["errors"]:
@@ -385,11 +523,66 @@ def _modifications(receipt: adapter.Receipt, record: dict) -> dict:
     return {
         "tool": "bafu-community-fixes",
         "tool_commit": record["tools"]["this repository"],
+        "provider_release": record["release"]["name"],
         "provider_release_tree_sha256": record["release"]["provider_tree_sha256"],
         "patched_release_tree_sha256": receipt.input_tree_sha256,
         "datasets_changed_by_import_fix": dict(sorted(receipt.import_fixes.items())),
         "datasets_changed_by_patch": dict(sorted(receipt.patches.items())),
-        "record_of_changes": "release-report.html, written by the same run",
+        "exchanges_linked_on_the_declared_flow": len(receipt.source_observations),
+        "record_of_changes": record["release"]["record_of_changes"],
+    }
+
+
+def _build_steps(record: dict, receipt: adapter.Receipt, inventory: Path) -> list[dict]:
+    """What the build itself changes, in the shape of the patch tool's steps.
+
+    An export of the database lists these after the patch tool's own steps.
+    """
+    mapping = next(pin for pin in record["data_pins"] if pin["name"] == "sentier-mappings")
+    steps = [
+        {
+            "id": "build-ef-3.1-links",
+            "kind": "build step",
+            "description": "Elementary exchanges are linked to EF 3.1 flows through "
+            f"sentier-mappings at {mapping['commit'][:12]}, with its conversion factors. "
+            "Exchanges of flows the mapping does not hold stay on BAFU's flow, in the "
+            f"database {record['databases']['no_ef_3_1_flow']}, without a factor.",
+            "datasets": receipt.datasets,
+        }
+    ]
+    if receipt.source_observations:
+        steps.append(
+            {
+                "id": "build-declared-flow-identity",
+                "kind": "build step",
+                "description": f"{len(receipt.source_observations)} elementary exchanges "
+                "whose name or compartment a patch corrects are linked on the flow as BAFU "
+                "declared it. The corrected name is the exchange's label; the declared and "
+                f"the corrected flow of each are listed in {inventory.name}/"
+                "source-observations.json.",
+                "datasets": len({o["dataset"] for o in receipt.source_observations}),
+            }
+        )
+    return steps
+
+
+def _marker(record: dict, build_steps: list[dict]) -> dict:
+    """What `mark_database.py` writes into the database's metadata."""
+    release = record["release"]
+    return {
+        "patched": record["patched"],
+        "release_name": release["name"],
+        "provider_tree_sha256": release["provider_tree_sha256"],
+        "built_tree_sha256": release["built_tree_sha256"],
+        "patches": sorted(release["patches"]),
+        "import_fixes": sorted(release["import_fixes"]),
+        "record_of_changes": release["record_of_changes"],
+        "build_steps": build_steps,
+        "tools": {
+            name: record["tools"][name]
+            for name in ("this repository", "sentier-importers", "sentier-brightway")
+        },
+        "data": record["data_pins"],
     }
 
 
@@ -468,6 +661,28 @@ def main(argv: list[str] | None = None) -> int:
     )
     b.add_argument("--label", help="What this build is, for the audit and the record")
     b.add_argument("--project", help="Brightway project name")
+    b.add_argument(
+        "--database",
+        help=f"Name of a patched release's database (default: {PATCHED_SOURCE}); the "
+        f"provider release is always {PROVIDER_SOURCE}",
+    )
+    b.add_argument(
+        "--release-name", default=RELEASE_NAME, help=f"The release (default: {RELEASE_NAME})"
+    )
+    b.add_argument(
+        "--sample",
+        type=Path,
+        help="Datasets the audit scores, with plausible ranges (default: the BAFU:2026 v1 "
+        "sample in release_build/score_sample.json)",
+    )
+    b.add_argument(
+        "--published-results",
+        type=Path,
+        metavar="FILE",
+        help="BAFU's published LCIA results workbook (.xlsx or .zip): also compare the "
+        "build's scores with it. The workbook is not in this repository; without it, or "
+        "if the file is missing, the step is skipped",
+    )
     b.add_argument("--brightway-dir", type=Path, help="BRIGHTWAY2_DIR (default: OUT/brightway)")
     b.add_argument(
         "--pinned-data",

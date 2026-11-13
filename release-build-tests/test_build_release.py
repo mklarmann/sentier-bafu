@@ -29,6 +29,8 @@ def options(**values) -> argparse.Namespace:
         "project": None,
         "brightway_dir": None,
         "pinned_data": None,
+        "database": None,
+        "release_name": "X:2026 v1",
     }
     return argparse.Namespace(**{**defaults, **values})
 
@@ -45,7 +47,19 @@ class Plan(unittest.TestCase):
         paths = build_release.plan(options(no_patches=True))
         self.assertFalse(paths["patched"])
         self.assertEqual(paths["project"], "bafu-2026-v1")
+        self.assertEqual(paths["database"], "bafu-2026")
+        self.assertEqual(paths["residual_database"], "bafu-2026-residual")
         self.assertNotIn("patched", paths["label"])
+
+    def test_a_patched_database_never_carries_bafus_name(self):
+        paths = build_release.plan(options())
+        self.assertEqual(paths["database"], "bafu-2026-v1-patched")
+        self.assertEqual(paths["residual_database"], "bafu-2026-v1-patched-residual")
+        self.assertEqual(build_release.plan(options(database="mine"))["database"], "mine")
+        with self.assertRaisesRegex(build_release.BuildError, "BAFU's release"):
+            build_release.plan(options(database="bafu-2026"))
+        with self.assertRaisesRegex(build_release.BuildError, "keeps BAFU's name"):
+            build_release.plan(options(no_patches=True, database="mine"))
 
     def test_the_importer_finds_its_input_below_its_data_root(self):
         paths = build_release.plan(options())
@@ -177,6 +191,55 @@ class Refusals(unittest.TestCase):
             code = build_release.main(["build", str(root / "release"), str(root / "out")])
             self.assertEqual(code, 1)
             self.assertEqual([p.name for p in (root / "out").iterdir()], ["something"])
+
+
+class BuildRecords(unittest.TestCase):
+    record = {
+        "patched": True,
+        "release": {
+            "name": "X:2026 v1",
+            "provider_tree_sha256": "a" * 64,
+            "built_tree_sha256": "b" * 64,
+            "patches": {"0007-names": 2, "0001-example": 1},
+            "import_fixes": {"renumber-exchanges": 3},
+            "record_of_changes": ["release-report.html"],
+        },
+        "tools": {"this repository": "c", "sentier-importers": "d", "sentier-brightway": "e"},
+        "databases": {"no_ef_3_1_flow": "bafu-2026-v1-patched-residual"},
+        "data_pins": [{"name": "sentier-mappings", "commit": "f" * 40}],
+    }
+
+    def test_the_build_names_its_own_changes_for_an_export(self):
+        receipt = build_release.adapter.Receipt(datasets=7)
+        steps = build_release._build_steps(self.record, receipt, Path("inventory"))
+        self.assertEqual([step["id"] for step in steps], ["build-ef-3.1-links"])
+        self.assertIn("ffffffffffff", steps[0]["description"])
+        receipt.source_observations = [{"dataset": "a"}, {"dataset": "a"}, {"dataset": "b"}]
+        steps = build_release._build_steps(self.record, receipt, Path("inventory"))
+        self.assertEqual(steps[1]["id"], "build-declared-flow-identity")
+        self.assertEqual(steps[1]["datasets"], 2)
+        self.assertIn("3 elementary exchanges", steps[1]["description"])
+        for step in steps:  # the shape an export step reads
+            self.assertTrue({"id", "kind", "description"} <= set(step))
+
+    def test_the_marker_lists_the_patch_ids(self):
+        marker = build_release._marker(self.record, [])
+        self.assertEqual(marker["patches"], ["0001-example", "0007-names"])
+        self.assertEqual(marker["import_fixes"], ["renumber-exchanges"])
+        self.assertTrue(marker["patched"])
+
+
+class Syntax(unittest.TestCase):
+    def test_the_build_files_are_python_3_12(self):
+        """The tools' environments are on 3.12; the package's own lint targets 3.14."""
+        import ast
+
+        files = [REPOSITORY / "scripts" / "build_release.py"]
+        files += sorted((REPOSITORY / "scripts" / "release_build").glob("*.py"))
+        files += sorted((REPOSITORY / "release-build-tests").glob("*.py"))
+        self.assertGreater(len(files), 10)
+        for file in files:
+            ast.parse(file.read_text(), filename=str(file), feature_version=(3, 12))
 
 
 class LatestRelease(unittest.TestCase):
