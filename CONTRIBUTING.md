@@ -6,39 +6,104 @@ Open an issue or a pull request. For a contribution, name the BAFU release and t
 
 ## Check a change
 
-Run these before you open a pull request. The [Documentation workflow](.github/workflows/pages.yml) runs the same commands.
+Run the checks that fit your change before you open a pull request. This section is the one place that lists them. The workflows run the same commands, and a test compares the two lists. [docs/automation.md](docs/automation.md) says which workflow runs what.
+
+The checks use three environments, and each keeps its own. All of them need [uv](https://docs.astral.sh/uv/).
+
+- The records, the site and their tests need Python 3.12 and the `markdown` package. They run outside the package project, with `uv run --no-project --python 3.12`.
+- The patch tool needs Python 3.14 and its locked environment, which `uv sync --locked` installs.
+- The build of a Brightway database and of the exports makes its own environments from the versions pinned in `scripts/release_build/pins.toml`.
+
+### Records, site and unit tests
 
 ```sh
-python3 scripts/community.py check
-uv run --no-project --python 3.12 --with markdown==3.7 python -m unittest discover -s community/tests
-python3 scripts/build_checks.py community/templates/build-audit.json
+uv run --no-project --python 3.12 python scripts/community.py check
+uv run --no-project --python 3.12 --with markdown==3.7 --with pyyaml==6.0.2 python -m unittest discover -s community/tests
+uv run --no-project --python 3.12 python scripts/build_checks.py community/templates/build-audit.json
+uv run --no-project --python 3.12 --with pandas==2.2.3 --with pyarrow==19.0.1 python -m unittest discover -s registry-tests
+uv run --no-project --python 3.12 --with markdown==3.7 python scripts/build_site.py --offline --out _site
+uv run --no-project --python 3.12 python scripts/check_site.py _site
+uv run --no-project --python 3.12 --with markdown==3.7 --with pyyaml==6.0.2 python community/tests/lifecycle_steps.py
 ```
 
-- `check` validates every finding record, every contribution record and the list of community patches. It names the file and the rule that a record breaks.
-- The unit tests need [uv](https://docs.astral.sh/uv/). Without the `markdown` package the tests of the site are skipped.
+- `check` validates every finding record and every contribution record, and it compares [`community/patches.json`](community/patches.json) with the patches in `src/bafu_community_fixes/patches/`. It names the file and the rule that a record breaks.
+- The unit tests read frozen copies of the records, so that a real finding can move on without a test being edited. Without the `markdown` package the tests of the site are skipped.
 - `build_checks.py` checks a build audit. The template is an example of the format, not a measured build.
+- The tests in `registry-tests/` check the export audit. They need other packages, so they run apart.
+- The site is built from the records alone and then checked: every local link, and no data file in the output.
+- `lifecycle_steps.py` takes each step of a finding's life on a copy of the repository (a new record, a second measurement, a report, an answer, a correction, a withdrawal, a new release, a new patch) and runs the unit tests on the copy.
 
-The tests of the export audit run apart, because they need other packages:
+### The patch tool
 
 ```sh
-uv run --no-project --python 3.12 --with pandas==2.2.3 --with pyarrow==19.0.1 python -m unittest discover -s tests
+uv sync --locked
+uv run ruff check
+uv run ruff format --check
+uv run pytest
+uv run python scripts/community.py check
+rev="$(git log -1 --format=%H -- docs/plans/bafu-community/integration-receipt.json)"
+uv run --no-project --python 3.12 python scripts/check_integration_receipt.py --rev "$rev"
 ```
+
+- The tests run on a small made-up dataset. They need none of BAFU's data.
+- The second `check` runs where the patch tool is installed. It compares `community/patches.json` with the patches as the tool itself lists them. The first one reads the patch files without the tool.
+- The last two lines check the receipt that accounts for every file of the two repositories that were brought together here. The check needs the whole history (`git fetch --unshallow` in a shallow clone).
+
+### The build, on a made-up release
+
+These tests build a Brightway database and the exports from eight made-up datasets. They need none of BAFU's data. They clone [sentier-importers](https://github.com/sentier-dev/sentier-importers) and [sentier-brightway](https://github.com/sentier-dev/sentier-brightway) at their pinned versions into `output/tools` and download 37 MB of pinned flow lists and impact methods.
+
+```sh
+export RELEASE_BUILD_WHOLE_PATH=1 RELEASE_BUILD_TOOLS=output/tools RELEASE_BUILD_PINNED_DATA=output/pinned-data
+uv run --no-project --python 3.12 python -m unittest discover -s release-build-tests -p test_whole_path.py
+uv run --frozen --project output/tools/sentier-brightway --python 3.12 --extra testing python -m unittest discover -s release-build-tests
+uv run --no-project --python 3.12 --with-requirements export-tests/requirements.txt pytest export-tests
+uv run --no-sync python -m unittest discover -s release-build-tests -p test_adapter.py
+```
+
+### On BAFU's release
+
+These commands download BAFU's release (about 37 MB) and check it against a known checksum. BAFU's Terms of Use apply to it and to everything built from it: read [docs/terms-of-use.md](docs/terms-of-use.md), and keep `output/` on your machine.
+
+```sh
+uv run --no-sync bafu-fixes run latest output/patched --strict --summary output/summary.json
+uv run --no-sync python scripts/check_patched_release.py output/patched --summary output/summary.json
+uv run --no-sync python scripts/full_release_table.py output/summary.json --check
+uv run --no-project --python 3.12 python scripts/build_release.py release latest output/release-run
+```
+
+- The first three lines apply the import fixes and every community patch, check the files that were written, and print what each patch changed. A pull request that touches the patch tool runs them for its own version and for the version it starts from.
+- The last line runs everything: a Brightway database of BAFU's release and one of the patched release, their checks and their comparison, the exports with a read-back of each file, and a manifest. It starts in an empty folder. [docs/release-build.md](docs/release-build.md) describes each step.
 
 ## Build the site
 
 ```sh
 uv run --no-project --python 3.12 --with markdown==3.7 python scripts/build_site.py --offline --out _site
-python3 scripts/check_site.py _site
 python3 -m http.server 8765 --bind 127.0.0.1 --directory _site
 ```
 
-The build refuses to write anything while a record is invalid. `--offline` builds from the records alone; without it the build also reads the comment counts of the issues from GitHub. `check_site.py` checks every local link and refuses data files in the output. [site/README.md](site/README.md) describes the build.
+The build refuses to write anything while a record is invalid. `--offline` builds from the records alone; without it the build also reads the comment counts of the issues from GitHub. [site/README.md](site/README.md) describes the build.
 
 ## Add or change a record
 
 - **A finding** is one file in [`community/findings/`](community/findings/README.md). A pull request that adds a finding adds that one file. Evidence is added with the commands `repeat`, `send`, `answer`, `fixed` and `close` of `scripts/community.py`; that README shows each of them. Nobody writes a status: it is computed from the evidence.
-- **A contribution** is one file in `community/contributions/`. [community/workflow.md](community/workflow.md) describes the record, the steps and the comparison of two builds.
-- **A community patch** is listed in [`community/patches.json`](community/patches.json), which `scripts/patches_snapshot.py` writes from the patch tool. Do not copy a patch into a finding record.
+- **A contribution** is one file in `community/contributions/`. [community/workflow.md](community/workflow.md) describes the record, the steps and the comparison of two builds. A contribution that changes the inventory also has a file in [`community/layers/`](community/layers/README.md), which its record names.
+- **A community patch** is one file in `src/bafu_community_fixes/patches/`, with its test. The next section says how to start one. Do not copy a patch into a finding record.
+
+## Write a community patch
+
+```sh
+uv run python scripts/new_patch.py storage-pump-wind --finding F14
+python3 scripts/patches_snapshot.py
+```
+
+The first command creates the patch and its test with the next free number. The patch names the finding it answers; a patch that answers no finding is started with `--no-finding`. [docs/patch-tool.md](docs/patch-tool.md#writing-a-patch) explains how to write the patch, how to name its author and the person who authorised it, and where supporting data goes. Leave `authorised_by` out until the patch is approved: the tool applies the patch and marks it as not yet authorised, and a release is not published while such a patch changes data.
+
+The second command writes [`community/patches.json`](community/patches.json) from the patches in the repository. The site reads the patches from that file. Never edit it by hand: `check` fails while it differs from the patches.
+
+A pull request for a patch holds three files: the patch, its test and `community/patches.json`. Its checks run the patch on BAFU's release and show what it changes there.
+
+The Brightway Flows data in `src/bafu_community_fixes/data/` is rebuilt with its script, not edited (see [its README](src/bafu_community_fixes/data/README.md)).
 
 ## House style for records
 
@@ -105,29 +170,6 @@ These words are not used in a record or on the site: stage, triage, ledger, laye
 - BAFU's answer is summarised, never quoted. It is attributed to BAFU and names no person. Do not mention private correspondence.
 - A record names a person only as the reporter, as the person who repeated a measurement, or as the author or the authoriser of a community patch.
 - Record text is Markdown. It holds no raw HTML, no image and no heading, and every link is a full `https://` address. `check` refuses anything else.
-
-## Package work
-
-Changes to the `bafu_community_fixes` package (import fixes, patches, report, TUI) run in
-its locked environment on Python 3.14, separately from the checks above:
-
-```sh
-uv sync --locked
-uv run pytest
-uv run ruff check && uv run ruff format --check
-```
-
-These run on a small fixture. A pull request that touches the package is also run on
-BAFU's full release, and its checks show what it changes there; see
-[Full release run](community/ci/README.md#full-release-run) for what the job does and how
-to run the same locally.
-
-Start a patch from its finding with `uv run python scripts/new_patch.py NAME --finding F14`;
-it creates the patch and its test, and there is no list of patches to update. How to write
-the patch, record who authored and authorised it and add supporting data is explained in
-the README under [Writing a patch](README.md#writing-a-patch). Leave `authorised_by` out
-until the patch is approved; the pipeline runs it and warns. Rebuild the Brightway Flows data with its script rather than
-editing it (see [its README](src/bafu_community_fixes/data/README.md)).
 
 ## Work done with an AI agent
 

@@ -45,9 +45,9 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         # The build refuses invalid records. A deploy needs the issues: when they cannot be
         # read the build fails, and the last published site stays.
-        run: uv run --no-project --with markdown==3.7 python scripts/build_site.py --require-issues
+        run: uv run --no-project --python 3.12 --with markdown==3.7 python scripts/build_site.py --require-issues
       - name: Check links, assets and published file types
-        run: uv run --no-project python scripts/check_site.py _site
+        run: uv run --no-project --python 3.12 python scripts/check_site.py _site
       - name: Hand the site, and nothing else, to the deployment
         if: github.ref == 'refs/heads/main'
         uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4.0.0

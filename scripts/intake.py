@@ -86,7 +86,8 @@ BRANCH = re.compile(r"[A-Za-z0-9._/-]+")
 MAINTAINERS = {"OWNER", "MEMBER", "COLLABORATOR"}
 # The job names of .github/workflows/checks.yml. A pull request opened by a workflow starts no
 # workflow, so intake.yml runs the same checks and reports them under the same names.
-CHECK_CONTEXTS = ("Records and unit tests", "Site build and links", "Tests hold through a finding's life")
+CHECK_CONTEXTS = ("Records and unit tests", "Site build and links", "Tests hold through a finding's life",
+                  "Patch tool lint and tests")
 
 # The fields of a record that come from the form; `/record` replaces these and nothing else.
 FORM_FIELDS = ("title", "kind", "datasets", "scope", "releases", "observation", "exposure", "method", "notes")

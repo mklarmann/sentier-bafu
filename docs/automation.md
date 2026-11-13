@@ -13,7 +13,7 @@ when the site is built, or done by a workflow.
 | Accept a report as a finding | merge the pull request the intake opened |
 | Repeat a measurement | measure, then comment `/repeated reproduced` or `/repeated not-reproduced` |
 | Accept a second measurement | merge the pull request the intake opened for the comment |
-| Write a community patch | `python3 scripts/new_patch.py NAME --finding F48`, then a pull request |
+| Write a community patch | `uv run python scripts/new_patch.py NAME --finding F48`, write the patch, `python3 scripts/patches_snapshot.py`, then a pull request |
 | Authorise a community patch | review the pull request; the patch names the authoriser |
 | Report findings to BAFU | send them; then `python3 scripts/community.py send --batch … F48 F51` |
 | Record BAFU's answer | `python3 scripts/community.py answer F48 --outcome … --summary "…"` |
@@ -23,7 +23,8 @@ when the site is built, or done by a workflow.
 | Withdraw a finding | `python3 scripts/community.py close F48 --as withdrawn --reason "…"` |
 
 Nobody assigns a number (it is the number of the issue), sets a label, writes a status, copies a
-patch into a record, updates a list of findings, or edits a test because a record changed.
+patch into a record, updates a list of findings, lists a patch by hand, or edits a test because a
+record changed.
 
 ## 1. The path of a finding
 
@@ -38,12 +39,12 @@ patch into a record, updates a list of findings, or edits a test because a recor
 | 7 | `intake.yml` opens a pull request `repeat/F<n>` that sets `repeated` in the record: who, when, the comment's address, the result. The reporter's own login is refused with a polite comment. | workflow | a branch, a pull request, one comment |
 | 8 | **A maintainer reads the comment and merges.** | **maintainer** | the record |
 | 9 | `sync.yml`: `status: repeated not yet reported`, `help wanted` off, one comment. | workflow | labels, one comment |
-| 10 | **Someone writes a community patch** if the finding needs one now. The patch names its finding; a second person authorises it in review. `full-release.yml` runs it on BAFU's full release. The site shows the patch beside the finding. | **author, authoriser** | the patch |
+| 10 | **Someone writes a community patch** if the finding needs one now. The patch names its finding; a second person authorises it in review. `full-release.yml` runs it on BAFU's full release and says what it changes there. The site shows the patch beside the finding. | **author, authoriser** | the patch, its test, and `community/patches.json`, which a script writes from the patches |
 | 11 | **Someone reports the findings to BAFU**, then records it for all of them with one command and one pull request. | **maintainer** | `sent` in each record |
 | 12 | `sync.yml`: `status: reported to BAFU`, one comment. | workflow | labels, one comment |
 | 13 | **Someone records BAFU's answer** in our own words. | **maintainer** | `answer` in the record |
 | 14 | `sync.yml`: `status: answered by BAFU`, one comment that quotes the summary. | workflow | labels, one comment |
-| 15 | **A maintainer pushes a tag** `patched-…`. `release.yml` runs every patch on BAFU's full release and publishes `manifest.json`. The site reads it. | **maintainer** | a GitHub Release with one file |
+| 15 | **A maintainer pushes a tag** `patched-…`. `release-build.yml` builds the patched release from BAFU's full release, with its Brightway database, its checks and its exports, and publishes `manifest.json` and nothing else. | **maintainer** | a GitHub Release with one file |
 | 16 | BAFU publishes a release. **A maintainer registers it** (section 6). The run on the new release says per patch whether it is still needed. | **maintainer** | one entry in `site/config.json` |
 | 17 | **A maintainer confirms the correction** with `community.py fixed`. | **maintainer** | `fixed_in` in the record |
 | 18 | `sync.yml`: `status: resolved`, one comment, and the issue is closed. | workflow | labels, one comment, the issue's state |
@@ -53,9 +54,9 @@ BAFU decides what it changes. Nothing above promises that it adopts anything: a 
 
 ## 2. The workflows
 
-After the branches of November 2026 are merged the repository has these workflows. The first
-five are described here in full; the next three belong to the patch tool and the build and are
-described in their own documents.
+The repository has six workflows and two composite actions. Each thing is defined once: a check
+that runs on every pull request is in `checks.yml` and nowhere else, and one workflow builds and
+publishes a release.
 
 | Workflow | Starts on | Token | Writes |
 |---|---|---|---|
@@ -63,23 +64,33 @@ described in their own documents.
 | `pages.yml` | push to `main`; daily; an issue opened, closed or reopened; on request | build: `contents: read`, `issues: read`. deploy: `pages: write`, `id-token: write` | the site on GitHub Pages |
 | `intake.yml` | an issue opened or edited that carries `bafu-finding`; a comment on an issue that begins with `/repeated` or `/record` | record: `contents: write`, `pull-requests: write`, `issues: write`. checks: `contents: read`. status: `contents: read`, `statuses: write` | a branch `intake/F<n>` or `repeat/F<n>` with one file; one pull request; one comment; the label `needs-info`; commit statuses |
 | `sync.yml` | push to `main` that changes a record, `site/config.json` or the script; nightly; on request | `contents: read`, `issues: write` | labels, one comment per change of status, the state of finding issues; label definitions |
-| `release.yml` | a tag `patched-*`; on request (builds, publishes nothing) | build: `contents: read`. publish: `contents: write` | a GitHub Release that holds `manifest.json` |
-| `ci.yml` | every pull request; push to `main` | `contents: read` | nothing (the patch tool's own tests on a small fixture) |
-| `full-release.yml` | a pull request or a push to `main` that touches the patch tool; on request | `contents: read` | a run summary as an artifact (counts and checksums) |
-| `release-build.yml` | a pull request or a push to `main` that touches the patch tool or the build; on request | `contents: read` | audit results as an artifact (codes, names, single scores) |
+| `full-release.yml` | a pull request that touches the patch tool, the build, the exports or a file in `community/layers/`; on request | `contents: read` | the run summaries as an artifact (counts, checksums, dataset numbers) |
+| `release-build.yml` | a push to `main` that touches the same; on request; a tag `patched-*` | build: `contents: read`. publish (tags only): `contents: write` | the manifest, the audits and the comparisons as an artifact (codes, names, single scores); for a tag, a GitHub Release that holds `manifest.json` |
 | `provider-release.yml` | on request, after a release of BAFU was registered | `contents: write`, `pull-requests: write` | one pull request that sets `fixed_in`. **Specified in section 6, not built** |
 
-Rules every workflow keeps (`community/tests/test_workflows.py` checks them on the five workflows
-of this page): each action is pinned to a commit; a token that can write is given to the one job
-that needs it; no `${{ }}` expression is part of a shell script; no checkout leaves a token on
-disk; no workflow uses `pull_request_target` or `workflow_run`; a run that writes is never
-cancelled half way.
+The two composite actions hold what both build workflows need: `.github/actions/bafu-release`
+installs the patch tool and makes BAFU's release available to it (the tool's own download folder
+from the Actions cache; the tool checks the SHA-256), and `.github/actions/patch-run` runs the
+patch tool strictly and checks the files it wrote.
+
+Rules every workflow keeps (`community/tests/test_workflows.py` checks them on every workflow
+file, so a new workflow is checked from its first commit): each action is pinned to a commit; a
+token that can write is given to the one job that needs it; no `${{ }}` expression is part of a
+shell script; no checkout leaves a token on disk; no workflow uses `pull_request_target` or
+`workflow_run`; a run that writes is never cancelled half way. What is particular to the patch run
+and the release build (what they upload, what a release publishes) is tested beside the patch
+tool, in `tests/test_full_release_workflow.py`.
+
+[CONTRIBUTING.md](../CONTRIBUTING.md#check-a-change) lists the commands of every check for a run
+on a developer's machine. The workflows run exactly those commands, and a test compares the two
+lists.
 
 ### checks.yml
 
-Three jobs, none of which writes:
+Four jobs, none of which writes and none of which needs BAFU's data:
 
-- **Records and unit tests**: `community.py check`, the unit tests, the build audit template.
+- **Records and unit tests**: `community.py check`, the unit tests, the build audit template, the
+  tests of the export audit. On Python 3.12, outside the package project.
 - **Site build and links**: the site built from the records alone (no network), then
   `check_site.py`, which also refuses data files in the output.
 - **Tests hold through a finding's life**: `community/tests/lifecycle_steps.py` takes each
@@ -88,6 +99,15 @@ Three jobs, none of which writes:
   use, and runs the unit tests on the copy. A test that reads the repository's own records fails
   here, before it fails on somebody's pull request. Tests of rules read
   `community/tests/fixtures/frozen` instead.
+- **Patch tool lint and tests**: the patch tool's environment (Python 3.14, `uv sync --locked`),
+  `ruff`, the tool's tests on a small made-up dataset, `community.py check` once more where the
+  tool is installed, and the receipt that accounts for every file of the two repositories that
+  were brought together.
+
+`community/patches.json`, from which the site reads the community patches, is never kept by hand:
+`scripts/patches_snapshot.py` writes it from the patch registry, and `community.py check` fails
+when the two differ. The first job reads the registry from the source of the patch files, because
+the patch tool is not installed there; the fourth reads it from the tool itself.
 
 ### pages.yml
 
@@ -120,7 +140,7 @@ What the first job does for each event (`intake.py plan` decides, `intake.py pub
 | Issue edited after the record was merged | the record is not changed; one comment, once, says how to change it |
 | Form incomplete, a field too long, raw HTML, a heading or an image in a field | no record; one comment that names each problem in the reporter's words and never repeats what the reporter wrote; label `needs-info` |
 | Issue with the label but not filed with the form | no record; one comment, once; label `needs-info` |
-| Issue number 47 or lower without a record | no record; a maintainer writes it (those numbers follow an older numbering) |
+| Issue number 47 or lower without a record | no record; a maintainer writes it (those numbers follow an older numbering; the number is `older_numbering_until` in `site/config.json`, and a repository whose findings are numbered by their issues from the first one sets it to 0) |
 | `/repeated reproduced` or `/repeated not-reproduced` by someone other than the reporter | pull request `repeat/F<n>` that sets `repeated`; one thank-you comment |
 | `/repeated …` by the reporter | refused with a polite comment; nothing else is written |
 | `/repeated …` when no record is merged yet, a second measurement is recorded already, the finding is closed, or another proposal waits | one comment that says which; nothing else |
@@ -173,47 +193,76 @@ next run. It creates the labels it defines when they are missing: the seven stat
 What it never does: reopen an issue, change a record, or write on an issue that is not a
 finding. A closed issue whose finding is still on its way is listed "for a person to decide".
 
-### release.yml
+### full-release.yml
 
-A tag `patched-…` on a commit of `main` builds the patched release and publishes its manifest. A
-run on request builds and publishes nothing. The build job refuses a tag that is not on `main`,
-runs `bafu-fixes run latest … --strict --summary`, checks the written files against the schema
-and the summary, checks the records, and writes the manifest. The publish job, the only one with
-a token that can write, checks that the file it received is a manifest and nothing else, and
-creates the release with that one file.
+For patches that are proposed. A pull request that touches the patch tool, the build or the
+exports runs two jobs:
 
-The manifest (`scripts/release_manifest.py`, format `sentier-bafu/patched-release/1`):
+- **Patches on BAFU's full release**: the import fixes and every patch, strictly, for the pull
+  request's revision and for the revision it starts from. The job summary says what the pull
+  request changes and what each patch matched now and before. A patch that changed something
+  before and changes nothing now fails the job.
+- **Whole path on a made-up release**: the release build below on eight made-up datasets, with a
+  made-up contribution, and the tests of the build, the exports and the adapter.
+
+The release, the patched files and the report that quotes the data stay on the runner.
+[community/ci/README.md](../community/ci/README.md) describes the job summary.
+
+### release-build.yml
+
+For patches that are accepted, and for a release. A push to `main` that touches the patch tool or
+the build, a run on request, and a tag `patched-…` on a commit of `main` run one command,
+`python3 scripts/build_release.py release`, on BAFU's full release: a Brightway database of
+BAFU's release and one of the patched release, their checks and their comparison, the exports of
+the patched release with a read-back of each file, every contribution in `community/layers/`
+built beside the patched release, and the manifest. [The whole path](release-build.md) describes
+each step and what stops it.
+
+A tag is released by a second job, the only one with a token that can write. The build job
+refuses a tag that is not on `main`. The publish job receives one file, checks that it is a
+manifest and nothing else and that the run may be released
+(`python3 -I scripts/release_build/release_manifest.py --verify … --release`), and creates the
+release with that one file.
+
+The export files are produced and read back in CI but are not published until a download exists
+that asks for acceptance of BAFU's terms. No inventory leaves the runner.
+
+The manifest (`scripts/release_build/release_manifest.py`, format
+`sentier-bafu/patched-release/2`). The first ten fields are the contract with the site and the
+records: a field is never renamed or removed, and fields may be added. Format 2 is format 1 with
+the fields the build adds.
 
 | Field | Content |
 |---|---|
-| `tag`, `built` | the tag; when the run finished |
-| `provider_release` | BAFU's release: its address, the SHA-256 of the archive, the fingerprint of the files read, the number of files, datasets and exchanges, and its id in `site/config.json` when that list names the archive |
+| `tag`, `built` | the tag; when the patch run finished |
+| `provider_release` | BAFU's release: its address, the SHA-256 of the archive, the fingerprint of the files read, the number of files, datasets and exchanges, and its id in `site/config.json`, which names the archive's SHA-256 |
 | `tool` | `bafu-community-fixes`, its version, the commit it was run at |
 | `options` | schema check, extensions, patches selected or skipped |
 | `import_fixes` | per import fix: id, description, result, datasets and values changed |
 | `patches` | per community patch: `id`, `description`, `findings`, `author`, `authorised_by`, `result` (`applied`, `not needed`, `failed`), the counts, and `datasets`: the numbers of the datasets it changed |
 | `totals` | steps, datasets changed, values changed |
 | `output` | the number of files, their size, and the fingerprint of the patched release |
+| `status`, `problems`, `not_releasable`, `steps`, `check_against_previous`, `brightway`, `comparison`, `declared_units`, `exports`, `contributions` | what the build adds: see [the whole path](release-build.md#a-release) |
 
-It holds no inventory: no amount, no exchange, no text of a dataset. It names the author and the
-authoriser of each patch and nobody else; who reported a finding and who answered for BAFU are
-left out. A release holds no failed step, and no patch that changed data without an authoriser:
-the script refuses both.
+It holds no inventory: no table of amounts, no exchange list, no text of a dataset. It names the
+author and the authoriser of each patch, and of a contribution's file in `community/layers/`, and
+nobody else; who reported a finding and who answered for BAFU are left out.
 
-To prove a local build is the release: run the tool at `tool.revision`
-(`bafu-fixes run latest OUT --strict --summary S.json`), then
-`python3 scripts/release_manifest.py --summary S.json --output OUT --out mine.json`, and compare
-`output.fingerprint`.
+A run is not released, and `--verify --release` says why, when: the patch run did not complete;
+the files that were read are not a release the tool knows; a step failed; the written files are
+not the ones the run summary describes; a patch changed data and names nobody who authorised it;
+a patch names a finding that has no record; the counts of a patch's datasets disagree; a check of
+a Brightway database has an error, or the patched one a finding; the comparison did not pass; an
+export was not written or read back differently.
+
+To prove a local build is the release: check out `tool.revision`, run
+`python3 scripts/build_release.py release latest OUT`, and compare `output.fingerprint` (the
+patched files) and `brightway.patched.audit.scores_sha256` (the scores of every dataset) of
+`OUT/manifest.json` with the published manifest.
 
 The site learns from the manifest of the latest release which patches a patched release contains
 and which datasets each changed. Reading it at build time, the way the issues are read, is work
 for the site build.
-
-A manifest is written in one place. The fields above are the contract with the site and the
-records: inside format 1 a field is never renamed or removed, and fields may be added. If the
-build tools bring a writer of their own that says more (the Brightway build, the exports), that
-writer and its release workflow take over and this script goes, except for its check
-(`--verify`), which stays as the gate before anything is published.
 
 ## 3. Staleness
 
@@ -298,8 +347,9 @@ It is not built, because three pieces are missing in the patch tool:
 
 1. **More than one release.** `download.py` knows one address, one checksum and one fingerprint
    (`LATEST_RELEASE`), and the command line knows `latest` or a folder. The list of releases in
-   `site/config.json` has ids and names but no address. Needed: one registry of releases (id,
-   address, archive checksum, fingerprint) that the tool and the site share, and
+   `site/config.json` has ids and names, and for BAFU:2026 v1 the checksum of the archive (a test
+   compares it with the tool's), but no address. Needed: one registry of releases (id, address,
+   archive checksum, fingerprint) that the tool and the site share, and
    `bafu-fixes run --release <id>`.
 2. **A patch that knows where it applies.** A patch names no release. On a release that carries
    BAFU's correction, a patch with a guard stops the whole run with an error ("expected 126.22,
@@ -315,9 +365,10 @@ other reported findings again, and records each correction with `community.py fi
 
 ## 7. What only a run on GitHub can show
 
-Checked on a developer machine: `actionlint` 1.7.12 with `shellcheck` 0.11.0 on every workflow;
-every `run:` step executed as written against saved event files and a stand-in for the GitHub
-API; the unit tests. Not checked, because it needs GitHub:
+Checked on a developer machine: `actionlint` 1.7.12 with `shellcheck` 0.11.0 on every workflow
+and on the scripts of the composite actions; every `run:` step executed as written, against saved
+event files and a stand-in for the GitHub API and for `gh`; the unit tests; the release build on
+BAFU's full release. Not checked, because it needs GitHub:
 
 1. That a pull request opened with the workflow's token starts no workflow (the reason for the
    second and third job of `intake.yml`), and that the commit statuses those jobs set are shown
@@ -333,7 +384,13 @@ API; the unit tests. Not checked, because it needs GitHub:
    evaluates them.
 6. The pinned actions at their commits, the concurrency groups, and the run times.
 7. The repository settings below.
-8. `gh release create` with the workflow's token.
+8. `gh release list`, `gh release download` and `gh release create` with the workflow's token.
+9. A composite action that contains `actions/cache`, the save and the restore of the cache that
+   holds BAFU's release, the path filters, and an artifact passed from the build job to the
+   publish job.
+10. The run on Linux: the fingerprints of the files (built from sorted names and bytes), and the
+    time and memory of the release build on a runner. On a developer's machine the largest step
+    used 3.0 GB.
 
 ## 8. First run
 
@@ -342,8 +399,10 @@ Before merging:
 1. **Settings → Actions → General → Workflow permissions:** tick "Allow GitHub Actions to create
    and approve pull requests". Without it the intake fails when it opens the pull request.
 2. **Branch protection for `main`:** require a pull request. If checks are to be required,
-   require exactly `Records and unit tests`, `Site build and links` and
-   `Tests hold through a finding's life`; the intake reports its proposals under these names.
+   require exactly `Records and unit tests`, `Site build and links`,
+   `Tests hold through a finding's life` and `Patch tool lint and tests`; the intake reports its
+   proposals under these names. The jobs of `full-release.yml` run only for pull requests that
+   touch the patch tool or the build, so they cannot be required for every pull request.
 3. **Tags:** a rule that only maintainers create tags `patched-*`.
 4. **Settings → General → Pull Requests:** "Automatically delete head branches", so that merged
    `intake/…` branches go away. The intake copes with a branch that stays.
@@ -367,7 +426,7 @@ The first intake:
 
 1. File a test issue with the form (a real small finding is best). Watch the "Intake" run: three
    jobs, the second and third only after the first opened a pull request.
-2. Look at the pull request: one new file, three checks reported on its commit, the comment on
+2. Look at the pull request: one new file, four checks reported on its commit, the comment on
    the issue. Compare the record with the form: this is where a difference between GitHub's
    rendering and the parser would show.
 3. Edit the issue: the same pull request gets a second commit and no second comment.

@@ -13,12 +13,14 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import intake  # noqa: E402
 
 WORKFLOWS = ROOT / ".github/workflows"
-# The workflows these rules are kept on. Other workflows of the repository (the patch tool's
-# tests, the run on the full release, the build) have their own tests beside their own code.
-OWN = ("checks.yml", "intake.yml", "pages.yml", "release.yml", "sync.yml")
-FILES = {name: (WORKFLOWS / name).read_text() for name in OWN if (WORKFLOWS / name).is_file()}
+# Every workflow of the repository, and the two composite actions the build workflows share.
+# What is particular to the patch run and the release build (what they upload, what a release
+# publishes) is tested beside the patch tool, in tests/test_full_release_workflow.py.
+EXPECTED = ("checks.yml", "full-release.yml", "intake.yml", "pages.yml", "release-build.yml", "sync.yml")
+FILES = {path.name: path.read_text() for path in sorted(WORKFLOWS.glob("*.y*ml"))}
+ACTIONS = {f"actions/{path.parent.name}": path.read_text() for path in sorted((ROOT / ".github/actions").glob("*/action.yml"))}
 # Jobs that hold a token that can write. Each runs this repository's own code and nothing else.
-WRITERS = {"intake.yml": ("record", "status"), "sync.yml": ("sync",), "release.yml": ("publish",)}
+WRITERS = {"intake.yml": ("record", "status"), "sync.yml": ("sync",), "release-build.yml": ("publish",)}
 
 
 def run_blocks(text):
@@ -49,13 +51,20 @@ def jobs(text):
 
 
 class WorkflowTests(unittest.TestCase):
-    def test_the_workflows_these_rules_are_kept_on_exist(self):
-        self.assertEqual(tuple(FILES), OWN)
+    def test_the_workflows_are_the_ones_the_documentation_describes(self):
+        """One set: a workflow that is added or removed changes this list and docs/automation.md."""
+        self.assertEqual(tuple(FILES), EXPECTED)
+        described = (ROOT / "docs/automation.md").read_text()
+        for name in EXPECTED:
+            self.assertIn(f"| `{name}` |", described, name)
+            self.assertIn(f"### {name}", described, name)
+        for gone in ("ci.yml", "release.yml"):
+            self.assertNotIn(f"`{gone}`", described, gone)
 
     def test_every_action_is_pinned_to_a_commit(self):
-        for name, text in FILES.items():
+        for name, text in {**FILES, **ACTIONS}.items():
             used = re.findall(r"(?m)^\s*(?:- )?uses:\s*(\S+)(.*)$", text)
-            self.assertTrue(used, name)
+            self.assertTrue(used or name in ACTIONS, name)
             for action, rest in used:
                 if action.startswith("./"):
                     continue
@@ -64,7 +73,7 @@ class WorkflowTests(unittest.TestCase):
 
     def test_no_expression_is_ever_part_of_a_shell_script(self):
         """Values reach a script through `env:`, which a shell reads as data."""
-        for name, text in FILES.items():
+        for name, text in {**FILES, **ACTIONS}.items():
             blocks = run_blocks(text)
             self.assertTrue(blocks, name)
             for block in blocks:
@@ -104,8 +113,8 @@ class WorkflowTests(unittest.TestCase):
             ("sync.yml", "sync"): {"contents: read", "issues: write"},
             ("pages.yml", "build"): {"contents: read", "issues: read"},
             ("pages.yml", "deploy"): {"pages: write", "id-token: write"},
-            ("release.yml", "build"): {"contents: read"},
-            ("release.yml", "publish"): {"contents: write"},
+            ("release-build.yml", "build"): {"contents: read"},
+            ("release-build.yml", "publish"): {"contents: write"},
         }
         for (name, job), wanted in expected.items():
             body = jobs(FILES[name])[job]
@@ -113,8 +122,15 @@ class WorkflowTests(unittest.TestCase):
             self.assertIsNotNone(block, f"{name} {job}")
             found = {re.sub(r"\s*#.*", "", line).strip() for line in block.group(1).splitlines()}
             self.assertEqual(found, wanted, f"{name} {job}")
-        for job, body in jobs(FILES["checks.yml"]).items():
-            self.assertNotIn("permissions:", body, f"checks.yml {job} reads only")
+        for name in ("checks.yml", "full-release.yml"):
+            for job, body in jobs(FILES[name]).items():
+                self.assertNotIn("permissions:", body, f"{name} {job} reads only")
+        # No job but the ones above can write: every `write` in a workflow is in that table.
+        granted = {(name, job) for (name, job), wanted in expected.items() if any("write" in w for w in wanted)}
+        for name, text in FILES.items():
+            for job, body in jobs(text).items():
+                if re.search(r"(?m)^\s+[a-z-]+: write\b", body):
+                    self.assertIn((name, job), granted, f"{name} {job}")
 
     def test_no_checkout_leaves_a_token_on_disk(self):
         for name, text in FILES.items():
@@ -124,7 +140,7 @@ class WorkflowTests(unittest.TestCase):
         for name, text in FILES.items():
             self.assertIn("concurrency:", text, name)
             self.assertRegex(text, r"timeout-minutes: \d+", name)
-        for name in ("intake.yml", "sync.yml", "pages.yml", "release.yml"):
+        for name in ("intake.yml", "sync.yml", "pages.yml", "release-build.yml"):
             self.assertIn("cancel-in-progress: false", FILES[name], f"{name}: a run that writes is never cut off")
 
     def test_the_intake_reports_the_checks_under_the_names_of_the_checks(self):
@@ -147,25 +163,101 @@ class WorkflowTests(unittest.TestCase):
         sync = triggers("sync.yml")
         for wanted in ('"community/findings/**"', "schedule:", "workflow_dispatch:", "branches: [main]"):
             self.assertIn(wanted, sync)
-        self.assertIn('tags: ["patched-*"]', triggers("release.yml"))
+        # A tag `patched-…` starts one workflow, which builds and publishes the release.
+        self.assertEqual([name for name, text in FILES.items() if "patched-" in text.split("\njobs:\n")[0]],
+                         ["release-build.yml"])
+        self.assertIn('tags: ["patched-*"]', triggers("release-build.yml"))
+        self.assertEqual([name for name, text in FILES.items() if "gh release create" in text], ["release-build.yml"])
         self.assertIn("pull_request:", triggers("checks.yml"))
+        # Nothing is defined twice: what the checks run on every pull request, no other workflow runs.
+        for name in ("full-release.yml", "release-build.yml", "pages.yml"):
+            for command in ("community.py check", "-s community/tests", "ruff", "uv run pytest", "check_integration_receipt"):
+                self.assertNotIn(command, FILES[name], f"{name}: {command} belongs to checks.yml")
 
     def test_a_deploy_needs_the_issues_and_a_checked_site(self):
         build = jobs(FILES["pages.yml"])["build"]
         self.assertIn("--require-issues", build)
         self.assertLess(build.index("scripts/check_site.py"), build.index("upload-pages-artifact"))
 
-    def test_a_release_publishes_the_manifest_and_nothing_else(self):
-        text = FILES["release.yml"]
+    def test_a_release_is_checked_by_the_gate_before_it_is_published(self):
+        """The job that publishes is the only one that can write, and it publishes what
+        `release_manifest.py --verify --release` let through. What the manifest may hold is
+        tested with the script; what the workflow uploads, beside the patch tool."""
+        text = FILES["release-build.yml"]
         build, publish = jobs(text)["build"], jobs(text)["publish"]
-        self.assertEqual(re.findall(r"(?m)^\s+path: (.+)$", build),
-                         ["${{ steps.release.outputs.cache }}", "${{ runner.temp }}/release/manifest.json"])
-        self.assertIn("--verify", publish)
-        created = next(block for block in run_blocks(publish) if "gh release create" in block)
-        self.assertEqual(re.findall(r'"\$RUNNER_TEMP/[^"]+"', created),
-                         ['"$RUNNER_TEMP/release/manifest.json"', '"$RUNNER_TEMP/release/notes.md"'])
         self.assertIn("git merge-base --is-ancestor", build)
-        self.assertLess(build.index("--strict"), build.index("release_manifest.py"))
+        self.assertNotIn("gh release create", build)
+        self.assertIn("needs: build", publish)
+        verify = next(block for block in run_blocks(publish) if "--verify" in block)
+        self.assertIn("python3 -I scripts/release_build/release_manifest.py", verify)
+        self.assertIn("--release", verify)
+        self.assertLess(publish.index("--verify"), publish.index("gh release create"))
+        self.assertTrue((ROOT / "scripts/release_build/release_manifest.py").is_file())
+        self.assertFalse((ROOT / "scripts/release_manifest.py").exists(), "a manifest is written in one place")
+
+
+def commands(text):
+    """The commands of a text, one per line: continuation lines joined, spaces single, and the
+    runner's scratch folder written as the folder CONTRIBUTING.md uses on a developer's machine."""
+    text = re.sub(r"\\\n\s*", " ", text).replace('"$RUNNER_TEMP/', '"output/')
+    found = []
+    for line in text.splitlines():
+        line = re.sub(r'"(output/[\w./-]+)"', r"\1", re.sub(r"\s+", " ", line.strip()))
+        if line and not line.startswith("#"):
+            found.append(line)
+    return found
+
+
+class LocalCommandsTests(unittest.TestCase):
+    """CONTRIBUTING.md is the one place that says how to run every check on your own machine,
+    and the workflows run exactly those commands."""
+
+    @classmethod
+    def setUpClass(cls):
+        text = (ROOT / "CONTRIBUTING.md").read_text()
+        cls.local = [line for block in re.findall(r"(?ms)^```sh\n(.*?)^```", text) for line in commands(block)]
+
+    def test_every_command_of_the_checks_is_in_contributing(self):
+        ran = [line for block in run_blocks(FILES["checks.yml"]) for line in commands(block)]
+        self.assertGreaterEqual(len(ran), 13)
+        for line in ran:
+            self.assertIn(line, self.local, "checks.yml runs a command CONTRIBUTING.md does not list")
+
+    def test_every_command_on_the_made_up_release_is_in_contributing(self):
+        job = jobs(FILES["full-release.yml"])["made-up-release"]
+        ran = [line for block in run_blocks(job) for line in commands(block)]
+        self.assertGreaterEqual(len(ran), 5)
+        for line in ran:
+            self.assertIn(line, self.local, "full-release.yml runs a command CONTRIBUTING.md does not list")
+        for name in re.findall(r"(?m)^\s+(RELEASE_BUILD_\w+):", job):
+            self.assertTrue(any(name in line for line in self.local), name)
+
+    def test_the_commands_on_the_full_release_are_in_contributing(self):
+        """These take arguments from the workflow, so the names of the commands are compared."""
+        told = "\n".join(self.local)
+        for wanted in ("uv run --no-sync bafu-fixes run latest", "--strict --summary", "scripts/check_patched_release.py",
+                       "scripts/full_release_table.py", "scripts/build_release.py release latest"):
+            self.assertIn(wanted, told)
+        used = "\n".join([FILES["full-release.yml"], FILES["release-build.yml"], *ACTIONS.values()])
+        for wanted in ("bafu-fixes run latest", "scripts/check_patched_release.py", "scripts/full_release_table.py",
+                       'scripts/build_release.py "$@"'):
+            self.assertIn(wanted, used)
+
+    def test_no_check_is_listed_that_no_workflow_runs(self):
+        ran = set()
+        for text in [*FILES.values(), *ACTIONS.values()]:
+            ran.update(line for block in run_blocks(text) for line in commands(block))
+        section = (ROOT / "CONTRIBUTING.md").read_text().split("## Check a change", 1)[1].split("\n## ", 1)[0]
+        listed = [line for block in re.findall(r"(?ms)^```sh\n(.*?)^```", section) for line in commands(block)]
+        self.assertGreaterEqual(len(listed), 18)
+        # What a person does around the checks, and the three commands whose arguments differ.
+        own = ("export RELEASE_BUILD_", "uv run --no-sync bafu-fixes run latest output/patched",
+               "uv run --no-sync python scripts/check_patched_release.py output/patched",
+               "uv run --no-sync python scripts/full_release_table.py output/summary.json",
+               "uv run --no-project --python 3.12 python scripts/build_release.py release latest output/release-run")
+        for line in listed:
+            if not line.startswith(own):
+                self.assertIn(line, ran, "CONTRIBUTING.md lists a check that no workflow runs")
 
 
 if __name__ == "__main__":

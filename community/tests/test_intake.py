@@ -867,7 +867,7 @@ class PublishTests(Workspace):
         self.assertTrue(intake.post_statuses(self.api, done["sha"], "success", "https://github.com/x/y/actions/runs/1"))
         self.assertEqual([(s["context"], s["state"]) for s in self.fake.statuses],
                          [("Records and unit tests", "success"), ("Site build and links", "success"),
-                          ("Tests hold through a finding's life", "success")])
+                          ("Tests hold through a finding's life", "success"), ("Patch tool lint and tests", "success")])
         self.assertTrue(all(s["sha"] == done["sha"] and s["target_url"].endswith("/runs/1") for s in self.fake.statuses))
         for result in ("failure", "cancelled", "skipped", ""):
             self.fake.statuses.clear()
