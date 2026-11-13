@@ -20,8 +20,9 @@ BAFU's full release, and its checks show what it changes there; see
 [Full release run](community/ci/README.md#full-release-run) for what the job does and how
 to run the same locally.
 
-How to write a patch, record who authored and authorised it, add supporting data and a
-test is explained in the README under [Writing a patch](README.md#writing-a-patch) and
-[Patches](README.md#patches). Leave `authorised_by` out until the patch is approved; the
-pipeline runs it and warns. Rebuild the Brightway Flows data with its script rather than
+Start a patch from its finding with `uv run python scripts/new_patch.py NAME --finding F14`;
+it creates the patch and its test, and there is no list of patches to update. How to write
+the patch, record who authored and authorised it and add supporting data is explained in
+the README under [Writing a patch](README.md#writing-a-patch). Leave `authorised_by` out
+until the patch is approved; the pipeline runs it and warns. Rebuild the Brightway Flows data with its script rather than
 editing it (see [its README](src/bafu_community_fixes/data/README.md)).

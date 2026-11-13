@@ -36,6 +36,8 @@ Options for `run`:
 - `--only ID [ID ...]` / `--skip ID [ID ...]`: choose which patches to apply
 - `--no-extensions`: leave out our additional fields, giving plain EcoSpold 1
 - `--report FILE.html`: write a run report (see below)
+- `--summary FILE.json`: write a summary with counts and checksums only, and no data from
+  the release, for automated runs and for comparing runs
 - `--placeholder-year`, `--placeholder-number`, `--placeholder-country`,
   `--placeholder-text`: values filled in where required data is missing (defaults `1111`,
   `1111`, `AQ`, `UNKNOWN`). Blank values are kept, since the schema allows them. Placeholders
@@ -110,7 +112,16 @@ In Python they are `dataset.ext` and `exchange.ext`. `--no-extensions` leaves th
 
 ## Writing a patch
 
-Add a module to `src/bafu_community_fixes/patches/`; it is discovered automatically.
+Start from a finding in the [ledger](community/findings.md):
+
+```sh
+uv run python scripts/new_patch.py fix-something --finding F14
+```
+
+This creates the patch module in `src/bafu_community_fixes/patches/`, with the next free
+number, and a test for it in `tests/`. A patch is registered by being in that folder; there
+is no list to add it to. The finding's links become the patch's references. A patch that
+answers no finding is started with `--no-finding`. Then write it:
 
 ```python
 from bafu_community_fixes import Database, data_file, patch
@@ -118,7 +129,8 @@ from bafu_community_fixes.models import UncertaintyType
 
 
 @patch(
-    "0011-fix-something",
+    "0012-fix-something",
+    findings=("F14",),  # the findings in the ledger that it answers; () if none
     authored_by="Jane Doe",  # who wrote this patch
     authorised_by="Chris Mutel",  # who approved it for the release; leave out until then
     reported_by="John Roe, Example AG",  # optional: who found the problem
@@ -140,27 +152,25 @@ def fix_something(db: Database) -> None:
 - Field names are the EcoSpold names in snake_case (`meanValue` becomes `mean_value`).
   `Dataset` also has shortcuts: `name`, `location`, `reference_function`, `exchanges`.
   `db.exchanges()` yields `(dataset, exchange)` pairs.
+- Check the value you are about to replace, and raise `ValueError` if it isn't what you
+  expect. The run then stops and names the patch, rather than changing data that has
+  changed since the patch was written.
 - Put supporting data in `src/bafu_community_fixes/data/`, prefixed with the patch id, and
   read it with `data_file(name)`.
 - Don't record your changes yourself. The pipeline compares every dataset before and after
   your patch and reports each changed value.
-- Add a test. `tests/conftest.py` provides an imported fixture database.
+- Complete the test. `tests/conftest.py` provides an imported fixture database.
+- Open a pull request with the two files. Its checks run the patch on BAFU's full release
+  and show what it changes there: see
+  [Full release run](community/ci/README.md#full-release-run).
 
 ## Patches
 
-| Patch | What it does |
-|---|---|
-| 0001 | Corrects polyethylene disposal for three strawberry datasets (confirmed by BAFU) |
-| 0002 | Uses the supplier's location for 25 exchanges (`ENTSO` → `ENTSO-E`, two `CH`; confirmed by BAFU) |
-| 0003 | Flags the 1,289 `xx`/`xxx` datasets as not maintained (extension attribute) |
-| 0004 | Adds missing CAS numbers to 28 elementary flows (Brightway Flows) |
-| 0005 | Replaces CAS numbers naming a different substance, on 17 elementary flows (Brightway Flows) |
-| 0006 | Removes CAS numbers naming a different substance, from 3 elementary flows (Brightway Flows) |
-| 0007 | Removes units from 3 elementary flow names (Brightway Flows) |
-| 0008 | Moves `Carbon dioxide, in air` to the `in air` resource compartment (Brightway Flows) |
-| 0009 | Writes elementary flows' CAS numbers zero-padded, and on every exchange of a flow |
-| 0010 | Links every elementary exchange to its Brightway Flows flow (extension attributes) |
-| 0011 | Marks 40 aggregated datasets (eco-profiles, iridium, cabinet panel) as system terminated (`type=2`) |
+`uv run bafu-fixes list` prints the import fixes and patches of this checkout, with who
+authorised each patch and the findings it answers. How many datasets, exchanges and values
+each one changes in BAFU's release is measured by the
+[Full release run](community/ci/README.md#full-release-run) on every change, and listed in
+its job summary.
 
 Patches 0004–0008 change BAFU's own flow attributes and don't depend on 0010, which
 only adds links. The Brightway Flows data in `src/bafu_community_fixes/data/` is used
@@ -178,8 +188,10 @@ uv run ruff check && uv run ruff format
 ## Review workspace
 
 <!-- Composed by the integration (sentier-bafu#19). Everything above is the
-bafu-community-fixes README at 053c799, unchanged; the License section below adds the
-notices of the merged files and corrects the XSD path. -->
+bafu-community-fixes README at 053c799, except for `--summary`, "Writing a patch" and
+"Patches", which changed with the full release run (the table of patches gave way to
+`bafu-fixes list`; the original is in docs/migration-history). The License section below
+adds the notices of the merged files and corrects the XSD path. -->
 
 This repository is also the public Sentier review workspace for BAFU/UVEK. It connects
 partner evidence, Brightcon hackathon work, candidate improvements and the discussion
