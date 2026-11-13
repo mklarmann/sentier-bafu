@@ -1,0 +1,114 @@
+{
+  "id": "C002",
+  "issue": null,
+  "title": "Integrate the BAFU mapping work with Chris Mutel and reproduce method-specific results",
+  "class": "mapping",
+  "status": "proposed",
+  "baseline": {
+    "dataset": "BAFU/UVEK",
+    "release": "BAFU-2026-v1",
+    "import_repository": "",
+    "import_revision": "",
+    "input_hashes": {}
+  },
+  "layer": {
+    "kind": "elementary-flow-crosswalk-and-method-specific-factor-policy",
+    "implementation_url": "",
+    "implementation_revision": "sha256:b798f39a1ea8ba5126285d6702c99d94976e3179a448b3c4ba1eac1eaab7cc91",
+    "payloads": [
+      {
+        "name": "bafu_2026v1_to_openlca_lcia_2.8.2.randonneur.json",
+        "sha256": "b798f39a1ea8ba5126285d6702c99d94976e3179a448b3c4ba1eac1eaab7cc91",
+        "availability": "author-supplied-for-local-review; public download pending",
+        "license_declared": "CC-BY-4.0"
+      },
+      {
+        "name": "bafu_2026v1_to_openlca_lcia_2.8.2.xlsx",
+        "sha256": "f57b8c89a38ff1dca5bef3d84716145f0f3283384629a73c3dcd86ec6510c8e5",
+        "availability": "author-supplied-for-local-review; public download pending",
+        "license_declared": "not separately declared in workbook"
+      }
+    ]
+  },
+  "evidence": [
+    "https://github.com/sentier-dev/sentier-bafu/blob/main/community/mutel-mapping-review.md",
+    "https://github.com/brightway-labs/brightway-flows/issues/382",
+    "https://github.com/brightway-labs/brightway-flows/issues/379",
+    "https://github.com/brightway-labs/brightway-flows/issues/375",
+    "https://github.com/brightway-labs/brightway-flows/issues/376",
+    "https://github.com/brightway-labs/brightway-flows/issues/377",
+    "https://github.com/brightway-labs/brightway-flows/issues/380",
+    "https://github.com/brightway-labs/brightway-flows/issues/381",
+    "https://github.com/sentier-dev/sentier-bafu/issues/14",
+    "https://github.com/sentier-dev/sentier-bafu/issues/15"
+  ],
+  "required_checks": [
+    "mapping-file-integrity",
+    "workbook-json-parity",
+    "baseline-and-run-pins",
+    "unit-and-direction-application",
+    "method-scoped-fallbacks",
+    "independent-lcia-reproduction",
+    "independent-review"
+  ],
+  "runs": [
+    {
+      "kind": "file-consistency-review; no inventory or LCIA computation",
+      "baseline": {
+        "dataset": "BAFU/UVEK",
+        "release": "BAFU-2026-v1",
+        "import_repository": "",
+        "import_revision": "",
+        "input_hashes": {}
+      },
+      "layer_revision": "sha256:b798f39a1ea8ba5126285d6702c99d94976e3179a448b3c4ba1eac1eaab7cc91",
+      "evidence_url": "https://github.com/sentier-dev/sentier-bafu/blob/main/community/runs/mutel-mapping-audit.json",
+      "checks": [
+        {
+          "id": "mapping-file-integrity",
+          "status": "passed",
+          "evidence_url": "https://github.com/sentier-dev/sentier-bafu/blob/main/community/runs/mutel-mapping-audit.json"
+        },
+        {
+          "id": "workbook-json-parity",
+          "status": "passed",
+          "evidence_url": "https://github.com/sentier-dev/sentier-bafu/blob/main/community/runs/mutel-mapping-audit.json"
+        },
+        {
+          "id": "baseline-and-run-pins",
+          "status": "not-run",
+          "evidence_url": "https://github.com/sentier-dev/sentier-bafu/blob/main/community/runs/mutel-mapping-audit.json"
+        },
+        {
+          "id": "unit-and-direction-application",
+          "status": "not-run",
+          "evidence_url": "https://github.com/sentier-dev/sentier-bafu/blob/main/community/runs/mutel-mapping-audit.json"
+        },
+        {
+          "id": "method-scoped-fallbacks",
+          "status": "not-run",
+          "evidence_url": "https://github.com/sentier-dev/sentier-bafu/blob/main/community/runs/mutel-mapping-audit.json"
+        },
+        {
+          "id": "independent-lcia-reproduction",
+          "status": "not-run",
+          "evidence_url": "https://github.com/sentier-dev/sentier-bafu/blob/main/community/runs/mutel-mapping-audit.json"
+        },
+        {
+          "id": "independent-review",
+          "status": "not-run",
+          "evidence_url": "https://github.com/sentier-dev/sentier-bafu/blob/main/community/runs/mutel-mapping-audit.json"
+        }
+      ]
+    }
+  ],
+  "required_reviewers": [],
+  "approvals": [],
+  "objections": [],
+  "upstream_project": "BAFU / FOEN; GreenDelta and Brightway Flows for implementation findings",
+  "validation_scope": "Mapping file integrity and workbook-JSON parity passed; pins, unit application, method-scoped fallbacks, independent LCIA reproduction and review not run. Flow correspondence alone does not demonstrate LCIA integration.",
+  "next_action": "Pin the LCIA package from brightway-flows #386 and the scoring code, then run the missing checks.",
+  "review_role": "importer maintainer",
+  "evidence_url": "https://github.com/sentier-dev/sentier-bafu/blob/main/community/runs/mutel-mapping-audit.json",
+  "retained": []
+}

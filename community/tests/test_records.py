@@ -13,6 +13,12 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import frozen  # noqa: E402
+
+# The rules are tested on frozen records, so that the life of a real finding breaks no test.
+# Only the tests named "committed" read the repository's own records.
+DATA = frozen.RECORDS
 spec = importlib.util.spec_from_file_location("community_records", ROOT / "scripts/community.py")
 records = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(records)
@@ -424,7 +430,7 @@ class FindingRuleTests(unittest.TestCase):
         for issue in (47, 49, None):
             self.assertTrue(errors(finding(id="F48", issue=issue, threads=["https://example.org/t"])), issue)
         # Existing ids stay for ever, with their issue recorded beside them.
-        committed = {r["id"]: r for r in records.load_findings(ROOT)}
+        committed = {r["id"]: r for r in records.load_findings(DATA)}
         self.assertEqual(committed["F27"]["issue"], 47)
         self.assertEqual(committed["F1"]["issue"], 6)
         for record in committed.values():
@@ -481,7 +487,7 @@ class CommittedRecordTests(unittest.TestCase):
                 self.assertTrue(record["answer"]["summary"].startswith("BAFU "), record["id"])
 
     def test_every_dataset_code_a_record_is_about_is_listed(self):
-        index = records.dataset_index(self.findings, records.load_patches(ROOT))
+        index = records.dataset_index(records.load_findings(DATA), records.load_patches(DATA))
         # 316743 was named only in prose; a search for it missed F13.
         self.assertIn({"id": "F13", "role": "subject"}, index[316743]["findings"])
         self.assertEqual({f["id"]: f["role"] for f in index[196588]["findings"]}, {"F8": "named", "F10": "subject"})
@@ -563,8 +569,8 @@ class StageTests(unittest.TestCase):
 
 class JoinTests(unittest.TestCase):
     def setUp(self):
-        self.findings = records.load_findings(ROOT)
-        self.patches = records.load_patches(ROOT)
+        self.findings = records.load_findings(DATA)
+        self.patches = records.load_patches(DATA)
 
     def test_patches_are_joined_to_findings_from_the_snapshot(self):
         joined = {rid: [p["id"] for p in found] for rid, found in records.patches_by_finding(self.patches).items()}
@@ -638,7 +644,7 @@ class JoinTests(unittest.TestCase):
         self.assertEqual(list(index), sorted(index))
 
     def test_release_index_lists_what_was_observed_and_what_was_corrected(self):
-        config = records.load_config(ROOT)
+        config = records.load_config(DATA)
         index = records.release_index(self.findings, config)
         self.assertEqual(set(index), {"2025-v2", "2026-v1"})
         self.assertEqual(index["2026-v1"]["name"], "BAFU:2026 v1")
@@ -647,7 +653,7 @@ class JoinTests(unittest.TestCase):
         self.assertEqual(index["2026-v1"]["corrected"], ["F17"])
 
     def test_the_published_table_is_generated_from_the_records(self):
-        config = records.load_config(ROOT)
+        config = records.load_config(DATA)
         rows = records.ledger_rows(records.index_text(self.findings, config))
         self.assertEqual(set(rows), {r["id"] for r in self.findings})
         for record in self.findings:
@@ -657,12 +663,12 @@ class JoinTests(unittest.TestCase):
 
     def test_the_table_holds_thousands_of_records(self):
         many = [finding(id=f"F{n}", issue=n) for n in range(48, 5048)]
-        self.assertEqual(len(records.ledger_rows(records.index_text(many, records.load_config(ROOT)))), 5000)
+        self.assertEqual(len(records.ledger_rows(records.index_text(many, records.load_config(DATA)))), 5000)
 
 
 class ContributionTriageTests(unittest.TestCase):
     def setUp(self):
-        self.record = records.read(ROOT / "community/contributions/C001.json")
+        self.record = records.read(DATA / "community/contributions/C001.json")
 
     def test_committed_contributions_are_valid(self):
         for record in records.load_contributions(ROOT):
@@ -678,14 +684,11 @@ class ContributionTriageTests(unittest.TestCase):
 
 
 class WorkspaceCase(unittest.TestCase):
-    """A copy of the records in a scratch folder, to change one thing and look at the whole."""
+    """A copy of the frozen records in a scratch folder, to change one thing and look at the whole."""
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
-        self.root = Path(self.tmp.name)
-        shutil.copytree(ROOT / "community", self.root / "community")
-        (self.root / "site").mkdir()
-        shutil.copy(ROOT / "site/config.json", self.root / "site/config.json")
+        self.root = frozen.workspace(Path(self.tmp.name) / "workspace")
 
     def tearDown(self):
         self.tmp.cleanup()
@@ -714,7 +717,7 @@ class WorkspaceCase(unittest.TestCase):
 class CheckTests(WorkspaceCase):
     """The whole check, on a copy of the records with one thing wrong."""
 
-    def test_committed_tree_passes(self):
+    def test_the_frozen_records_pass(self):
         code, text = self.result()
         self.assertEqual(code, 0, text)
         self.assertIn("Validated 23 findings, 2 contribution records, 11 community patches", text)

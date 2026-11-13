@@ -1,0 +1,57 @@
+{
+  "schema": 2,
+  "id": "F21",
+  "issue": 42,
+  "title": "Four gas-combustion datasets take 0.5 MJ of gas per MJ burned but emit the CO₂ of 1 MJ",
+  "kind": "defect",
+  "datasets": [
+    {
+      "code": 219148,
+      "name": "Natural gas, burned in power plant or heat plant",
+      "location": "LU"
+    },
+    {
+      "code": 491188,
+      "name": "Natural gas, burned in power plant or heat plant",
+      "location": "LT"
+    },
+    {
+      "code": 369980,
+      "name": "Natural gas, burned in power plant or heat plant",
+      "location": "RME"
+    },
+    {
+      "code": 232890,
+      "name": "Natural gas, burned in power plant or heat plant",
+      "location": "KR"
+    }
+  ],
+  "scope": "",
+  "releases": [
+    "2025-v2",
+    "2026-v1"
+  ],
+  "observation": "One gas input of 0.5 MJ per MJ burned. The other 34 datasets of this name take 1.0 MJ, and all 38 emit 0.0561 kg fossil CO₂, the CO₂ of 1 MJ. The workbook scores the four 11.3 % (LU, LT, RME) and 15.4 % (KR) below their same-supplier siblings, which is the missing half of the supply chain. Eleven datasets consume them directly.",
+  "exposure": "",
+  "method": "Measured on all 38 datasets of the name in the ecoSpold XML of 2025 v2 and 2026 v1 and on the LCIA workbook; filed 31 October 2026. Not yet re-measured by a second person.",
+  "reported": {
+    "by": "mklarmann",
+    "date": "2026-10-31",
+    "url": "https://github.com/sentier-dev/sentier-bafu/issues/42"
+  },
+  "repeated": null,
+  "sent": null,
+  "answer": null,
+  "fixed_in": null,
+  "closed": null,
+  "related": [],
+  "threads": [
+    "https://gitlab.com/eos-lci/lci-bafu-catalog/-/issues/36"
+  ],
+  "next": {
+    "action": "A second person repeats the measurement on BAFU's release files. Then the finding is reported to BAFU.",
+    "role": "reviewer"
+  },
+  "retained": [],
+  "notes": ""
+}

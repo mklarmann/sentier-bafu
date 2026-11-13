@@ -1,0 +1,40 @@
+{
+  "schema": 2,
+  "id": "F6",
+  "issue": null,
+  "title": "Concrete effluent treatment on 4 of 63 CH concrete datasets",
+  "kind": "question",
+  "datasets": [],
+  "scope": "CH concrete family",
+  "releases": [
+    "2026-v1"
+  ],
+  "observation": "`Treatment, concrete production effluent` (0.0143 m³/m³) is carried by 4 of the 63 CH concrete datasets and by none of the civil-engineering concretes. Inconsistent modelling or a scope choice?",
+  "exposure": "",
+  "method": "Counted across the 63 CH concrete datasets.",
+  "reported": {
+    "by": "mklarmann",
+    "date": "2026-09-25",
+    "url": "https://gitlab.com/eos-lci/lci-bafu-catalog/-/issues/6"
+  },
+  "repeated": null,
+  "sent": null,
+  "answer": null,
+  "fixed_in": null,
+  "closed": {
+    "as": "not-a-defect",
+    "date": null,
+    "reason": "Inconsistent modelling or a scope choice? Kept for information until BAFU answers.",
+    "url": "https://gitlab.com/eos-lci/lci-bafu-catalog/-/issues/6"
+  },
+  "related": [],
+  "threads": [
+    "https://gitlab.com/eos-lci/lci-bafu-catalog/-/issues/6"
+  ],
+  "next": {
+    "action": "Ask BAFU whether the effluent treatment is a scope choice. Until BAFU answers, it stays recorded for information.",
+    "role": "maintainer"
+  },
+  "retained": [],
+  "notes": ""
+}

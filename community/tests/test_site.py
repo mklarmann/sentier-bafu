@@ -11,8 +11,15 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 import community  # noqa: E402
+import frozen  # noqa: E402
 import triage  # noqa: E402
+
+# A copy of this repository with frozen records in place of its own: what the pages say about a
+# finding is tested on these, so that the life of a real finding breaks no test. The site of the
+# repository's own records is built and link-checked by the checks workflow.
+DATA = frozen.repository()
 
 try:
     import build_site
@@ -31,8 +38,8 @@ def issue(number, labels, state="open"):
 
 class TriageTests(unittest.TestCase):
     def setUp(self):
-        self.findings = community.load_findings(ROOT)
-        self.patches = community.load_patches(ROOT)
+        self.findings = community.load_findings(DATA)
+        self.patches = community.load_patches(DATA)
 
     def test_every_finding_is_placed_in_a_known_stage(self):
         data = triage.assemble(self.findings, REPO, {})
@@ -119,7 +126,7 @@ class SiteTests(unittest.TestCase):
     def setUpClass(cls):
         cls.tmp = tempfile.TemporaryDirectory()
         cls.out = Path(cls.tmp.name) / "site"
-        build_site.build(cls.out, offline=True)
+        build_site.build(cls.out, offline=True, root=DATA)
 
     @classmethod
     def tearDownClass(cls):
@@ -130,10 +137,10 @@ class SiteTests(unittest.TestCase):
 
     def test_every_record_has_a_page_and_a_list_row(self):
         listing = (self.out / "findings.html").read_text()
-        for f in community.load_findings(ROOT):
+        for f in community.load_findings(DATA):
             self.assertTrue((self.out / f"findings/{f['id']}.html").is_file(), f["id"])
             self.assertIn(f'<tr id="{f["id"]}"', listing)
-        for c in community.load_contributions(ROOT):
+        for c in community.load_contributions(DATA):
             self.assertTrue((self.out / f"contributions/{c['id']}.html").is_file(), c["id"])
 
     def test_status_is_shown_in_words_never_as_a_key(self):
@@ -144,7 +151,7 @@ class SiteTests(unittest.TestCase):
             self.assertTrue(badges, page.name)
             self.assertTrue(set(badges) <= labels, (page.name, badges))
         listing = (self.out / "findings.html").read_text()
-        for f in community.load_findings(ROOT):
+        for f in community.load_findings(DATA):
             row = listing[listing.index(f'<tr id="{f["id"]}"'):]
             self.assertIn(f'data-stage="{community.stage(f)}"', row[: row.index("</tr>")])
 
@@ -174,7 +181,7 @@ class SiteTests(unittest.TestCase):
         self.assertNotIn("elementary-flow-crosswalk-and-method-specific-factor-policy", page)
 
     def test_patches_are_shown_from_the_snapshot_not_from_the_record(self):
-        patches = community.load_patches(ROOT)
+        patches = community.load_patches(DATA)
         page = (self.out / "findings/F1.html").read_text()
         self.assertIn(patches["patches"][0]["url"], page)
         self.assertIn("Patch 0001", page)
@@ -188,31 +195,31 @@ class SiteTests(unittest.TestCase):
             out = Path(tmp) / "site"
             out.mkdir()
             (out / "kept.html").write_text("not ours: no earlier build wrote this folder")
-            build_site.build(out, offline=True)
+            build_site.build(out, offline=True, root=DATA)
             self.assertTrue((out / "kept.html").exists())
             (out / "findings/F9999.html").write_text("left by an earlier build")
             (out / "api/v1/findings/F9999.json").write_text("{}")
-            build_site.build(out, offline=True)
+            build_site.build(out, offline=True, root=DATA)
             self.assertFalse((out / "findings/F9999.html").exists())
             self.assertFalse((out / "api/v1/findings/F9999.json").exists())
             self.assertFalse((out / "kept.html").exists())
             self.assertTrue((out / "findings/F3.html").exists())
 
     def test_findings_list_holds_thousands(self):
-        site = build_site.Site(self.out, offline=True)
+        site = build_site.Site(self.out, offline=True, root=DATA)
         many = [dict(site.findings[0], id=f"F{n}", issue=n) for n in range(48, 3048)]
         site.triage = triage.assemble(many, site.repo, {})
         self.assertEqual(site.findings_list().count("<tr id="), 3000)
 
     def test_unlisted_issues_show_a_number_not_their_title(self):
-        site = build_site.Site(self.out, offline=True)
+        site = build_site.Site(self.out, offline=True, root=DATA)
         site.triage = triage.assemble(site.findings, site.repo, {9999: issue(9999, ["bafu-finding"])})
         listing = site.findings_list()
         self.assertIn("#9999", listing)
         self.assertNotIn("issue 9999", listing)
 
     def test_label_differences_stay_out_of_the_pages(self):
-        site = build_site.Site(self.out, offline=True)
+        site = build_site.Site(self.out, offline=True, root=DATA)
         site.triage = triage.assemble(site.findings, site.repo, {35: issue(35, ["bafu-finding", "needs-triage"])})
         self.assertTrue(site.triage["label_differences"])
         page = site.finding_page(next(f for f in site.triage["findings"] if f["id"] == "F17"))
@@ -223,7 +230,7 @@ class SiteTests(unittest.TestCase):
         self.assertIn('<base href="https://', (self.out / "404.html").read_text())
 
     def test_record_links_in_documents_point_to_their_pages(self):
-        site = build_site.Site(self.out, offline=True)
+        site = build_site.Site(self.out, offline=True, root=DATA)
         self.assertEqual(site.target("findings/0/F8.json", "community/workflow.md"), ("findings/F8.html", True))
         self.assertEqual(site.target("contributions/C001.json", "community/workflow.md"), ("contributions/C001.html", True))
         self.assertEqual(site.target("findings/README.md", "community/workflow.md"), ("findings.html", True))
@@ -234,11 +241,11 @@ class SiteTests(unittest.TestCase):
 
     def test_the_ledger_table_is_published_not_committed(self):
         rows = community.ledger_rows((self.out / "ledger.md").read_text())
-        self.assertEqual(set(rows), {f["id"] for f in community.load_findings(ROOT)})
+        self.assertEqual(set(rows), {f["id"] for f in community.load_findings(DATA)})
         self.assertFalse((ROOT / "community/findings.md").exists())
 
     def test_machine_readable_outputs(self):
-        findings = community.load_findings(ROOT)
+        findings = community.load_findings(DATA)
         data = json.loads((self.out / "api/v1/findings.json").read_text())
         self.assertEqual(data["schema"], "sentier-bafu/findings/1")
         self.assertEqual([s["key"] for s in data["statuses"]], [s["key"] for s in community.STATUSES])
@@ -274,7 +281,7 @@ class SiteTests(unittest.TestCase):
         self.assertEqual(json.loads((self.out / "status.json").read_text())["findings"], len(findings))
 
     def test_growing_lists_are_written_one_entry_per_line(self):
-        findings = community.load_findings(ROOT)
+        findings = community.load_findings(DATA)
         text = (self.out / "api/v1/findings.json").read_text()
         rows = [line for line in text.splitlines() if line.startswith('{"id":"F')]
         self.assertEqual(len(rows), len(findings))
@@ -282,7 +289,7 @@ class SiteTests(unittest.TestCase):
         text = (self.out / "api/v1/datasets.json").read_text()
         codes = [line.split(":")[0].strip('"') for line in text.splitlines() if re.match(r'"\d+":\{', line)]
         self.assertEqual(codes, list(json.loads(text)["datasets"]))
-        site = build_site.Site(self.out, offline=True)
+        site = build_site.Site(self.out, offline=True, root=DATA)
         with tempfile.TemporaryDirectory() as tmp:
             site.out = Path(tmp)
             site.write_json("empty.json", {"schema": "x", "findings": []}, one_per_line="findings")
@@ -295,7 +302,7 @@ class SiteTests(unittest.TestCase):
             self.assertNotIn('"channel"', text, path.name)
 
     def test_record_text_never_puts_another_kind_of_address_on_a_page(self):
-        site = build_site.Site(self.out, offline=True)
+        site = build_site.Site(self.out, offline=True, root=DATA)
         self.assertIn('href="https://example.org/a"', site.record_text("[a](https://example.org/a)"))
         # The validation refuses these first; the renderer refuses them again.
         for text in ("[x](javascript:alert(1))", "[x][1]\n\n[1]: javascript:alert(1)", "![x](http://other.example/p.png)",
@@ -306,7 +313,7 @@ class SiteTests(unittest.TestCase):
     def test_the_page_writer_refuses_a_path_outside_the_output_folder(self):
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp) / "site"
-            site = build_site.Site(out, offline=True)
+            site = build_site.Site(out, offline=True, root=DATA)
             for page in ("../escaped.html", "contributions/../../escaped.html", "/tmp/escaped.html"):
                 with self.assertRaises(ValueError):
                     site.write(page, "x")
@@ -326,7 +333,7 @@ class BuildRefusalTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.root = Path(self.tmp.name) / "repo"
-        shutil.copytree(ROOT, self.root, ignore=shutil.ignore_patterns(".git", "_site", ".local", "__pycache__", ".venv"))
+        frozen.copy_repository(self.root)
         self.out = Path(self.tmp.name) / "out" / "site"
 
     def tearDown(self):

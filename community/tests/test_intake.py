@@ -19,13 +19,18 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import community  # noqa: E402
+import frozen  # noqa: E402
 import intake  # noqa: E402
 from fake_github import BOT, REPOSITORY, FakeGitHub  # noqa: E402
 from github_api import ApiError, GitHub  # noqa: E402
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures/github"
 REPO = "https://github.com/sentier-dev/sentier-bafu"
-CONFIG = community.load_config(ROOT)
+# The rules are tested on frozen records and a frozen release list (fixtures/frozen), so that
+# the life of a real finding breaks no test. Only the form file is compared with the
+# repository's own site/config.json.
+CONFIG = community.load_config(frozen.RECORDS)
+LIVE = community.load_config(ROOT)
 FORM_TEXT = (ROOT / intake.FORM_FILE).read_text()
 PERSON = {"login": "second-person", "type": "User"}
 # What a hostile reporter might try. None of it may leave the record's own text.
@@ -118,10 +123,10 @@ class FormFileTests(unittest.TestCase):
         self.assertEqual(len(headings), len(set(headings)))
 
     def test_the_release_list_is_the_list_of_site_config(self):
-        self.assertEqual(intake.form_with_releases(FORM_TEXT, CONFIG), FORM_TEXT)
+        self.assertEqual(intake.form_with_releases(FORM_TEXT, LIVE), FORM_TEXT)
         block = FORM_TEXT.split("# releases:start", 1)[1].split("# releases:end", 1)[0]
         listed = re.findall(r'- "([^"]+)"', block)
-        self.assertEqual(listed, [release["id"] for release in reversed(CONFIG["releases"])])
+        self.assertEqual(listed, [release["id"] for release in reversed(LIVE["releases"])])
 
     def test_a_new_release_reaches_the_form_with_one_command(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -130,7 +135,7 @@ class FormFileTests(unittest.TestCase):
             (root / "site").mkdir()
             shutil.copy(ROOT / intake.FORM_FILE, root / intake.FORM_FILE)
             config = json.loads((ROOT / "site/config.json").read_text())
-            config["releases"].append({"id": "2027-v1", "name": "BAFU:2027 v1"})
+            config["releases"].append({"id": "8888-v1", "name": "BAFU:8888 v1"})
             (root / "site/config.json").write_text(json.dumps(config))
             out = io.StringIO()
             with contextlib.redirect_stdout(out):
@@ -138,9 +143,10 @@ class FormFileTests(unittest.TestCase):
                 self.assertEqual(intake.main(["--root", str(root), "form"]), 0)
                 self.assertEqual(intake.main(["--root", str(root), "form", "--check"]), 0)
             written = (root / intake.FORM_FILE).read_text()
-            self.assertIn('        - "2027-v1"\n        - "2026-v1"\n        - "2025-v2"\n', written)
+            listed = re.findall(r'- "([^"]+)"', written.split("# releases:start", 1)[1].split("# releases:end", 1)[0])
+            self.assertEqual(listed, ["8888-v1"] + [release["id"] for release in reversed(LIVE["releases"])])
             # Nothing else in the file changed.
-            self.assertEqual(written.replace('        - "2027-v1"\n', ""), FORM_TEXT)
+            self.assertEqual(written.replace('        - "8888-v1"\n', ""), FORM_TEXT)
 
     def test_the_forms_set_the_labels_the_workflows_look_for(self):
         self.assertIn('labels: ["bafu-finding", "needs-triage"]', FORM_TEXT)
@@ -178,7 +184,7 @@ class FormFileTests(unittest.TestCase):
         ]
         self.assertEqual(tuple(fields), intake.FORM)
         releases = next(item for item in finding["body"] if item.get("id") == "releases")
-        self.assertEqual(releases["attributes"]["options"], [r["id"] for r in reversed(CONFIG["releases"])])
+        self.assertEqual(releases["attributes"]["options"], [r["id"] for r in reversed(LIVE["releases"])])
         self.assertTrue(releases["attributes"]["multiple"])
         kinds = next(item for item in finding["body"] if item.get("id") == "kind")
         self.assertEqual(
@@ -475,14 +481,11 @@ class CommandTests(unittest.TestCase):
 
 
 class Workspace(unittest.TestCase):
-    """A copy of the records in a scratch folder, and a stand-in for GitHub."""
+    """A copy of the frozen records in a scratch folder, and a stand-in for GitHub."""
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
-        self.root = Path(self.tmp.name)
-        shutil.copytree(ROOT / "community", self.root / "community", ignore=shutil.ignore_patterns("tests"))
-        (self.root / "site").mkdir()
-        shutil.copy(ROOT / "site/config.json", self.root / "site/config.json")
+        self.root = frozen.workspace(Path(self.tmp.name) / "workspace")
         self.fake = FakeGitHub(
             issues={48: {"labels": ["bafu-finding", "needs-triage"]}, 49: {"labels": ["bafu-finding", "needs-triage"]},
                     41: {"labels": ["bafu-finding", "needs-triage"]}, 3: {"labels": ["bafu-finding"]},
@@ -832,7 +835,8 @@ class PublishTests(Workspace):
         done = self.publish(opened(issue(48)))
         self.assertTrue(intake.post_statuses(self.api, done["sha"], "success", "https://github.com/x/y/actions/runs/1"))
         self.assertEqual([(s["context"], s["state"]) for s in self.fake.statuses],
-                         [("Records and unit tests", "success"), ("Site build and links", "success")])
+                         [("Records and unit tests", "success"), ("Site build and links", "success"),
+                          ("Tests hold through a finding's life", "success")])
         self.assertTrue(all(s["sha"] == done["sha"] and s["target_url"].endswith("/runs/1") for s in self.fake.statuses))
         for result in ("failure", "cancelled", "skipped", ""):
             self.fake.statuses.clear()

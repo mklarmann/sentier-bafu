@@ -20,13 +20,15 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import community  # noqa: E402
+import frozen  # noqa: E402
 import sync  # noqa: E402
 from fake_github import REPOSITORY, FakeGitHub  # noqa: E402
 from github_api import GitHub  # noqa: E402
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures/github"
 REPO = "https://github.com/sentier-dev/sentier-bafu"
-CONFIG = community.load_config(ROOT)
+# Frozen records and a frozen release list (fixtures/frozen): the life of a real finding breaks no test.
+CONFIG = community.load_config(frozen.RECORDS)
 RECORDED = json.loads((FIXTURES / "issues-bafu-finding.json").read_text())
 LABELS = json.loads((FIXTURES / "labels.json").read_text())
 FILED = "status: needs a second measurement"
@@ -235,10 +237,10 @@ class PlanTests(unittest.TestCase):
 
 
 class RecordedTests(unittest.TestCase):
-    """The committed records against the issues as the public API listed them on 13 November 2026."""
+    """The records of 13 November 2026 against the issues as the public API listed them that day."""
 
     def setUp(self):
-        self.findings = community.load_findings(ROOT)
+        self.findings = community.load_findings(frozen.RECORDS)
         self.issues = sync.snapshot_issues(FIXTURES / "issues-bafu-finding.json", self.findings)
 
     def test_the_recorded_list_is_what_the_api_answered(self):
@@ -393,10 +395,7 @@ class ApplyTests(unittest.TestCase):
 class MainTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
-        self.root = Path(self.tmp.name)
-        shutil.copytree(ROOT / "community", self.root / "community", ignore=shutil.ignore_patterns("tests"))
-        (self.root / "site").mkdir()
-        shutil.copy(ROOT / "site/config.json", self.root / "site/config.json")
+        self.root = frozen.workspace(Path(self.tmp.name) / "workspace")
         self.fake = FakeGitHub(
             issues={item["number"]: {"labels": [label["name"] for label in item["labels"]], "state": item["state"]}
                     for item in RECORDED},

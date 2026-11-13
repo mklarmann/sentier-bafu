@@ -1,0 +1,16 @@
+{
+  "dataset": "BAFU / UVEK",
+  "provider": "BAFU",
+  "releases": [
+    {
+      "id": "2025-v2",
+      "name": "BAFU:2025 v2"
+    },
+    {
+      "id": "2026-v1",
+      "name": "BAFU:2026 v1"
+    }
+  ],
+  "repository": "https://github.com/sentier-dev/sentier-bafu",
+  "site_url": "https://sentier-dev.github.io/sentier-bafu/"
+}
