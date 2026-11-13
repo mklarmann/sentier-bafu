@@ -1,0 +1,23 @@
+{
+  "id": "F27",
+  "title": "Washing-machine production 389238: the 2026 year-to-hour relabel leaves an annual inventory unscaled",
+  "datasets": "389238 Production, washing machine, V-ZUG (CH)",
+  "release": "2026 v1",
+  "status": "open",
+  "awaiting_second_measurement": true,
+  "observation": "389238 is an aggregated dataset: an LCI result without technosphere inputs. Between 2025 v2 and 2026 v1 its reference unit changed from `a` to `hr`, and all 1,654 exchange amounts stayed the same. Read per hour, it emits 3,160,355 kg of fossil CO₂ an hour, supply chain included, which is 27.7 Mt a year; read per year, as in 2025 v2, it is 361 kg an hour on average. The 2026 v1 change log lists it under \"Year unit correction\" with 155 other datasets. The 86 others that moved from `a` to `hr` are hours of use (forestry machines, helicopters, laser machining, computer and office equipment) and their amounts fit an hour; the largest fossil CO₂ among them is 816.79 kg. No exchange in the release buys 389238, so no other dataset's result moves. The exposure is direct use of the dataset, or of its row in the LCIA workbook (3,597,212 kg CO₂-eq per h): both are 8,760 times too high per hour. The v1.1 database package carries the same amounts.",
+  "links": [
+    "https://github.com/sentier-dev/sentier-bafu/issues/47",
+    "https://gitlab.com/eos-lci/lci-bafu-catalog/-/issues/44"
+  ],
+  "community_patch": null,
+  "provider_response": null,
+  "provider_correction_shipped": null,
+  "reviewer_consensus": null,
+  "pipeline_run_evidence": null,
+  "validation_scope": "Measured on the ecoSpold XML of 2025 v2 and 2026 v1 (rows compared as multisets), the 2026 v1 change log, the LCIA workbooks and the v1 and v1.1 database packages; filed 12 November 2026. Not yet re-measured by a second person. That every `a` became `hr` in one pass is our reading; the files do not say.",
+  "next_action": "Independent re-measurement (drop needs-triage), then send to BAFU with the next batch.",
+  "review_role": "reviewer",
+  "evidence_url": "https://github.com/sentier-dev/sentier-bafu/issues/47",
+  "retained": []
+}
