@@ -1,0 +1,26 @@
+{
+  "number": 32,
+  "title": "F12 — the same elementary flow is declared in two units across datasets (Bq/kBq, m/km, kWh/MJ, Nm3/m3); importers must convert",
+  "state": "open",
+  "state_reason": null,
+  "created_at": "2026-10-15T02:08:18Z",
+  "html_url": "https://github.com/sentier-dev/sentier-bafu/issues/32",
+  "user": {
+    "login": "mklarmann",
+    "type": "User"
+  },
+  "author_association": "MEMBER",
+  "labels": [
+    {
+      "name": "bafu-finding"
+    },
+    {
+      "name": "informational"
+    },
+    {
+      "name": "handled-in-layer"
+    }
+  ],
+  "comments": 1,
+  "body": "**Where:** BAFU:2026 v1, ecoSpold v1 files, the elementary-flow exchanges of 1,187 distinct flow names; ~~three of those names are declared in two units across datasets~~ by name and compartment, 112 flows are declared in two units across datasets: 107 radionuclides (Bq/kBq), 2 road-noise flows (m/km), `Heat, waste` (kWh/MJ) and 2 gas resources (Nm3/m3). *Corrected 12 November 2026; the re-count is in [the comment below](https://github.com/sentier-dev/sentier-bafu/issues/32#issuecomment-6547514995).*\n\n**What we measured (raw files, 2026-10-15):**\n\n| flow | unit A (exchanges) | unit B (exchanges) | unit in the flow list |\n|---|---|---|---|\n| `Cobalt-58` (and the other radionuclides) | Bq (40) | kBq (177) | kBq |\n| `Heat, waste` | kWh (3) | MJ (6,301) | MJ |\n| `Noise, road, lorry, average` | m (23) | km (503) | km |\n\nAcross the release, 3,171 radionuclide exchanges on 20 datasets are declared in Bq, 43 noise exchanges in m and 3 waste-heat exchanges in kWh, while the published flow list (and the openLCA import) carry one unit per flow.\n\n**Why it matters for an independent importer.** SimaPro and openLCA convert on import, so BAFU's own results are consistent. An ecoSpold consumer that links exchanges to flows by name and category and compares unit *labels* only will either (a) write the Bq amount against the kBq flow, which puts EF 3.1 Ionising Radiation at ×1000 on those 20 datasets and on 27 datasets consuming them, with GWP100 unaffected, or (b) refuse the link and lose the exchanges. We shipped (a) in our layer for about three weeks and found it only through a consumer's method comparison.\n\n**Status:** not a value error in the Data; a unit-consistency property every importer has to handle explicitly. Handled in our layer since lci-bafu 0.1.12 by converting the three routes with exact factors (1 kBq = 1,000 Bq, 1 km = 1,000 m, 1 kWh = 3.6 MJ) on amount, distribution parameters and declared band, recording the applied conversion on each exchange and counting it in the build manifest; every other unit pair still refuses. Measurement and before/after table: https://gitlab.com/eos-lci/lci-bafu-catalog/-/blob/main/docs/releases/2026-v1/unit_conversion_0_1_12.json; derivation thread: https://gitlab.com/eos-lci/lci-bafu-catalog/-/issues/28. Ledger row F12 there; proposing the same row for `community/findings.md` here.\n\n**Question for other importers (sentier-importers, the hackathon rebuild):** does your path convert these at import, and against which unit list? A parity check on `Cobalt-58` amounts of a Bq-declaring dataset would settle it in one number.\n\n"
+}
