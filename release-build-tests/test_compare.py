@@ -66,6 +66,95 @@ class Graph(unittest.TestCase):
         )
 
 
+class StepFields(unittest.TestCase):
+    """What a step that the table does not list can explain: what the run says it changed."""
+
+    def summary(self, **fields):
+        return {"steps": [{"id": id, "fields": changed} for id, changed in fields.items()]}
+
+    def test_a_new_patch_explains_the_fields_the_run_summary_says_it_changed(self):
+        fields = compare.step_fields(
+            self.summary(
+                **{
+                    "0012-unit": {
+                        "flowData/exchange/@unit": 2,
+                        "metaInformation/processInformation/referenceFunction/@unit": 2,
+                    },
+                    "0013-amount": {"flowData/exchange/@meanValue": 1},
+                    "0014-supplier": {"flowData/exchange/@number": 1},
+                    "0015-direction": {"flowData/exchange/inputGroup": 1},
+                }
+            )
+        )
+        self.assertEqual(
+            fields["0012-unit"], {"exchange": {"flow", "unit"}, "process": {"reference_unit"}}
+        )
+        self.assertEqual(fields["0013-amount"], {"exchange": {"amount"}, "process": set()})
+        self.assertEqual(fields["0014-supplier"]["exchange"], {"flow"})
+        self.assertEqual(fields["0015-direction"]["exchange"], {"kind"})
+        self.assertEqual(
+            compare.explain({"unit"}, ["0012-unit"], "exchange", fields), ["0012-unit"]
+        )
+        self.assertEqual(
+            compare.explain({"reference_unit"}, ["0012-unit"], "process", fields), ["0012-unit"]
+        )
+        self.assertEqual(compare.explain({"amount"}, ["0012-unit"], "exchange", fields), [])
+
+    def test_a_step_in_the_table_keeps_what_the_table_says(self):
+        # even if a run says it changed more: that is then an unexplained row, on purpose
+        fields = compare.step_fields(
+            self.summary(
+                **{AMOUNT: {"flowData/exchange/@meanValue": 3, "flowData/exchange/@unit": 3}}
+            )
+        )
+        self.assertEqual(fields[AMOUNT], compare.STEP_FIELDS[AMOUNT])
+        self.assertEqual(compare.explain({"unit"}, [AMOUNT], "exchange", fields), [])
+
+    def test_steps_the_importer_can_not_see_explain_nothing(self):
+        fields = compare.step_fields(
+            self.summary(
+                **{
+                    "0004-flow-cas-numbers-added": {"flowData/exchange/@CASNumber": 9},
+                    "0010-brightway-flows-links": {
+                        "flowData/exchange/extensions/@brightwayFlow": 9
+                    },
+                    "0003-flag-not-maintained": {"extensions/@maintenance": 9},
+                    # the adapter gives every exchange its original number back
+                    "renumber-exchanges": {"flowData/exchange/@number": 9},
+                }
+            )
+        )
+        self.assertEqual(set(fields), set(compare.STEP_FIELDS))
+
+    def test_a_layer_explains_a_substituted_supplier(self):
+        fields = compare.step_fields(None, {"step": "C900-other"})
+        self.assertEqual(
+            compare.explain({"flow", "name", "location"}, ["C900-other"], "exchange", fields),
+            ["C900-other"],
+        )
+        self.assertEqual(compare.explain({"amount"}, ["C900-other"], "exchange", fields), [])
+
+    def test_the_steps_of_a_dataset_include_the_layer_that_changed_it(self):
+        import json
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as folder:
+            build = Path(folder)
+            (build / "adapter-receipt.json").write_text(
+                json.dumps(
+                    {"steps_by_dataset": {"crop": {"import_fixes": ["a"], "patches": ["b"]}}}
+                )
+            )
+            self.assertEqual(compare.read_steps(build), {"crop": ["a", "b"]})
+            (build / "layer-receipt.json").write_text(
+                json.dumps({"step": "C900-other", "datasets_changed": ["crop", "farm"]})
+            )
+            self.assertEqual(
+                compare.read_steps(build),
+                {"crop": ["a", "b", "C900-other"], "farm": ["C900-other"]},
+            )
+
+
 Entry = namedtuple("Entry", "target_code conversion_factor")
 Method = namedtuple("Method", "method_id cfs")
 

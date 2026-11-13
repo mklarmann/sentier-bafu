@@ -1,12 +1,14 @@
 """Compare two builds made by `build_release.py`: what changed, and which step changed it.
 
-Reads, for the baseline (the provider release) and the candidate (a patched release):
+The baseline is the provider release and the candidate a patched release; or the baseline
+is the patched release and the candidate a contribution built beside it. Reads, for both:
 
 - the inventory tables sentier-importers wrote (`processes.parquet`, `exchanges.parquet`),
   compared row by row: an exchange is identified by its dataset and its position in it;
 - the scores of every dataset for every method (`scores.csv` from the audit);
 - the candidate's adapter receipt, which lists the import fixes and patches the patch tool
-  recorded on each dataset.
+  recorded on each dataset; its run summary, which says which fields each step changed; and,
+  for a contribution, the receipt of its layer.
 
 It answers three questions and fails if it can't answer one of them:
 
@@ -31,7 +33,9 @@ LISTED = 50  # moved datasets listed per method in the output
 
 # Importer-visible fields each step is known to change, from the step's own description.
 # Every changed row is checked against this table, so a step that starts changing something
-# else shows up as an unexplained row instead of being attributed by assumption.
+# else shows up as an unexplained row instead of being attributed by assumption. A step that
+# is not listed here (a new patch) needs no entry: what it can explain is taken from the run
+# summary, which counts the fields it changed in this run (`step_fields`).
 STEP_FIELDS = {
     "0001-strawberry-polyethylene-disposal": {"exchange": {"amount"}, "process": set()},
     "0002-supplier-locations": {"exchange": {"location"}, "process": set()},
@@ -39,6 +43,37 @@ STEP_FIELDS = {
     "0008-flow-compartments": {"exchange": {"flow"}, "process": set()},
     "location-codes": {"exchange": {"location"}, "process": {"location"}},
 }
+# What a changed attribute of an exchange in the release files means in the importer's
+# tables: the groups below. `number` names the supplier of a technosphere input.
+EXCHANGE_ATTRIBUTES = {
+    "meanValue": {"amount"},
+    "uncertaintyType": {"amount"},
+    "standardDeviation95": {"amount"},
+    "minValue": {"amount"},
+    "maxValue": {"amount"},
+    "mostLikelyValue": {"amount"},
+    "location": {"location"},
+    "name": {"flow", "name"},
+    "category": {"flow"},
+    "subCategory": {"flow"},
+    "unit": {"flow", "unit"},
+    "number": {"flow"},
+}
+EXCHANGE_ELEMENTS = {"inputGroup": {"kind"}, "outputGroup": {"kind"}}
+# The same for a dataset's own fields: the columns of processes.parquet they reach
+PROCESS_FIELDS = {
+    "geography/@location": {"location"},
+    "referenceFunction/@name": {"name", "reference_product"},
+    "referenceFunction/@unit": {"reference_unit"},
+    "referenceFunction/@amount": {"reference_amount"},
+    "referenceFunction/@category": {"sector", "comment"},
+    "referenceFunction/@subCategory": {"sector", "comment"},
+    "technology/@text": {"technology"},
+}
+# Import fixes whose changes the adapter takes back before the importer reads the files
+UNDONE_BY_THE_ADAPTER = {"renumber-exchanges"}
+# What a contribution's supplier substitution changes on an input
+LAYER_FIELDS = {"exchange": {"flow", "name", "location"}, "process": set()}
 # Columns of exchanges.parquet, grouped by what a change to them means
 EXCHANGE_GROUPS = {
     "flow": ("flow",),  # the flow's identity: name, compartment, subcompartment and unit
@@ -62,9 +97,41 @@ class CompareError(Exception):
 # --- Pure helpers ----------------------------------------------------------------------
 
 
-def explain(groups: set[str], steps: list[str], table: str) -> list[str]:
+def derived_fields(changed: dict[str, int]) -> dict[str, set[str]]:
+    """What a step can explain, from the XML fields the run summary says it changed."""
+    exchange, process = set(), set()
+    for path in changed:
+        if path.startswith("flowData/exchange/@"):
+            exchange |= EXCHANGE_ATTRIBUTES.get(path.rpartition("@")[2], set())
+        elif path.startswith("flowData/exchange/"):
+            exchange |= EXCHANGE_ELEMENTS.get(path.rpartition("/")[2], set())
+        else:
+            for ending, columns in PROCESS_FIELDS.items():
+                if path.endswith("/" + ending):
+                    process |= columns
+    return {"exchange": exchange, "process": process}
+
+
+def step_fields(summary: dict | None, layer: dict | None = None) -> dict[str, dict]:
+    """`STEP_FIELDS`, plus every other step of the run with what it changed, plus the layer."""
+    fields = {step: dict(groups) for step, groups in STEP_FIELDS.items()}
+    for step in (summary or {}).get("steps", ()):
+        if step["id"] in fields or step["id"] in UNDONE_BY_THE_ADAPTER:
+            continue
+        derived = derived_fields(step.get("fields") or {})
+        if derived["exchange"] or derived["process"]:
+            fields[step["id"]] = derived
+    if layer:
+        fields[layer["step"]] = LAYER_FIELDS
+    return fields
+
+
+def explain(
+    groups: set[str], steps: list[str], table: str, fields: dict[str, dict] | None = None
+) -> list[str]:
     """The recorded steps that account for a change to `groups`, or [] if none does."""
-    known = {step: STEP_FIELDS[step][table] for step in steps if step in STEP_FIELDS}
+    fields = STEP_FIELDS if fields is None else fields
+    known = {step: fields[step][table] for step in steps if step in fields}
     # A step that changes exactly these fields explains the row better than one that
     # could also have changed others: renaming a flow changes its name and identity,
     # moving its compartment changes the identity only.
@@ -118,15 +185,21 @@ def read_scores(build: Path):
     return pd.read_csv(build / "audit" / "scores.csv").set_index("code")
 
 
+def read_json(path: Path) -> dict | None:
+    return json.loads(path.read_text()) if path.is_file() else None
+
+
 def read_steps(build: Path) -> dict[str, list[str]]:
-    receipt = build / "adapter-receipt.json"
-    if not receipt.is_file():
-        return {}
-    data = json.loads(receipt.read_text())
-    return {
-        code: [*steps["import_fixes"], *steps["patches"]]
-        for code, steps in data.get("steps_by_dataset", {}).items()
+    """Per dataset, the steps recorded on it: import fixes, patches, and a layer's changes."""
+    data = read_json(build / "adapter-receipt.json") or {}
+    steps = {
+        code: [*recorded["import_fixes"], *recorded["patches"]]
+        for code, recorded in data.get("steps_by_dataset", {}).items()
     }
+    layer = read_json(build / "layer-receipt.json")
+    for code in (layer or {}).get("datasets_changed", ()):
+        steps.setdefault(code, []).append(layer["step"])
+    return steps
 
 
 # --- 1. Rows ---------------------------------------------------------------------------
@@ -143,7 +216,7 @@ def _differs(before, after):
     return ~((before == after) | (before.isna() & after.isna())).to_numpy(dtype=bool)
 
 
-def compare_rows(base, cand, steps: dict[str, list[str]]) -> dict:
+def compare_rows(base, cand, steps: dict[str, list[str]], fields: dict | None = None) -> dict:
     """Row-level differences of the two inventories, each attributed to recorded steps."""
     base_processes, base_exchanges = base
     cand_processes, cand_exchanges = cand
@@ -172,7 +245,7 @@ def compare_rows(base, cand, steps: dict[str, list[str]]) -> dict:
 
     by_step, unexplained, rows = defaultdict(Counter), [], []
     for row in changed.itertuples(index=False):
-        found = explain(set(row.groups), steps.get(row.process_id, []), "exchange")
+        found = explain(set(row.groups), steps.get(row.process_id, []), "exchange", fields)
         label = " + ".join(found) if found else "unexplained"
         for group in sorted(row.groups):
             by_step[label][group] += 1
@@ -192,7 +265,7 @@ def compare_rows(base, cand, steps: dict[str, list[str]]) -> dict:
             continue
         differs = _differs(paired[f"{column}_before"], paired[f"{column}_after"])
         for code in paired.loc[differs, "process_id"]:
-            found = explain({column}, steps.get(code, []), "process")
+            found = explain({column}, steps.get(code, []), "process", fields)
             process_changes[" + ".join(found) if found else "unexplained"][column] += 1
             if not found:
                 process_unexplained.append({"dataset": code, "fields": [column]})
@@ -324,7 +397,9 @@ def compare_flows(rows, bridge, effective, ef_names: dict[str, str]) -> dict:
     }
 
 
-def declared_flows(receipt: dict, exchanges, steps: dict, bridge, ef_names: dict) -> dict:
+def declared_flows(
+    receipt: dict, exchanges, steps: dict, bridge, ef_names: dict, fields: dict | None = None
+) -> dict:
     """Elementary exchanges a patch corrected, linked on the flow as BAFU declared it."""
     observations = receipt.get("source_observations", [])
     flow_of = {
@@ -337,7 +412,7 @@ def declared_flows(receipt: dict, exchanges, steps: dict, bridge, ef_names: dict
     for observation in observations:
         declared, patched = observation["declared"], observation["patched"]
         changed = {"flow", "name"} if declared["name"] != patched["name"] else {"flow"}
-        found = explain(changed, steps.get(observation["dataset"], []), "exchange")
+        found = explain(changed, steps.get(observation["dataset"], []), "exchange", fields)
         key = (tuple(declared.values()), tuple(patched.values()))
         group = groups[key]
         group["exchanges"] += 1
@@ -495,7 +570,10 @@ def compare(baseline: Path, candidate: Path) -> dict:
 
     base, cand = read_inventory(baseline), read_inventory(candidate)
     steps = read_steps(candidate)
-    rows = compare_rows(base, cand, steps)
+    summary = read_json(candidate / "release-summary.json")
+    layer = read_json(candidate / "layer-receipt.json")
+    fields = step_fields(summary, layer)
+    rows = compare_rows(base, cand, steps, fields)
     root = candidate / "data-root"
     bridge, methods = load_bridge(root), load_methods(root)
     effective = effective_factors(bridge, methods)
@@ -509,6 +587,7 @@ def compare(baseline: Path, candidate: Path) -> dict:
         steps,
         bridge,
         ef_names,
+        fields,
     )
 
     base_scores, cand_scores = read_scores(baseline), read_scores(candidate)
@@ -534,6 +613,15 @@ def compare(baseline: Path, candidate: Path) -> dict:
     return {
         "status": "failed" if errors else "passed",
         "errors": errors,
+        "what_a_step_can_explain": {
+            "declared_in_the_comparison": sorted(STEP_FIELDS),
+            "taken_from_the_run_summary": sorted(
+                step
+                for step in fields
+                if step not in STEP_FIELDS and step != (layer or {}).get("step")
+            ),
+            "layer": (layer or {}).get("step"),
+        },
         "builds": {
             label: {
                 "label": audit["label"],
