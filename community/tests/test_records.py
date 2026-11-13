@@ -788,6 +788,18 @@ class CheckTests(WorkspaceCase):
         (self.root / "community/patches.json").write_text(json.dumps(data))
         self.assertIn("patch 0001: the source url is pinned", self.result()[1])
 
+    def test_a_patch_snapshot_that_cannot_be_read_is_named_not_raised(self):
+        cases = {
+            "{not json": "community/patches.json: unreadable (JSONDecodeError",
+            "[1, 2]": "community/patches.json: needs a list of patches",
+            '{"patches": [{"id": 5}]}': "patch 5: needs a four-digit id",
+        }
+        for broken, message in cases.items():
+            (self.root / "community/patches.json").write_text(broken)
+            code, text = self.result()
+            self.assertEqual(code, 1, broken)
+            self.assertIn(message, text)
+
     def test_contribution_without_next_action_is_reported_through_check(self):
         path = self.root / "community/contributions/C001.json"
         record = records.read(path)

@@ -1023,11 +1023,13 @@ def problems(root=ROOT):
         if not found:
             findings.append(record)
     findings.sort(key=finding_number)
-    patches = load_patches(root)
-    if patches is not None:
-        found = patch_errors(patches)
-        errors += found
-        patches = None if found else patches
+    try:
+        patches = load_patches(root)
+        found = patch_errors(patches) if patches is not None else []
+    except Exception as error:  # a broken snapshot is named, like a broken record
+        patches, found = None, [f"{PATCHES_FILE}: unreadable ({type(error).__name__}: {error})"]
+    errors += found
+    patches = None if found else patches
     cross, notes = cross_record_errors(findings, patches)
     errors += cross
     counted = f", {len(patches['patches'])} community patches" if patches else ""
