@@ -183,6 +183,15 @@ def path_with_counts(site, up=""):
     )
 
 
+def vocabulary(site):
+    """Every status with its meter and the one sentence that is true of every finding that has it."""
+    rows = ""
+    for status in community.statuses(site.provider):
+        mark = meter(TYPICAL[status["key"]]) if status["key"] in TYPICAL else OFF
+        rows += f'<div><dt>{mark}{esc(status["label"])}</dt><dd>{esc(status["description"])}</dd></div>'
+    return f'<dl class="panel vocabulary">{rows}</dl>'
+
+
 def contribution_meter(status):
     if status not in CONTRIBUTION_STATES:
         return OFF

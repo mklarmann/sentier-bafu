@@ -11,6 +11,7 @@
   if (!list || !controls || !q || !count) return;
   var noun = list.dataset.noun || "record", page = +list.dataset.page || 50, base = list.dataset.base || "";
   var more = document.getElementById("more"), none = document.getElementById("none"), clear = document.getElementById("clear");
+  var dataset = document.getElementById("dataset");
   var chips = [].slice.call(document.querySelectorAll("[data-filter]"));
   var selects = {};
   ["status", "release", "kind", "patch", "sort"].forEach(function (name) {
@@ -155,7 +156,13 @@
     timer = setTimeout(function () {
       count.textContent = (shown === total ? plural(total) : fmt(shown) + " of " + plural(total)) + note;
     }, 250);
-    var code = /^\d{6}$/.test(state.q.trim()) && !state.status.length && !state.release && !state.kind && !state.patch;
+    var asked = /^\d{6}$/.test(state.q.trim()) ? state.q.trim() : "";
+    var code = asked && !state.status.length && !state.release && !state.kind && !state.patch;
+    if (dataset) { // a code that a finding names has a page of its own
+      dataset.hidden = !(asked && shown > 0 && index);
+      dataset.href = base + "datasets/" + asked + ".html";
+      dataset.textContent = "All about dataset " + asked;
+    }
     if (none) {
       none.hidden = shown > 0;
       none.firstChild.nodeValue = code

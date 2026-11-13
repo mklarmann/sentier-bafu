@@ -50,7 +50,6 @@
       "title": "Contributions",
       "source": "site/contributions.md",
       "page": "contributions.html",
-      "also": ["community/workflow.md"],
       "description": "Proposals that go beyond a single finding: mappings, models, rebuilt inventories and method variants, each with its checks and reviewers."
     },
     {
@@ -64,7 +63,6 @@
       "title": "Take part",
       "source": "site/take-part.md",
       "page": "take-part.html",
-      "also": ["community/README.md"],
       "description": "Report a finding, repeat a measurement or propose a contribution. Everything is discussed in public on GitHub."
     },
     {

@@ -32,8 +32,9 @@ from sitebuild.text import esc, plural  # noqa: E402,F401
 ROOT = Path(__file__).resolve().parents[1]
 RECORD_PAGES = {"community/findings": "findings", "community/contributions": "contributions"}
 RECORD_FILE = re.compile(r"community/(findings|contributions)/(?:[^/]+/)*([FC][0-9]+)\.json")
-MARKER = re.compile(r"<p>\s*<!--\s*([a-z][a-z-]*)\s*-->\s*</p>|<!--\s*([a-z][a-z-]*)\s*-->")
-COUNT = re.compile(r"<!--\s*count:([a-z:-]+)\s*-->")
+# <!-- findings-list --> or <!-- generated: findings-list -->, alone in a paragraph or not.
+MARKER = re.compile(r"<p>\s*<!--\s*(?:generated:\s*)?([a-z][a-z-]*)\s*-->\s*</p>|<!--\s*(?:generated:\s*)?([a-z][a-z-]*)\s*-->")
+COUNT = re.compile(r"<!--\s*(?:generated:\s*)?count:([a-z:-]+)\s*-->")
 SAFE_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 
 
@@ -239,8 +240,9 @@ class Site:
             "findings-list": (lambda: findings.findings_list(self, up), True),
             "contributions-list": (lambda: contributions.contributions_list(self, up), True),
             "feedback-lists": (lambda: pages.feedback_lists(self, up), True),
-            "second-measurement-list": (lambda: overview.second_measurement_list(self, up), True),
             "status-tracker": (lambda: status.path_with_counts(self, up), True),
+            "status-vocabulary": (lambda: status.vocabulary(self), False),
+            "second-measurement-list": (lambda: overview.second_measurement_list(self, up), False),
             "recent-changes": (lambda: pages.change_lines(self, self.changes[:5], up), False),
             "patch-table": (lambda: pages.patch_table(self, up), False),
             "data-files": (lambda: pages.data_files(self, up), False),

@@ -401,7 +401,7 @@ a.path-count:hover { border-color: var(--green); background: var(--surface); col
 .field > span { font-size: var(--t-xs); font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .field.grow { flex: 1 1 16rem; }
 .field :is(input, select) { width: 100%; }
-.filter-count { font-size: var(--t-sm); color: var(--muted); }
+.filter-count { display: flex; flex-wrap: wrap; gap: 0 var(--s4); font-size: var(--t-sm); color: var(--muted); }
 .unlisted { font-size: var(--t-sm); color: var(--muted); }
 /* the status as chips from 48rem, as a select below; without the script the chips stay, because they are links */
 @media (min-width: 48rem) { .for-status { display: none; } }
@@ -427,9 +427,11 @@ html:not(.js) #stage-not-a-defect:target ~ .filter .chip[data-filter="not-a-defe
 html:not(.js) #stage-withdrawn:target ~ .filter .chip[data-filter="withdrawn"] { border-color: var(--green); box-shadow: inset 0 0 0 1px var(--green); }
 
 /* A record is one row: number, what it is, where it stands, where it is discussed.
-   Four columns from 54rem, three from 40rem (status over discussion), a block below. */
-.listing { --cols: 3.5rem minmax(0, 1fr) 13rem 12rem; margin-top: var(--s4); }
+   Four columns where the list is 52rem wide, three from 38rem (status over discussion), a
+   block below. The list measures itself, not the screen, so a row fits a narrow column too. */
+.listing { --cols: 3.5rem minmax(0, 1fr) 13rem 12rem; margin-top: var(--s4); container-type: inline-size; }
 .listing.of-contributions { --cols: 3.75rem minmax(0, 1fr) 8rem 14.5rem; }
+.records { container-type: inline-size; }
 .records-head, .record { display: grid; grid-template-columns: var(--cols, 3.5rem minmax(0, 1fr) 13rem 12rem); column-gap: var(--s5); }
 .records-head {
   padding: 0 var(--s5) var(--s2);
@@ -462,7 +464,7 @@ html:not(.js) #stage-withdrawn:target ~ .filter .chip[data-filter="withdrawn"] {
 .record-thread a { position: relative; z-index: 1; align-self: start; font-weight: 700; white-space: nowrap; }
 .list-none { margin-top: var(--s4); color: var(--muted); }
 .list-more { margin-top: var(--s4); }
-@media (max-width: 53.99rem) {
+@container (max-width: 51.99rem) {
   .records-head { display: none; }
   .record {
     grid-template-columns: 3.5rem minmax(0, 1fr) 12.5rem; grid-template-areas: "id main stage" "id main thread";
@@ -473,7 +475,7 @@ html:not(.js) #stage-withdrawn:target ~ .filter .chip[data-filter="withdrawn"] {
   .record-stage { grid-area: stage; }
   .record-thread { grid-area: thread; }
 }
-@media (max-width: 39.99rem) {
+@container (max-width: 37.99rem) {
   .record { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "id thread" "main main" "stage stage"; gap: .3rem var(--s3); }
   .record-thread { flex-direction: row; flex-wrap: wrap; justify-content: flex-end; align-items: baseline; gap: 0 var(--s3); }
   .record-stage { flex-direction: row; flex-wrap: wrap; align-items: center; gap: .1rem var(--s2); margin-top: .15rem; }
@@ -484,6 +486,12 @@ html:not(.js) #stage-withdrawn:target ~ .filter .chip[data-filter="withdrawn"] {
   .of-contributions .record-stage { justify-content: flex-end; margin-top: 0; }
   .of-contributions .record-stage .meter { order: 0; }
   .of-contributions .record-thread { justify-content: flex-start; align-items: center; }
+}
+/* A browser without container queries (Safari before 16): every row is a block. */
+@supports not (container-type: inline-size) {
+  .records-head { display: none; }
+  .record { display: block; }
+  .record > * + * { margin-top: var(--s2); }
 }
 
 /* ------------------------------------------------------------- record page */
@@ -515,6 +523,11 @@ html:not(.js) #stage-withdrawn:target ~ .filter .chip[data-filter="withdrawn"] {
   .panel > div { padding: var(--s4); }
   .tracker { padding: var(--s4); }
 }
+
+/* the statuses in words, where a page explains them */
+.panel.vocabulary dt { display: flex; flex-direction: column; gap: .3rem; padding-top: .1rem; font-size: var(--t-sm); letter-spacing: 0; text-transform: none; color: var(--ink); }
+.panel.vocabulary dd { font-size: .9375rem; }
+@media (min-width: 40rem) { .panel.vocabulary > div { grid-template-columns: 13rem minmax(0, 1fr); } }
 
 .checks { list-style: none; padding: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); font-size: var(--t-md); }
 .checks li { display: grid; grid-template-columns: minmax(0, 1fr) 5.5rem 6.5rem; align-items: center; column-gap: var(--s4); padding: .7rem var(--s5); }

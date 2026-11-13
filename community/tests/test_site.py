@@ -366,6 +366,17 @@ class SiteTests(unittest.TestCase):
         self.assertEqual(listing.attrs["data-total"], str(len(self.findings)))
         self.assertTrue((self.out / listing.attrs["data-index"]).is_file())
 
+    def test_every_status_can_be_linked_in_the_list_whether_or_not_a_finding_has_it(self):
+        page = parse(self.out / "findings.html")
+        ids = {n.attrs["id"] for n in page.walk() if "id" in n.attrs}
+        chips = {a.attrs["data-filter"]: a.attrs["href"] for a in page.find_all("a", "chip")}
+        for status in community.STATUSES:
+            self.assertIn(f"stage-{status['key']}", ids)
+            self.assertEqual(chips[status["key"]], f"#stage-{status['key']}")
+        # The controls that need the script are not shown without it.
+        self.assertIn("hidden", page.find("form", id="controls").attrs)
+        self.assertIsNotNone(page.find("noscript"))
+
     def test_the_index_finds_a_dataset_by_its_code_whatever_its_role(self):
         index = json.loads((self.out / "findings/index.json").read_text())
         codes = {row[0]: row[index["columns"].index("codes")] for row in index["rows"]}
@@ -686,8 +697,11 @@ class SiteTests(unittest.TestCase):
             blocks = sorted(site.blocks())
             self.assertTrue({"findings-list", "contributions-list", "status-tracker", "feedback-lists", "patch-table",
                              "second-measurement-list"} <= set(blocks))
-            body = "# Everything\n\nThere are <!-- count:patches --> patches and <!-- count:status:filed --> waiting.\n\n"
-            body += "".join(f"<!-- {name} -->\n\n" for name in blocks if name not in ("findings-list", "contributions-list"))
+            self.assertIn("status-vocabulary", blocks)
+            body = "# Everything\n\nThere are <!-- count:patches --> patches and <!-- generated: count:status:filed --> waiting.\n\n"
+            # Both ways of writing a marker work.
+            body += "".join(f"<!-- {'generated: ' if n % 2 else ''}{name} -->\n\n" for n, name in enumerate(blocks)
+                            if name not in ("findings-list", "contributions-list"))
             (root / "site/data.md").write_text(body)
             page = site.document(next(d for d in site.docs if d["source"] == "site/data.md"))
             self.assertNotIn("<!--", page)

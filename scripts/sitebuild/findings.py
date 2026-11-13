@@ -178,7 +178,8 @@ def findings_list(site, up=""):
     return (
         anchors
         + f'<div class="filter" id="filter">{status.chips(site, counts)}{controls}'
-        f'<p class="filter-count"><span id="count" role="status">{plural(total, "finding")}</span></p></div>'
+        f'<p class="filter-count"><span id="count" role="status">{plural(total, "finding")}</span> '
+        '<a class="arrow" id="dataset" href="#list" hidden>All about this dataset</a></p></div>'
         + unlisted
         + '<div class="listing"><div class="records-head" aria-hidden="true"><span>No.</span><span>Finding</span>'
         "<span>Status</span><span>Discussion</span></div>"
