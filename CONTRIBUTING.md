@@ -51,11 +51,11 @@ uv run --no-project --python 3.12 python scripts/check_integration_receipt.py --
 
 ### The build, on a made-up release
 
-These tests build a Brightway database and the exports from eight made-up datasets. They need none of BAFU's data. They clone [sentier-importers](https://github.com/sentier-dev/sentier-importers) and [sentier-brightway](https://github.com/sentier-dev/sentier-brightway) at their pinned versions into `output/tools` and download 37 MB of pinned flow lists and impact methods.
+These tests build a Brightway database and the exports from eight made-up datasets. They need none of BAFU's data. The first command clones [sentier-importers](https://github.com/sentier-dev/sentier-importers) and [sentier-brightway](https://github.com/sentier-dev/sentier-brightway) at their pinned versions into `output/tools` and downloads 37 MB of pinned flow lists and impact methods. The three variables belong to that command alone: with them set, the second command would build everything a second time.
 
 ```sh
-export RELEASE_BUILD_WHOLE_PATH=1 RELEASE_BUILD_TOOLS=output/tools RELEASE_BUILD_PINNED_DATA=output/pinned-data
-uv run --no-project --python 3.12 python -m unittest discover -s release-build-tests -p test_whole_path.py
+RELEASE_BUILD_WHOLE_PATH=1 RELEASE_BUILD_TOOLS=output/tools RELEASE_BUILD_PINNED_DATA=output/pinned-data \
+  uv run --no-project --python 3.12 python -m unittest discover -s release-build-tests -p test_whole_path.py
 uv run --frozen --project output/tools/sentier-brightway --python 3.12 --extra testing python -m unittest discover -s release-build-tests
 uv run --no-project --python 3.12 --with-requirements export-tests/requirements.txt pytest export-tests
 uv run --no-sync python -m unittest discover -s release-build-tests -p test_adapter.py

@@ -197,12 +197,14 @@ class WorkflowTests(unittest.TestCase):
 
 
 def commands(text):
-    """The commands of a text, one per line: continuation lines joined, spaces single, and the
-    runner's scratch folder written as the folder CONTRIBUTING.md uses on a developer's machine."""
+    """The commands of a text, one per line: continuation lines joined, spaces single, the
+    runner's scratch folder written as the folder CONTRIBUTING.md uses on a developer's machine,
+    and without the variables set in front of a command (a workflow sets them under `env:`)."""
     text = re.sub(r"\\\n\s*", " ", text).replace('"$RUNNER_TEMP/', '"output/')
     found = []
     for line in text.splitlines():
         line = re.sub(r'"(output/[\w./-]+)"', r"\1", re.sub(r"\s+", " ", line.strip()))
+        line = re.sub(r"^(?:[A-Z][A-Z0-9_]*=\S+ )+(?=\S)", "", line)
         if line and not line.startswith("#"):
             found.append(line)
     return found
@@ -229,8 +231,13 @@ class LocalCommandsTests(unittest.TestCase):
         self.assertGreaterEqual(len(ran), 5)
         for line in ran:
             self.assertIn(line, self.local, "full-release.yml runs a command CONTRIBUTING.md does not list")
-        for name in re.findall(r"(?m)^\s+(RELEASE_BUILD_\w+):", job):
-            self.assertTrue(any(name in line for line in self.local), name)
+        # The variables the workflow sets for the first step stand in front of the same command.
+        told = re.sub(r"\\\n\s*", " ", (ROOT / "CONTRIBUTING.md").read_text())
+        (local,) = [line for line in told.splitlines() if "-p test_whole_path.py" in line]
+        step = job.split("-p test_whole_path.py")[0].rsplit("- name:", 1)[1]
+        for name in re.findall(r"(?m)^\s+(RELEASE_BUILD_\w+):", step):
+            self.assertIn(f"{name}=", local.split("uv run")[0], name)
+        self.assertEqual(len(re.findall(r"RELEASE_BUILD_\w+=", told)), 3, "set for that one command, not exported")
 
     def test_the_commands_on_the_full_release_are_in_contributing(self):
         """These take arguments from the workflow, so the names of the commands are compared."""
@@ -251,7 +258,7 @@ class LocalCommandsTests(unittest.TestCase):
         listed = [line for block in re.findall(r"(?ms)^```sh\n(.*?)^```", section) for line in commands(block)]
         self.assertGreaterEqual(len(listed), 18)
         # What a person does around the checks, and the three commands whose arguments differ.
-        own = ("export RELEASE_BUILD_", "uv run --no-sync bafu-fixes run latest output/patched",
+        own = ("uv run --no-sync bafu-fixes run latest output/patched",
                "uv run --no-sync python scripts/check_patched_release.py output/patched",
                "uv run --no-sync python scripts/full_release_table.py output/summary.json",
                "uv run --no-project --python 3.12 python scripts/build_release.py release latest output/release-run")
