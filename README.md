@@ -36,8 +36,9 @@ Options for `run`:
 - `--only ID [ID ...]` / `--skip ID [ID ...]`: choose which patches to apply
 - `--no-extensions`: leave out our additional fields, giving plain EcoSpold 1
 - `--report FILE.html`: write a run report (see below)
-- `--summary FILE.json`: write a summary with counts and checksums only, and no data from
-  the release, for automated runs and for comparing runs
+- `--summary FILE.json`: write a summary with counts, checksums and the steps that changed
+  each dataset, and no data from the release: for automated runs, for comparing runs, and
+  as the record of modifications for anything built from the output (see below)
 - `--placeholder-year`, `--placeholder-number`, `--placeholder-country`,
   `--placeholder-text`: values filled in where required data is missing (defaults `1111`,
   `1111`, `AQ`, `UNKNOWN`). Blank values are kept, since the schema allows them. Placeholders
@@ -84,6 +85,15 @@ external to load. It's meant to be shared with data users. It shows:
 - the schema check results, an input fingerprint (SHA-256), options, and software versions
 
 If a run fails, the report is still written, with the error.
+
+`--summary` writes the record as JSON for programs: the release that was read and the
+files that were written (counts and checksums), the same steps with their authors,
+authorisation, findings, references and counts, and for every changed dataset its file,
+its number and the ids of the steps that changed it. It holds no names and no amounts.
+One file serves the full release check in CI, the Brightway build
+(`scripts/build_release.py`), the export step (`scripts/export_release.py`, see
+[docs/exports.md](docs/exports.md)), which labels its files as modified and carries the
+list of changes, and the release manifest.
 
 ## Additional fields
 

@@ -1,0 +1,8 @@
+# The export step's own requirements (as in scripts/export_release.py) and pytest.
+bw-interchange-export @ git+https://gitlab.com/eos-lci/bw-interchange-export.git@db7af57cabd59b4256d00516027cc298bbcfc2ad
+bw-simapro-csv==0.5
+bw2data==4.8
+bw2io==0.9.17
+bw2calc==3.1.0
+olca-schema==2.6.2
+pytest>=9

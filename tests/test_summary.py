@@ -9,7 +9,8 @@ from bafu_community_fixes.cli import main
 from bafu_community_fixes.models import UncertaintyType
 from bafu_community_fixes.pipeline import PatchError, import_database, run
 from bafu_community_fixes.registry import Patch
-from bafu_community_fixes.summary import SUMMARY_VERSION, fingerprint
+from bafu_community_fixes.summary import SCHEMA, fingerprint
+from bafu_community_fixes.xml import load
 
 PROVENANCE = Provenance(
     "Ann Author", "Olga Owner", ("https://example.org/issue/1",), "Rita Reporter", "BAFU", ("F14",)
@@ -32,7 +33,8 @@ def _unexpected_target(db):
 
 
 def _register(monkeypatch, id, func, provenance=PROVENANCE):
-    monkeypatch.setitem(registry._REGISTRY, id, Patch(id, "Change something", func, provenance))
+    patch = Patch(id, "Change something", func, provenance, "Because.")
+    monkeypatch.setitem(registry._REGISTRY, id, patch)
 
 
 def _run(raw_bafu, tmp_path, **options):
@@ -45,7 +47,7 @@ def test_summary(raw_bafu, tmp_path, monkeypatch):
     _register(monkeypatch, "0000-test", _change_two_exchanges)
     summary = _run(raw_bafu, tmp_path, xsd_check="every-step")
 
-    assert summary["summary_version"] == SUMMARY_VERSION
+    assert summary["schema"] == SCHEMA
     assert summary["status"] == "completed" and summary["error"] is None
     assert summary["release"] | {"fingerprint": None} == {
         "url": None,  # the fixture isn't a known release
@@ -64,6 +66,7 @@ def test_summary(raw_bafu, tmp_path, monkeypatch):
         "id": "0000-test",
         "kind": "patch",
         "description": "Change something",
+        "rationale": "Because.",
         "authored_by": "Ann Author",
         "authorised_by": "Olga Owner",
         "reported_by": "Rita Reporter",
@@ -84,6 +87,37 @@ def test_summary(raw_bafu, tmp_path, monkeypatch):
     assert summary["totals"]["values_changed"] == sum(s["changes"] for s in summary["steps"])
 
 
+def test_summary_lists_each_changed_dataset_with_the_steps_that_changed_it(
+    raw_bafu, tmp_path, monkeypatch
+):
+    _register(monkeypatch, "0000-test", _change_two_exchanges)
+    summary = _run(raw_bafu, tmp_path)
+    fixes = [s["id"] for s in summary["steps"] if s["kind"] == "import fix" and s["datasets"]]
+    number = next(iter(load(tmp_path / "out"))).number
+    assert summary["datasets"] == [
+        {"file": "raw_bafu.xml", "number": number, "import_fixes": fixes, "patches": ["0000-test"]}
+    ]
+    assert len(summary["datasets"]) == summary["totals"]["datasets_changed"]
+
+
+def test_summary_has_these_fields_and_no_others(raw_bafu, tmp_path):
+    assert set(_run(raw_bafu, tmp_path)) == {
+        "schema",
+        "status",
+        "error",
+        "started",
+        "finished",
+        "duration_seconds",
+        "release",
+        "software",
+        "options",
+        "steps",
+        "totals",
+        "output",
+        "datasets",
+    }
+
+
 def test_output_fingerprint_is_the_input_fingerprint_of_the_next_run(raw_bafu, tmp_path):
     summary = _run(raw_bafu, tmp_path)
     out = tmp_path / "out"
@@ -101,7 +135,10 @@ def test_output_fingerprint_is_the_input_fingerprint_of_the_next_run(raw_bafu, t
 def test_summary_has_no_data_from_the_release(raw_bafu, tmp_path, monkeypatch):
     _register(monkeypatch, "0000-test", _change_two_exchanges)
     run(raw_bafu, tmp_path / "out", summary=tmp_path / "summary.json")
-    text = (tmp_path / "summary.json").read_text()
+    summary = json.loads((tmp_path / "summary.json").read_text())
+    for step in summary["steps"]:
+        del step["rationale"]  # the tool's own text, which uses words the data also has
+    text = json.dumps(summary, ensure_ascii=False)
     values = {
         value
         for el in etree.parse(str(raw_bafu)).iter()
@@ -127,6 +164,7 @@ def test_summary_written_when_run_fails(raw_bafu, tmp_path, monkeypatch):
     assert list(patches) == ["0000-broken"]  # the run stopped there
     assert patches["0000-broken"]["error"] == "Patch 0000-broken left invalid data:"
     assert all(s["error"] is None for s in summary["steps"] if s["kind"] == "import fix")
+    assert summary["datasets"] is not None  # the data was read, so the list is there
 
 
 def test_summary_names_the_patch_whose_target_was_not_as_expected(raw_bafu, tmp_path, monkeypatch):

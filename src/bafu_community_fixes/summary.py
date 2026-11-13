@@ -1,12 +1,15 @@
-"""A machine-readable summary of a run, for automated runs and for comparing runs.
+"""A machine-readable summary of a run: one record for everything built from it.
 
 The HTML report is written for people and quotes the data: example datasets, XML
 snippets, old and new values. The summary doesn't. It has the identity of the input
-and of the output, the software, and for each step who is behind it and how much it
-changed. So an automated run can publish it without publishing the inventory.
+and of the output, the software, for each step who is behind it, why, and how much
+it changed, and for every changed dataset the steps that changed it. So an automated
+run can publish it without publishing the inventory, a later run can be compared
+with it, and anything built from the output can say which modifications it carries.
 
-The only text taken from a run is the first line of an error message, which can
-name a dataset number, an exchange name and one value.
+It holds file names and dataset numbers, and no names, amounts or other values of
+the release. The only text taken from a run is the first line of an error message,
+which can name a dataset number, an exchange name and one value.
 """
 
 import hashlib
@@ -16,8 +19,9 @@ from pathlib import Path
 
 from bafu_community_fixes.changes import RunLog, StepLog
 from bafu_community_fixes.download import CHECKSUMS, FINGERPRINTS
+from bafu_community_fixes.xml import Database
 
-SUMMARY_VERSION = 1
+SCHEMA = "bafu-community-fixes/run-summary/1"
 MAX_ERROR_LENGTH = 300
 
 
@@ -62,6 +66,7 @@ def _step(step: StepLog) -> dict:
         "id": step.id,
         "kind": step.kind,
         "description": step.description,
+        "rationale": step.rationale,
         "authored_by": provenance.authored_by,
         "authorised_by": provenance.authorised_by,
         "reported_by": provenance.reported_by,
@@ -77,14 +82,37 @@ def _step(step: StepLog) -> dict:
     }
 
 
-def summarise(log: RunLog, written: Iterable[Path] = ()) -> dict:
-    """The summary of a run, as JSON-ready data. `written` are the files it wrote."""
+def _datasets(db: Database) -> list[dict]:
+    """Every dataset that a step changed: its file, its number, and those steps."""
+    changed = []
+    for path, doc in db.documents.items():
+        for dataset in doc.datasets:
+            ext = dataset.ext
+            if ext is None or not (ext.import_fixes or ext.patches):
+                continue
+            changed.append(
+                {
+                    "file": path.as_posix(),
+                    "number": dataset.number,
+                    "import_fixes": list(ext.import_fixes),
+                    "patches": list(ext.patches),
+                }
+            )
+    return changed
+
+
+def summarise(log: RunLog, written: Iterable[Path] = (), db: Database | None = None) -> dict:
+    """The summary of a run, as JSON-ready data.
+
+    `written` are the files it wrote. `db` is what it read and changed; without it
+    (a run that failed before reading anything), there is no list of datasets.
+    """
     output = None
     if log.status == "completed" and log.destination is not None:
         digest, size = fingerprint(Path(log.destination), written)
         output = {"files": log.written, "bytes": size, "fingerprint": digest}
     return {
-        "summary_version": SUMMARY_VERSION,
+        "schema": SCHEMA,
         "status": log.status,
         "error": _first_line(log.error),
         "started": log.started.isoformat(timespec="seconds"),
@@ -100,12 +128,15 @@ def summarise(log: RunLog, written: Iterable[Path] = ()) -> dict:
             "values_changed": sum(step.changes for step in log.steps),
         },
         "output": output,
+        "datasets": _datasets(db) if db is not None else None,
     }
 
 
-def write_summary(log: RunLog, path: Path | str, written: Iterable[Path] = ()) -> Path:
+def write_summary(
+    log: RunLog, path: Path | str, written: Iterable[Path] = (), db: Database | None = None
+) -> Path:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    text = json.dumps(summarise(log, written), indent=2, ensure_ascii=False)
+    text = json.dumps(summarise(log, written, db), indent=2, ensure_ascii=False)
     path.write_text(text + "\n", encoding="utf-8")
     return path

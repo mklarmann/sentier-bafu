@@ -62,7 +62,8 @@ def main(argv: list[str] | None = None) -> None:
         "--summary",
         type=Path,
         metavar="JSON",
-        help="Write a summary with counts and checksums only, and no data from the release",
+        help="Write a summary: counts, checksums and the steps that changed each dataset; "
+        "no data from the release",
     )
     defaults = DEFAULT_PLACEHOLDERS
     group = run_p.add_argument_group("placeholders for missing required data")
