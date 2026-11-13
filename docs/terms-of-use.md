@@ -1,12 +1,14 @@
-# BAFU:20XY Terms of Use — what they require of every copy this community hands around
+# Data and terms
+
+This page is a short reading of BAFU's Terms of Use (BAFU:20XY) for people working in
+this workspace and in the repositories it connects: what the terms require of every copy
+of the data that is passed on. It is a reading, not legal advice; where it matters, ask
+BAFU (lca@bafu.admin.ch) rather than guess.
 
 The full reading, with every clause and what sentier.dev's wiki says about it, is on
 [lca-wiki › bafu › access and licence](https://github.com/sentier-dev/lca-wiki/blob/main/bafu/knowledge/access-and-licence.md).
-This page is the short, operational version for people working in this
-workspace and in the repositories it connects. It is a reading, not legal
-advice; where it matters, ask BAFU (lca@bafu.admin.ch) rather than guess.
 
-## The two rules everything else follows from
+## The clauses that matter here
 
 | Clause | Obligation |
 |---|---|
@@ -22,15 +24,15 @@ advice; where it matters, ask BAFU (lca@bafu.admin.ch) rather than guess.
 
 ## What that means here
 
-- **This repository holds no amounts.** Findings quote dataset codes, names and
-  the specific values under discussion; the ledger describes the data, it does
-  not reproduce it. Contribution layers reference the canonical import by
-  commit and hash; candidate builds live in ignored local folders.
-- **Any build that leaves the canonical import unchanged** (an import, a
-  relinking onto EF 3.1 flows, a method binding) is *modified* in the sense of
-  clause 3 the moment it drops, re-points or re-declares anything. The
-  honest default is to treat every served build as Modified Data: label it,
-  ship its record of modifications with it, credit the release.
+- **Findings quote dataset codes, names and the specific values under
+  discussion.** The findings list describes the data; it does not reproduce it.
+  Contributions refer to the import of BAFU's release by commit and checksum;
+  builds of a changed version stay in local folders that are not committed.
+- **Any build** (an import, a relinking onto EF 3.1 flows, a method binding)
+  is *modified* in the sense of clause 3 the moment it drops, re-points or
+  re-declares anything. The honest default is to treat every served build as
+  Modified Data: label it, ship its record of modifications with it, credit
+  the release.
 - **A record of modifications is data, not prose.** One entry per change with
   the dataset(s), the nature of the change, the rationale and the evidence;
   generated from the records that produced the build, so it cannot drift from
@@ -39,9 +41,9 @@ advice; where it matters, ask BAFU (lca@bafu.admin.ch) rather than guess.
 - **Redistributing the inventory itself** — the whole set of datasets as files
   — is the thing clause 2.1 names. Whether a public repository holding the full
   release as parquet is covered by 3.4 (share-alike Modified Data) or needs a
-  2.2 agreement is BAFU's call, and the question is open: see the licence issue
-  in this tracker. Until it is answered, say on the artefact which basis it
-  claims.
+  2.2 agreement is BAFU's call, and the question is open: see
+  [#1](https://github.com/sentier-dev/sentier-bafu/issues/1). Until it is
+  answered, say on the artefact which basis it claims.
 
 ## What a copy must carry
 
