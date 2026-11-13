@@ -155,7 +155,8 @@ datasets, 420,063 exchanges, 1,927 elementary flows in use):
 | `bafu-2026-v1-patched-simapro.csv` | 50.9 MB | 11,947 processes; 114,291 input rows, each resolving to one product; 293,747 elementary rows with section, name, subcompartment, unit and amount |
 | `MODIFICATIONS.json`, `MODIFICATIONS.md` | 4.3 MB, 19 kB | |
 
-No difference was found in any of the four. The step took 188 s and 3.0 GB at its peak.
+No difference was found in any of the four, in each of three runs. The step took 188 s
+and 3.0 GB at its peak in the first run (330 s in the two others, on a machine under load).
 The SimaPro file has 78 input rows fewer than the database has technosphere exchanges: an
 input of a dataset's own product is not a row, it is subtracted from the product amount.
 
@@ -179,9 +180,11 @@ Read these before relying on a file. Each is pinned by a test in `export-tests/`
   the file keeps the names of the build, so it does not merge with SimaPro's flows.
 - **The EF 3.1 methods are not in the files.** The step can write impact factors into the
   openLCA archive (`--methods-cf`); the build does not hand them over yet.
-- **Checksums differ between two runs** for the Brightway package and the openLCA archive:
-  both carry the time the patch run finished. The ILCD package and the SimaPro CSV of two
-  runs on the same revision are byte for byte the same.
+- **Not every file has the same checksum in two runs.** Measured on two independent runs
+  at two revisions of this repository: the ILCD package and the SimaPro CSV were byte for
+  byte the same. The Brightway package held the same 105,101 nodes, none differing, and
+  differed in its metadata where that names this repository's revision. The openLCA archive
+  differed: every dataset in it carries the time the patch run finished.
 - **Formulas** of parameterised amounts are not written; the amounts are.
 - **No file has been imported into openLCA or SimaPro.** The checks read the files with
   independent parsers. Scores recomputed from the files equal Brightway's on the test

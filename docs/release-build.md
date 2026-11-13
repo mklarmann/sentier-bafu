@@ -44,6 +44,28 @@ the contributions; without either, every layer in `community/layers/` is built.
 `--partial-release` is for a test release: that it is unknown and that patches find nothing
 to change in it does not fail the run.
 
+## What the runs of 13 November 2026 measured
+
+On BAFU:2026 v1 (11,947 datasets, 420,063 exchanges), on macOS, each step in its own
+process; peak memory is the largest resident size of the step's process tree:
+
+| Step | Seconds | Peak memory | Result |
+|---|---:|---:|---|
+| provider build | 117 | 1.2 GB | 11,947 datasets, no unlinked exchange; audit passed with 3 findings, the strawberry scores of BAFU's release |
+| patched build | 300 | 1.5 GB | 14 import fixes and 11 patches; 11,601 datasets changed; audit passed without a finding |
+| written files | 7 | 0.1 GB | 11,947 files valid EcoSpold 1, and the ones the summary describes |
+| patch run | under 1 | | every patch changed as much as in the earlier run |
+| comparison | 3 | 1.1 GB | 188 of 420,063 exchange rows differ, each explained by a step; in each of 25 methods the scores of three datasets move, all three by patch 0001 |
+| exports | 188 | 3.0 GB | four formats written, each read back without a difference |
+| the whole command | 615 | 3.2 GB | |
+
+A second run, in another checkout with the tools cloned and the pinned data downloaded
+again, and through the workflow's own steps, gave the same patched files (fingerprint
+`f08a6b23…0978`), the same importer tables, the same scores of every dataset in all 25
+methods (byte for byte), the same comparison, and the same ILCD and SimaPro files. It took
+978 s on the same machine under load. What differs between two runs is listed in
+[Exports](exports.md).
+
 ## One run summary
 
 `bafu-fixes run --summary FILE.json` writes one record that every later step reads:
