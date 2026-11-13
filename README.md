@@ -1,4 +1,4 @@
-<p><img src="site/assets/sentier.svg" alt="sentier.dev" width="160"></p>
+<p><a href="https://www.d-d-s.ch/"><img src="site/assets/dds-logo.svg" alt="Départ de Sentier" width="200"></a></p>
 
 # BAFU / UVEK · a shared dataset workspace
 
