@@ -513,6 +513,21 @@ class AuditOfAProject(unittest.TestCase):
             },
         )
 
+    def test_a_contribution_is_not_held_to_the_documented_score_of_the_release(self):
+        name = "bafu-2026-v1-c900-other-supplier"
+        self.write_project(f"name={name}", "contribution")
+        sample = json.loads(json.dumps(SAMPLE))
+        sample["datasets"][0]["documented_score"]["value"] = 2.5
+        (self.root / "sample.json").write_text(json.dumps(sample))
+        done = self.run_audit("--database", name)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        result = json.loads((self.root / "audit" / "audit.json").read_text())
+        # the plausible range still holds for a contribution; the documented score does not
+        (finding,) = result["findings"]
+        self.assertIn("outside its plausible range: Product B", finding)
+        (first, _) = result["scores"]["sample"]
+        self.assertIs(first["documented_score"]["agrees"], False)
+
     def test_a_contribution_whose_change_is_not_in_the_database_fails_the_audit(self):
         name = "bafu-2026-v1-c900-other-supplier"
         self.write_project(f"name={name}", "contribution-missing")

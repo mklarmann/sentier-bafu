@@ -16,7 +16,8 @@ It reads the Brightway project itself, not the files it was built from:
   every method (written beside the audit as `scores.csv`).
 
 Errors fail the audit: an unlinked exchange, a score that is not a number. Findings are
-things a person has to look at: a sample score outside its plausible range, elementary
+things a person has to look at: a sample score outside its plausible range or, except in a
+contribution's database, not the documented one (a variant moves scores), elementary
 flows that the pinned flow terms don't hold (a patch renamed or moved them, so they lost
 their EF 3.1 flow), or an input that declares a unit of another quantity than its supplier's
 and belongs to no recorded finding. `--fail-on-findings` turns findings into a failure.
@@ -644,12 +645,17 @@ def audit(
         f"Sample score outside its plausible range: {flag}"
         for flag in scores["summary"]["range_flags"]
     ]
-    findings += [
-        f"Sample score differs from the documented one: {entry['name']} ({entry['location']}): "
-        f"{entry['score']:.6g}, documented {entry['documented_score']['value']:.6g}"
-        for entry in scores["summary"]["sample"]
-        if not entry.get("documented_score", {"agrees": True})["agrees"]
-    ]
+    # A documented score is that of BAFU's release. A contribution's database is not held
+    # to it: a variant moves scores, and the comparison with the patched release reports
+    # every one. The sample says whether the score agrees either way.
+    if not contribution:
+        findings += [
+            f"Sample score differs from the documented one: {entry['name']} "
+            f"({entry['location']}): {entry['score']:.6g}, documented "
+            f"{entry['documented_score']['value']:.6g}"
+            for entry in scores["summary"]["sample"]
+            if not entry.get("documented_score", {"agrees": True})["agrees"]
+        ]
     if unknown:
         findings.append(
             f"{len(unknown)} elementary flow(s) are not in the pinned flow terms, so the mapping "
