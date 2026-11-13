@@ -28,15 +28,13 @@ import urllib.request
 from pathlib import Path
 
 import community
+import sync  # scripts/sync.py writes the labels; here they are only compared
 
-FINDING_LABEL = "bafu-finding"
-HELP_LABEL = "help wanted"
-STAGE_LABEL = "stage: {}"
+FINDING_LABEL = sync.FINDING_LABEL
+HELP_LABEL = sync.HELP_LABEL
 # Labels of the earlier model, and the form's `needs-triage`, which now means only
 # "an issue without a record": none of them belongs on an issue that has a record.
-RETIRED_LABELS = {
-    "needs-triage", "upstream-reported", "upstream-fixed", "informational", "handled-in-layer", "withdrawn",
-}
+RETIRED_LABELS = sync.RETIRED_LABELS | {sync.TRIAGE_LABEL}
 
 
 def slug(repository):
@@ -89,12 +87,9 @@ def load_issues(repository, snapshot=None, offline=False, require=False):
         return {}, None
 
 
-def expected_labels(stage):
+def expected_labels(stage, provider=None):
     """The labels an issue should carry for a record at this stage. Labels follow records."""
-    labels = {FINDING_LABEL, STAGE_LABEL.format(stage)}
-    if stage == "filed":
-        labels.add(HELP_LABEL)
-    return labels
+    return sync.expected_labels(stage, provider or community.load_config()["provider"])
 
 
 def label_differences(placed, issues):
@@ -104,14 +99,13 @@ def label_differences(placed, issues):
     for finding in placed:
         if finding["issue"] in issues:
             by_issue.setdefault(finding["issue"], []).append(finding)
-    stage_labels = {STAGE_LABEL.format(s["key"]) for s in community.STATUSES}
     differences = []
     for number, findings in sorted(by_issue.items()):
         earliest = min((f["stage"] for f in findings), key=community.STAGE_ORDER.get)
         expected = expected_labels(earliest)
         present = set(issues[number]["labels"])
         add = sorted(expected - present)
-        remove = sorted((present & (stage_labels | RETIRED_LABELS | {HELP_LABEL})) - expected)
+        remove = sorted(label for label in present if sync.owned(label) and label not in expected)
         if add or remove:
             ids = sorted((f["id"] for f in findings), key=lambda rid: int(rid[1:]))
             differences.append(dict(issue=number, findings=ids, stage=earliest, add=add, remove=remove))

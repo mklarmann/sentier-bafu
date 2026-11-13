@@ -73,8 +73,9 @@ class TriageTests(unittest.TestCase):
         self.assertEqual(closed["unlisted"], [])
 
     def test_labels_follow_records_and_differences_are_a_list_for_maintainers(self):
-        self.assertEqual(triage.expected_labels("filed"), {"bafu-finding", "stage: filed", "help wanted"})
-        self.assertEqual(triage.expected_labels("answered"), {"bafu-finding", "stage: answered"})
+        self.assertEqual(triage.expected_labels("filed"),
+                         {"bafu-finding", "status: needs a second measurement", "help wanted"})
+        self.assertEqual(triage.expected_labels("answered"), {"bafu-finding", "status: answered by BAFU"})
         placed = {f["id"]: f for f in triage.assemble(self.findings, REPO, {})["findings"]}
         answered = next(f for f in placed.values() if f["stage"] == "answered" and f["issue"])
         n = answered["issue"]
@@ -82,13 +83,15 @@ class TriageTests(unittest.TestCase):
         def differences(labels):
             return triage.assemble(self.findings, REPO, {n: issue(n, labels)})["label_differences"]
 
-        self.assertEqual(differences(["bafu-finding", "stage: answered"]), [])
-        (lagging,) = differences(["bafu-finding", "upstream-reported", "needs-triage", "stage: sent", "question"])
+        self.assertEqual(differences(["bafu-finding", "status: answered by BAFU"]), [])
+        (lagging,) = differences(
+            ["bafu-finding", "upstream-reported", "needs-triage", "status: reported to BAFU", "question"]
+        )
         self.assertEqual(lagging["issue"], n)
         self.assertEqual(lagging["findings"], [answered["id"]])
-        self.assertEqual(lagging["add"], ["stage: answered"])
+        self.assertEqual(lagging["add"], ["status: answered by BAFU"])
         # Labels that are not about the stage are left alone.
-        self.assertEqual(lagging["remove"], ["needs-triage", "stage: sent", "upstream-reported"])
+        self.assertEqual(lagging["remove"], ["needs-triage", "status: reported to BAFU", "upstream-reported"])
 
     def test_an_issue_shared_by_two_findings_shows_the_earlier_stage(self):
         shared = copy.deepcopy([f for f in self.findings if f["issue"] == 3])
@@ -97,7 +100,7 @@ class TriageTests(unittest.TestCase):
         (difference,) = triage.assemble(shared, REPO, {3: issue(3, ["bafu-finding"])})["label_differences"]
         self.assertEqual(difference["findings"], ["F8", "F10"])
         self.assertEqual(difference["stage"], "filed")
-        self.assertEqual(difference["add"], ["help wanted", "stage: filed"])
+        self.assertEqual(difference["add"], ["help wanted", "status: needs a second measurement"])
 
     def test_a_required_tracker_that_cannot_be_read_stops_the_build(self):
         original = triage.fetch_issues
