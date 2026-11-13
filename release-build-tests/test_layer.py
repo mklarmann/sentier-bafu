@@ -115,6 +115,44 @@ class Reading(unittest.TestCase):
         with self.assertRaisesRegex(layer.LayerError, "`location` of dataset crop is missing"):
             layer.validate(made(changes=[change]))
 
+    def test_a_dataset_is_not_made_its_own_supplier(self):
+        change = copy.deepcopy(made()["changes"][0])
+        change["new_supplier"] = dict(change["dataset"])
+        with self.assertRaisesRegex(layer.LayerError, "crop would become its own supplier"):
+            layer.validate(made(changes=[change]))
+
+    def test_entries_whose_result_depends_on_their_order_are_refused(self):
+        first = made()["changes"][0]  # crop: mix -> plant
+        boiler = {"code": "boiler", "name": "Boiler", "location": "CH"}
+        chain = copy.deepcopy(first) | {
+            "replaced_supplier": first["new_supplier"],
+            "new_supplier": boiler,
+        }  # crop: plant -> boiler
+        for changes in ([first, chain], [chain, first]):
+            with self.assertRaisesRegex(layer.LayerError, "depend on the order of the entries"):
+                layer.validate(made(changes=changes))
+        # the same two entries in two datasets are no chain
+        elsewhere = copy.deepcopy(chain)
+        elsewhere["dataset"] = {"code": "mix", "name": "Mix", "location": "RER"}
+        layer.validate(made(changes=[first, elsewhere]))
+
+    def test_an_input_is_not_substituted_twice(self):
+        first = made()["changes"][0]
+        other = copy.deepcopy(first) | {
+            "new_supplier": {"code": "boiler", "name": "Boiler", "location": "CH"}
+        }
+        with self.assertRaisesRegex(layer.LayerError, "change 1 already substitutes the input"):
+            layer.validate(made(changes=[first, other]))
+        at = lambda change, position: change | {"exchange": {"position": position}}  # noqa: E731
+        with self.assertRaisesRegex(layer.LayerError, "already substitutes"):
+            layer.validate(made(changes=[at(first, 1), other]))
+        with self.assertRaisesRegex(layer.LayerError, "already substitutes"):
+            layer.validate(made(changes=[at(first, 1), at(other, 1)]))
+        # two inputs of one supplier, each named by its position, are two entries
+        self.assertEqual(
+            len(layer.validate(made(changes=[at(first, 1), at(other, 3)]))["changes"]), 2
+        )
+
 
 class LayersOfTheRepository(unittest.TestCase):
     """Every layer in `community/layers/` is found and built by the release run."""
@@ -155,6 +193,24 @@ class Names(unittest.TestCase):
         for name in ("With Capitals", "ends-residual", ""):
             with self.assertRaisesRegex(layer.LayerError, "not a database name"):
                 layer.check_database_name(name)
+
+    def test_a_name_that_could_be_taken_for_a_release_is_refused(self):
+        for name in (
+            "bafu-2026-v1-patched-c900",  # the patched release's name, then the id
+            "bafu-2026-c900",  # BAFU's name, then the id
+            "c900-bafu-2026-v1-patched",  # ends with the patched release's name
+            "bafu-2026-c900-own-plant",  # starts with BAFU's name
+            "bafu-2026-v1-patched-c900-own-plant",
+            "bafu-2026-v1-c900-own-bafu-2026",  # ends with BAFU's name
+            "bafu-2026-v1-c900-patched-plant",  # the word `patched`
+            "bafu-2026-v1-c900",  # no name of its own
+        ):
+            with self.assertRaisesRegex(layer.LayerError, "could be taken for"):
+                layer.check_database_name(name, "C900")
+            with self.assertRaisesRegex(layer.LayerError, "could be taken for"):
+                layer.validate(made(database=name))
+        for name in ("bafu-2026-v1-c900-own-plant", "other-2030-v2-c900-residual-electricity"):
+            layer.check_database_name(name, "C900")
 
 
 class Substituting(unittest.TestCase):
@@ -219,6 +275,50 @@ class Substituting(unittest.TestCase):
             "nothing",
             new_supplier={"code": "boiler", "name": "Boiler", "location": "CH"},
         )
+
+
+class Tables(unittest.TestCase):
+    """The layer on the importer's tables; needs pyarrow (the sentier-importers environment)."""
+
+    def setUp(self):
+        try:
+            import pyarrow  # noqa: F401
+        except ImportError:
+            self.skipTest("pyarrow is not installed")
+
+    def write(self, folder: Path, twice: bool = False) -> None:
+        import pyarrow as pa
+        import pyarrow.parquet as pq
+
+        processes = [
+            {"process_id": code, "name": p["name"], "location": p["location"]}
+            | {"reference_unit": p["reference_unit"]}
+            for code, p in PROCESSES.items()
+        ]
+        if twice:
+            processes.append(processes[0] | {"name": "Crop, again"})
+        pq.write_table(pa.Table.from_pylist(processes), folder / "processes.parquet")
+        pq.write_table(pa.Table.from_pylist(exchanges()), folder / "exchanges.parquet")
+
+    def test_the_layer_is_applied_to_the_tables(self):
+        import pyarrow.parquet as pq
+
+        with tempfile.TemporaryDirectory() as folder:
+            self.write(Path(folder))
+            the_layer = layer.validate(made()) | {"file": "C900-own-plant.json", "sha256": "0" * 64}
+            receipt = layer.apply_folder(Path(folder), the_layer, the_layer["database"])
+            self.assertEqual(receipt["exchanges_changed"], 2)
+            rows = pq.read_table(Path(folder) / "exchanges.parquet").to_pylist()
+            self.assertEqual(
+                [row["flow"] for row in rows], ["crop", "plant", "co2", "plant", "mix"]
+            )
+
+    def test_a_dataset_code_that_is_in_the_tables_twice_stops_the_layer(self):
+        with tempfile.TemporaryDirectory() as folder:
+            self.write(Path(folder), twice=True)
+            the_layer = layer.validate(made()) | {"file": "C900-own-plant.json", "sha256": "0" * 64}
+            with self.assertRaisesRegex(layer.LayerError, "more than once, first crop"):
+                layer.apply_folder(Path(folder), the_layer, the_layer["database"])
 
 
 if __name__ == "__main__":

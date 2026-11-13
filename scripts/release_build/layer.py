@@ -37,6 +37,16 @@ One kind of change exists, `supplier-substitution`: the input keeps its amount a
 and is taken from another dataset. The new supplier must be in the release and have the unit
 the input declares; nothing is converted.
 
+A layer is refused if its result could depend on the order of its entries, or if an entry
+changes nothing that a substitution can mean: a dataset made its own supplier; two entries
+for the same input; within one dataset, a supplier that one entry replaces and another
+entry brings in (a chain).
+
+The database's name is the release's id, the contribution's id and the contribution's own
+name, `bafu-2026-v1-c012-residual-electricity`. A name that is, starts with or ends with the
+name of BAFU's release or of the patched release, or that holds the word `patched`, is
+refused: nobody must take the database for one of those.
+
 Reading and checking a layer needs the standard library only. Applying it to the importer's
 tables needs pyarrow, so that part runs in the sentier-importers environment.
 """
@@ -66,8 +76,20 @@ def step_id(layer: dict) -> str:
     return f"{layer['contribution']}-{layer['name']}"
 
 
+def _holds(words: list[str], name: str) -> bool:
+    """Whether `words` hold the words of `name` side by side."""
+    wanted = name.split("-")
+    return any(words[i : i + len(wanted)] == wanted for i in range(len(words) - len(wanted) + 1))
+
+
 def check_database_name(name: str, contribution: str | None = None) -> None:
-    """A contribution's database carries the contribution's own name, and no other."""
+    """A contribution's database carries the contribution's own name, and no other.
+
+    With the contribution's id, the name must read `<release id>-<id>-<own name>`: what
+    stands before the id is not the name of BAFU's release or of the patched release, what
+    follows it is the contribution's own name and holds neither, and the word `patched` is
+    nowhere in it.
+    """
     if name in RESERVED or name in tuple(f"{r}-residual" for r in RESERVED):
         raise LayerError(
             f"{name} is the name of BAFU's release or of the patched release; a contribution "
@@ -75,8 +97,26 @@ def check_database_name(name: str, contribution: str | None = None) -> None:
         )
     if not _DATABASE.fullmatch(name) or name.endswith("-residual"):
         raise LayerError(f"{name!r} is not a database name (lower case, digits, `-` and `.`)")
-    if contribution is not None and contribution.lower() not in name.split("-"):
+    if contribution is None:
+        return
+    words = name.split("-")
+    if contribution.lower() not in words:
         raise LayerError(f"The database name {name!r} must name its contribution, {contribution}")
+    at = words.index(contribution.lower())
+    before, own = words[:at], words[at + 1 :]
+    mistakable = (
+        "patched" in words
+        or not own
+        or "-".join(before) in RESERVED
+        or any(_holds(own, reserved) for reserved in RESERVED)
+    )
+    if mistakable:
+        raise LayerError(
+            f"The database name {name!r} could be taken for BAFU's release or the patched "
+            f"release, or has no name of its own after {contribution.lower()}; a "
+            "contribution's database is named `<release id>-<id>-<own name>`, for example "
+            f"bafu-2026-v1-{contribution.lower()}-residual-electricity"
+        )
 
 
 def _dataset(value, where: str) -> dict:
@@ -126,6 +166,10 @@ def validate(layer: dict) -> dict:
         }
         if entry["replaced_supplier"]["code"] == entry["new_supplier"]["code"]:
             raise LayerError(f"{where}: the new supplier is the replaced one")
+        if entry["new_supplier"]["code"] == entry["dataset"]["code"]:
+            raise LayerError(
+                f"{where}: dataset {entry['dataset']['code']} would become its own supplier"
+            )
         exchange = change.get("exchange")
         if exchange is not None:
             position = exchange.get("position") if isinstance(exchange, dict) else None
@@ -133,6 +177,7 @@ def validate(layer: dict) -> dict:
                 raise LayerError(f"{where}: `exchange.position` counts the exchanges from 0")
             entry["exchange"] = {"position": position}
         checked.append(entry)
+    _check_order(checked)
     return {
         "schema": SCHEMA,
         "contribution": layer["contribution"],
@@ -145,6 +190,37 @@ def validate(layer: dict) -> dict:
         "release": {"fingerprint": fingerprint},
         "changes": checked,
     }
+
+
+def _check_order(changes: list[dict]) -> None:
+    """Refuse entries whose result would depend on the order they are applied in."""
+    entries: dict[tuple[str, str], list[tuple[int, int | None]]] = {}
+    replaced: dict[str, dict[str, int]] = {}
+    brought: dict[str, dict[str, int]] = {}
+    for number, change in enumerate(changes, start=1):
+        dataset, old, new = (
+            change[role]["code"] for role in ("dataset", "replaced_supplier", "new_supplier")
+        )
+        position = change.get("exchange", {}).get("position")
+        # Two entries for one supplier of one dataset are two inputs named by their
+        # positions; anything else names an input twice
+        for earlier, other in entries.get((dataset, old), ()):
+            if position is None or other is None or other == position:
+                raise LayerError(
+                    f"change {number}: change {earlier} already substitutes the input of "
+                    f"{old} in dataset {dataset}"
+                )
+        entries.setdefault((dataset, old), []).append((number, position))
+        replaced.setdefault(dataset, {})[old] = number
+        brought.setdefault(dataset, {})[new] = number
+    for dataset, suppliers in replaced.items():
+        for supplier, number in suppliers.items():
+            if supplier in brought[dataset]:
+                raise LayerError(
+                    f"change {number}: in dataset {dataset}, {supplier} is replaced here and "
+                    f"is the new supplier of change {brought[dataset][supplier]}; the result "
+                    "would depend on the order of the entries"
+                )
 
 
 def load(path: Path | str) -> dict:
@@ -244,10 +320,15 @@ def apply_folder(folder: Path, layer: dict, database: str) -> dict:
     if database != layer["database"]:
         raise LayerError(f"The layer's database is {layer['database']}, not {database}")
     table = pq.read_table(folder / "processes.parquet")
-    processes = {
-        row["process_id"]: row
-        for row in table.select(["process_id", "name", "location", "reference_unit"]).to_pylist()
-    }
+    listed = table.select(["process_id", "name", "location", "reference_unit"]).to_pylist()
+    processes = {row["process_id"]: row for row in listed}
+    if len(processes) != len(listed):
+        codes = [row["process_id"] for row in listed]
+        twice = sorted({code for code in codes if codes.count(code) > 1})
+        raise LayerError(
+            f"The tables hold {len(twice)} dataset code(s) more than once, first {twice[0]}; "
+            "a layer names a dataset by its code"
+        )
     exchanges = pq.read_table(folder / "exchanges.parquet")
     columns = ["process_id", "flow", "flow_name", "flow_type", "unit", "location", "amount"]
     rows = exchanges.select(columns).to_pylist()
