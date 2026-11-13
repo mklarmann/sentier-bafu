@@ -84,18 +84,35 @@ def load_records(root, folder, pattern):
 def load_config(root=ROOT):
     """Provider name and provider releases; the site and the records share this one list."""
     config = read(Path(root) / "site/config.json")
+    until = config.get("older_numbering_until", LAST_LEGACY_NUMBER)
+    if isinstance(until, bool) or not isinstance(until, int) or until < 0:
+        raise ValueError("site/config.json: older_numbering_until is a whole number, 0 or more")
     return {
         "provider": config["provider"],
         "repository": config["repository"],
         "site_url": config["site_url"],
         "releases": config.get("releases", []),
         "stale_after_days": config.get("stale_after_days", {}),
+        "older_numbering_until": until,
     }
 
 
 @functools.lru_cache(maxsize=None)
 def default_releases():
     return frozenset(r["id"] for r in load_config()["releases"])
+
+
+@functools.lru_cache(maxsize=None)
+def default_older_numbering_until():
+    return load_config()["older_numbering_until"]
+
+
+# Finding numbers up to this one follow an older numbering; above it, the id of a finding is F
+# followed by the number of its issue. The number is `older_numbering_until` in site/config.json,
+# and this is its value when the file does not say: in this repository F1 to F32 follow the
+# numbering of an older list, and 47 was the highest issue number when the rule began. A
+# repository whose findings are numbered by their issues from the first one sets it to 0.
+LAST_LEGACY_NUMBER = 47
 
 
 # ----------------------------------------------------------------------------- vocabularies
@@ -221,9 +238,6 @@ FINDING_FIELDS = (
 )
 # The dated evidence of a record, in the order of the path.
 EVIDENCE = ("reported", "repeated", "sent", "answer", "fixed_in", "closed")
-# Ids up to F47 predate this format: F1 to F32 follow the numbering of an older ledger, and 47
-# was the highest issue number when the rule began. From F48 on, the id is F<issue number>.
-LAST_LEGACY_NUMBER = 47
 TEXT_FIELDS = ("observation", "exposure", "method", "notes")
 # A record holds Markdown, never raw HTML: the site renders it into a page.
 RAW_HTML = re.compile(r"<[A-Za-z/!]")
@@ -364,8 +378,10 @@ def record_path(record):
     return f"community/findings/{number // 1000}/F{number}.json"
 
 
-def is_legacy(record):
-    return 0 < finding_number(record) <= LAST_LEGACY_NUMBER
+def is_legacy(record, until=None):
+    """Whether a finding's number follows the older numbering (`older_numbering_until` in site/config.json)."""
+    until = default_older_numbering_until() if until is None else until
+    return 0 < finding_number(record) <= until
 
 
 def load_findings(root=ROOT):
@@ -520,11 +536,13 @@ def same_person(a, b):
     return a.strip().lstrip("@").lower() == b.strip().lstrip("@").lower()
 
 
-def validate_finding(record, path=None, releases=None):
+def validate_finding(record, path=None, releases=None, older_until=None):
     """Errors of one finding record: the schema first, then the rules a schema cannot express.
 
     `path` is the file's path in the repository when the record was read from a file.
     `releases` is the set of known release ids; by default the list in site/config.json.
+    `older_until` is the last number of the older numbering; by default `older_numbering_until`
+    in site/config.json.
     """
     if not isinstance(record, dict):
         return [f"{path or '?'}: a finding record is a JSON object"]
@@ -535,13 +553,14 @@ def validate_finding(record, path=None, releases=None):
         return [f"{rid}: {p}" for p in problems]
     releases = default_releases() if releases is None else releases
     errors = []
-    legacy = is_legacy(record)
-    # Identity: the path follows from the id, and from F48 on the id follows from the issue.
+    older_until = default_older_numbering_until() if older_until is None else older_until
+    legacy = is_legacy(record, older_until)
+    # Identity: the path follows from the id, and above the older numbering the id follows from the issue.
     if path and path != record_path(record):
         errors.append(f"{rid}: {record['id']} belongs at {record_path(record)}")
     if not legacy and record["id"] != f"F{record['issue']}":
         errors.append(
-            f"{rid}: from F{LAST_LEGACY_NUMBER + 1} on, the id is F followed by the issue number"
+            f"{rid}: from F{older_until + 1} on, the id is F followed by the issue number"
             f" (issue: {json.dumps(record['issue'])})"
         )
     if record["issue"] is None and not record["threads"]:
@@ -1053,7 +1072,8 @@ def problems(root=ROOT):
     """
     root = Path(root)
     errors, records = [], {}
-    releases = {r["id"] for r in load_config(root)["releases"]}
+    config = load_config(root)
+    releases, older_until = {r["id"] for r in config["releases"]}, config["older_numbering_until"]
     for path in sorted((root / "community/contributions").rglob("*.json")):
         where = path.relative_to(root).as_posix()
         try:
@@ -1089,7 +1109,7 @@ def problems(root=ROOT):
         where = path.relative_to(root).as_posix()
         try:
             record = read(path)
-            found = validate_finding(record, where, releases)
+            found = validate_finding(record, where, releases, older_until)
         except Exception as error:  # name the file; never stop at the first broken record
             errors.append(f"{where}: unreadable record ({type(error).__name__}: {error})")
             continue
@@ -1170,8 +1190,9 @@ def with_evidence(root, rid, name, block, replace=False, clear_next=False, next_
         record["next"] = next_step
     elif clear_next:
         record["next"] = None
-    releases = {r["id"] for r in load_config(root)["releases"]}
-    problems = validate_finding(record, path.relative_to(root).as_posix(), releases)
+    config = load_config(root)
+    releases = {r["id"] for r in config["releases"]}
+    problems = validate_finding(record, path.relative_to(root).as_posix(), releases, config["older_numbering_until"])
     if problems:
         raise SystemExit("Nothing written:\n" + "\n".join(problems))
     return path, record, before

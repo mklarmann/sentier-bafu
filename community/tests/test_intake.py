@@ -600,10 +600,33 @@ class PlanTests(Workspace):
         self.assertEqual(self.plan(opened(saved(47)))["action"], "nothing")
 
     def test_an_issue_from_before_the_numbering_is_left_to_a_maintainer(self):
-        self.assertEqual(community.LAST_LEGACY_NUMBER, 47)
+        self.assertEqual(community.load_config(self.root)["older_numbering_until"], 47)
         planned = self.plan(opened(issue(33)))
         self.assertEqual((planned["action"], planned["why"]), ("reply", "legacy"))
         self.assertIn("issue 48", planned["comment"])
+
+    def test_where_the_older_numbering_ends_comes_from_the_site_configuration(self):
+        """A repository whose findings are numbered by their issues from the first one sets 0."""
+        def configured(until):
+            config = community.read(self.root / "site/config.json")
+            config["older_numbering_until"] = until
+            (self.root / "site/config.json").write_text(json.dumps(config))
+
+        configured(45)
+        planned = self.plan(opened(issue(46)))
+        self.assertEqual((planned["action"], planned["why"]), ("write", "propose"))
+        self.assertEqual(json.loads(planned["content"])["id"], "F46")
+        late = self.plan(opened(issue(40)))
+        self.assertEqual((late["action"], late["why"]), ("reply", "legacy"))
+        self.assertIn("issue 46", late["comment"])
+        # Starting at issue 1: the frozen records, numbered the older way, are taken out first.
+        configured(0)
+        shutil.rmtree(self.root / "community/findings")
+        (self.root / "community/patches.json").unlink()
+        first = self.plan(opened(issue(1)))
+        self.assertEqual((first["action"], first["why"]), ("write", "propose"))
+        self.assertEqual((json.loads(first["content"])["id"], first["path"]), ("F1", "community/findings/0/F1.json"))
+        self.assertEqual(self.check_with(first["path"], first["content"])[0], 0)
 
     def test_a_record_that_would_break_the_tree_is_not_proposed(self):
         # A patch names F48 as a finding it answers only once F48 exists; a related record must exist.

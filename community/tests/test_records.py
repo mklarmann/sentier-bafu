@@ -425,6 +425,28 @@ class FindingRuleTests(unittest.TestCase):
         self.assertTrue(records.is_legacy({"id": "F47"}))
         self.assertFalse(records.is_legacy({"id": "F48"}))
 
+    def test_where_the_older_numbering_ends_is_configuration(self):
+        """`older_numbering_until` in site/config.json; 47 when the file does not say."""
+        old = finding(id="F12", issue=32)
+        # As this repository is configured: F12 follows the older numbering, F48 its issue.
+        self.assertEqual(records.validate_finding(old, None, RELEASES, 47), [])
+        self.assertEqual(records.validate_finding(old, None, RELEASES), [], "the default is 47")
+        self.assertIn("from F48 on, the id is F followed by the issue number",
+                      records.validate_finding(finding(id="F48", issue=32), None, RELEASES, 47)[0])
+        # A repository whose findings are numbered by their issues from the first one.
+        self.assertIn("from F1 on, the id is F followed by the issue number (issue: 32)",
+                      records.validate_finding(old, None, RELEASES, 0)[0])
+        self.assertEqual(records.validate_finding(finding(id="F1", issue=1), None, RELEASES, 0), [])
+        self.assertEqual(records.validate_finding(finding(id="F12", issue=12), None, RELEASES, 0), [])
+        # With 0, nothing that the older ids may leave open is accepted.
+        for name, (old, _) in LEGACY_ALLOWS.items():
+            self.assertEqual(records.validate_finding(finding(**old), None, RELEASES, 47), [], name)
+            self.assertTrue(records.validate_finding(finding(**old), None, RELEASES, 0), name)
+        self.assertTrue(records.is_legacy({"id": "F47"}, 47))
+        self.assertFalse(records.is_legacy({"id": "F1"}, 0))
+        self.assertTrue(records.is_legacy({"id": "F5"}, 5))
+        self.assertFalse(records.is_legacy({"id": "F6"}, 5))
+
     def test_identity_from_f48_on_the_id_is_the_issue_number(self):
         self.assertEqual(errors(finding(id="F48", issue=48)), [])
         self.assertEqual(errors(finding(id="F3120", issue=3120)), [])
@@ -1219,6 +1241,64 @@ class PatchRegistryTests(WorkspaceCase):
             self.assertIsNone(self.snapshot.from_package(self.root))
             self.registry()
             self.assertEqual(self.snapshot.listing(self.root)[1], "the source of the patch modules")
+
+
+class OlderNumberingTests(unittest.TestCase):
+    """The whole check under both values of `older_numbering_until`."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+
+    def workspace(self, until, name):
+        root = frozen.workspace(Path(self.tmp.name) / name)
+        config = records.read(root / "site/config.json")
+        if until is not None:
+            config["older_numbering_until"] = until
+        (root / "site/config.json").write_text(json.dumps(config))
+        return root
+
+    def result(self, root):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = records.check(root)
+        return code, out.getvalue()
+
+    def test_the_frozen_records_pass_with_47_and_without_the_key(self):
+        for until in (47, None):
+            root = self.workspace(until, f"with-{until}")
+            self.assertEqual(records.load_config(root)["older_numbering_until"], 47)
+            self.assertEqual(self.result(root)[0], 0, until)
+
+    def test_a_repository_that_starts_at_issue_1_sets_0(self):
+        root = self.workspace(0, "sibling")
+        # The records of this repository do not fit: F1 is issue 6 here.
+        code, text = self.result(root)
+        self.assertEqual(code, 1)
+        self.assertIn("community/findings/0/F1.json: from F1 on, the id is F followed by the issue number (issue: 6)", text)
+        # Records numbered by their issues from the first one do.
+        shutil.rmtree(root / "community/findings")
+        (root / "community/patches.json").unlink()
+        for number in (1, 2, 31):
+            record = finding(id=f"F{number}", issue=number, datasets=[{"code": 100000 + number, "name": "Example", "location": "CH"}])
+            path = root / records.record_path(record)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps(record))
+        code, text = self.result(root)
+        self.assertEqual(code, 0, text)
+        self.assertIn("Validated 3 findings", text)
+
+    def test_a_value_that_is_no_number_is_named(self):
+        for wrong in (-1, "47", 4.5, True, None):
+            root = self.workspace(47, f"wrong-{wrong}")
+            config = records.read(root / "site/config.json")
+            config["older_numbering_until"] = wrong
+            (root / "site/config.json").write_text(json.dumps(config))
+            with self.assertRaisesRegex(ValueError, "older_numbering_until is a whole number, 0 or more"):
+                records.load_config(root)
+
+    def test_committed_configuration_says_where_the_older_numbering_ends(self):
+        self.assertEqual(records.read(ROOT / "site/config.json")["older_numbering_until"], 47)
 
 
 class CommittedPatchesTests(unittest.TestCase):

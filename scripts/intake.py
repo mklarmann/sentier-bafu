@@ -358,7 +358,7 @@ def record_from_issue(issue, config, known=None):
         "notes": texts["notes"],
     }
     errors = community.validate_finding(
-        record, community.record_path(record), {r["id"] for r in config["releases"]}
+        record, community.record_path(record), {r["id"] for r in config["releases"]}, config["older_numbering_until"]
     )
     if errors:
         return {
@@ -553,9 +553,9 @@ def record_text(record):
     return json.dumps(ordered, indent=2, ensure_ascii=False) + "\n"
 
 
-def tree_errors(record, others, patches, releases):
+def tree_errors(record, others, patches, releases, older_until=None):
     """What the check of the whole tree would say with this record in it."""
-    errors = community.validate_finding(record, community.record_path(record), releases)
+    errors = community.validate_finding(record, community.record_path(record), releases, older_until)
     if not errors:
         rest = [other for other in others if other["id"] != record["id"]]
         errors, _ = community.cross_record_errors(rest + [record], patches)
@@ -588,7 +588,7 @@ def plan(event_name, event, root=ROOT):
         site=config["site_url"],
         provider=provider,
         filed=community.status_label("filed", provider),
-        first=community.LAST_LEGACY_NUMBER + 1,
+        first=config["older_numbering_until"] + 1,
         base=base,
     )
 
@@ -655,10 +655,10 @@ def plan(event_name, event, root=ROOT):
         if merged == existing:
             return reply("unchanged", number, f"intake: reply {event['comment']['id']}", finding=existing["id"], **values)
         record, kind = merged, "update"
-    elif number <= community.LAST_LEGACY_NUMBER:
+    elif number <= config["older_numbering_until"]:
         return reply("legacy", number, "intake: legacy", **values)
     releases = {r["id"] for r in config["releases"]}
-    errors = tree_errors(record, findings, community.load_patches(root), releases)
+    errors = tree_errors(record, findings, community.load_patches(root), releases, config["older_numbering_until"])
     if errors:
         problems = ["The record made from this issue does not pass the checks: "
                     + "; ".join(plain(error) for error in errors[:5])]
@@ -719,7 +719,7 @@ def plan_repeat(asked, comment, number, here, findings, root, config, marker, va
         return reply(outcome["why"], number, marker, finding=rid, **values)
     changed = outcome["record"]
     releases = {r["id"] for r in config["releases"]}
-    if tree_errors(changed, findings, community.load_patches(root), releases):
+    if tree_errors(changed, findings, community.load_patches(root), releases, config["older_numbering_until"]):
         return reply("invalid", number, marker, finding=rid, **values)
     url = changed["repeated"]["url"]
     words = {"reproduced": "reproduced", "not-reproduced": "not reproduced"}[result]

@@ -12,6 +12,7 @@
       "archive_sha256": "cbaeed4ae79c0be98709c854211cd72725d4f22f8b9b3fe334b7f343fca152f5"
     }
   ],
+  "older_numbering_until": 47,
   "repository": "https://github.com/sentier-dev/sentier-bafu",
   "site_url": "https://sentier-dev.github.io/sentier-bafu/",
   "source_ref": "main",

@@ -55,7 +55,7 @@ def url(config, record):
 def a_new_finding(copy):
     """A new finding is recorded."""
     config, findings = community.load_config(copy), community.load_findings(copy)
-    number = max([community.LAST_LEGACY_NUMBER] + [community.finding_number(r) for r in findings]
+    number = max([config["older_numbering_until"]] + [community.finding_number(r) for r in findings]
                  + [r["issue"] or 0 for r in findings]) + 1
     codes = {dataset["code"] for record in findings for dataset in record["datasets"]}
     record = {

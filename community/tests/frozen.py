@@ -57,6 +57,7 @@ def copy_repository(target):
     config = json.loads((ROOT / "site/config.json").read_text())
     frozen = json.loads((RECORDS / "site/config.json").read_text())
     config.pop("stale_after_days", None)
+    config.pop("older_numbering_until", None)  # the frozen records follow the numbering they were written under
     config.update({key: frozen[key] for key in RECORD_KEYS})
     (target / "site/config.json").write_text(json.dumps(config, indent=2) + "\n")
     return target
