@@ -160,6 +160,16 @@ def test_pull_request_that_changes_and_removes_patches(table, summarise, capsys)
     assert "| `0002-two` | removed | −1 | −1 | −1 |" in out
 
 
+def test_pull_request_whose_new_patch_stops(table, summarise, capsys):
+    base = summarise("base", {"0001-one": (_lognormal, "Olga Owner")})
+    head = summarise("head", {"0001-one": (_lognormal, "Olga Owner"), "0002-stops": (_stops, None)})
+    assert table.main([str(head), "--base", str(base), "--check"]) == 1
+    out = capsys.readouterr().out
+    assert "- This revision's run failed, so steps after the one that stopped are missing" in out
+    assert "| `0002-stops` | new, stopped | – | – | – |" in out
+    assert "\n\n\n" not in out
+
+
 def test_pull_request_that_changes_nothing_in_the_release(table, summarise, capsys):
     base = summarise("base", {"0001-one": (_lognormal, "Olga Owner")})
     head = summarise("head", {"0001-one": (_lognormal, "Olga Owner")})

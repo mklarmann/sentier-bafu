@@ -148,7 +148,9 @@ def step_changes(base: dict, head: dict) -> list[str]:
     rows = []
     for id in [*new, *(i for i in old if i not in new)]:
         before, after = old.get(id), new.get(id)
-        if before is None:
+        if before is None and after.get("error"):
+            label, counts = "new, stopped", ["–"] * len(COUNTS)
+        elif before is None:
             label = "new"
             counts = [f"+{number(after.get(key))}" for key, _ in COUNTS]
         elif after is None:
@@ -219,6 +221,11 @@ def comparison(
         ]
     lines.append(f"Compared with a run of the base revision{revision} on the same runner:")
     lines.append("")
+    if head["status"] != "completed":
+        lines.append(
+            f"- This revision's run {head['status']}, so steps after the one that stopped "
+            "are missing below."
+        )
     if base["status"] != "completed":
         lines.append(f"- The base revision's run {base['status']}: {base['error']}")
     if base["release"]["fingerprint"] != head["release"]["fingerprint"]:
@@ -238,8 +245,9 @@ def comparison(
         )
         if not same and base_output and head_output:
             lines += output_changes(base_output, head_output)
-    lines += ["", *step_changes(base, head)]
-    return lines
+    if lines[-1]:
+        lines.append("")
+    return [*lines, *step_changes(base, head)]
 
 
 def render(
