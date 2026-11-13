@@ -131,6 +131,7 @@ def _git(*arguments: str) -> str:
 
 
 def load_pins(path: Path = PINS) -> dict:
+    """The pinned tools (`[tools.*]`). Data pins (`[data.*]`) are read by `data_root.py`."""
     return tomllib.loads(path.read_text())["tools"]
 
 
@@ -311,19 +312,20 @@ def build(args: argparse.Namespace) -> int:
             "data",
             brightway.command(
                 *("python", str(HELPERS / "data_root.py"), str(paths["pinned_data"])),
-                *("--record", str(out / "data-pins.json")),
+                *("--pins", str(args.pins.resolve()), "--record", str(out / "data-pins.json")),
             ),
             brightway.env(),
         )
+        pinned = json.loads((out / "data-pins.json").read_text())
         inventory = paths["data_root"] / "sentier-inventory" / "data" / folders[0].name
         inventory.mkdir(parents=True)
         for file in sorted(folders[0].iterdir()):
             shutil.copy2(file, inventory / file.name)
         for name in PINNED_DATA:
-            (paths["data_root"] / name).symlink_to(paths["pinned_data"] / name)
+            (paths["data_root"] / name).symlink_to(Path(pinned["folder"]) / name)
         record["data_pins"] = [
-            {key: pin[key] for key in ("name", "repository", "commit")}
-            for pin in json.loads((out / "data-pins.json").read_text())
+            {key: value for key, value in pin.items() if key != "files"}
+            for pin in pinned["sources"]
         ]
 
         # 5. install
