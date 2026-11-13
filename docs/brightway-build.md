@@ -281,20 +281,21 @@ workbook (July 2026). Matching those results is not a goal; the comparison shows
 
 Measured on one machine (Apple silicon, macOS) while other jobs were running, so the times
 are upper bounds for that machine. Peak memory is the largest resident size of the step's
-process tree. Last run, with the range over the three runs in brackets.
+process tree, in MB of 1,048,576 bytes, as `build.json` records it. Last run, with the range
+over the three runs in brackets.
 
 | Step | Provider release | Patched release |
 |---|---|---|
-| patch (`--xsd-check every-step`) | not run | 171 s (171 to 218), 1.56 GB |
+| patch (`--xsd-check every-step`) | not run | 171 s (171 to 218), 1,560 MB |
 | adapt | 12 s (12 to 18) | 11 s (11 to 18) |
-| import | 14 s (14 to 26), 0.88 GB | 13 s (13 to 21), 0.89 GB |
-| data (files already present) | 3 s | 1 s |
-| install | 83 s (83 to 126), 1.44 GB | 85 s (83 to 98), 1.30 GB |
-| audit | 12 s, 0.83 GB | 11 s, 0.82 GB |
-| whole build | 124 s (124 to 194), 1.5 GB | 294 s (294 to 370), 1.6 GB |
+| import | 14 s (14 to 26), 884 MB | 13 s (13 to 21), 886 MB |
+| data (files already present) | 3 s, 129 MB | 1 s, 129 MB |
+| install | 83 s (83 to 126), 1,444 MB | 85 s (83 to 98), 1,296 MB |
+| audit | 12 s, 827 MB | 11 s, 817 MB |
+| whole build | 124 s (124 to 194), 1,444 MB | 294 s (294 to 370), 1,560 MB |
 
-The first `data` step downloads about 37 MB. The tools' environments take further time to
-create on a fresh machine; that was not measured.
+A first `data` step downloads 25 files, 37 MB; that took 12 s. The tools' environments take
+further time to create on a fresh machine; that was not measured.
 
 ## What is missing
 
