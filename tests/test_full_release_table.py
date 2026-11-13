@@ -18,6 +18,16 @@ SCRIPT = Path(__file__).parents[1] / "scripts" / "full_release_table.py"
 URL = "https://example.org/release-v1.zip"
 
 
+@pytest.fixture(autouse=True)
+def _not_on_github(monkeypatch):
+    """A test says itself when it runs "on GitHub".
+
+    A runner sets `GITHUB_ACTIONS`, and the script then writes its errors as annotations
+    (`::error …`); the tests that read `error: …` failed there and nowhere else.
+    """
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+
+
 @pytest.fixture(scope="module")
 def table():
     spec = importlib.util.spec_from_file_location("full_release_table", SCRIPT)
