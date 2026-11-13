@@ -56,6 +56,67 @@ class Helpers(unittest.TestCase):
             {"ef_3_1": 1, "no_ef_3_1_flow": 1, "other_databases": {}},
         )
 
+    def test_declared_unit_rows_are_the_exchanges_whose_unit_is_not_the_suppliers(self):
+        nodes = {
+            (INVENTORY, "user"): {"name": "User", "location": "FI", "unit": "kilowatt hour"},
+            (INVENTORY, "plant"): {"name": "Plant", "location": "FI", "unit": "megajoule"},
+            (audit.BIOSPHERE_DB, "co2"): {"name": "CO2", "location": None, "unit": "kilogram"},
+        }
+        exchanges = [
+            {"output": (INVENTORY, "user"), "input": (INVENTORY, "user"), "type": "production",
+             "amount": 1.0, "unit": "kilowatt hour"},
+            {"output": (INVENTORY, "user"), "input": (INVENTORY, "plant"), "type": "technosphere",
+             "amount": 0.0157, "unit": "kilowatt hour"},
+            {"output": (INVENTORY, "user"), "input": (audit.BIOSPHERE_DB, "co2"),
+             "type": "biosphere", "amount": 0.1, "unit": "kilogram"},
+            {"output": (INVENTORY, "user"), "input": (INVENTORY, "plant"), "type": "technosphere",
+             "amount": 1.0},  # no declared unit: nothing to compare
+        ]  # fmt: skip
+        (row,) = audit.declared_unit_rows(nodes, exchanges)
+        self.assertEqual(
+            row,
+            {
+                "dataset": "user",
+                "dataset_name": "User",
+                "dataset_location": "FI",
+                "kind": "technosphere",
+                "supplier": "plant",
+                "supplier_name": "Plant",
+                "supplier_location": "FI",
+                "declared_unit": "kilowatt hour",
+                "supplier_unit": "megajoule",
+                "amount_as_built": 0.0157,
+            },
+        )
+        table = audit.label_table.load()
+        sorted_rows = audit.label_table.classify(table, [dict(row)])
+        self.assertFalse(sorted_rows["another_quantity"][0]["same_quantity"])
+        self.assertIsNone(sorted_rows["another_quantity"][0]["finding"])
+        bafus = dict(row) | {"supplier": "c1f04203-96ec-320c-85f5-e56aaa86729b"}
+        self.assertEqual(
+            audit.label_table.classify(table, [bafus])["another_quantity"][0]["finding"], "F13"
+        )
+
+    def test_contribution_check_looks_for_each_declared_change(self):
+        self.assertIsNone(audit.contribution_check({"label": "Modified Data"}, "x", []))
+        marker = {
+            "contribution": {
+                "id": "C900",
+                "name": "n",
+                "layer_sha256": "ab",
+                "changes": [
+                    {"dataset": "b", "replaced_supplier": "old", "new_supplier": "new",
+                     "replaced_everywhere": True},
+                ],
+            }
+        }  # fmt: skip
+        rows = [("x", "new", "technosphere", "b")]
+        self.assertEqual(audit.contribution_check(marker, "x", rows)["changes_not_found"], [])
+        still = [*rows, ("x", "old", "technosphere", "b")]
+        check = audit.contribution_check(marker, "x", still)
+        self.assertEqual(len(check["replaced_supplier_still_an_input"]), 1)
+        self.assertEqual(len(audit.contribution_check(marker, "x", [])["changes_not_found"]), 1)
+
     def test_exchange_accounting_finds_what_is_not_linked(self):
         nodes = {(INVENTORY, "a")}
         rows = [
@@ -171,7 +232,8 @@ PROJECT = textwrap.dedent(
     import bw2data as bd
 
     bd.projects.set_current("mini")
-    bio, residual, inventory = "ef-3.1-biosphere", "bafu-2026-residual", "bafu-2026"
+    inventory = next((a[5:] for a in sys.argv if a.startswith("name=")), "bafu-2026")
+    bio, residual = "ef-3.1-biosphere", inventory + "-residual"
 
     def flow(name):
         return {"name": name, "type": "emission", "unit": "kilogram", "categories": ("air",),
@@ -204,6 +266,29 @@ PROJECT = textwrap.dedent(
             "modified_data": modified, "provider_release": "X:2026 v1",
             "patches": ["0001-example"] if modified else [], "import_fixes": []}
         bd.databases.flush()
+    if "contribution" in sys.argv or "contribution-missing" in sys.argv:
+        new = "a" if "contribution" in sys.argv else "not-an-input"
+        bd.databases[inventory]["release_build"] = {
+            "label": "Modified Data", "modified_data": True, "provider_release": "X:2026 v1",
+            "patches": ["0001-example"], "import_fixes": [],
+            "contribution": {"id": "C900", "name": "other-supplier", "layer_sha256": "0" * 64,
+                             "changes": [{"dataset": "b", "replaced_supplier": "old",
+                                          "new_supplier": new, "replaced_everywhere": True}]}}
+        bd.databases.flush()
+    if "units" in sys.argv:
+        # Inputs whose declared unit is not their supplier's: one of another quantity
+        # (kWh from a dataset in MJ), one of the same (m3 from a dataset in Nm3)
+        data = bd.Database(inventory).load()
+        data[(inventory, "plant")] = {**process("plant", "Power plant", [
+            {"input": (bio, "co2"), "type": "biosphere", "amount": 0.2}]), "unit": "megajoule"}
+        data[(inventory, "gas")] = {**process("gas", "Gas supply", []),
+                                    "unit": "normal cubic meter"}
+        data[(inventory, "user")] = process("user", "Power user", [
+            {"input": (inventory, "plant"), "type": "technosphere", "amount": 0.25,
+             "unit": "kilowatt hour"},
+            {"input": (inventory, "gas"), "type": "technosphere", "amount": 2.0,
+             "unit": "cubic meter"}])
+        bd.Database(inventory).write(data)
     if "renamed" in sys.argv:
         # A flow the flow terms don't hold: sentier-brightway writes it without a compartment
         bd.Database(residual).write({
@@ -360,6 +445,92 @@ class AuditOfAProject(unittest.TestCase):
         self.run_audit()
         result = json.loads((self.root / "audit" / "audit.json").read_text())
         self.assertTrue(any("documented 2.5" in finding for finding in result["findings"]))
+
+    def test_declared_units_that_are_not_the_suppliers_are_listed_with_what_brightway_uses(self):
+        self.write_project("units")
+        done = self.run_audit()
+        self.assertEqual(done.returncode, 0, done.stderr)
+        declared = json.loads((self.root / "audit" / "audit.json").read_text())["declared_units"]
+        self.assertEqual(declared["table"]["file"], "export_labels.toml")
+        self.assertEqual(declared["exchanges_whose_declared_unit_is_not_the_suppliers"], 2)
+        self.assertEqual(
+            declared["same_quantity_other_label"],
+            {"cubic meter for a dataset in normal cubic meter": 1},
+        )
+        (row,) = declared["another_quantity"]
+        self.assertEqual(
+            (row["dataset_name"], row["supplier_name"], row["declared_unit"], row["supplier_unit"]),
+            ("Power user", "Power plant", "kilowatt hour", "megajoule"),
+        )
+        # Brightway takes the amount as written: 0.25 of the supplier's unit, not 0.9 MJ
+        self.assertAlmostEqual(row["amount_as_built"], 0.25)
+        self.assertAlmostEqual(row["amount_brightway_uses"], 0.25, places=6)
+        self.assertIsNone(row["finding"])
+        result = json.loads((self.root / "audit" / "audit.json").read_text())
+        (finding,) = [f for f in result["findings"] if "declares kilowatt hour" in f]
+        self.assertIn("no finding is recorded for it: Power user (CH) takes Power plant", finding)
+        self.assertEqual(self.run_audit("--fail-on-findings").returncode, 1)
+
+    def test_a_declared_unit_that_belongs_to_a_finding_is_listed_and_is_no_finding(self):
+        self.write_project("units")
+        table = audit.label_table.TABLE.read_text() + textwrap.dedent(
+            """
+            [[declared_unit_difference]]
+            finding = "F900"
+            supplier = "plant"
+            declared = "kilowatt hour"
+            supplier_unit = "megajoule"
+            """
+        )
+        (self.root / "labels.toml").write_text(table)
+        done = self.run_audit("--labels", str(self.root / "labels.toml"))
+        self.assertEqual(done.returncode, 0, done.stderr)
+        result = json.loads((self.root / "audit" / "audit.json").read_text())
+        (row,) = result["declared_units"]["another_quantity"]
+        self.assertEqual(row["finding"], "F900")
+        self.assertFalse(any("declares kilowatt hour" in f for f in result["findings"]))
+        # The table's own row for BAFU's dataset matches nothing in this project: said, not hidden
+        (stale,) = result["declared_units"]["recorded_differences_not_found"]
+        self.assertEqual(stale["finding"], "F13")
+
+    def test_a_contribution_under_its_own_name_is_checked_against_its_layer(self):
+        name = "bafu-2026-v1-c900-other-supplier"
+        self.write_project(f"name={name}", "contribution")
+        done = self.run_audit("--database", name)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        result = json.loads((self.root / "audit" / "audit.json").read_text())
+        self.assertEqual(result["status"], "passed", result["errors"])
+        self.assertEqual(
+            result["contribution"],
+            {
+                "id": "C900",
+                "name": "other-supplier",
+                "layer_sha256": "0" * 64,
+                "changes_declared": 1,
+                "changes_found_in_the_database": 1,
+                "changes_not_found": [],
+                "replaced_supplier_still_an_input": [],
+            },
+        )
+
+    def test_a_contribution_whose_change_is_not_in_the_database_fails_the_audit(self):
+        name = "bafu-2026-v1-c900-other-supplier"
+        self.write_project(f"name={name}", "contribution-missing")
+        done = self.run_audit("--database", name)
+        self.assertEqual(done.returncode, 1, done.stderr)
+        result = json.loads((self.root / "audit" / "audit.json").read_text())
+        self.assertTrue(
+            any("layer of C900 declares are not in the database" in e for e in result["errors"])
+        )
+
+    def test_a_contribution_in_the_patched_releases_database_fails_the_audit(self):
+        self.write_project("name=bafu-2026-v1-patched", "contribution")
+        done = self.run_audit("--database", "bafu-2026-v1-patched")
+        self.assertEqual(done.returncode, 1, done.stderr)
+        result = json.loads((self.root / "audit" / "audit.json").read_text())
+        (error,) = result["errors"]
+        self.assertIn("holds the changes of contribution C900", error)
+        self.assertIn("built under its own name", error)
 
     def test_an_exchange_without_a_supplier_fails_the_audit(self):
         self.write_project("dangling")

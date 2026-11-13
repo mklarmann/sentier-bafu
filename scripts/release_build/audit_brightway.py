@@ -7,13 +7,19 @@ It reads the Brightway project itself, not the files it was built from:
   BAFU flow because the mapping has no EF 3.1 flow for it;
 - per method, how many of the elementary flows the inventory uses carry a characterisation
   factor, and how many exchanges that covers;
+- every exchange whose declared unit is not the unit of the node it takes from. Brightway
+  uses the amount as written, whatever the two labels say, so the audit says which amount
+  that is and which finding the exchange belongs to (`export_labels.toml`);
+- for a database built with a contribution: that every change the contribution's layer
+  declares is in the database;
 - scores of a fixed sample of datasets for EF 3.1 climate change, and of every dataset for
   every method (written beside the audit as `scores.csv`).
 
 Errors fail the audit: an unlinked exchange, a score that is not a number. Findings are
-things a person has to look at: a sample score outside its plausible range, or elementary
+things a person has to look at: a sample score outside its plausible range, elementary
 flows that the pinned flow terms don't hold (a patch renamed or moved them, so they lost
-their EF 3.1 flow). `--fail-on-findings` turns findings into a failure.
+their EF 3.1 flow), or an input that declares a unit of another quantity than its supplier's
+and belongs to no recorded finding. `--fail-on-findings` turns findings into a failure.
 
 Scores are computed from one factorisation of the technosphere matrix: one solve per sample
 dataset, and one transposed solve per method for all datasets. The two must agree, the
@@ -38,9 +44,15 @@ from collections import Counter
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
-AUDIT_VERSION = 1
+try:
+    from release_build import labels as label_table
+except ImportError:  # run as a script, from its own folder
+    import labels as label_table
+
+AUDIT_VERSION = 2
 BIOSPHERE_DB = "ef-3.1-biosphere"
 PROVIDER_DB = "bafu-2026"  # BAFU's name: only a database of the provider release carries it
+PATCHED_DB = "bafu-2026-v1-patched"  # the patched release's name: no contribution carries it
 MARKER = "release_build"  # written into the database metadata by `mark_database.py`
 CLIMATE_METHOD = "ef-3.1:climate-change"
 RESIDUAL_TOLERANCE = 1e-8  # relative residual of a linear solve
@@ -271,6 +283,89 @@ def read_project(bd, inventory_db: str, residual_db: str) -> dict:
     }
 
 
+def declared_unit_rows(nodes: dict, exchanges: list[dict]) -> list[dict]:
+    """The exchanges whose declared unit is not the unit of the node they take from.
+
+    `nodes` is `{(database, code): {"name", "location", "unit"}}`; an exchange is a
+    Brightway exchange as stored, with `input`, `output`, `type`, `amount` and `unit`.
+    """
+    rows = []
+    for exchange in exchanges:
+        consumer, supplier = tuple(exchange["output"]), tuple(exchange["input"])
+        target, declared = nodes.get(supplier), exchange.get("unit")
+        if target is None or not declared or declared == target.get("unit"):
+            continue
+        owner = nodes.get(consumer, {})
+        rows.append(
+            {
+                "dataset": consumer[1],
+                "dataset_name": owner.get("name"),
+                "dataset_location": owner.get("location"),
+                "kind": exchange.get("type"),
+                "supplier": supplier[1],
+                "supplier_name": target.get("name"),
+                "supplier_location": target.get("location"),
+                "declared_unit": declared,
+                "supplier_unit": target.get("unit"),
+                "amount_as_built": exchange.get("amount"),
+            }
+        )
+    return sorted(rows, key=lambda row: (row["dataset"], row["supplier"]))
+
+
+def read_declared_units(bd, inventory_db: str, residual_db: str) -> tuple[list[dict], Counter]:
+    """`declared_unit_rows` of the project, and how many datasets have each unit."""
+    from bw2data.backends import ActivityDataset, ExchangeDataset
+
+    nodes = {
+        (database, code): {key: data.get(key) for key in ("name", "location", "unit")}
+        for database, code, data in ActivityDataset.select(
+            ActivityDataset.database, ActivityDataset.code, ActivityDataset.data
+        )
+        .where(ActivityDataset.database.in_([inventory_db, residual_db, BIOSPHERE_DB]))
+        .tuples()
+    }
+    exchanges = (
+        data
+        for (data,) in ExchangeDataset.select(ExchangeDataset.data)
+        .where(ExchangeDataset.output_database == inventory_db)
+        .tuples()
+    )
+    units = Counter(node["unit"] for key, node in nodes.items() if key[0] == inventory_db)
+    return declared_unit_rows(nodes, exchanges), units
+
+
+def contribution_check(marker: dict | None, inventory_db: str, exchanges: list) -> dict | None:
+    """Whether every change a contribution's layer declares is in the database.
+
+    `exchanges` are the audit's rows `(input database, input code, type, output code)`.
+    """
+    contribution = (marker or {}).get("contribution")
+    if not contribution:
+        return None
+    inputs = Counter(
+        (output, code) for database, code, kind, output in exchanges if kind == "technosphere"
+    )
+    missing, still = [], []
+    for change in contribution.get("changes", ()):
+        if not inputs[(change["dataset"], change["new_supplier"])]:
+            missing.append(change)
+        if (
+            change.get("replaced_everywhere")
+            and inputs[(change["dataset"], change["replaced_supplier"])]
+        ):
+            still.append(change)
+    return {
+        "id": contribution.get("id"),
+        "name": contribution.get("name"),
+        "layer_sha256": contribution.get("layer_sha256"),
+        "changes_declared": len(contribution.get("changes", ())),
+        "changes_found_in_the_database": len(contribution.get("changes", ())) - len(missing),
+        "changes_not_found": missing,
+        "replaced_supplier_still_an_input": still,
+    }
+
+
 def read_methods(bd, key_of_id: dict) -> list[dict]:
     methods = []
     for key in sorted(bd.methods):
@@ -393,11 +488,20 @@ def compute_scores(
             raise AuditError(f"{item['code']}: bw2calc {stock.score!r} != this audit {ours!r}")
         checked.append(item["code"])
 
+    def amount_used(consumer: str, supplier: str) -> float | None:
+        """What the technosphere matrix holds for all inputs of `supplier` into `consumer`."""
+        if consumer not in nodes or supplier not in nodes:
+            return None
+        row = lca.dicts.product[nodes[supplier].id]
+        column = lca.dicts.activity[nodes[consumer].id]
+        return float(-technosphere[row, column])
+
     return {
         "codes": codes,
         "nodes": nodes,
         "table": table,
         "climate_column": climate_column,
+        "amount_used": amount_used,
         "summary": {
             "method": CLIMATE_METHOD,
             "method_key": list(climate["key"]),
@@ -440,10 +544,21 @@ def write_scores(path: Path, scores: dict, methods: list[dict]) -> None:
 # --- The audit ---------------------------------------------------------------------------
 
 
-def audit(project: str, inventory_db: str, sample_path: Path, out_dir: Path, label: str) -> dict:
+def audit(
+    project: str,
+    inventory_db: str,
+    sample_path: Path,
+    out_dir: Path,
+    label: str,
+    labels_path: Path = label_table.TABLE,
+) -> dict:
     import numpy as np
 
     residual_db = f"{inventory_db}-residual"
+    try:
+        units = label_table.load(labels_path)
+    except (label_table.LabelError, OSError, ValueError) as error:
+        raise AuditError(f"The table of labels can't be read: {error}") from None
     bd = open_project(project)
     data = read_project(bd, inventory_db, residual_db)
     accounting = exchange_accounting(
@@ -495,7 +610,36 @@ def audit(project: str, inventory_db: str, sample_path: Path, out_dir: Path, lab
     marker = dict(bd.databases[inventory_db]).get(MARKER)
     if marker and marker.get("modified_data") and inventory_db == PROVIDER_DB:
         errors.append(f"A database of modified data carries BAFU's name, {PROVIDER_DB}")
+    contribution = contribution_check(marker, inventory_db, data["exchanges"])
+    if contribution and inventory_db in (PROVIDER_DB, PATCHED_DB):
+        errors.append(
+            f"The database {inventory_db} holds the changes of contribution "
+            f"{contribution['id']}: a contribution is built under its own name"
+        )
+    if contribution and contribution["changes_not_found"]:
+        errors.append(
+            f"{len(contribution['changes_not_found'])} change(s) that the layer of "
+            f"{contribution['id']} declares are not in the database"
+        )
+    rows, dataset_units = read_declared_units(bd, inventory_db, residual_db)
+    declared = label_table.classify(units, rows)
+    for row in declared["another_quantity"]:
+        row["amount_brightway_uses"] = scores["amount_used"](row["dataset"], row["supplier"])
+    not_in_table = sorted(unit for unit in dataset_units if unit not in units["units"])
     findings = [] if marker else ["The database's metadata does not say what it was built from"]
+    findings += [
+        f"An input declares {row['declared_unit']} and its supplier's unit is "
+        f"{row['supplier_unit']}, another quantity or size, and no finding is recorded for it: "
+        f"{row['dataset_name']} ({row['dataset_location']}) takes {row['supplier_name']} "
+        f"({row['supplier_location']})"
+        for row in declared["another_quantity"]
+        if row["finding"] is None
+    ]
+    if not_in_table:
+        findings.append(
+            f"Units that the table of labels ({units['file']}) does not have: "
+            + ", ".join(not_in_table)
+        )
     findings += [
         f"Sample score outside its plausible range: {flag}"
         for flag in scores["summary"]["range_flags"]
@@ -530,6 +674,13 @@ def audit(project: str, inventory_db: str, sample_path: Path, out_dir: Path, lab
         else {
             key: marker.get(key)
             for key in ("label", "modified_data", "provider_release", "patches", "import_fixes")
+        },
+        "contribution": contribution,
+        "declared_units": {
+            "table": {"file": units["file"], "sha256": units["sha256"]},
+            "datasets_by_unit": dict(sorted(dataset_units.items())),
+            "units_not_in_the_table": not_in_table,
+            **declared,
         },
         "datasets": datasets,
         "datasets_without_exchanges": datasets - len(with_exchanges),
@@ -596,9 +747,15 @@ def main(argv: list[str] | None = None) -> int:
         help="Exit with an error if the audit has findings: a sample score outside its "
         "plausible range, or elementary flows the pinned flow terms don't hold",
     )
+    parser.add_argument(
+        "--labels",
+        type=Path,
+        default=label_table.TABLE,
+        help="The declared table of unit labels and known differences of declared units",
+    )
     args = parser.parse_args(argv)
     try:
-        result = audit(args.project, args.database, args.sample, args.out, args.label)
+        result = audit(args.project, args.database, args.sample, args.out, args.label, args.labels)
     except AuditError as error:
         print(f"Audit failed: {error}", file=sys.stderr)
         return 2
