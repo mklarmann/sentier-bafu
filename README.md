@@ -167,10 +167,10 @@ def fix_something(db: Database) -> None:
 ## Patches
 
 `uv run bafu-fixes list` prints the import fixes and patches of this checkout, with who
-authorised each patch and the findings it answers. How many datasets, exchanges and values
-each one changes in BAFU's release is measured by the
-[Full release run](community/ci/README.md#full-release-run) on every change, and listed in
-its job summary.
+authorised each patch and the findings it answers; `list --json` gives the same to other
+tools. How many datasets, exchanges and values each one changes in BAFU's release is
+measured by the [Full release run](community/ci/README.md#full-release-run) on every
+change, and listed in its job summary.
 
 Patches 0004–0008 change BAFU's own flow attributes and don't depend on 0010, which
 only adds links. The Brightway Flows data in `src/bafu_community_fixes/data/` is used
