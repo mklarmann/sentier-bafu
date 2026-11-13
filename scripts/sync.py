@@ -283,6 +283,10 @@ def apply(differences, api, provider, comments=True, pause=None, reserve=RESERVE
     way (the rate limit) is continued by the next run and nothing is announced twice.
     """
     done, pause = 0, pause or time.sleep
+    # What is left for a person is no work for this job.
+    differences = [entry for entry in differences if any(entry[key] for key in ("add", "remove", "announce", "close"))]
+    if not differences:
+        return 0, 0, None
     try:
         existing = {label["name"]: label for label in api.pages("/labels")}
         create, describe = label_changes(existing, differences, provider)
@@ -291,9 +295,6 @@ def apply(differences, api, provider, comments=True, pause=None, reserve=RESERVE
         for name, description in describe:
             api.patch(f"/labels/{quoted(name)}", {"description": description})
         for entry in differences:
-            if not any(entry[key] for key in ("add", "remove", "announce", "close")):
-                done += 1
-                continue
             if api.remaining is not None and api.remaining < reserve:
                 return done, len(differences) - done, "the rate limit is nearly used up"
             number = entry["issue"]
@@ -419,7 +420,9 @@ def main(argv=None, env=None, transport=None, out=print, pause=None):
         # Not a failure: the nightly run takes up where this one stopped.
         out(f"::warning::sync stopped because {stopped}: {done} issues done, {left} left for the next run.")
     else:
-        out(f"sync: {done} issues brought into agreement with their records.")
+        waiting = sum(len(entry["person"]) for entry in differences)
+        out(f"sync: {done} issues brought into agreement with their records"
+            + (f"; {waiting} points are left for a person." if waiting else "."))
     return 0
 
 

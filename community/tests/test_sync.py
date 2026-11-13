@@ -280,9 +280,9 @@ class RecordedTests(unittest.TestCase):
         for item in fake.issues.values():
             self.assertEqual(sum(1 for label in item["labels"] if label.startswith("status: ")), 1)
             self.assertFalse(set(item["labels"]) & sync.RETIRED_LABELS)
-        writes = len(fake.writes())
+        calls = len(fake.calls)
         self.assertEqual(sync.apply([], api, "BAFU"), (0, 0, None))
-        self.assertEqual(len(fake.writes()), writes)
+        self.assertEqual(len(fake.calls), calls, "with nothing to write, nothing is even read")
 
 
 class ApplyTests(unittest.TestCase):
@@ -381,9 +381,13 @@ class ApplyTests(unittest.TestCase):
         self.assertEqual(issues[70]["labels"], ["question"])
         self.assertIsNone(issues[71], "a pull request is not an issue")
         self.assertIsNone(issues[72], "an issue that does not exist")
-        differences = {entry["issue"]: entry for entry in sync.plan(findings, issues, CONFIG)}
+        planned = sync.plan(findings, issues, CONFIG)
+        differences = {entry["issue"]: entry for entry in planned}
         self.assertEqual(differences[70]["add"], ["bafu-finding", "help wanted", FILED])
         self.assertTrue(differences[71]["person"] and differences[72]["person"])
+        # What is left for a person is not counted as done, and nothing is written for it.
+        self.assertEqual(sync.apply(planned, self.api, "BAFU", pause=self.pauses.append), (1, 0, None))
+        self.assertEqual({call[1].split("/")[2] for call in self.fake.writes() if call[1].startswith("/issues/")}, {"70"})
 
     def test_more_than_a_hundred_issues_are_read_page_by_page(self):
         for n in range(100, 350):
