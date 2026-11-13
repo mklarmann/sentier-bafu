@@ -303,6 +303,12 @@ Patch 0002 does not change a link on this path, because the importer links by nu
 declare a location that differs from the linked dataset's: 37 in the provider release, 12 in
 the patched release. A further 1,399 inputs declare no location in either.
 
+In both builds 660 technosphere inputs declare a unit that is not the linked dataset's: 619
+are two spellings of one unit (`p` and `unit`), 40 declare `m3` for a dataset in `Nm3`, and
+one declares `kWh` for a dataset in `MJ` (the input `Electricity, natural gas, at power plant`
+of `Electricity, from natural gas`, FI). Brightway does not convert between the unit of an
+exchange and the unit of its supplier, and an export that checks units refuses the last one.
+
 ### Elementary flows
 
 154 elementary exchanges in 135 datasets carry a flow that a patch corrects. All are linked

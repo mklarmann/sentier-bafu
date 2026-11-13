@@ -219,17 +219,23 @@ def compare_rows(base, cand, steps: dict[str, list[str]]) -> dict:
 
 
 def declared_against_linked(processes, exchanges) -> dict:
-    """Technosphere inputs whose declared name or location differs from the linked dataset's."""
+    """Technosphere inputs whose declared name, location or unit is not the linked dataset's.
+
+    The importer links an input by number, so what the exchange declares and what it is
+    linked to can differ. A unit that differs is either another spelling (`p` and `unit`)
+    or a quantity nobody converts.
+    """
     inputs = exchanges[exchanges["flow_type"] == "technosphere"]
+    columns = [c for c in ("process_id", "name", "location", "reference_unit") if c in processes]
     linked = inputs.merge(
-        processes[["process_id", "name", "location"]],
+        processes[columns],
         left_on="flow",
         right_on="process_id",
         how="left",
         suffixes=("", "_supplier"),
     )
     declared = linked["location"].notna()
-    return {
+    result = {
         "technosphere_inputs": int(len(inputs)),
         "without_a_linked_dataset": int(linked["name"].isna().sum()),
         "declared_name_differs": int((linked["flow_name"] != linked["name"]).sum()),
@@ -238,6 +244,15 @@ def declared_against_linked(processes, exchanges) -> dict:
             (declared & (linked["location"] != linked["location_supplier"])).sum()
         ),
     }
+    if "reference_unit" in linked and "unit" in linked:
+        differs = linked[linked["name"].notna() & (linked["unit"] != linked["reference_unit"])]
+        pairs = differs.groupby(["unit", "reference_unit"]).size()
+        result["declared_unit_differs"] = int(len(differs))
+        result["declared_and_linked_units"] = {
+            f"{unit} for a dataset in {reference}": int(count)
+            for (unit, reference), count in pairs.items()
+        }
+    return result
 
 
 # --- 2. Elementary flows -----------------------------------------------------------------

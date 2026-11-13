@@ -280,8 +280,22 @@ class Tables(unittest.TestCase):
         self.assertEqual(before["technosphere_inputs"], 3)
         self.assertEqual(before["without_a_linked_dataset"], 1)  # "waste" is not a dataset here
         self.assertEqual(before["no_declared_location"], 0)
+        self.assertNotIn("declared_unit_differs", before)  # these tables carry no units
         self.assertEqual(
             before["declared_location_differs"] - after["declared_location_differs"], 1
+        )
+
+    def test_declared_units_are_compared_with_the_linked_datasets_unit(self):
+        processes, exchanges = self.base
+        processes = processes.assign(reference_unit=["kg", "MJ", "kWh"])
+        exchanges = exchanges.assign(unit=["kg", "kg", "kg", "MJ", "Nm3", "kWh", "kWh", "p"])
+        result = compare.declared_against_linked(processes, exchanges)
+        # "mix" takes gas in kWh from a dataset in MJ, and fruit in p from a dataset in kg;
+        # the input without a linked dataset is not counted
+        self.assertEqual(result["declared_unit_differs"], 2)
+        self.assertEqual(
+            result["declared_and_linked_units"],
+            {"kWh for a dataset in MJ": 1, "p for a dataset in kg": 1},
         )
 
 
