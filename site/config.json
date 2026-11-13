@@ -2,56 +2,85 @@
   "dataset": "BAFU / UVEK",
   "provider": "BAFU",
   "repository": "https://github.com/sentier-dev/sentier-bafu",
+  "site_url": "https://sentier-dev.github.io/sentier-bafu/",
   "source_ref": "main",
-  "description": "The public Sentier workspace for BAFU/UVEK imports, partner contributions, application tests, reviewed consensus and recommendations to BAFU.",
+  "description": "Where users of the BAFU/UVEK inventory database report findings, repeat each other's measurements and send them to BAFU, which decides what it changes. Community patches apply corrections for those who need them now.",
   "sibling_name": "AGRIBALYSE preview",
   "sibling_url": "https://mklarmann.github.io/sentier-agribalyse/",
-  "validation_note": "Importer fixes and application checks are tracked in issues and pull requests. Candidate method reproduction and community review remain open.",
+  "nav": [
+    [
+      "index.html",
+      "Overview"
+    ],
+    [
+      "findings.html",
+      "Findings"
+    ],
+    [
+      "contributions.html",
+      "Contributions"
+    ],
+    [
+      "testing.html",
+      "Evidence"
+    ],
+    [
+      "import.html",
+      "Patched release"
+    ],
+    [
+      "contribute.html",
+      "Take part"
+    ]
+  ],
   "documents": [
     {
-      "title": "Import & use",
+      "title": "Findings",
+      "source": "site/findings.md",
+      "page": "findings.html"
+    },
+    {
+      "title": "Contributions",
+      "source": "community/workflow.md",
+      "page": "contributions.html"
+    },
+    {
+      "title": "The patched release",
       "source": "site/import.md",
       "page": "import.html"
     },
     {
-      "title": "Evidence & testing",
+      "title": "Evidence",
       "source": "community/build-validation.md",
       "page": "testing.html"
     },
     {
-      "title": "Findings ledger",
-      "source": "community/findings.md",
-      "page": "findings.html"
-    },
-    {
-      "title": "Contribute",
+      "title": "Take part",
       "source": "community/README.md",
       "page": "contribute.html"
     },
     {
-      "title": "Apply a candidate layer",
+      "title": "Data and terms",
+      "source": "docs/terms-of-use.md",
+      "page": "terms.html"
+    },
+    {
+      "title": "Apply and test a contribution",
       "source": "community/application-and-testing.md",
       "page": "application.html"
     },
     {
-      "title": "Consensus & recommendations",
-      "source": "community/workflow.md",
-      "page": "consensus.html"
-    },
-    {
-      "title": "Hackathon evidence",
+      "title": "Hackathon assessment",
       "source": "community/hackathon-assessment.md",
       "page": "hackathon.html"
     },
     {
-      "title": "Mapping integration",
+      "title": "Mapping import",
       "source": "community/mutel-mapping-review.md",
       "page": "mapping-review.html"
-    },
-    {
-      "title": "Data & attribution",
-      "source": "docs/terms-of-use.md",
-      "page": "terms.html"
     }
-  ]
+  ],
+  "redirects": {
+    "consensus.html": "contributions.html"
+  }
 }

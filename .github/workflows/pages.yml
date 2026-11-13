@@ -6,13 +6,18 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+  issues:
+    types: [opened, closed, reopened, labeled, unlabeled]
+  schedule:
+    - cron: "17 5 * * *" # daily, so discussion counts on the findings pages stay current
 
 permissions:
   contents: read
+  issues: read
 
 concurrency:
   group: documentation-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
@@ -27,10 +32,13 @@ jobs:
       - name: Check contribution records
         run: |
           uv run --no-project python scripts/community.py check
-          uv run --no-project python -m unittest discover -s community/tests
+          uv run --no-project --with markdown==3.7 python -m unittest discover -s community/tests
           uv run --no-project python scripts/build_checks.py community/templates/build-audit.json
       - name: Build public documentation
-        run: uv run --no-project --with markdown==3.7 python scripts/build_site.py
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        # A deploy needs the tracker; a failed read keeps the last published site.
+        run: uv run --no-project --with markdown==3.7 python scripts/build_site.py ${{ github.event_name != 'pull_request' && '--require-issues' || '' }}
       - name: Check links, assets and published file types
         run: uv run --no-project python scripts/check_site.py _site
       - name: Upload the documentation site only

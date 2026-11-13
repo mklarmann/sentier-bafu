@@ -1,32 +1,40 @@
-# Contribution lifecycle
+# Contributions
 
-1. **Capture:** link a partner observation, hackathon contribution, source report or reproduction. Record release, source format, background, method, functional unit, allocation, geography and boundary. Publish authorized summaries rather than confidential transcripts.
-2. **Propose a layer:** use a contribution record to pin the baseline, contribution implementation and payload, ownership, intended effect, required checks, reviewers and recipient project. Existing implementation hooks are used rather than a second matching engine.
-3. **Apply and test:** run baseline and candidate separately with identical source/background/method pins. Test integrity and linkage, source and unit identity, exchange completeness, scope, changed outputs and LCIA parity as appropriate. Preserve residuals and explain intended changes. Record missing inputs and skipped checks.
-4. **Review:** contributors and affected partners examine the evidence and dissent. All required reviewers must approve through linked public records. Every required validation check must have a passed result with evidence; incomplete runs cannot be promoted. Automated record checks verify documentation, not the truth of an approval or scientific result.
-5. **Return consensus:** prepare an evidence-backed recommendation for BAFU or ADEME. Distinguish upstream dataset defects, methodological improvements, local scenarios and importer defects. Send only with authorization; link delivery and responses and track implementation or reopening.
+A contribution is a proposal with evidence and a validation plan: a correction that is not yet a patch, a mapping, a model, a rebuilt inventory or a method variant. Some become community patches. A variant or a rebuilt inventory stays beside the patched release under its own name and never replaces BAFU's numbers.
 
-Contribution status: proposed → testing → reviewing → accepted / rejected / superseded. A useful scenario need not become an official correction. A merged importer PR alone is not dataset-provider endorsement.
+<!-- contributions-list -->
 
-No owners, reviewers or provider contacts are assigned without confirming their participation. An assistant's synthesis remains a proposal. Consensus is represented by explicit approval records with objections and evidence, not a vote count or silence.
+## What kind of change is it?
 
-## Layer classes
+Name what a change does to BAFU's release. Its class decides where it ends up. The classes are shared with lci-bafu-catalog.
 
-Name what a layer does to the canonical import; the class decides what it may
-be called and where it may be served (vocabulary adopted from lci-bafu-catalog):
-
-| Class | What it changes | Rule |
+| Class | What it changes | Where it ends up |
 |---|---|---|
-| **A** import normalisation | encoding, units table, flow-list binding — what every importer must do to read the release | documented in the importer, part of the canonical build |
-| **B** linking repair | a declared supplier that does not resolve (F3: location `ENTSO` for datasets registered as `ENTSO-E`) | restore the declared exchange, record the original declaration |
-| **C** re-declaration | a unit or metadata correction the release's own change log names (2026 v1: year → hour on 156 datasets) | applied with the change-log entry as evidence |
-| **D** value correction BAFU has not confirmed | a different amount, a rebuilt or disaggregated inventory, a forecast | **never under the canonical name**: a separate database that says what it replaces, how, and how well |
-| **E** consumer-side | a workaround in a consumer's own inventory | not a layer of this workspace |
+| **A** import fix | what every reader has to do: encoding, unit names, exchange numbers | in the import, recorded |
+| **B** linking repair | a declared supplier that does not resolve (F3: location `ENTSO` for datasets registered as `ENTSO-E`) | a community patch; the original declaration is kept |
+| **C** re-declaration | a unit or label that BAFU's own change log corrects (2026 v1: year → hour on 156 datasets) | applied, with the change log as evidence |
+| **D** value change or variant | an amount BAFU has not confirmed, a rebuilt or disaggregated inventory, a method variant such as residual electricity mixes | a separate database under its own name, **never under BAFU's**; it says what it replaces, how, and how well |
+| **E** downstream workaround | a fix in a user's own inventory | not in this repository |
 
-A class-D layer is the normal shape of a hackathon result. It can be excellent
-and still not be BAFU's number: it ships beside the canonical build, pinned to
-its upstream, with its own quality figures, and consumers choose it knowingly.
+Classes A to C go into the patched release; B and C answer a [finding](findings.md). Class D stays beside it. It can be excellent and still not be BAFU's number, so users choose it knowingly.
 
-## Bind review to the tested candidate
+## How a contribution moves
 
-Each approval includes `reviewer`, `evidence_url`, the complete `baseline` object and `layer_revision`. Acceptance checks these against the contribution record, so approval of an earlier revision cannot promote a changed candidate. A link records the actual reviewer decision; automatic validation does not manufacture it.
+Status: proposed → testing → reviewing → accepted, rejected or superseded.
+
+1. **Propose.** Add a record from the [template](templates/contribution.json): the release it builds on, the pinned implementation, the checks it must pass and who reviews it.
+2. **Build beside.** Build the baseline and the candidate separately, from the same pinned inputs. Never change the baseline in place.
+3. **Test.** Run the checks the record names and attach each result. A missing or failed check stays visible. See [evidence](build-validation.md) and [apply and test](application-and-testing.md).
+4. **Review.** The named reviewers approve the exact revision that was tested. Objections are recorded with their answer.
+5. **Decide.** An accepted contribution may become a recommendation to BAFU. Sending it needs an authorised sender, and the delivery and the answer are recorded.
+
+## What review means here
+
+- People approve. An automated check verifies the record, not the science.
+- An approval names the baseline and the revision it covers. Approving an earlier revision does not carry over.
+- No reviewer or contact is named without their agreement. Silence is not consent.
+- A merged pull request is not BAFU's endorsement.
+
+## Assessments
+
+Longer notes on single contributions: [C001, the Brightcon copied-process contribution](hackathon-assessment.md), and [C002, the mapping import](mutel-mapping-review.md).
