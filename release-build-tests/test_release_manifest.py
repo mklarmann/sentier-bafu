@@ -490,6 +490,18 @@ class WholeManifest(Folder):
         self.assertEqual(data["not_releasable"], ["the patch tool wrote no run summary"])
         self.assertIsNone(data["patches"])
 
+    def test_a_file_that_is_not_a_record_is_said_and_not_taken_for_a_missing_step(self):
+        write_run(self.out)
+        (self.out / "patched" / "release-summary.json").write_text('{"schema": "x"}')
+        data = rm.manifest(self.out, tag="t")
+        self.assertEqual(rm.shape_errors(data), [])
+        self.assertEqual(data["status"], "failed")
+        self.assertEqual(data["problems"], ["patched/release-summary.json is not a run summary"])
+        (self.out / "patched" / "release-summary.json").write_text("{trunca")
+        data = rm.manifest(self.out, tag="t")
+        self.assertEqual(data["problems"], ["patched/release-summary.json is not a JSON record"])
+        self.assertIsNone(rm.load(self.out / "not-there.json"))
+
     def test_no_tag_is_no_release(self):
         self.assertEqual(rm.release_errors(self.manifest(tag=None)), ["the manifest names no tag"])
 

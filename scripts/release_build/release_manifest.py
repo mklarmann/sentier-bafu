@@ -77,8 +77,23 @@ def sha256_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def load(path: Path) -> dict | None:
-    return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else None
+def load(path: Path, unreadable: list[str] | None = None) -> dict | None:
+    """A JSON file's content, or None if it isn't there or can't be read.
+
+    A file that is there and is not JSON (a step was interrupted while writing it) is
+    named in `unreadable`, so that it is reported and not taken for a step that never ran.
+    """
+    if not path.is_file():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except ValueError:
+        data = None
+    if not isinstance(data, dict):
+        if unreadable is not None:
+            unreadable.append(f"{path.parent.name}/{path.name} is not a JSON record")
+        return None
+    return data
 
 
 # --- The core: what the run summary says ------------------------------------------------
@@ -357,20 +372,26 @@ def manifest(
     config: dict | None = None,
 ) -> dict:
     """The manifest of the release run in `out` (as `build_release.py release` lays it out)."""
-    summary = load(out / "patched" / "release-summary.json")
+    unreadable: list[str] = []
+    summary = load(out / "patched" / "release-summary.json", unreadable)
+    if summary is not None and not {"release", "steps", "totals"} <= set(summary):
+        unreadable.append("patched/release-summary.json is not a run summary")
+        summary = None
     problems = [
         f"step {step['name']} {step['status']}: {step.get('reason') or 'see its log'}"
         for step in steps or ()
         if step["status"] not in ("completed", "skipped")
     ]
+    problems += unreadable
     if summary is None:
+        missing = [] if unreadable else ["the patch tool wrote no run summary"]
         return {
             **dict.fromkeys(CORE_KEYS),
             "format": FORMAT,
             "tag": tag,
             "status": "failed",
-            "problems": [*problems, "the patch tool wrote no run summary"],
-            "not_releasable": ["the patch tool wrote no run summary"],
+            "problems": [*problems, *missing],
+            "not_releasable": [*unreadable, *missing],
             "steps": steps or [],
             "check_against_previous": None,
             "brightway": {"provider": build_section(out / "provider"), "patched": None},

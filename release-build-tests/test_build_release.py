@@ -223,6 +223,116 @@ class Steps(unittest.TestCase):
             )
 
 
+class WholePathRecord(unittest.TestCase):
+    """`release` with its steps replaced by stand-ins: what is recorded when one fails."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.root = Path(self.temp.name)
+        (self.root / "release").mkdir()
+        self.calls = []
+        self.real_run = build_release.run
+        build_release.run = self.stand_in
+        self.addCleanup(setattr, build_release, "run", self.real_run)
+        self.addCleanup(self.temp.cleanup)
+        self.fails = set()
+
+    def stand_in(self, command, env=None, log=None, accept=(0,)):
+        """Every step 'runs' and writes one line to its log; some of them fail."""
+        name = log.stem
+        self.calls.append(name)
+        failed = name in self.fails
+        log.write_text(f"{name} went wrong\n" if failed else "fine\n")
+        return {
+            "command": command,
+            "seconds": 1.0,
+            "peak_memory_mb": 10.0,
+            "returncode": int(failed),
+        }
+
+    def release(self, *more):
+        arguments = ["release", str(self.root / "release"), str(self.root / "run"), "--no-layers"]
+        return build_release.main([*arguments, *more])
+
+    def steps(self):
+        record = json.loads((self.root / "run" / "release.json").read_text())
+        return {step["name"]: step for step in record["steps"]}
+
+    def test_a_failed_step_is_recorded_and_the_command_ends_with_1(self):
+        self.fails = {"patched-build"}
+        self.assertEqual(self.release(), 1)
+        steps = self.steps()
+        self.assertEqual(steps["provider build"]["status"], "completed")
+        self.assertEqual(steps["patched build"]["status"], "failed")
+        # the stand-ins wrote no build, so the reason is the build's own: it has no record
+        self.assertEqual(steps["patched build"]["reason"], "the build wrote no record")
+        # steps whose input is missing are not run, and say why
+        self.assertEqual(steps["written files"]["status"], "not run")
+        self.assertEqual(
+            steps["written files"]["reason"], "the patch tool wrote no patched release"
+        )
+        self.assertEqual(
+            steps["comparison"]["reason"], "a build has no audited database to compare"
+        )
+        self.assertEqual(
+            steps["exports"]["reason"], "the patched build wrote no database to export"
+        )
+        self.assertEqual(self.calls, ["provider-build", "patched-build"])
+        manifest = json.loads((self.root / "run" / "manifest.json").read_text())
+        self.assertEqual(manifest["status"], "failed")
+        self.assertIn("step patched build failed: the build wrote no record", manifest["problems"])
+        self.assertIn(
+            "step exports not run: the patched build wrote no database to export",
+            manifest["problems"],
+        )
+        self.assertEqual(
+            sorted(p.name for p in (self.root / "run" / "results").iterdir()), ["manifest.json"]
+        )
+
+    def test_a_step_that_fails_without_a_record_gives_the_end_of_its_log(self):
+        patched = self.root / "run" / "patched"
+        (patched / "release").mkdir(parents=True)
+        (patched / "release-summary.json").write_text("{}")
+        self.fails = {"written-files"}
+        # the run folder must be empty when the run starts: let the first stand-in write it
+        shutil.rmtree(self.root / "run")
+        real = self.stand_in
+
+        def writes_the_patched_release(command, env=None, log=None, accept=(0,)):
+            if log.stem == "patched-build":
+                (patched / "release").mkdir(parents=True)
+                (patched / "release-summary.json").write_text("not a summary")
+            return real(command, env, log, accept)
+
+        build_release.run = writes_the_patched_release
+        self.assertEqual(self.release(), 1)
+        steps = self.steps()
+        self.assertEqual(steps["written files"]["status"], "failed")
+        self.assertEqual(steps["written files"]["reason"], "written-files went wrong")
+        self.assertEqual(steps["patch run"]["status"], "completed")  # later steps still run
+        # a summary that can't be read is said, and the manifest is still written
+        manifest = json.loads((self.root / "run" / "manifest.json").read_text())
+        self.assertEqual(manifest["status"], "failed")
+        self.assertIn("patched/release-summary.json is not a JSON record", manifest["problems"])
+        self.assertIn("step written files failed: written-files went wrong", manifest["problems"])
+
+    def test_a_release_run_starts_in_an_empty_folder_and_needs_a_release(self):
+        (self.root / "run").mkdir()
+        (self.root / "run" / "something").write_text("x")
+        self.assertEqual(self.release(), 1)
+        self.assertEqual(self.calls, [])
+        shutil.rmtree(self.root / "run")
+        arguments = ["release", str(self.root / "missing"), str(self.root / "run"), "--no-layers"]
+        self.assertEqual(build_release.main(arguments), 1)
+        self.assertEqual(self.calls, [])
+
+    def test_a_layer_that_is_no_layer_stops_before_anything_runs(self):
+        layer = self.root / "C900-x.json"
+        layer.write_text("{}")
+        self.assertEqual(self.release("--contribution", str(layer)), 1)
+        self.assertEqual(self.calls, [])
+
+
 class Refusals(unittest.TestCase):
     def test_a_build_needs_a_release_folder_and_an_empty_output_folder(self):
         with tempfile.TemporaryDirectory() as temp:
