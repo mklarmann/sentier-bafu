@@ -253,7 +253,7 @@ def attribution(record, terms_url=None):
         f"{LABEL}. Source: {record['credit']}. This is a patched release of "
         f"{record['release']}, not BAFU's original data. Modifications ({changes or 'none'}) "
         "are described in MODIFICATIONS.md and MODIFICATIONS.json, which travel with this "
-        f"file. Passed on under terms equivalent to BAFU's Terms of Use{terms}."
+        f"file. Passed on under terms substantially equivalent to BAFU's Terms of Use{terms}."
     )
 
 
