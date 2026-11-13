@@ -106,6 +106,29 @@ These words are not used in a record or on the site: stage, triage, ledger, laye
 - A record names a person only as the reporter, as the person who repeated a measurement, or as the author or the authoriser of a community patch.
 - Record text is Markdown. It holds no raw HTML, no image and no heading, and every link is a full `https://` address. `check` refuses anything else.
 
+## Package work
+
+Changes to the `bafu_community_fixes` package (import fixes, patches, report, TUI) run in
+its locked environment on Python 3.14, separately from the checks above:
+
+```sh
+uv sync --locked
+uv run pytest
+uv run ruff check && uv run ruff format --check
+```
+
+These run on a small fixture. A pull request that touches the package is also run on
+BAFU's full release, and its checks show what it changes there; see
+[Full release run](community/ci/README.md#full-release-run) for what the job does and how
+to run the same locally.
+
+Start a patch from its finding with `uv run python scripts/new_patch.py NAME --finding F14`;
+it creates the patch and its test, and there is no list of patches to update. How to write
+the patch, record who authored and authorised it and add supporting data is explained in
+the README under [Writing a patch](README.md#writing-a-patch). Leave `authorised_by` out
+until the patch is approved; the pipeline runs it and warns. Rebuild the Brightway Flows data with its script rather than
+editing it (see [its README](src/bafu_community_fixes/data/README.md)).
+
 ## Work done with an AI agent
 
 These rules are stated in this repository today.

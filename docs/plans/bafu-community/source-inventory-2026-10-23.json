@@ -1,0 +1,880 @@
+{
+  "generated": "2026-10-23",
+  "purpose": "Source heads for the sentier-bafu#19 integration branch (codex/integrate-community-fixes-v2). Supersedes, for the integration only, the planning-pin inventory source-inventory.json, which is kept unchanged as the 13 October planning record. Refreshed after PRs #33 and #34 merged on 23 October; the earlier integration attempt on 14e718e is superseded.",
+  "sources": {
+    "workspace": {
+      "repository": "https://github.com/sentier-dev/sentier-bafu",
+      "ref": "main",
+      "commit": "a13bbbf2e4536e8de62eb8b4a9dd6a6a50faea41",
+      "file_count": 64,
+      "planning_pin": {
+        "commit": "87d14afb285c95e7dfd6c69c113a06a593e7f477",
+        "file_count": 52
+      },
+      "delta_since_planning_pin": {
+        "from": "87d14afb285c95e7dfd6c69c113a06a593e7f477",
+        "added": [
+          "AGENTS.md",
+          "CONTEXT.md",
+          "community/reconciliation.json",
+          "community/reconciliation.md",
+          "docs/adr/0001-consolidate-community-pipeline.md",
+          "docs/adr/0002-use-upstream-flow-decisions.md",
+          "docs/adr/0003-publish-static-review-snapshots.md",
+          "docs/adr/0004-separate-review-and-provider-status.md",
+          "docs/plans/bafu-community/README.md",
+          "docs/plans/bafu-community/migration.md",
+          "docs/plans/bafu-community/naming.md",
+          "docs/plans/bafu-community/source-inventory.json"
+        ],
+        "removed": [],
+        "modified": [
+          "README.md",
+          "community/findings.md",
+          "community/tests/test_records.py",
+          "scripts/community.py"
+        ],
+        "unchanged_count": 48,
+        "commits": [
+          "5f437e57da04cc5f3415aba29429de93dd5a7319 2026-10-13 Manuel Klarmann: Plan BAFU community consolidation and review experience",
+          "52023ef1b3945ee6d920a1c385b20511a7e1ea67 2026-10-13 Manuel Klarmann: Leave project naming to Chris and Laurenz",
+          "37ac9606a9034ed49c260366569e57beba524029 2026-10-13 Manuel Klarmann: Allow independent finding reconciliation",
+          "e5cc94e80054f99b5671e25290266db334980fee 2026-10-13 Manuel Klarmann: Keep naming decision separate from implementation",
+          "42ae378aaf849050a87a80e38659921b283f98eb 2026-10-13 Manuel Klarmann: Link implementation issues and Laurenz handoff",
+          "7754c4ece22d631e7c658c95c973886985235e59 2026-10-13 Manuel Klarmann: Leave priorities, assignments and follow-up to Chris",
+          "6c77bcdc68ea1f29c365f31de551a3cdbfa8c2aa 2026-10-21 Manuel Klarmann: Address Laurenz's review of the consolidation plan",
+          "05971ce889dde084b81d55dfc00cfd8a0372d3bb 2026-10-21 Manuel Klarmann: findings: F8 handled by community patch 0011; add F12 row",
+          "cd731ab8e1fe68b802c0297c93e6ed89da1c4d50 2026-10-21 Manuel Klarmann: findings: add F13-F16 from tngTUDOR's re-measured findings #28-#31",
+          "a75eed6f8f2eaf4a5dede4bc4e4c2b8bc3ae1dc8 2026-10-21 Manuel Klarmann: Reconcile findings and contributions with the community patches (#22)",
+          "15944a37ca4b5494ffa8f1df849437ab902f6cd8 2026-10-21 Manuel Klarmann: findings: correct F12 noise counts, F8 wording and the cabinet panel unit",
+          "7bd56c8482820ec5304ad870020a43151202cac3 2026-10-21 Manuel Klarmann: findings: F14 names the current RER offshore wind datasets",
+          "07e4d32bc1a886cadf25f98cdb8384fd9adf6bb5 2026-10-21 Manuel Klarmann: Merge remote-tracking branch 'origin/docs/f8-patch-0011-f12' into docs/reconcile-findings-patches",
+          "9c33eb676c8b1d222f73ea776fe195f7d983b8ae 2026-10-21 Manuel Klarmann: Reconciliation: address review of #34",
+          "c3d4e0b11d790ca0858aa4c012942c77c0638aa3 2026-10-21 Manuel Klarmann: Plan: address independent review",
+          "03b3056033b59afc8991c9e7554a47c647995860 2026-10-21 Manuel Klarmann: findings: F13 exposure in BAFU's published scores; 316743 has the same label error",
+          "50f04967fbe732aea7c6bc21a5079a18c1f69e7d 2026-10-21 Manuel Klarmann: Merge remote-tracking branch 'origin/docs/f8-patch-0011-f12' into docs/reconcile-findings-patches",
+          "6115a7d574217ba4bb2e47bfffd611110efc024e 2026-10-21 Manuel Klarmann: reconciliation: F13 follows the ledger (catalog#34, published-score exposure)",
+          "43371c41a27168725f2dd631facbfe1e12705da7 2026-10-21 Manuel Klarmann: findings: add F17, swapped ecotoxicity sub-indicator columns in the LCIA workbook (#35)",
+          "a967324ac277c2f772d8486c17cbfd8c1894040f 2026-10-21 Manuel Klarmann: Merge remote-tracking branch 'origin/docs/f8-patch-0011-f12' into docs/reconcile-findings-patches",
+          "35154e040ef7440841eefc9b49e4ddde8371e34e 2026-10-21 Manuel Klarmann: reconciliation: add F17 (#35)",
+          "d4232ead35de055111752287c15babd1626d54b4 2026-10-21 Manuel Klarmann: reconciliation: C001 follows the 21 October checks (#37)",
+          "af92dbcb7fd5abafac25a2c3e6504f24cc533e2c 2026-10-22 Manuel Klarmann: Plan: drop agent docs and the files the issues replace",
+          "14e718ee2c0e496d7dad104eda98dcaf36abac19 2026-10-23 mklarmann: Merge pull request #27 from sentier-dev/codex/bafu-community-plan",
+          "1eabfaedaa270b5534996ed42b77e9dcca23fb36 2026-10-23 mklarmann: Merge pull request #33 from sentier-dev/docs/f8-patch-0011-f12",
+          "a13bbbf2e4536e8de62eb8b4a9dd6a6a50faea41 2026-10-23 mklarmann: Merge pull request #34 from sentier-dev/docs/reconcile-findings-patches"
+        ],
+        "explanation": "Planning PR #27 (merged 23 October 2026) added the consolidation plan, four proposed ADRs, CONTEXT.md and AGENTS.md and rewrote the README's consolidation section. PRs #33 and #34 (merged 23 October 2026) updated the findings ledger (F8 handled by patch 0011; F12-F17 added), added the reconciliation receipt community/reconciliation.{json,md} and its checks in scripts/community.py and community/tests/test_records.py, and closed #22. No earlier file was removed."
+      },
+      "delta_since_previous_integration_base": {
+        "from": "14e718ee2c0e496d7dad104eda98dcaf36abac19",
+        "added": [
+          "community/reconciliation.json",
+          "community/reconciliation.md"
+        ],
+        "removed": [],
+        "modified": [
+          "community/findings.md",
+          "community/tests/test_records.py",
+          "scripts/community.py"
+        ],
+        "unchanged_count": 59,
+        "commits": [
+          "05971ce889dde084b81d55dfc00cfd8a0372d3bb 2026-10-21 Manuel Klarmann: findings: F8 handled by community patch 0011; add F12 row",
+          "cd731ab8e1fe68b802c0297c93e6ed89da1c4d50 2026-10-21 Manuel Klarmann: findings: add F13-F16 from tngTUDOR's re-measured findings #28-#31",
+          "a75eed6f8f2eaf4a5dede4bc4e4c2b8bc3ae1dc8 2026-10-21 Manuel Klarmann: Reconcile findings and contributions with the community patches (#22)",
+          "15944a37ca4b5494ffa8f1df849437ab902f6cd8 2026-10-21 Manuel Klarmann: findings: correct F12 noise counts, F8 wording and the cabinet panel unit",
+          "7bd56c8482820ec5304ad870020a43151202cac3 2026-10-21 Manuel Klarmann: findings: F14 names the current RER offshore wind datasets",
+          "07e4d32bc1a886cadf25f98cdb8384fd9adf6bb5 2026-10-21 Manuel Klarmann: Merge remote-tracking branch 'origin/docs/f8-patch-0011-f12' into docs/reconcile-findings-patches",
+          "9c33eb676c8b1d222f73ea776fe195f7d983b8ae 2026-10-21 Manuel Klarmann: Reconciliation: address review of #34",
+          "03b3056033b59afc8991c9e7554a47c647995860 2026-10-21 Manuel Klarmann: findings: F13 exposure in BAFU's published scores; 316743 has the same label error",
+          "50f04967fbe732aea7c6bc21a5079a18c1f69e7d 2026-10-21 Manuel Klarmann: Merge remote-tracking branch 'origin/docs/f8-patch-0011-f12' into docs/reconcile-findings-patches",
+          "6115a7d574217ba4bb2e47bfffd611110efc024e 2026-10-21 Manuel Klarmann: reconciliation: F13 follows the ledger (catalog#34, published-score exposure)",
+          "43371c41a27168725f2dd631facbfe1e12705da7 2026-10-21 Manuel Klarmann: findings: add F17, swapped ecotoxicity sub-indicator columns in the LCIA workbook (#35)",
+          "a967324ac277c2f772d8486c17cbfd8c1894040f 2026-10-21 Manuel Klarmann: Merge remote-tracking branch 'origin/docs/f8-patch-0011-f12' into docs/reconcile-findings-patches",
+          "35154e040ef7440841eefc9b49e4ddde8371e34e 2026-10-21 Manuel Klarmann: reconciliation: add F17 (#35)",
+          "d4232ead35de055111752287c15babd1626d54b4 2026-10-21 Manuel Klarmann: reconciliation: C001 follows the 21 October checks (#37)",
+          "1eabfaedaa270b5534996ed42b77e9dcca23fb36 2026-10-23 mklarmann: Merge pull request #33 from sentier-dev/docs/f8-patch-0011-f12",
+          "a13bbbf2e4536e8de62eb8b4a9dd6a6a50faea41 2026-10-23 mklarmann: Merge pull request #34 from sentier-dev/docs/reconcile-findings-patches"
+        ],
+        "explanation": "The first integration attempt (codex/integrate-community-fixes, merge dc50192) was built on 14e718e. PRs #33 and #34 merged after it; this integration is redone on a13bbbf."
+      },
+      "files": [
+        {
+          "path": ".github/ISSUE_TEMPLATE/bafu-data-finding.yml",
+          "sha256": "0a5619c7a703f98e25609bf51b6bbfeffb3d07b843a69a0f4c42ce1717987030",
+          "git_blob": "c145a6dbd87475bb00f0f2ca4124eab7914eee8f"
+        },
+        {
+          "path": ".github/ISSUE_TEMPLATE/community-contribution.yml",
+          "sha256": "69338e7f5575ef4324cd610e08df3feed21355f1bcb5d986e5ffe0a4230fec6b",
+          "git_blob": "0bd6ba3367632fa660da70f5987e3fac461d6074"
+        },
+        {
+          "path": ".github/ISSUE_TEMPLATE/discussion.yml",
+          "sha256": "55060f640c26bbc8f17e87c8d80e2db044ea9293d8b705c7a4d261a6b1d31bdf",
+          "git_blob": "ae39647d1c8d11e5eba4a81aa28c247d7007eab8"
+        },
+        {
+          "path": ".github/PULL_REQUEST_TEMPLATE.md",
+          "sha256": "aa968dd216c779b411945dd20008f33ba33e2a7ae308056db928c071934c69c7",
+          "git_blob": "cb0f21de5a2c7022cb7400c7cb68a0048d66d69e"
+        },
+        {
+          "path": ".github/workflows/pages.yml",
+          "sha256": "7753928c5a09039b63bb4818439bf2d9500b7e03cade17000813c346c29c75b1",
+          "git_blob": "865502c0c5a3a8b4eefaf2c3a97a0cb081939a5e"
+        },
+        {
+          "path": ".gitignore",
+          "sha256": "e61075ad0b494e2f98eaf864f0f4781e45b577703a62cc89869ad638dd231eb1",
+          "git_blob": "7897bef8ed37d85ae3f255dea0b5384110fe87f6"
+        },
+        {
+          "path": ".gitlab-ci.yml",
+          "sha256": "656e89c0544a5692e9cd6800095264bf0c4decb4fd7e65b3ff951af2e5cca5c6",
+          "git_blob": "8896977ab576c0f1e0718235d227c26a2a91a9e4"
+        },
+        {
+          "path": "AGENTS.md",
+          "sha256": "5825cea761bf2c2547e98cfe4def72588e27041250757b3cffa7d7cdd6846618",
+          "git_blob": "463b4fa20069448acf0603a3cb2d7bed179b8928"
+        },
+        {
+          "path": "CONTEXT.md",
+          "sha256": "797f54de3a1fcfd65266b3ede1604c1fa7295a34f3a71c07403d7ed27f37a2d5",
+          "git_blob": "14cb71fdede96a6a47875db2ea7ff5914a2a9fb7"
+        },
+        {
+          "path": "CONTRIBUTING.md",
+          "sha256": "245d19cb88795199fc46ebfdaa9e0e46d7a6edd76e6644eb0dba9dd04e88b524",
+          "git_blob": "296f642fc5159352fcfdb988702eaec81ede32ba"
+        },
+        {
+          "path": "LICENSE",
+          "sha256": "3778c928d02a75605760c2d18453905c653f5a693118eea4ccc23b47eeea4af3",
+          "git_blob": "86e21e18c2936556f00304abcad82fc791cf9f29"
+        },
+        {
+          "path": "README.md",
+          "sha256": "daaf864b3c49146f8973e308f9b470eb3e09098a9f3c16fbefd687e08983904d",
+          "git_blob": "1cb3cdd6bca807866acb807535aa005e4b247408"
+        },
+        {
+          "path": "community/README.md",
+          "sha256": "b6e38948ecfa0ecaa58e687b5e261f214aa6475743d7392f185cb26824660ec1",
+          "git_blob": "972332c0f00b04ee9b4dfaa90fbfc30b67d76196"
+        },
+        {
+          "path": "community/application-and-testing.md",
+          "sha256": "3773460caf2f382a073c814b61f634386008783e7ffbc72a2ede1d7539a9c808",
+          "git_blob": "3c40708f57b233cf590399eadde1d70ab061cc56"
+        },
+        {
+          "path": "community/build-validation.md",
+          "sha256": "cfbaed68dbb336df14a4f2b15d5f778525628dc80592c8277c2d0a18f8ea3d78",
+          "git_blob": "ea82d76378f3d6a51cc73d9a58bcf0c326e58e3c"
+        },
+        {
+          "path": "community/ci/README.md",
+          "sha256": "399fd6d83153f1232241d1fbb4dd646eaf043a00898193519180b602b6ef0921",
+          "git_blob": "534e1db21a83c8edddff643f00428bcab380857c"
+        },
+        {
+          "path": "community/ci/github-actions.yml",
+          "sha256": "a9a30956919d99b53867cbb8b52470c2aa58308cfde1f6fab7b8eb3803bd7866",
+          "git_blob": "499e56e71db0924516ff7a3c50f12e17b26aae42"
+        },
+        {
+          "path": "community/contributions/C001.json",
+          "sha256": "65965d86474457a94cfa4167828a33e8ef252d1a118cecdc05b7450d0c2fc132",
+          "git_blob": "79f980f98e55897ba48dedfd1666258fa2607f52"
+        },
+        {
+          "path": "community/contributions/C002.json",
+          "sha256": "defba80c2779a298de21b1d2f3c0eeeb4d2370be8804b79f467715f1008116c7",
+          "git_blob": "850cd9ee7b710a3c4b36bd21ab1507c991f865f3"
+        },
+        {
+          "path": "community/findings.md",
+          "sha256": "3bd13a46db7222a06a9049f41ac3130d862b715061aef8efe750e54b76d2346b",
+          "git_blob": "ded15b2740100a889f0c04c5ee3f2ce32ef49285"
+        },
+        {
+          "path": "community/hackathon-assessment.md",
+          "sha256": "cf377168201ba33f68ff14111c92cfe42b0ef830c3751d7350ae27bd13d2e19f",
+          "git_blob": "ba1e1e8be85be538c8be16ceb1b7fac2e141ba97"
+        },
+        {
+          "path": "community/mutel-mapping-review.md",
+          "sha256": "38c94d21e668666d7dbb85f952e4ce0bb5e5260f7d555841c1ece69d4dfcddc5",
+          "git_blob": "580bb6debbdfa71595ea6294a920503a2f7564ae"
+        },
+        {
+          "path": "community/recommendations/README.md",
+          "sha256": "d83116d273a1d48293cea31edce7cc361977cc01c00452b0f68c3f626b90d70b",
+          "git_blob": "f9e987b1b49a32acb1f0d97dfa01e4727cb59e66"
+        },
+        {
+          "path": "community/recommendations/tracker.json",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+          "git_blob": "fe51488c7066f6687ef680d6bfaa4f7768ef205c"
+        },
+        {
+          "path": "community/reconciliation.json",
+          "sha256": "11047a6c9c4278f69b12faaa841af0f9b8386a684783e502e07edbe8e16e40cd",
+          "git_blob": "e6e96857bc8a91fdd613886d036e95fb089cc613"
+        },
+        {
+          "path": "community/reconciliation.md",
+          "sha256": "b98a4c0e8ebeae8c2eea1e9cf61d60b9d9a3ebd8767cdfe8ef128a1fa065a651",
+          "git_blob": "3639516bdc629232c79d45b197d91c5a657aab9d"
+        },
+        {
+          "path": "community/runs/bafu-export-audit.json",
+          "sha256": "416fa3d8b07085dfeaf0ad76cb1e4d44d7d21c9f77e79fb665a05a3337f35258",
+          "git_blob": "1cfb6037e08bb94178578883f1017758dc37ae34"
+        },
+        {
+          "path": "community/runs/hackathon-roundtrip.json",
+          "sha256": "cc29ac28360d9b9318dba455ed9bdbdd739342751aa622a6678cf73cb60719af",
+          "git_blob": "535a50274e0765dd6f6c4de3a37895858f7e58ea"
+        },
+        {
+          "path": "community/runs/mutel-mapping-audit.json",
+          "sha256": "fc1450f2748265494fb9b2ea1a2f00ec124b990fe12627dcc04d1ab73772bad3",
+          "git_blob": "b32ca8ac11a9021a8ef3208ecc7b84e92778e76a"
+        },
+        {
+          "path": "community/templates/build-audit.json",
+          "sha256": "d744340fa52348f9076bb1f9bcda72ff2cbda6e5b82f652a31c640863bf24612",
+          "git_blob": "fb48b768c6e2da335f859c79a02ccbcdc6615220"
+        },
+        {
+          "path": "community/templates/contribution.json",
+          "sha256": "1ab8f08057a855593afd4f5cdd1d97b1e54bcf542b3f7871936d35edbdf9744a",
+          "git_blob": "00b907f5fb32d6e6c792b99704467ded3556abaf"
+        },
+        {
+          "path": "community/templates/intake.md",
+          "sha256": "c2a89495022065a7ff00d35e5ad6b24cc5bf8f44311dda583ba6fcf964e0100d",
+          "git_blob": "519c819ee311360eddcaffcae1302315ad88ca49"
+        },
+        {
+          "path": "community/templates/recommendation.md",
+          "sha256": "67d11ed7cb3fde833e445a0fcc5977a321137108e334d102631737f5db38e199",
+          "git_blob": "76fc9c06975ec60ca794712440547bd2b2c97bfb"
+        },
+        {
+          "path": "community/templates/run-summary.json",
+          "sha256": "3611be5de189a5ddc57b25c18809a18c78ea59f4442a2b3fd0c5cb40ae08c61c",
+          "git_blob": "cf5dbcbbd741240a798ffea7dfe2e25d8edd700b"
+        },
+        {
+          "path": "community/tests/test_build_checks.py",
+          "sha256": "684c244d8eb67db683e9678196d7cc25aa33d165505a72ab382ba6355858dc8c",
+          "git_blob": "866975dbfdcaf64dc47ab76af171564e0778e850"
+        },
+        {
+          "path": "community/tests/test_flow_mapping_audit.py",
+          "sha256": "1d74aeadd2d6f0d133ac11ad7a509ee9db28afd211c8db19c917ac432fe8e578",
+          "git_blob": "2edd64d836b04f6dc6f6293429ee92172d1e6524"
+        },
+        {
+          "path": "community/tests/test_records.py",
+          "sha256": "db4d69996dec0c227cef26a625d1a86aacd2705775427cb4bcefe21755e48da9",
+          "git_blob": "abaad80acb0cbc118f180af1d327d807df7e1690"
+        },
+        {
+          "path": "community/workflow.md",
+          "sha256": "0959ee7a4272c8c1da304f907ddf87ea07a04844b8a685505f1a774904bfadaa",
+          "git_blob": "8c0ceb282931f3b46bfed3bc62c7c84515cefd4f"
+        },
+        {
+          "path": "docs/adr/0001-consolidate-community-pipeline.md",
+          "sha256": "94721c0138fa25061ce844d4524851f7d2edbcbe2498da07901f6c1b8d7ad896",
+          "git_blob": "b5a00a1360f0fd03d96bc606cdcf48c867c8640b"
+        },
+        {
+          "path": "docs/adr/0002-use-upstream-flow-decisions.md",
+          "sha256": "17c3eca7279149ceb715d780af70ebd4f9423aad59b0e18e3b9dbd8aa75af6ef",
+          "git_blob": "7c78934e0ef0868294b8959d263968e0bd95410e"
+        },
+        {
+          "path": "docs/adr/0003-publish-static-review-snapshots.md",
+          "sha256": "cccc39a5c37811b07103b77af8ef72f10674eb1397d9b6781280319a73652b47",
+          "git_blob": "c74708cdc3f4a0fff4d40c4d85ee18fabd483e6e"
+        },
+        {
+          "path": "docs/adr/0004-separate-review-and-provider-status.md",
+          "sha256": "1eae3db0cfa0d369ebd13c48b9ff377ee0f5f731da647b22781bb32bef661fd9",
+          "git_blob": "eee096f0028734c8c14774ccfb693f10910e4310"
+        },
+        {
+          "path": "docs/plans/bafu-community/README.md",
+          "sha256": "f35f8b9573fb573275d67fe42bd5b32c4bfaad11adc822d524f6ed63486528fa",
+          "git_blob": "3f47c10c6b6d7b563ed2bffcff8141626e1e1f46"
+        },
+        {
+          "path": "docs/plans/bafu-community/migration.md",
+          "sha256": "9e93e9521ca3dafd28d6eef8b3870319f69d5ca0a9fef2556255620230bd29bd",
+          "git_blob": "adf5c0faf65d4dcbb7488379ef74be67972852c6"
+        },
+        {
+          "path": "docs/plans/bafu-community/naming.md",
+          "sha256": "f668d7a77aba9643caac6ed8093578455a86028fce599c62f0faa459c6af242a",
+          "git_blob": "c5706bbfcd2c5c48c9e489e2af34822657e7da8d"
+        },
+        {
+          "path": "docs/plans/bafu-community/source-inventory.json",
+          "sha256": "fb1477fd2e6808da0cacfb21d820d32c0b5608bf41553ec7e4362978f6d70888",
+          "git_blob": "f15b448becc143db7fb91c41ed4cb8608ef02ea0"
+        },
+        {
+          "path": "docs/terms-of-use.md",
+          "sha256": "bed48b95c18074ba8400839e194d307828585291951f212aaa98b6fdad9e72a1",
+          "git_blob": "5c21d9e39b289683538bd448967fbe667d3191c3"
+        },
+        {
+          "path": "evidence/index.json",
+          "sha256": "6cfd78bb064720041fa7059cb26ff6173e6aa29cf9f67f8236f984ea60e36b2a",
+          "git_blob": "4357624324f8225dd1906be8034ce88d482e173a"
+        },
+        {
+          "path": "evidence/index.md",
+          "sha256": "566c09be23f02cd29921cf48cce3460f937667c0cd4bd2fb0dd945f70af3c8b7",
+          "git_blob": "7b8de8d330d656ae190fb72ca3270bc5efd3c89a"
+        },
+        {
+          "path": "scripts/audit_flow_mapping.py",
+          "sha256": "324ad21757774dffda578d7a00e2be55534709c5c72ea6c86f55d313de2223e2",
+          "git_blob": "62cd34f8cc7163114bd05af520a621cc1e11f563"
+        },
+        {
+          "path": "scripts/audit_registry.py",
+          "sha256": "1acb1be4021ff248bf1c14f8abbfbef8bc4350bebf0281ac925a2891335dec22",
+          "git_blob": "3c2cff4d4e20aedf88ed0be95230bc1dd73be78a"
+        },
+        {
+          "path": "scripts/build_checks.py",
+          "sha256": "5f39ed5a1704e4461d04d9d095023b2f7e3aadded1d6f0def89d68ca7623ec47",
+          "git_blob": "dcd25fcf38ba3d7d082eb493545cd4310c073da9"
+        },
+        {
+          "path": "scripts/build_site.py",
+          "sha256": "7589295c7b2bbee0225183abfa0fe1b733e6cb28a0d1fa1c4d3c4ad9b0d11093",
+          "git_blob": "58009b0dc1fe8388edd51bc4cfa72d3d9fdac38f"
+        },
+        {
+          "path": "scripts/check_site.py",
+          "sha256": "1bb00fda8887d7fb670df7f9921ef1c96590616ef25e06335ed788291f9a9eaf",
+          "git_blob": "ed126ddbc8a32308288fe712e428e0546fc4deb3"
+        },
+        {
+          "path": "scripts/community.py",
+          "sha256": "a460506c4fe26fd043f20d3f81ece278eeea51a367b33ecb0b6aa1e6e45a101d",
+          "git_blob": "494cf9e7c180df3d2aee5d9720f58ef3205aff5c"
+        },
+        {
+          "path": "site/README.md",
+          "sha256": "1659e3a5e8beacc4e2243280fbc396696c7d71cd9aec4206282a5fb07cd9d5c1",
+          "git_blob": "b235371e578833fd83066aedc6f7768b4ec8432c"
+        },
+        {
+          "path": "site/assets/OFL.txt",
+          "sha256": "ee9491ad3ea5d390878695bd6cce49beb3cacd5c4312f8ab574b541e9f7afa21",
+          "git_blob": "4950a581beaa98348962ef525d7857166fa32dbd"
+        },
+        {
+          "path": "site/assets/dds-logo.svg",
+          "sha256": "7450c8fb999152f7dec6922c1d842fbb7cc39e1ce3fb14809bc2645f97d0535f",
+          "git_blob": "ab98541c1ab03bcc9e059feab22545c73b9ad97c"
+        },
+        {
+          "path": "site/assets/favicon-32x32.png",
+          "sha256": "f0fd5467f05e700ed547e301209962464bc2a84259167c46ab4ed52ebc5dcd31",
+          "git_blob": "4df8f3048c40c13851a495ff0f240daecb205e82"
+        },
+        {
+          "path": "site/assets/nunito.ttf",
+          "sha256": "bb55a5ca5c2042335b3991af27c4d0705d0ef41cac6164ac737fd8f2a1e85207",
+          "git_blob": "2ec1f4b0676c83ef33049db87b311171699e9192"
+        },
+        {
+          "path": "site/config.json",
+          "sha256": "bace154f08e9d96cefa63ff7f4e47ee47e1318ed146606ca9f518cbd90f0d302",
+          "git_blob": "93338100f9d0a4cc3f46fc045c3cb3a817c7936e"
+        },
+        {
+          "path": "site/import.md",
+          "sha256": "f9a5939224af37425a81555403a5ae7a3ab6e03d4df7919ea3e07d1c124e9282",
+          "git_blob": "1260681a1338c6467ad726998ad0bc05f56e9201"
+        },
+        {
+          "path": "site/style.css",
+          "sha256": "30823f1b0e0fc5b3aa23d24641dd0930821e3cee9994a8617f3c93e98fbafd6a",
+          "git_blob": "ebfb0e31423ddccc65b190678a7833608bb9dad3"
+        },
+        {
+          "path": "tests/test_audit_registry.py",
+          "sha256": "a661852e60a602f977a2ef3661e9dc892ed9020b68861abcc5af5b3292f8e38c",
+          "git_blob": "f51e0d077d872027b830cc7ceb7244a60e4a35e7"
+        }
+      ]
+    },
+    "community": {
+      "repository": "https://github.com/sentier-dev/bafu-community-fixes",
+      "ref": "main",
+      "commit": "053c799a4d3e129747f47d6775ea88647c0bec78",
+      "file_count": 65,
+      "planning_pin": {
+        "commit": "15bbfbb66c5e8bd864623d61a1169402838eaed8",
+        "file_count": 64
+      },
+      "delta_since_planning_pin": {
+        "from": "15bbfbb66c5e8bd864623d61a1169402838eaed8",
+        "added": [
+          "src/bafu_community_fixes/patches/p0011_flag_aggregated.py"
+        ],
+        "removed": [],
+        "modified": [
+          "README.md",
+          "src/bafu_community_fixes/import_fixes.py",
+          "tests/test_import_fixes.py",
+          "tests/test_patches.py",
+          "tests/test_pipeline.py",
+          "tests/test_report.py"
+        ],
+        "unchanged_count": 58,
+        "commits": [
+          "03d077cd867be49f26597816cac911844318e0a1 2026-10-13 Chris Mutel: Add patch 0011: mark 40 aggregated datasets as system terminated",
+          "311f41392303344ff1b6d916f049f74ca11db582 2026-10-15 Chris Mutel: Patch 0011: state the schema deviation and the type 2 count correctly",
+          "3385463dfa9f8cd8f55556f40058281ee31b2528 2026-10-15 Chris Mutel: Patch 0011: say in the error that type 1 or 2 is expected",
+          "bd0186076b782be5917816227a0fa98046da1de2 2026-10-15 Chris Mutel: Test patch 0011's type guard and idempotence",
+          "9ad27767bdf1ee8bcf5225e2f2e0d63711de9794 2026-10-15 Chris Mutel: Merge pull request #5 from sentier-dev/flag-aggregated-datasets",
+          "02aed6d84ffa38f3b6a27dc823e31e9404e8e9b2 2026-10-15 Chris Mutel: Keep BAFU exchange numbers; give only duplicates a dummy number",
+          "2118d4b9e6f08e7f45a6b4158d978c5fd8c34d5c 2026-10-16 Chris Mutel: Renumbering: accept only ASCII digits as exchange numbers",
+          "6f657ad1fa88b5cd9f1ac75a1587790b929885ff 2026-10-16 Chris Mutel: Renumbering: refuse allocations that refer to an invalid number",
+          "beffe01908738b466c0cf603502e39275bcced0b 2026-10-16 Chris Mutel: Renumbering: keep a number in the dummy range only if it is a recorded dummy",
+          "053c799a4d3e129747f47d6775ea88647c0bec78 2026-10-18 Chris Mutel: Merge pull request #6 from sentier-dev/keep-exchange-numbers"
+        ],
+        "explanation": "PR #5 (merged 15 October) added patch 0011-flag-aggregated with tests. PR #6 (merged 18 October) changed the renumber-exchanges import fix to keep BAFU exchange numbers and give only duplicates a dummy number, with README and test updates; this changes XML output relative to 15bbfbb. PR #7 (README wording about dummy numbers) was closed unmerged and is not part of 053c799. Unchanged since the first integration attempt."
+      },
+      "files": [
+        {
+          "path": ".github/workflows/ci.yml",
+          "sha256": "3d2371cbad13fa3034d44032eabd2179963ad75453ba76b715d21b66c186299f",
+          "git_blob": "f8e3fcfa0c42f9d375b86fb961c286f43005b312"
+        },
+        {
+          "path": ".gitignore",
+          "sha256": "929210f21bc218e4ceb240f4f944903cf586c3abda21e07fdd56803d67e8974e",
+          "git_blob": "97bbc2f02e33a1cba762e0e6a16e9b7a3786fbe1"
+        },
+        {
+          "path": ".python-version",
+          "sha256": "a876e0b10411037a012498b9fe18d9bc1df32ed8b722a13564dc944ddcfd9135",
+          "git_blob": "6324d401a069f4020efcf0ff07442724b52f47c2"
+        },
+        {
+          "path": "LICENSE",
+          "sha256": "3778c928d02a75605760c2d18453905c653f5a693118eea4ccc23b47eeea4af3",
+          "git_blob": "86e21e18c2936556f00304abcad82fc791cf9f29"
+        },
+        {
+          "path": "README.md",
+          "sha256": "7785080ad71f8820896000f7e2f364ca59393a3fb45f6f3f43d29c3a735d6d9f",
+          "git_blob": "d9a6468d447f11ebec733d651559233a568fc686"
+        },
+        {
+          "path": "pyproject.toml",
+          "sha256": "3ab7a0b44c971523d704c20cd6cc5f48758ff650da58eda35f159014eac46fac",
+          "git_blob": "d498069ea5a40443c7f4b72a261d8f23e6704777"
+        },
+        {
+          "path": "scripts/build_brightway_flows_data.py",
+          "sha256": "e3dbece69230e77af0f3f4f586dd4790ccd750f30a2a9aa30450bfe42fac7e19",
+          "git_blob": "9702844ad287e299288606a89a100005a45e8ff4"
+        },
+        {
+          "path": "src/bafu_community_fixes/__init__.py",
+          "sha256": "079649a7973a9c07834208f2b0866ac5cf8674b5cfcc41069b9d2e29ac8b9d72",
+          "git_blob": "37b6c54f09f761eb5463e17f36a14c2e85b53646"
+        },
+        {
+          "path": "src/bafu_community_fixes/brightway_flows.py",
+          "sha256": "094198bf3644ced8de83d29808dc5a16f48f4bd07f3fb9fbe54c635cd44f13b7",
+          "git_blob": "bf00d153624b91ddb14d531d03bf5d3e956ab5dc"
+        },
+        {
+          "path": "src/bafu_community_fixes/changes.py",
+          "sha256": "c9c1424a313bb745c9789bfdd49e573bb11f81e031fe8fc93dda79a3a64a5340",
+          "git_blob": "7b4c67f1751db91e2d438d7ef165b253ce7d6610"
+        },
+        {
+          "path": "src/bafu_community_fixes/cli.py",
+          "sha256": "394b0e42b15300032d81c3b6083a82bb28e47bcae677c7e703b92fbd0c992f0a",
+          "git_blob": "9292b7ce19c58cc35027b462c05c4136ab923642"
+        },
+        {
+          "path": "src/bafu_community_fixes/compliance.py",
+          "sha256": "43a5f59d40e8ccd5f7ba4749cade17c061f3feca5c332e45acacd5e5a1c6b117",
+          "git_blob": "d17201f942d05fde08e825e73998339b3a6e1d75"
+        },
+        {
+          "path": "src/bafu_community_fixes/data/README.md",
+          "sha256": "1f6d0cbb789edc50bf0b788ea142473220bb910a8c32ea6da32c05a9c348d3f5",
+          "git_blob": "d5414812fd9a83b94d111dbea3d1982e9833e9b7"
+        },
+        {
+          "path": "src/bafu_community_fixes/data/__init__.py",
+          "sha256": "d20b20c375ccbaa174cf93dc9d5c23fc63d6389daa3d3960f20c6e864ed786b5",
+          "git_blob": "29aaa41d398c9fba853a1753bb5c7d80e222312d"
+        },
+        {
+          "path": "src/bafu_community_fixes/data/brightway-flows-corrections-bafu-2026-v1.json",
+          "sha256": "107582860aaee25e1e6de327681abcf48f742910bbec6f4aefd1893e9dab3048",
+          "git_blob": "56301d2dec70bb9c55b0e2359bff4d6b6c605f8f"
+        },
+        {
+          "path": "src/bafu_community_fixes/data/brightway-flows-crosswalk-bafu-2026-v1.csv",
+          "sha256": "e9985eedbe6ffda81f1c2eaa9ce40442b88c3f278a86fb31fe8366590aa1347b",
+          "git_blob": "efb1b8b2a53410b33923e1973b9dcbcb77945018"
+        },
+        {
+          "path": "src/bafu_community_fixes/download.py",
+          "sha256": "eb1ff4b0c878b3fe382780210ee18dc679b1f8f3d68118a3fc78e57cce9136b0",
+          "git_blob": "63a8aed6e5240814c299388bcb68d6a6844e5dc9"
+        },
+        {
+          "path": "src/bafu_community_fixes/import_fixes.py",
+          "sha256": "ea0f3def3a31fa1275b6bf39e27a5f6fdfcc33d4bfa39be3a52de12a4738b6e9",
+          "git_blob": "39aa3ce6410c59d87b1d20dd6d77ea471a6ddb1f"
+        },
+        {
+          "path": "src/bafu_community_fixes/models.py",
+          "sha256": "2407b2e33feab1c3cdcdf238d11ab5866a5f4bd2a6dfe99e07df70c019c300a9",
+          "git_blob": "1d10a0b5d164b5602737f4b07b6e3835ffd2ceb9"
+        },
+        {
+          "path": "src/bafu_community_fixes/patches/__init__.py",
+          "sha256": "a56469d8eef953f449a25242b772b35d884d3a1f460274f830c2536a596f19b6",
+          "git_blob": "9a4f0bf71b509322ad4ae39be225758bf6a290c9"
+        },
+        {
+          "path": "src/bafu_community_fixes/patches/p0001_strawberry_polyethylene_disposal.py",
+          "sha256": "2bb74cb104cfeaf6560def67fb5cea0723a55358c14ba8429763d781dc0131ee",
+          "git_blob": "7dd51876ece83a50c440c1fe7fa69cb4248aad6f"
+        },
+        {
+          "path": "src/bafu_community_fixes/patches/p0002_supplier_locations.py",
+          "sha256": "79b13e9b7706a18a1bfd5ea615eba2227ee0ff6590ac0b232fe5e4a1307e773d",
+          "git_blob": "f313f7790d22c583bee76728f3f9d967c60ac3b0"
+        },
+        {
+          "path": "src/bafu_community_fixes/patches/p0003_flag_not_maintained.py",
+          "sha256": "13a12931a4ed7d32d77ae9d1e1d8762eb5e477b65978b567a14f1b5cf99a96dd",
+          "git_blob": "7b11ac5ed7f2639fc55da0990098282d65eeda1e"
+        },
+        {
+          "path": "src/bafu_community_fixes/patches/p0004_flow_cas_numbers_added.py",
+          "sha256": "c03eeeee2e77e28e24ecc760d3c2c418bd28dc7c7a248cf765e8b3aa19e5377f",
+          "git_blob": "9382909eb5ac22aaa9f85c8c36bc94fab37eeaa8"
+        },
+        {
+          "path": "src/bafu_community_fixes/patches/p0005_flow_cas_numbers_replaced.py",
+          "sha256": "a697a0d7014baf06005c7904734350e3f3639fe9e50d3331bd219374bee7a02f",
+          "git_blob": "9a6ff4e28bbf6d2c1dd18b9f40df8d7a4532b90f"
+        },
+        {
+          "path": "src/bafu_community_fixes/patches/p0006_flow_cas_numbers_removed.py",
+          "sha256": "cf74257e7432cdf5e2388f0d421af78f81fd31ef33eb3279b8dd506cf98c6e03",
+          "git_blob": "25be3ba128d7e7204d06e46c742099a8f3947053"
+        },
+        {
+          "path": "src/bafu_community_fixes/patches/p0007_flow_names.py",
+          "sha256": "29f8774f52a49e787eeb34a1c3cf75b24ef11e068047ff7ca704d98a8afa6c98",
+          "git_blob": "542aca3c152677ab62553a8d0f16146b89f4d4ce"
+        },
+        {
+          "path": "src/bafu_community_fixes/patches/p0008_flow_compartments.py",
+          "sha256": "272718335f4353637e13ac0413c70ccd74413db88219d4ef7d9ebc59dbee8631",
+          "git_blob": "c5ce7c2a55448525ba5f63f5890e384c3efc66c8"
+        },
+        {
+          "path": "src/bafu_community_fixes/patches/p0009_consistent_cas_numbers.py",
+          "sha256": "0cb08a6965b6c8fbfad07ecdb8dd101249c06606f2cc41cbd3488ae7aab9fc26",
+          "git_blob": "a0e461a0cd5720cb37dfd9ba3e464376e1f09221"
+        },
+        {
+          "path": "src/bafu_community_fixes/patches/p0010_brightway_flows_links.py",
+          "sha256": "f37bbc250616ed8b4aaa2b0af3d9f86b99429380b53b362e059f948fe7f022b4",
+          "git_blob": "5c068ace3f933d28f5445fa2866c6a63f6d418e6"
+        },
+        {
+          "path": "src/bafu_community_fixes/patches/p0011_flag_aggregated.py",
+          "sha256": "e3049409ab452aab61667a811a8f3d066b1d0fb7aa4aa1ddb1526eec98886043",
+          "git_blob": "74bf53cc5e49b77634c5636d91edeff78d09afab"
+        },
+        {
+          "path": "src/bafu_community_fixes/pipeline.py",
+          "sha256": "58ea1c9bca6ca5c71a34a0c397c1fb5676d497b1a402685478bf4b05de26628c",
+          "git_blob": "2610d8728610866a75dc1707fa86d6f3a8a90011"
+        },
+        {
+          "path": "src/bafu_community_fixes/progress.py",
+          "sha256": "f53b5f3071be02c2d418e9f6dfbbd7e5443fffe908d4701b3e002e85d5d173a7",
+          "git_blob": "e59c3db9b67d7db7a4eb8ed49cbc5068ba04638d"
+        },
+        {
+          "path": "src/bafu_community_fixes/py.typed",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "git_blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+        },
+        {
+          "path": "src/bafu_community_fixes/registry.py",
+          "sha256": "ebc4c8a780e057c4469ee43b42f7a0369b35aef83fe8730c9fe87b259eb4e355",
+          "git_blob": "686b9435f042a92ae4b347a9da802dd94bee52b5"
+        },
+        {
+          "path": "src/bafu_community_fixes/report.py",
+          "sha256": "f18ae320ea6c42a7d701c9fa5d031e644302d943187572686626bda53960d773",
+          "git_blob": "a16d3fb8150f65510f23091bdd600daeacfa50fa"
+        },
+        {
+          "path": "src/bafu_community_fixes/report_assets/Rubik-OFL.txt",
+          "sha256": "5237f9509bd642a00c8448ac4004481db7cf550f440cf2aa3c43fbe2dfbf2fac",
+          "git_blob": "cdb3773b889e1606ec9d793978a780b200023b53"
+        },
+        {
+          "path": "src/bafu_community_fixes/report_assets/Rubik-VariableFont_wght.ttf",
+          "sha256": "c64f09f2590fecfb8989ba83e5fee9a34e8eb1fa762177c0bc55c17e3faf4a2b",
+          "git_blob": "c253818f315eb97af5f47b185b340e098789f93d"
+        },
+        {
+          "path": "src/bafu_community_fixes/report_assets/__init__.py",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "git_blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+        },
+        {
+          "path": "src/bafu_community_fixes/report_assets/sentier-logo.svg",
+          "sha256": "7edd73c181a15cc6dec77c6903d0c2228ebeb5007b014945a9fd471317f635b3",
+          "git_blob": "46fb2036c4542d9363888b734bef6de6bcc99245"
+        },
+        {
+          "path": "src/bafu_community_fixes/schemas/__init__.py",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "git_blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+        },
+        {
+          "path": "src/bafu_community_fixes/schemas/ecospold1/EcoSpold01DataTypes.xsd",
+          "sha256": "780b626010b0c01a954aa2061551efd13e62d31089fc46d5f7f546b24a36d522",
+          "git_blob": "7e0691ba11062858eb40c2aa919f042618a6ed48"
+        },
+        {
+          "path": "src/bafu_community_fixes/schemas/ecospold1/EcoSpold01Dataset.xsd",
+          "sha256": "1139b6a25818b313bc87b8e9ab7ed5617a03cf0097644b5b6950e0ed26887651",
+          "git_blob": "a6f24241d1d92111c55157a190cd42d461f8c01c"
+        },
+        {
+          "path": "src/bafu_community_fixes/schemas/ecospold1/EcoSpold01FlowData.xsd",
+          "sha256": "a481f78031cf3eae409ab474c25bba1a67aeab9283e188af733bf73fd0e531b6",
+          "git_blob": "8d580980f1d20e23be13f5e58bfff2ee0778be39"
+        },
+        {
+          "path": "src/bafu_community_fixes/schemas/ecospold1/EcoSpold01MetaInformation.xsd",
+          "sha256": "06179033857f2c17bfa64089fb100f8aa27b11b47413b5007fb7a49b3a9958ae",
+          "git_blob": "2cc2823ae95e60cf79e769f951c2879fcbff68f1"
+        },
+        {
+          "path": "src/bafu_community_fixes/schemas/ecospold1/README.md",
+          "sha256": "cace330de03525b2289f7d9470757375b159fb9918dddb2720021c38a3d75bfb",
+          "git_blob": "4374f44f3e99ed8754d89412555960c237ebbb9e"
+        },
+        {
+          "path": "src/bafu_community_fixes/templates/__init__.py",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "git_blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+        },
+        {
+          "path": "src/bafu_community_fixes/templates/report.html.j2",
+          "sha256": "06f4b93d2e489a74208f95cf2f5dcc8e44978cdb44556a32d368c534dbbe8f98",
+          "git_blob": "7cf6387af6691843fbc14ef4b067906bd96b3792"
+        },
+        {
+          "path": "src/bafu_community_fixes/tui.py",
+          "sha256": "2aa8fa73859df92a429dc17df53ed98df8deda8ac2528d1e6959b6a4ba5a31ff",
+          "git_blob": "cc5719f5e0e974de2fa85c0bb7b9083e70c90a94"
+        },
+        {
+          "path": "src/bafu_community_fixes/tui.tcss",
+          "sha256": "f4e7782857c3138dac8e11d9f5dafbbdc6588b81bf94f2850f941bde09a5be36",
+          "git_blob": "895f92a51800bd3c30ba4e6ca624b186b7484e69"
+        },
+        {
+          "path": "src/bafu_community_fixes/xml.py",
+          "sha256": "b4bf4d9a92a5a450ca5ecaf78b5e0b6fbc17617c1c28162d184d0eeee66c641d",
+          "git_blob": "2a9ef8e58812d6e2984c2ccbc7cbcafe7b09738f"
+        },
+        {
+          "path": "src/bafu_community_fixes/xsd.py",
+          "sha256": "0e332126560d90cfe511a12ab3efdeef91a65fdf910188cc5a2968bb7bfbfd6e",
+          "git_blob": "18f570eff5ee737bf87efa756bc5592437272d8d"
+        },
+        {
+          "path": "tests/conftest.py",
+          "sha256": "991af2858522b4770a25b84eb61d358fee04e6f98b41a345e4677ed1ac3c3325",
+          "git_blob": "2d7d8661b198bca11780ca69f0b1519177a6371c"
+        },
+        {
+          "path": "tests/fixtures/raw_bafu.xml",
+          "sha256": "fc5845e349a519b1540942af919e309106fbf8add31f2e6e40aafd79da1b8d62",
+          "git_blob": "a6656269905d8c5a211d41f90134baca21d2c5e8"
+        },
+        {
+          "path": "tests/test_bafu_release.py",
+          "sha256": "d158a4c3297eb211021c4609307e3262e8142836f169b309e80a0319e146ea8f",
+          "git_blob": "dce0cdb29c082f1526403dfccb3bb2b1260d8b60"
+        },
+        {
+          "path": "tests/test_download.py",
+          "sha256": "6fb6c1fd6898d5ece659d9dc04c3d8e735cc896d33c69c8ab80e51bb7979bbcc",
+          "git_blob": "ba0ee1abe6ffba22dba4ae5f337c9cbeece16327"
+        },
+        {
+          "path": "tests/test_import_fixes.py",
+          "sha256": "78472a928d47ebdfc21d54f69dfae4810458a5103e15c8f27b6f479e048a3234",
+          "git_blob": "bb630f6b250817cf6fa8ef9e2e4c11ff62ae60ff"
+        },
+        {
+          "path": "tests/test_models.py",
+          "sha256": "9b1616cd5e0fbe5290a006135461a71a0296d8f26a34eb04255c703750dbe2a9",
+          "git_blob": "aad38ec03b95ea48607c50f33e71a26626efaceb"
+        },
+        {
+          "path": "tests/test_patches.py",
+          "sha256": "e0c5a3703d8e12c7ebd359e4477482928df77c4e815a3fde80092aa920184544",
+          "git_blob": "a34c3555abf3fb1cd364ca64aa7355972c87a9cc"
+        },
+        {
+          "path": "tests/test_pipeline.py",
+          "sha256": "6a0de507b699333a8014fbd8598615a120ed439666389acd0e1840c0eff46c2c",
+          "git_blob": "021332bd849c7d1f24439e7b13cf258137bc2135"
+        },
+        {
+          "path": "tests/test_report.py",
+          "sha256": "1f67f9ad7269ddf31da1f7315494d8f88e401dddc78dd82145af1eef2c9bd4cc",
+          "git_blob": "5a14ddace0bb8efc6fc88c1ca97db62771326d45"
+        },
+        {
+          "path": "tests/test_tui.py",
+          "sha256": "472c31598bbb0d5b95974aff4e02ec56447aa185dab8f27b3bc738fc61a66ce6",
+          "git_blob": "251d95d48a76595bc00031d2893b87658986bf4b"
+        },
+        {
+          "path": "tests/test_xml.py",
+          "sha256": "a4cab5836529f6cd8a73f593aefceb6c6da7d6a38cbf9f0b8e04ac9d92338b5b",
+          "git_blob": "540fb759d8785c5003f2d294afd66df9668c0b2a"
+        },
+        {
+          "path": "tests/test_xsd.py",
+          "sha256": "e1e81aff9d752a79c8d3ed61fd9e0025af6657ad06bfbf010ba39d0c470f0123",
+          "git_blob": "85ec6eaeaa3e1ec911749033e078dde4b91d44df"
+        },
+        {
+          "path": "uv.lock",
+          "sha256": "3a21f5ee4665a900a73ef536b76df1a478140e1595df6e8dccd86dd786c7b58e",
+          "git_blob": "b928f12fa83d4967a6ce51a943e263464f65bdaf"
+        }
+      ]
+    }
+  },
+  "collisions": [
+    ".gitignore",
+    "LICENSE",
+    "README.md"
+  ],
+  "refs_issues_prs_releases_2026_10_23": {
+    "workspace": {
+      "branches": {
+        "main": "a13bbbf2e4536e8de62eb8b4a9dd6a6a50faea41",
+        "codex/bafu-community-plan": "af92dbcb7fd5abafac25a2c3e6504f24cc533e2c (PR #27, merged)",
+        "docs/aggregation-source-list": "d3eae70834aeee18b01f90b0f157dd64be3b9abd (PR #17, merged)",
+        "docs/chris-mapping-review": "8a16f9cf5c583008774ff3d764bdfda89386e0b1 (PR #13, merged)",
+        "docs/dds-brand-alignment": "92cfa2b0cafbfa017e4a671477a571a9c863a5f1 (PR #12, merged)",
+        "docs/github-pages": "6ac1babb0d306dc23c0700ac12278185eb0ed4d5 (PR #11, merged)",
+        "docs/mapping-implementation-status": "8c3ce4937e9613f903b546f9c6bbaaa1357437d9 (PR #16, merged)",
+        "docs/f8-patch-0011-f12": "43371c41a27168725f2dd631facbfe1e12705da7 (PR #33, merged)",
+        "docs/reconcile-findings-patches": "d4232ead35de055111752287c15babd1626d54b4 (PR #34, merged)",
+        "runs/sentier-brightway-backtest": "dbc9158464d9364c03d73abacc34d5f0327748ca (PR #36, open)",
+        "runs/c001-checks": "f679fd1aeb49688c6a2bbd4901c9184beb7e9ecf (PR #37, open)",
+        "runs/importer-parity": "940918d1885889bf4cf9ad085003cf7b946fbe24 (PR #38, open)"
+      },
+      "tags": [],
+      "releases": [],
+      "open_prs": [
+        36,
+        37,
+        38
+      ],
+      "merged_prs": [
+        10,
+        11,
+        12,
+        13,
+        16,
+        17,
+        27,
+        33,
+        34
+      ],
+      "issues_open": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        14,
+        15,
+        18,
+        19,
+        20,
+        21,
+        23,
+        24,
+        25,
+        26,
+        28,
+        29,
+        30,
+        31,
+        32,
+        35
+      ],
+      "issues_closed": {
+        "22": "closed 23 October 2026 by PR #34 (reconciliation)"
+      },
+      "note": "Open PRs #36/#37/#38 target main and are not in this integration. If any merges first, the cutover SHA moves and the integration is redone on the new main. Branch codex/integrate-community-fixes (the first attempt) is local only and was never pushed."
+    },
+    "community": {
+      "branches": {
+        "main": "053c799a4d3e129747f47d6775ea88647c0bec78"
+      },
+      "tags": [],
+      "releases": [],
+      "prs": {
+        "5": "merged 15 Oct 2026, head bd0186076b782be5917816227a0fa98046da1de2 (patch 0011)",
+        "6": "merged 18 Oct 2026, head beffe01908738b466c0cf603502e39275bcced0b (keep exchange numbers)",
+        "7": "closed unmerged 21 Oct 2026, head 056cb530cb0a0adcc8880b9a1b25f52848e1361b"
+      },
+      "issues_open": {
+        "1": "Align BAFU community fixes and sentier-bafu repos (assignee lbougan)",
+        "2": "Adapt sentier-inventory to use outputs of the community patches repo (assignee lbougan)"
+      },
+      "note": "Read from origin (git ls-remote and the GitHub API) on 23 October 2026."
+    }
+  }
+}

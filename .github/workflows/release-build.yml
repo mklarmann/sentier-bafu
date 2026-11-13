@@ -1,0 +1,151 @@
+name: Release build
+
+# For patches that are accepted (main), on request, and for releases (a tag `patched-…`
+# pushed by a person): one command runs the whole path on BAFU's full release.
+#
+#   provider build -> patched build -> written files and patch run checked ->
+#   comparison -> exports, each read back -> every contribution layer in
+#   community/layers, built beside the patched release -> manifest
+#
+# A tag then publishes a GitHub Release that holds ONE file, manifest.json: the provider
+# release and its checksum, the tool revision, each patch with its findings, author,
+# authoriser, result and the numbers of the datasets it changed, the name and checksum
+# of every export file, and the audit results. Never an inventory file and never an
+# export file: BAFU's terms ask that whoever receives the data accepts them first, and a
+# release page can't ask for that. The export files are produced and read back here and
+# stay on the runner.
+#
+# Nothing from the inventory leaves the runner. The job summary and the uploaded files
+# hold counts, checksums, dataset codes, names and single scores.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/bafu_community_fixes/**"
+      - "scripts/full_release_table.py"
+      - "scripts/check_patched_release.py"
+      - "scripts/build_release.py"
+      - "scripts/export_release.py"
+      - "scripts/release_build/**"
+      - "community/layers/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".python-version"
+      - ".github/actions/**"
+      - ".github/workflows/release-build.yml"
+    tags: ["patched-*"]
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: release-build-${{ github.ref }}
+  # Runs on main and of a tag all finish.
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Provider release, patched release, exports and manifest
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          # The whole history: a release is built from a commit of main, and this is checked.
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Build releases from main only
+        if: ${{ github.ref_type == 'tag' }}
+        run: git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+      - name: Install the patch tool and get BAFU's release
+        uses: ./.github/actions/bafu-release
+      - name: Get the manifest of the previous release, to compare what each patch matched
+        # Read-only, and never fatal: without a previous release the run says so.
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/previous"
+          previous="$(gh release list --repo "$GITHUB_REPOSITORY" --limit 30 \
+            --json tagName,isDraft \
+            --jq '[.[] | select(.isDraft | not) | .tagName | select(startswith("patched-"))][0] // ""' \
+            || true)"
+          if [ -n "$previous" ] && [ "$previous" != "$GITHUB_REF_NAME" ]; then
+            gh release download "$previous" --repo "$GITHUB_REPOSITORY" \
+              --pattern manifest.json --dir "$RUNNER_TEMP/previous" \
+              || echo "The manifest of $previous could not be read."
+          else
+            echo "No previous release to compare with."
+          fi
+      - name: Run the whole path
+        # `latest` lets the patch tool download the release if it isn't there, and check
+        # its SHA-256. Every step is recorded; a step that fails fails this job after the
+        # steps that can still run have run.
+        env:
+          RELEASE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+        run: |
+          set -- release latest "$RUNNER_TEMP/release-run" \
+            --tools "$RUNNER_TEMP/tools" --pinned-data "$RUNNER_TEMP/pinned-data"
+          if [ -n "$RELEASE_TAG" ]; then set -- "$@" --tag "$RELEASE_TAG"; fi
+          if [ -f "$RUNNER_TEMP/previous/manifest.json" ]; then
+            set -- "$@" --previous "$RUNNER_TEMP/previous/manifest.json"
+          fi
+          uv run --no-project --python 3.12 python scripts/build_release.py "$@"
+      - name: Say what was built
+        if: ${{ !cancelled() }}
+        run: |
+          uv run --no-project --python 3.12 python scripts/release_build/job_summary.py \
+            "$RUNNER_TEMP/release-run" --out "$GITHUB_STEP_SUMMARY"
+      - name: Keep the manifest, the audits and the comparisons (no inventory)
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: release-build-results
+          # The run sets aside in this folder the only files that may leave the runner.
+          path: ${{ runner.temp }}/release-run/results/
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Hand the manifest to the job that publishes
+        if: ${{ github.ref_type == 'tag' }}
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: patched-release-manifest
+          path: ${{ runner.temp }}/release-run/results/manifest.json
+          if-no-files-found: error
+          retention-days: 90
+
+  publish:
+    name: Publish the manifest, and nothing else
+    if: ${{ github.ref_type == 'tag' }}
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write # the GitHub Release of the tag, which holds manifest.json
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          name: patched-release-manifest
+          path: ${{ runner.temp }}/release
+      - name: Check that the one file is a manifest, of a release, and nothing else
+        # Refuses a file with any other field, a run that failed, a patch that changed
+        # data without an authoriser, an audit with findings, an export that did not
+        # read back.
+        run: |
+          test "$(find "$RUNNER_TEMP/release" -type f | wc -l)" -eq 1
+          python3 -I scripts/release_build/release_manifest.py \
+            --verify "$RUNNER_TEMP/release/manifest.json" --release \
+            --notes "$RUNNER_TEMP/notes.md"
+      - name: Publish the release with the manifest only
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # A tag is released once: this fails when the release exists already.
+        run: |
+          gh release create "$GITHUB_REF_NAME" "$RUNNER_TEMP/release/manifest.json" \
+            --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" \
+            --notes-file "$RUNNER_TEMP/notes.md" --verify-tag

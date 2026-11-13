@@ -1,0 +1,1372 @@
+{
+  "issue": "https://github.com/sentier-dev/sentier-bafu/issues/19",
+  "status": "candidate cutover; to be confirmed with the community maintainers",
+  "integration_branch": "codex/integrate-community-fixes-v2",
+  "landing": "Merge with a merge commit only (no squash, no rebase), otherwise one history is lost.",
+  "sources": {
+    "workspace": {
+      "repository": "https://github.com/sentier-dev/sentier-bafu",
+      "ref": "main",
+      "commit": "a13bbbf2e4536e8de62eb8b4a9dd6a6a50faea41"
+    },
+    "community": {
+      "repository": "https://github.com/sentier-dev/bafu-community-fixes",
+      "ref": "main",
+      "commit": "053c799a4d3e129747f47d6775ea88647c0bec78"
+    }
+  },
+  "merge_commit": "f310b96b9f6cdf4f3c4667bd9dd629b4c52e1c39",
+  "merge_parents": [
+    "a13bbbf2e4536e8de62eb8b4a9dd6a6a50faea41",
+    "053c799a4d3e129747f47d6775ea88647c0bec78"
+  ],
+  "merge_resolutions": {
+    ".gitignore": {
+      "reason": "Union: the community rules unchanged and first; the workspace rules appended, without the four already covered."
+    },
+    "LICENSE": {
+      "reason": "Byte-identical MIT text in both sources; kept."
+    },
+    "README.md": {
+      "reason": "The community README, unchanged."
+    }
+  },
+  "source_inventory": "docs/plans/bafu-community/source-inventory-2026-10-23.json",
+  "dispositions": [
+    "kept unchanged",
+    "merged",
+    "moved",
+    "retired"
+  ],
+  "counts": {
+    "community": {
+      "kept unchanged": 61,
+      "merged": 4,
+      "moved": 0,
+      "retired": 0
+    },
+    "workspace": {
+      "kept unchanged": 55,
+      "merged": 8,
+      "moved": 1,
+      "retired": 0
+    }
+  },
+  "files": [
+    {
+      "source": "community",
+      "path": ".github/workflows/ci.yml",
+      "source_sha256": "3d2371cbad13fa3034d44032eabd2179963ad75453ba76b715d21b66c186299f",
+      "disposition": "kept unchanged",
+      "destination": ".github/workflows/ci.yml",
+      "destination_sha256": "3d2371cbad13fa3034d44032eabd2179963ad75453ba76b715d21b66c186299f"
+    },
+    {
+      "source": "community",
+      "path": ".gitignore",
+      "source_sha256": "929210f21bc218e4ceb240f4f944903cf586c3abda21e07fdd56803d67e8974e",
+      "disposition": "merged",
+      "destination": ".gitignore",
+      "reason": "Union of ignore rules at the merge. The community file is an unchanged prefix of the result; the workspace rules follow it.",
+      "destination_sha256": "b81a179589cad960daf087ab1d0906cefd110599d207f6b79c86a3d51cb70b59"
+    },
+    {
+      "source": "community",
+      "path": ".python-version",
+      "source_sha256": "a876e0b10411037a012498b9fe18d9bc1df32ed8b722a13564dc944ddcfd9135",
+      "disposition": "kept unchanged",
+      "destination": ".python-version",
+      "destination_sha256": "a876e0b10411037a012498b9fe18d9bc1df32ed8b722a13564dc944ddcfd9135"
+    },
+    {
+      "source": "community",
+      "path": "LICENSE",
+      "source_sha256": "3778c928d02a75605760c2d18453905c653f5a693118eea4ccc23b47eeea4af3",
+      "disposition": "kept unchanged",
+      "destination": "LICENSE",
+      "destination_sha256": "3778c928d02a75605760c2d18453905c653f5a693118eea4ccc23b47eeea4af3"
+    },
+    {
+      "source": "community",
+      "path": "README.md",
+      "source_sha256": "7785080ad71f8820896000f7e2f364ca59393a3fb45f6f3f43d29c3a735d6d9f",
+      "disposition": "merged",
+      "destination": "README.md",
+      "reason": "Unchanged at the merge (community usage guide authoritative). After it: a 'Review workspace' section is inserted before the License section, and the License section names the notices of the merged tree and corrects the XSD path (schemas/ecospold1/ is src/bafu_community_fixes/schemas/ecospold1/). The text before the License section is unchanged byte for byte. Verbatim copy kept.",
+      "verbatim_copy": "docs/migration-history/bafu-community-fixes-053c799-README.md",
+      "destination_sha256": "ce4872bb02980d18b50989f1c6346a03e44268a3fb035d66aa8b7284d5f04810"
+    },
+    {
+      "source": "community",
+      "path": "pyproject.toml",
+      "source_sha256": "3ab7a0b44c971523d704c20cd6cc5f48758ff650da58eda35f159014eac46fac",
+      "disposition": "merged",
+      "destination": "pyproject.toml",
+      "reason": "Only addition: [tool.ruff] extend-exclude for the eight workspace Python paths, so ruff in community CI checks exactly the files it checked at 053c799. Project metadata, dependencies, scripts, build backend, requires-python and pytest settings are unchanged; uv.lock still validates.",
+      "destination_sha256": "a8f9221f5e9061441d4cdf5d1d6b73bfb8f17e0da8f3c2f6af1a7c7d94881d43"
+    },
+    {
+      "source": "community",
+      "path": "scripts/build_brightway_flows_data.py",
+      "source_sha256": "e3dbece69230e77af0f3f4f586dd4790ccd750f30a2a9aa30450bfe42fac7e19",
+      "disposition": "kept unchanged",
+      "destination": "scripts/build_brightway_flows_data.py",
+      "destination_sha256": "e3dbece69230e77af0f3f4f586dd4790ccd750f30a2a9aa30450bfe42fac7e19"
+    },
+    {
+      "source": "community",
+      "path": "src/bafu_community_fixes/__init__.py",
+      "source_sha256": "079649a7973a9c07834208f2b0866ac5cf8674b5cfcc41069b9d2e29ac8b9d72",
+      "disposition": "kept unchanged",
+      "destination": "src/bafu_community_fixes/__init__.py",
+      "destination_sha256": "079649a7973a9c07834208f2b0866ac5cf8674b5cfcc41069b9d2e29ac8b9d72"
+    },
+    {
+      "source": "community",
+      "path": "src/bafu_community_fixes/brightway_flows.py",
+      "source_sha256": "094198bf3644ced8de83d29808dc5a16f48f4bd07f3fb9fbe54c635cd44f13b7",
+      "disposition": "kept unchanged",
+      "destination": "src/bafu_community_fixes/brightway_flows.py",
+      "destination_sha256": "094198bf3644ced8de83d29808dc5a16f48f4bd07f3fb9fbe54c635cd44f13b7"
+    },
+    {
+      "source": "community",
+      "path": "src/bafu_community_fixes/changes.py",
+      "source_sha256": "c9c1424a313bb745c9789bfdd49e573bb11f81e031fe8fc93dda79a3a64a5340",
+      "disposition": "kept unchanged",
+      "destination": "src/bafu_community_fixes/changes.py",
+      "destination_sha256": "c9c1424a313bb745c9789bfdd49e573bb11f81e031fe8fc93dda79a3a64a5340"
+    },
+    {
+      "source": "community",
+      "path": "src/bafu_community_fixes/cli.py",
+      "source_sha256": "394b0e42b15300032d81c3b6083a82bb28e47bcae677c7e703b92fbd0c992f0a",
+      "disposition": "kept unchanged",
+      "destination": "src/bafu_community_fixes/cli.py",
+      "destination_sha256": "394b0e42b15300032d81c3b6083a82bb28e47bcae677c7e703b92fbd0c992f0a"
+    },
+    {
+      "source": "community",
+      "path": "src/bafu_community_fixes/compliance.py",
+      "source_sha256": "43a5f59d40e8ccd5f7ba4749cade17c061f3feca5c332e45acacd5e5a1c6b117",
+      "disposition": "kept unchanged",
+      "destination": "src/bafu_community_fixes/compliance.py",
+      "destination_sha256": "43a5f59d40e8ccd5f7ba4749cade17c061f3feca5c332e45acacd5e5a1c6b117"
+    },
+    {
+      "source": "community",
+      "path": "src/bafu_community_fixes/data/README.md",
+      "source_sha256": "1f6d0cbb789edc50bf0b788ea142473220bb910a8c32ea6da32c05a9c348d3f5",
+      "disposition": "merged",
+      "destination": "src/bafu_community_fixes/data/README.md",
+      "reason": "ODbL §4.2b/4.3 notice",
+      "detail": "The permission paragraph is kept word for word; after it, a paragraph names the sources (two fix files at Brightway Flows 19d6cc6, the bafu-2026-v1 correspondence of release 1.0.0, doi:10.5281/zenodo.22857950), the ODbL 1.0, the rebuild script as the method, and where the permission was recorded (bafu-community-fixes 15bbfbb, 13 October 2026). The generated JSON's license field is unchanged.",
+      "destination_sha256": "c70c762c373029ae0565740cdb581e2dc88623efe74c83acf4418c199af40029"
+    },
+    {
+      "source": "community",
+      "path": "src/bafu_community_fixes/data/__init__.py",
+      "source_sha256": "d20b20c375ccbaa174cf93dc9d5c23fc63d6389daa3d3960f20c6e864ed786b5",
+      "disposition": "kept unchanged",
+      "destination": "src/bafu_community_fixes/data/__init__.py",
+      "destination_sha256": "d20b20c375ccbaa174cf93dc9d5c23fc63d6389daa3d3960f20c6e864ed786b5"
+    },
+    {
+      "source": "community",
+      "path": "src/bafu_community_fixes/data/brightway-flows-corrections-bafu-2026-v1.json",
+      "source_sha256": "107582860aaee25e1e6de327681abcf48f742910bbec6f4aefd1893e9dab3048",
+      "disposition": "kept unchanged",
+      "destination": "src/bafu_community_fixes/data/brightway-flows-corrections-bafu-2026-v1.json",
+      "destination_sha256": "107582860aaee25e1e6de327681abcf48f742910bbec6f4aefd1893e9dab3048"
+    },
+    {
+      "source": "community",
+      "path": "src/bafu_community_fixes/data/brightway-flows-crosswalk-bafu-2026-v1.csv",
+      "source_sha256": "e9985eedbe6ffda81f1c2eaa9ce40442b88c3f278a86fb31fe8366590aa1347b",
+      "disposition": "kept unchanged",
+      "destination": "src/bafu_community_fixes/data/brightway-flows-crosswalk-bafu-2026-v1.csv",
+      "destination_sha256": "e9985eedbe6ffda81f1c2eaa9ce40442b88c3f278a86fb31fe8366590aa1347b"
+    },
+    {
+      "source": "community",
+      "path": "src/bafu_community_fixes/download.py",
+      "source_sha256": "eb1ff4b0c878b3fe382780210ee18dc679b1f8f3d68118a3fc78e57cce9136b0",
+      "disposition": "kept unchanged",
+      "destination": "src/bafu_community_fixes/download.py",
+      "destination_sha256": "eb1ff4b0c878b3fe382780210ee18dc679b1f8f3d68118a3fc78e57cce9136b0"
+    },
+    {
+      "source": "community",
+      "path": "src/bafu_community_fixes/import_fixes.py",
+      "source_sha256": "ea0f3def3a31fa1275b6bf39e27a5f6fdfcc33d4bfa39be3a52de12a4738b6e9",
+      "disposition": "kept unchanged",
+      "destination": "src/bafu_community_fixes/import_fixes.py",
+      "destination_sha256": "ea0f3def3a31fa1275b6bf39e27a5f6fdfcc33d4bfa39be3a52de12a4738b6e9"
+    },
+    {
+      "source": "community",
+      "path": "src/bafu_community_fixes/models.py",
+      "source_sha256": "2407b2e33feab1c3cdcdf238d11ab5866a5f4bd2a6dfe99e07df70c019c300a9",
+      "disposition": "kept unchanged",
+      "destination": "src/bafu_community_fixes/models.py",
+      "destination_sha256": "2407b2e33feab1c3cdcdf238d11ab5866a5f4bd2a6dfe99e07df70c019c300a9"
+    },
+    {
+      "source": "community",
+      "path": "src/bafu_community_fixes/patches/__init__.py",
+      "source_sha256": "a56469d8eef953f449a25242b772b35d884d3a1f460274f830c2536a596f19b6",
+      "disposition": "kept unchanged",
+      "destination": "src/bafu_community_fixes/patches/__init__.py",
+      "destination_sha256": "a56469d8eef953f449a25242b772b35d884d3a1f460274f830c2536a596f19b6"
+    },
+    {
+      "source": "community",
+      "path": "src/bafu_community_fixes/patches/p0001_strawberry_polyethylene_disposal.py",
+      "source_sha256": "2bb74cb104cfeaf6560def67fb5cea0723a55358c14ba8429763d781dc0131ee",
+      "disposition": "kept unchanged",
+      "destination": "src/bafu_community_fixes/patches/p0001_strawberry_polyethylene_disposal.py",
+      "destination_sha256": "2bb74cb104cfeaf6560def67fb5cea0723a55358c14ba8429763d781dc0131ee"
+    },
+    {
+      "source": "community",
+      "path": "src/bafu_community_fixes/patches/p0002_supplier_locations.py",
+      "source_sha256": "79b13e9b7706a18a1bfd5ea615eba2227ee0ff6590ac0b232fe5e4a1307e773d",
+      "disposition": "kept unchanged",
+      "destination": "src/bafu_community_fixes/patches/p0002_supplier_locations.py",
+      "destination_sha256": "79b13e9b7706a18a1bfd5ea615eba2227ee0ff6590ac0b232fe5e4a1307e773d"
+    },
+    {
+      "source": "community",
+      "path": "src/bafu_community_fixes/patches/p0003_flag_not_maintained.py",
+      "source_sha256": "13a12931a4ed7d32d77ae9d1e1d8762eb5e477b65978b567a14f1b5cf99a96dd",
+      "disposition": "kept unchanged",
+      "destination": "src/bafu_community_fixes/patches/p0003_flag_not_maintained.py",
+      "destination_sha256": "13a12931a4ed7d32d77ae9d1e1d8762eb5e477b65978b567a14f1b5cf99a96dd"
+    },
+    {
+      "source": "community",
+      "path": "src/bafu_community_fixes/patches/p0004_flow_cas_numbers_added.py",
+      "source_sha256": "c03eeeee2e77e28e24ecc760d3c2c418bd28dc7c7a248cf765e8b3aa19e5377f",
+      "disposition": "kept unchanged",
+      "destination": "src/bafu_community_fixes/patches/p0004_flow_cas_numbers_added.py",
+      "destination_sha256": "c03eeeee2e77e28e24ecc760d3c2c418bd28dc7c7a248cf765e8b3aa19e5377f"
+    },
+    {
+      "source": "community",
+      "path": "src/bafu_community_fixes/patches/p0005_flow_cas_numbers_replaced.py",
+      "source_sha256": "a697a0d7014baf06005c7904734350e3f3639fe9e50d3331bd219374bee7a02f",
+      "disposition": "kept unchanged",
+      "destination": "src/bafu_community_fixes/patches/p0005_flow_cas_numbers_replaced.py",
+      "destination_sha256": "a697a0d7014baf06005c7904734350e3f3639fe9e50d3331bd219374bee7a02f"
+    },
+    {
+      "source": "community",
+      "path": "src/bafu_community_fixes/patches/p0006_flow_cas_numbers_removed.py",
+      "source_sha256": "cf74257e7432cdf5e2388f0d421af78f81fd31ef33eb3279b8dd506cf98c6e03",
+      "disposition": "kept unchanged",
+      "destination": "src/bafu_community_fixes/patches/p0006_flow_cas_numbers_removed.py",
+      "destination_sha256": "cf74257e7432cdf5e2388f0d421af78f81fd31ef33eb3279b8dd506cf98c6e03"
+    },
+    {
+      "source": "community",
+      "path": "src/bafu_community_fixes/patches/p0007_flow_names.py",
+      "source_sha256": "29f8774f52a49e787eeb34a1c3cf75b24ef11e068047ff7ca704d98a8afa6c98",
+      "disposition": "kept unchanged",
+      "destination": "src/bafu_community_fixes/patches/p0007_flow_names.py",
+      "destination_sha256": "29f8774f52a49e787eeb34a1c3cf75b24ef11e068047ff7ca704d98a8afa6c98"
+    },
+    {
+      "source": "community",
+      "path": "src/bafu_community_fixes/patches/p0008_flow_compartments.py",
+      "source_sha256": "272718335f4353637e13ac0413c70ccd74413db88219d4ef7d9ebc59dbee8631",
+      "disposition": "kept unchanged",
+      "destination": "src/bafu_community_fixes/patches/p0008_flow_compartments.py",
+      "destination_sha256": "272718335f4353637e13ac0413c70ccd74413db88219d4ef7d9ebc59dbee8631"
+    },
+    {
+      "source": "community",
+      "path": "src/bafu_community_fixes/patches/p0009_consistent_cas_numbers.py",
+      "source_sha256": "0cb08a6965b6c8fbfad07ecdb8dd101249c06606f2cc41cbd3488ae7aab9fc26",
+      "disposition": "kept unchanged",
+      "destination": "src/bafu_community_fixes/patches/p0009_consistent_cas_numbers.py",
+      "destination_sha256": "0cb08a6965b6c8fbfad07ecdb8dd101249c06606f2cc41cbd3488ae7aab9fc26"
+    },
+    {
+      "source": "community",
+      "path": "src/bafu_community_fixes/patches/p0010_brightway_flows_links.py",
+      "source_sha256": "f37bbc250616ed8b4aaa2b0af3d9f86b99429380b53b362e059f948fe7f022b4",
+      "disposition": "kept unchanged",
+      "destination": "src/bafu_community_fixes/patches/p0010_brightway_flows_links.py",
+      "destination_sha256": "f37bbc250616ed8b4aaa2b0af3d9f86b99429380b53b362e059f948fe7f022b4"
+    },
+    {
+      "source": "community",
+      "path": "src/bafu_community_fixes/patches/p0011_flag_aggregated.py",
+      "source_sha256": "e3049409ab452aab61667a811a8f3d066b1d0fb7aa4aa1ddb1526eec98886043",
+      "disposition": "kept unchanged",
+      "destination": "src/bafu_community_fixes/patches/p0011_flag_aggregated.py",
+      "destination_sha256": "e3049409ab452aab61667a811a8f3d066b1d0fb7aa4aa1ddb1526eec98886043"
+    },
+    {
+      "source": "community",
+      "path": "src/bafu_community_fixes/pipeline.py",
+      "source_sha256": "58ea1c9bca6ca5c71a34a0c397c1fb5676d497b1a402685478bf4b05de26628c",
+      "disposition": "kept unchanged",
+      "destination": "src/bafu_community_fixes/pipeline.py",
+      "destination_sha256": "58ea1c9bca6ca5c71a34a0c397c1fb5676d497b1a402685478bf4b05de26628c"
+    },
+    {
+      "source": "community",
+      "path": "src/bafu_community_fixes/progress.py",
+      "source_sha256": "f53b5f3071be02c2d418e9f6dfbbd7e5443fffe908d4701b3e002e85d5d173a7",
+      "disposition": "kept unchanged",
+      "destination": "src/bafu_community_fixes/progress.py",
+      "destination_sha256": "f53b5f3071be02c2d418e9f6dfbbd7e5443fffe908d4701b3e002e85d5d173a7"
+    },
+    {
+      "source": "community",
+      "path": "src/bafu_community_fixes/py.typed",
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "disposition": "kept unchanged",
+      "destination": "src/bafu_community_fixes/py.typed",
+      "destination_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "community",
+      "path": "src/bafu_community_fixes/registry.py",
+      "source_sha256": "ebc4c8a780e057c4469ee43b42f7a0369b35aef83fe8730c9fe87b259eb4e355",
+      "disposition": "kept unchanged",
+      "destination": "src/bafu_community_fixes/registry.py",
+      "destination_sha256": "ebc4c8a780e057c4469ee43b42f7a0369b35aef83fe8730c9fe87b259eb4e355"
+    },
+    {
+      "source": "community",
+      "path": "src/bafu_community_fixes/report.py",
+      "source_sha256": "f18ae320ea6c42a7d701c9fa5d031e644302d943187572686626bda53960d773",
+      "disposition": "kept unchanged",
+      "destination": "src/bafu_community_fixes/report.py",
+      "destination_sha256": "f18ae320ea6c42a7d701c9fa5d031e644302d943187572686626bda53960d773"
+    },
+    {
+      "source": "community",
+      "path": "src/bafu_community_fixes/report_assets/Rubik-OFL.txt",
+      "source_sha256": "5237f9509bd642a00c8448ac4004481db7cf550f440cf2aa3c43fbe2dfbf2fac",
+      "disposition": "kept unchanged",
+      "destination": "src/bafu_community_fixes/report_assets/Rubik-OFL.txt",
+      "destination_sha256": "5237f9509bd642a00c8448ac4004481db7cf550f440cf2aa3c43fbe2dfbf2fac"
+    },
+    {
+      "source": "community",
+      "path": "src/bafu_community_fixes/report_assets/Rubik-VariableFont_wght.ttf",
+      "source_sha256": "c64f09f2590fecfb8989ba83e5fee9a34e8eb1fa762177c0bc55c17e3faf4a2b",
+      "disposition": "kept unchanged",
+      "destination": "src/bafu_community_fixes/report_assets/Rubik-VariableFont_wght.ttf",
+      "destination_sha256": "c64f09f2590fecfb8989ba83e5fee9a34e8eb1fa762177c0bc55c17e3faf4a2b"
+    },
+    {
+      "source": "community",
+      "path": "src/bafu_community_fixes/report_assets/__init__.py",
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "disposition": "kept unchanged",
+      "destination": "src/bafu_community_fixes/report_assets/__init__.py",
+      "destination_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "community",
+      "path": "src/bafu_community_fixes/report_assets/sentier-logo.svg",
+      "source_sha256": "7edd73c181a15cc6dec77c6903d0c2228ebeb5007b014945a9fd471317f635b3",
+      "disposition": "kept unchanged",
+      "destination": "src/bafu_community_fixes/report_assets/sentier-logo.svg",
+      "destination_sha256": "7edd73c181a15cc6dec77c6903d0c2228ebeb5007b014945a9fd471317f635b3"
+    },
+    {
+      "source": "community",
+      "path": "src/bafu_community_fixes/schemas/__init__.py",
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "disposition": "kept unchanged",
+      "destination": "src/bafu_community_fixes/schemas/__init__.py",
+      "destination_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "community",
+      "path": "src/bafu_community_fixes/schemas/ecospold1/EcoSpold01DataTypes.xsd",
+      "source_sha256": "780b626010b0c01a954aa2061551efd13e62d31089fc46d5f7f546b24a36d522",
+      "disposition": "kept unchanged",
+      "destination": "src/bafu_community_fixes/schemas/ecospold1/EcoSpold01DataTypes.xsd",
+      "destination_sha256": "780b626010b0c01a954aa2061551efd13e62d31089fc46d5f7f546b24a36d522"
+    },
+    {
+      "source": "community",
+      "path": "src/bafu_community_fixes/schemas/ecospold1/EcoSpold01Dataset.xsd",
+      "source_sha256": "1139b6a25818b313bc87b8e9ab7ed5617a03cf0097644b5b6950e0ed26887651",
+      "disposition": "kept unchanged",
+      "destination": "src/bafu_community_fixes/schemas/ecospold1/EcoSpold01Dataset.xsd",
+      "destination_sha256": "1139b6a25818b313bc87b8e9ab7ed5617a03cf0097644b5b6950e0ed26887651"
+    },
+    {
+      "source": "community",
+      "path": "src/bafu_community_fixes/schemas/ecospold1/EcoSpold01FlowData.xsd",
+      "source_sha256": "a481f78031cf3eae409ab474c25bba1a67aeab9283e188af733bf73fd0e531b6",
+      "disposition": "kept unchanged",
+      "destination": "src/bafu_community_fixes/schemas/ecospold1/EcoSpold01FlowData.xsd",
+      "destination_sha256": "a481f78031cf3eae409ab474c25bba1a67aeab9283e188af733bf73fd0e531b6"
+    },
+    {
+      "source": "community",
+      "path": "src/bafu_community_fixes/schemas/ecospold1/EcoSpold01MetaInformation.xsd",
+      "source_sha256": "06179033857f2c17bfa64089fb100f8aa27b11b47413b5007fb7a49b3a9958ae",
+      "disposition": "kept unchanged",
+      "destination": "src/bafu_community_fixes/schemas/ecospold1/EcoSpold01MetaInformation.xsd",
+      "destination_sha256": "06179033857f2c17bfa64089fb100f8aa27b11b47413b5007fb7a49b3a9958ae"
+    },
+    {
+      "source": "community",
+      "path": "src/bafu_community_fixes/schemas/ecospold1/README.md",
+      "source_sha256": "cace330de03525b2289f7d9470757375b159fb9918dddb2720021c38a3d75bfb",
+      "disposition": "kept unchanged",
+      "destination": "src/bafu_community_fixes/schemas/ecospold1/README.md",
+      "destination_sha256": "cace330de03525b2289f7d9470757375b159fb9918dddb2720021c38a3d75bfb"
+    },
+    {
+      "source": "community",
+      "path": "src/bafu_community_fixes/templates/__init__.py",
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "disposition": "kept unchanged",
+      "destination": "src/bafu_community_fixes/templates/__init__.py",
+      "destination_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "community",
+      "path": "src/bafu_community_fixes/templates/report.html.j2",
+      "source_sha256": "06f4b93d2e489a74208f95cf2f5dcc8e44978cdb44556a32d368c534dbbe8f98",
+      "disposition": "kept unchanged",
+      "destination": "src/bafu_community_fixes/templates/report.html.j2",
+      "destination_sha256": "06f4b93d2e489a74208f95cf2f5dcc8e44978cdb44556a32d368c534dbbe8f98"
+    },
+    {
+      "source": "community",
+      "path": "src/bafu_community_fixes/tui.py",
+      "source_sha256": "2aa8fa73859df92a429dc17df53ed98df8deda8ac2528d1e6959b6a4ba5a31ff",
+      "disposition": "kept unchanged",
+      "destination": "src/bafu_community_fixes/tui.py",
+      "destination_sha256": "2aa8fa73859df92a429dc17df53ed98df8deda8ac2528d1e6959b6a4ba5a31ff"
+    },
+    {
+      "source": "community",
+      "path": "src/bafu_community_fixes/tui.tcss",
+      "source_sha256": "f4e7782857c3138dac8e11d9f5dafbbdc6588b81bf94f2850f941bde09a5be36",
+      "disposition": "kept unchanged",
+      "destination": "src/bafu_community_fixes/tui.tcss",
+      "destination_sha256": "f4e7782857c3138dac8e11d9f5dafbbdc6588b81bf94f2850f941bde09a5be36"
+    },
+    {
+      "source": "community",
+      "path": "src/bafu_community_fixes/xml.py",
+      "source_sha256": "b4bf4d9a92a5a450ca5ecaf78b5e0b6fbc17617c1c28162d184d0eeee66c641d",
+      "disposition": "kept unchanged",
+      "destination": "src/bafu_community_fixes/xml.py",
+      "destination_sha256": "b4bf4d9a92a5a450ca5ecaf78b5e0b6fbc17617c1c28162d184d0eeee66c641d"
+    },
+    {
+      "source": "community",
+      "path": "src/bafu_community_fixes/xsd.py",
+      "source_sha256": "0e332126560d90cfe511a12ab3efdeef91a65fdf910188cc5a2968bb7bfbfd6e",
+      "disposition": "kept unchanged",
+      "destination": "src/bafu_community_fixes/xsd.py",
+      "destination_sha256": "0e332126560d90cfe511a12ab3efdeef91a65fdf910188cc5a2968bb7bfbfd6e"
+    },
+    {
+      "source": "community",
+      "path": "tests/conftest.py",
+      "source_sha256": "991af2858522b4770a25b84eb61d358fee04e6f98b41a345e4677ed1ac3c3325",
+      "disposition": "kept unchanged",
+      "destination": "tests/conftest.py",
+      "destination_sha256": "991af2858522b4770a25b84eb61d358fee04e6f98b41a345e4677ed1ac3c3325"
+    },
+    {
+      "source": "community",
+      "path": "tests/fixtures/raw_bafu.xml",
+      "source_sha256": "fc5845e349a519b1540942af919e309106fbf8add31f2e6e40aafd79da1b8d62",
+      "disposition": "kept unchanged",
+      "destination": "tests/fixtures/raw_bafu.xml",
+      "destination_sha256": "fc5845e349a519b1540942af919e309106fbf8add31f2e6e40aafd79da1b8d62"
+    },
+    {
+      "source": "community",
+      "path": "tests/test_bafu_release.py",
+      "source_sha256": "d158a4c3297eb211021c4609307e3262e8142836f169b309e80a0319e146ea8f",
+      "disposition": "kept unchanged",
+      "destination": "tests/test_bafu_release.py",
+      "destination_sha256": "d158a4c3297eb211021c4609307e3262e8142836f169b309e80a0319e146ea8f"
+    },
+    {
+      "source": "community",
+      "path": "tests/test_download.py",
+      "source_sha256": "6fb6c1fd6898d5ece659d9dc04c3d8e735cc896d33c69c8ab80e51bb7979bbcc",
+      "disposition": "kept unchanged",
+      "destination": "tests/test_download.py",
+      "destination_sha256": "6fb6c1fd6898d5ece659d9dc04c3d8e735cc896d33c69c8ab80e51bb7979bbcc"
+    },
+    {
+      "source": "community",
+      "path": "tests/test_import_fixes.py",
+      "source_sha256": "78472a928d47ebdfc21d54f69dfae4810458a5103e15c8f27b6f479e048a3234",
+      "disposition": "kept unchanged",
+      "destination": "tests/test_import_fixes.py",
+      "destination_sha256": "78472a928d47ebdfc21d54f69dfae4810458a5103e15c8f27b6f479e048a3234"
+    },
+    {
+      "source": "community",
+      "path": "tests/test_models.py",
+      "source_sha256": "9b1616cd5e0fbe5290a006135461a71a0296d8f26a34eb04255c703750dbe2a9",
+      "disposition": "kept unchanged",
+      "destination": "tests/test_models.py",
+      "destination_sha256": "9b1616cd5e0fbe5290a006135461a71a0296d8f26a34eb04255c703750dbe2a9"
+    },
+    {
+      "source": "community",
+      "path": "tests/test_patches.py",
+      "source_sha256": "e0c5a3703d8e12c7ebd359e4477482928df77c4e815a3fde80092aa920184544",
+      "disposition": "kept unchanged",
+      "destination": "tests/test_patches.py",
+      "destination_sha256": "e0c5a3703d8e12c7ebd359e4477482928df77c4e815a3fde80092aa920184544"
+    },
+    {
+      "source": "community",
+      "path": "tests/test_pipeline.py",
+      "source_sha256": "6a0de507b699333a8014fbd8598615a120ed439666389acd0e1840c0eff46c2c",
+      "disposition": "kept unchanged",
+      "destination": "tests/test_pipeline.py",
+      "destination_sha256": "6a0de507b699333a8014fbd8598615a120ed439666389acd0e1840c0eff46c2c"
+    },
+    {
+      "source": "community",
+      "path": "tests/test_report.py",
+      "source_sha256": "1f67f9ad7269ddf31da1f7315494d8f88e401dddc78dd82145af1eef2c9bd4cc",
+      "disposition": "kept unchanged",
+      "destination": "tests/test_report.py",
+      "destination_sha256": "1f67f9ad7269ddf31da1f7315494d8f88e401dddc78dd82145af1eef2c9bd4cc"
+    },
+    {
+      "source": "community",
+      "path": "tests/test_tui.py",
+      "source_sha256": "472c31598bbb0d5b95974aff4e02ec56447aa185dab8f27b3bc738fc61a66ce6",
+      "disposition": "kept unchanged",
+      "destination": "tests/test_tui.py",
+      "destination_sha256": "472c31598bbb0d5b95974aff4e02ec56447aa185dab8f27b3bc738fc61a66ce6"
+    },
+    {
+      "source": "community",
+      "path": "tests/test_xml.py",
+      "source_sha256": "a4cab5836529f6cd8a73f593aefceb6c6da7d6a38cbf9f0b8e04ac9d92338b5b",
+      "disposition": "kept unchanged",
+      "destination": "tests/test_xml.py",
+      "destination_sha256": "a4cab5836529f6cd8a73f593aefceb6c6da7d6a38cbf9f0b8e04ac9d92338b5b"
+    },
+    {
+      "source": "community",
+      "path": "tests/test_xsd.py",
+      "source_sha256": "e1e81aff9d752a79c8d3ed61fd9e0025af6657ad06bfbf010ba39d0c470f0123",
+      "disposition": "kept unchanged",
+      "destination": "tests/test_xsd.py",
+      "destination_sha256": "e1e81aff9d752a79c8d3ed61fd9e0025af6657ad06bfbf010ba39d0c470f0123"
+    },
+    {
+      "source": "community",
+      "path": "uv.lock",
+      "source_sha256": "3a21f5ee4665a900a73ef536b76df1a478140e1595df6e8dccd86dd786c7b58e",
+      "disposition": "kept unchanged",
+      "destination": "uv.lock",
+      "destination_sha256": "3a21f5ee4665a900a73ef536b76df1a478140e1595df6e8dccd86dd786c7b58e"
+    },
+    {
+      "source": "workspace",
+      "path": ".github/ISSUE_TEMPLATE/bafu-data-finding.yml",
+      "source_sha256": "0a5619c7a703f98e25609bf51b6bbfeffb3d07b843a69a0f4c42ce1717987030",
+      "disposition": "kept unchanged",
+      "destination": ".github/ISSUE_TEMPLATE/bafu-data-finding.yml",
+      "destination_sha256": "0a5619c7a703f98e25609bf51b6bbfeffb3d07b843a69a0f4c42ce1717987030"
+    },
+    {
+      "source": "workspace",
+      "path": ".github/ISSUE_TEMPLATE/community-contribution.yml",
+      "source_sha256": "69338e7f5575ef4324cd610e08df3feed21355f1bcb5d986e5ffe0a4230fec6b",
+      "disposition": "kept unchanged",
+      "destination": ".github/ISSUE_TEMPLATE/community-contribution.yml",
+      "destination_sha256": "69338e7f5575ef4324cd610e08df3feed21355f1bcb5d986e5ffe0a4230fec6b"
+    },
+    {
+      "source": "workspace",
+      "path": ".github/ISSUE_TEMPLATE/discussion.yml",
+      "source_sha256": "55060f640c26bbc8f17e87c8d80e2db044ea9293d8b705c7a4d261a6b1d31bdf",
+      "disposition": "kept unchanged",
+      "destination": ".github/ISSUE_TEMPLATE/discussion.yml",
+      "destination_sha256": "55060f640c26bbc8f17e87c8d80e2db044ea9293d8b705c7a4d261a6b1d31bdf"
+    },
+    {
+      "source": "workspace",
+      "path": ".github/PULL_REQUEST_TEMPLATE.md",
+      "source_sha256": "aa968dd216c779b411945dd20008f33ba33e2a7ae308056db928c071934c69c7",
+      "disposition": "kept unchanged",
+      "destination": ".github/PULL_REQUEST_TEMPLATE.md",
+      "destination_sha256": "aa968dd216c779b411945dd20008f33ba33e2a7ae308056db928c071934c69c7"
+    },
+    {
+      "source": "workspace",
+      "path": ".github/workflows/pages.yml",
+      "source_sha256": "7753928c5a09039b63bb4818439bf2d9500b7e03cade17000813c346c29c75b1",
+      "disposition": "merged",
+      "destination": ".github/workflows/pages.yml",
+      "reason": "Runs scripts/check_integration_receipt.py (Python 3.12, --no-project) on pushes and pull requests, against the commit that last wrote the receipt; checkout gains fetch-depth: 0 so both source histories are present.",
+      "destination_sha256": "544e815b1d111bf2ffbc054c93b8136ede69e712a66f652fccf51091ff1ecb98"
+    },
+    {
+      "source": "workspace",
+      "path": ".gitignore",
+      "source_sha256": "e61075ad0b494e2f98eaf864f0f4781e45b577703a62cc89869ad638dd231eb1",
+      "disposition": "merged",
+      "destination": ".gitignore",
+      "reason": "Union of ignore rules at the merge. Appended after the community rules: .local/, .env, inputs/, cache/, notes/private/, _site/. Already covered by community rules: __pycache__/, *.pyc (*.py[oc]), .venv/ (.venv), output/. No tracked file is ignored (git ls-files -ci --exclude-standard is empty).",
+      "destination_sha256": "b81a179589cad960daf087ab1d0906cefd110599d207f6b79c86a3d51cb70b59"
+    },
+    {
+      "source": "workspace",
+      "path": ".gitlab-ci.yml",
+      "source_sha256": "656e89c0544a5692e9cd6800095264bf0c4decb4fd7e65b3ff951af2e5cca5c6",
+      "disposition": "merged",
+      "destination": ".gitlab-ci.yml",
+      "reason": "Registry test discovery points at registry-tests/; UV_PYTHON=3.12 and --no-project, because pyproject.toml and .python-version (3.14) now sit at the root (the GitHub Documentation workflow already does the same).",
+      "destination_sha256": "af2ce1d6f94a5309094ebe5fa30e1d7c5471a8922e0994245ec8c6a742b5e6af"
+    },
+    {
+      "source": "workspace",
+      "path": "AGENTS.md",
+      "source_sha256": "5825cea761bf2c2547e98cfe4def72588e27041250757b3cffa7d7cdd6846618",
+      "disposition": "kept unchanged",
+      "destination": "AGENTS.md",
+      "destination_sha256": "5825cea761bf2c2547e98cfe4def72588e27041250757b3cffa7d7cdd6846618"
+    },
+    {
+      "source": "workspace",
+      "path": "CONTEXT.md",
+      "source_sha256": "797f54de3a1fcfd65266b3ede1604c1fa7295a34f3a71c07403d7ed27f37a2d5",
+      "disposition": "kept unchanged",
+      "destination": "CONTEXT.md",
+      "destination_sha256": "797f54de3a1fcfd65266b3ede1604c1fa7295a34f3a71c07403d7ed27f37a2d5"
+    },
+    {
+      "source": "workspace",
+      "path": "CONTRIBUTING.md",
+      "source_sha256": "245d19cb88795199fc46ebfdaa9e0e46d7a6edd76e6644eb0dba9dd04e88b524",
+      "disposition": "merged",
+      "destination": "CONTRIBUTING.md",
+      "reason": "Adds a short 'Package work' section (locked environment, uv run pytest, ruff) pointing to the README's patch-writing sections. Existing text unchanged.",
+      "destination_sha256": "72c0e8966d9bbfb43eab92809c13c0eae1fb53cbd93ba8af0f4add88e8b0bb4e"
+    },
+    {
+      "source": "workspace",
+      "path": "LICENSE",
+      "source_sha256": "3778c928d02a75605760c2d18453905c653f5a693118eea4ccc23b47eeea4af3",
+      "disposition": "kept unchanged",
+      "destination": "LICENSE",
+      "destination_sha256": "3778c928d02a75605760c2d18453905c653f5a693118eea4ccc23b47eeea4af3"
+    },
+    {
+      "source": "workspace",
+      "path": "README.md",
+      "source_sha256": "daaf864b3c49146f8973e308f9b470eb3e09098a9f3c16fbefd687e08983904d",
+      "disposition": "merged",
+      "destination": "README.md",
+      "reason": "Replaced as root README by the community README at the merge, then composed: its positioning, links, evidence and contribution guidance, check commands, site and credit text are carried into 'Review workspace'. Its 'Start with the import' and 'Current work' sections and its logo image (site/assets/sentier.svg, a file that does not exist) are not repeated; the original is linked by its a13bbbf permalink and kept as a verbatim copy. 'The pipeline has not yet been merged' becomes the candidate status.",
+      "verbatim_copy": "docs/migration-history/sentier-bafu-a13bbbf-README.md",
+      "destination_sha256": "ce4872bb02980d18b50989f1c6346a03e44268a3fb035d66aa8b7284d5f04810"
+    },
+    {
+      "source": "workspace",
+      "path": "community/README.md",
+      "source_sha256": "b6e38948ecfa0ecaa58e687b5e261f214aa6475743d7392f185cb26824660ec1",
+      "disposition": "kept unchanged",
+      "destination": "community/README.md",
+      "destination_sha256": "b6e38948ecfa0ecaa58e687b5e261f214aa6475743d7392f185cb26824660ec1"
+    },
+    {
+      "source": "workspace",
+      "path": "community/application-and-testing.md",
+      "source_sha256": "3773460caf2f382a073c814b61f634386008783e7ffbc72a2ede1d7539a9c808",
+      "disposition": "kept unchanged",
+      "destination": "community/application-and-testing.md",
+      "destination_sha256": "3773460caf2f382a073c814b61f634386008783e7ffbc72a2ede1d7539a9c808"
+    },
+    {
+      "source": "workspace",
+      "path": "community/build-validation.md",
+      "source_sha256": "cfbaed68dbb336df14a4f2b15d5f778525628dc80592c8277c2d0a18f8ea3d78",
+      "disposition": "merged",
+      "destination": "community/build-validation.md",
+      "reason": "The audit_registry.py command gains `--no-project --python 3.12` (at the merged root the old command syncs the 3.14 package project and pyarrow 19.0.1 fails to build, measured), plus one line saying the script's docstring keeps the old command because the export audit pins its SHA-256.",
+      "destination_sha256": "1bc47f216442b51319e58b94a4409ed96cf5e2668e62f3a0ad5538d0407d4c38"
+    },
+    {
+      "source": "workspace",
+      "path": "community/ci/README.md",
+      "source_sha256": "399fd6d83153f1232241d1fbb4dd646eaf043a00898193519180b602b6ef0921",
+      "disposition": "kept unchanged",
+      "destination": "community/ci/README.md",
+      "destination_sha256": "399fd6d83153f1232241d1fbb4dd646eaf043a00898193519180b602b6ef0921"
+    },
+    {
+      "source": "workspace",
+      "path": "community/ci/github-actions.yml",
+      "source_sha256": "a9a30956919d99b53867cbb8b52470c2aa58308cfde1f6fab7b8eb3803bd7866",
+      "disposition": "merged",
+      "destination": "community/ci/github-actions.yml",
+      "reason": "The site build gains `--no-project --python 3.12`: without --no-project uv syncs the package project, and --no-project alone picks Python 3.14 from .python-version.",
+      "destination_sha256": "b07e1a6a88a2c38f6a71fb9efc6bc2bb1cfa87fe28e21a737f01135f4cb2e40c"
+    },
+    {
+      "source": "workspace",
+      "path": "community/contributions/C001.json",
+      "source_sha256": "65965d86474457a94cfa4167828a33e8ef252d1a118cecdc05b7450d0c2fc132",
+      "disposition": "kept unchanged",
+      "destination": "community/contributions/C001.json",
+      "destination_sha256": "65965d86474457a94cfa4167828a33e8ef252d1a118cecdc05b7450d0c2fc132"
+    },
+    {
+      "source": "workspace",
+      "path": "community/contributions/C002.json",
+      "source_sha256": "defba80c2779a298de21b1d2f3c0eeeb4d2370be8804b79f467715f1008116c7",
+      "disposition": "kept unchanged",
+      "destination": "community/contributions/C002.json",
+      "destination_sha256": "defba80c2779a298de21b1d2f3c0eeeb4d2370be8804b79f467715f1008116c7"
+    },
+    {
+      "source": "workspace",
+      "path": "community/findings.md",
+      "source_sha256": "3bd13a46db7222a06a9049f41ac3130d862b715061aef8efe750e54b76d2346b",
+      "disposition": "kept unchanged",
+      "destination": "community/findings.md",
+      "destination_sha256": "3bd13a46db7222a06a9049f41ac3130d862b715061aef8efe750e54b76d2346b"
+    },
+    {
+      "source": "workspace",
+      "path": "community/hackathon-assessment.md",
+      "source_sha256": "cf377168201ba33f68ff14111c92cfe42b0ef830c3751d7350ae27bd13d2e19f",
+      "disposition": "kept unchanged",
+      "destination": "community/hackathon-assessment.md",
+      "destination_sha256": "cf377168201ba33f68ff14111c92cfe42b0ef830c3751d7350ae27bd13d2e19f"
+    },
+    {
+      "source": "workspace",
+      "path": "community/mutel-mapping-review.md",
+      "source_sha256": "38c94d21e668666d7dbb85f952e4ce0bb5e5260f7d555841c1ece69d4dfcddc5",
+      "disposition": "kept unchanged",
+      "destination": "community/mutel-mapping-review.md",
+      "destination_sha256": "38c94d21e668666d7dbb85f952e4ce0bb5e5260f7d555841c1ece69d4dfcddc5"
+    },
+    {
+      "source": "workspace",
+      "path": "community/recommendations/README.md",
+      "source_sha256": "d83116d273a1d48293cea31edce7cc361977cc01c00452b0f68c3f626b90d70b",
+      "disposition": "kept unchanged",
+      "destination": "community/recommendations/README.md",
+      "destination_sha256": "d83116d273a1d48293cea31edce7cc361977cc01c00452b0f68c3f626b90d70b"
+    },
+    {
+      "source": "workspace",
+      "path": "community/recommendations/tracker.json",
+      "source_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "disposition": "kept unchanged",
+      "destination": "community/recommendations/tracker.json",
+      "destination_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "source": "workspace",
+      "path": "community/reconciliation.json",
+      "source_sha256": "11047a6c9c4278f69b12faaa841af0f9b8386a684783e502e07edbe8e16e40cd",
+      "disposition": "kept unchanged",
+      "destination": "community/reconciliation.json",
+      "destination_sha256": "11047a6c9c4278f69b12faaa841af0f9b8386a684783e502e07edbe8e16e40cd"
+    },
+    {
+      "source": "workspace",
+      "path": "community/reconciliation.md",
+      "source_sha256": "b98a4c0e8ebeae8c2eea1e9cf61d60b9d9a3ebd8767cdfe8ef128a1fa065a651",
+      "disposition": "kept unchanged",
+      "destination": "community/reconciliation.md",
+      "destination_sha256": "b98a4c0e8ebeae8c2eea1e9cf61d60b9d9a3ebd8767cdfe8ef128a1fa065a651"
+    },
+    {
+      "source": "workspace",
+      "path": "community/runs/bafu-export-audit.json",
+      "source_sha256": "416fa3d8b07085dfeaf0ad76cb1e4d44d7d21c9f77e79fb665a05a3337f35258",
+      "disposition": "kept unchanged",
+      "destination": "community/runs/bafu-export-audit.json",
+      "destination_sha256": "416fa3d8b07085dfeaf0ad76cb1e4d44d7d21c9f77e79fb665a05a3337f35258"
+    },
+    {
+      "source": "workspace",
+      "path": "community/runs/hackathon-roundtrip.json",
+      "source_sha256": "cc29ac28360d9b9318dba455ed9bdbdd739342751aa622a6678cf73cb60719af",
+      "disposition": "kept unchanged",
+      "destination": "community/runs/hackathon-roundtrip.json",
+      "destination_sha256": "cc29ac28360d9b9318dba455ed9bdbdd739342751aa622a6678cf73cb60719af"
+    },
+    {
+      "source": "workspace",
+      "path": "community/runs/mutel-mapping-audit.json",
+      "source_sha256": "fc1450f2748265494fb9b2ea1a2f00ec124b990fe12627dcc04d1ab73772bad3",
+      "disposition": "kept unchanged",
+      "destination": "community/runs/mutel-mapping-audit.json",
+      "destination_sha256": "fc1450f2748265494fb9b2ea1a2f00ec124b990fe12627dcc04d1ab73772bad3"
+    },
+    {
+      "source": "workspace",
+      "path": "community/templates/build-audit.json",
+      "source_sha256": "d744340fa52348f9076bb1f9bcda72ff2cbda6e5b82f652a31c640863bf24612",
+      "disposition": "kept unchanged",
+      "destination": "community/templates/build-audit.json",
+      "destination_sha256": "d744340fa52348f9076bb1f9bcda72ff2cbda6e5b82f652a31c640863bf24612"
+    },
+    {
+      "source": "workspace",
+      "path": "community/templates/contribution.json",
+      "source_sha256": "1ab8f08057a855593afd4f5cdd1d97b1e54bcf542b3f7871936d35edbdf9744a",
+      "disposition": "kept unchanged",
+      "destination": "community/templates/contribution.json",
+      "destination_sha256": "1ab8f08057a855593afd4f5cdd1d97b1e54bcf542b3f7871936d35edbdf9744a"
+    },
+    {
+      "source": "workspace",
+      "path": "community/templates/intake.md",
+      "source_sha256": "c2a89495022065a7ff00d35e5ad6b24cc5bf8f44311dda583ba6fcf964e0100d",
+      "disposition": "kept unchanged",
+      "destination": "community/templates/intake.md",
+      "destination_sha256": "c2a89495022065a7ff00d35e5ad6b24cc5bf8f44311dda583ba6fcf964e0100d"
+    },
+    {
+      "source": "workspace",
+      "path": "community/templates/recommendation.md",
+      "source_sha256": "67d11ed7cb3fde833e445a0fcc5977a321137108e334d102631737f5db38e199",
+      "disposition": "kept unchanged",
+      "destination": "community/templates/recommendation.md",
+      "destination_sha256": "67d11ed7cb3fde833e445a0fcc5977a321137108e334d102631737f5db38e199"
+    },
+    {
+      "source": "workspace",
+      "path": "community/templates/run-summary.json",
+      "source_sha256": "3611be5de189a5ddc57b25c18809a18c78ea59f4442a2b3fd0c5cb40ae08c61c",
+      "disposition": "kept unchanged",
+      "destination": "community/templates/run-summary.json",
+      "destination_sha256": "3611be5de189a5ddc57b25c18809a18c78ea59f4442a2b3fd0c5cb40ae08c61c"
+    },
+    {
+      "source": "workspace",
+      "path": "community/tests/test_build_checks.py",
+      "source_sha256": "684c244d8eb67db683e9678196d7cc25aa33d165505a72ab382ba6355858dc8c",
+      "disposition": "kept unchanged",
+      "destination": "community/tests/test_build_checks.py",
+      "destination_sha256": "684c244d8eb67db683e9678196d7cc25aa33d165505a72ab382ba6355858dc8c"
+    },
+    {
+      "source": "workspace",
+      "path": "community/tests/test_flow_mapping_audit.py",
+      "source_sha256": "1d74aeadd2d6f0d133ac11ad7a509ee9db28afd211c8db19c917ac432fe8e578",
+      "disposition": "kept unchanged",
+      "destination": "community/tests/test_flow_mapping_audit.py",
+      "destination_sha256": "1d74aeadd2d6f0d133ac11ad7a509ee9db28afd211c8db19c917ac432fe8e578"
+    },
+    {
+      "source": "workspace",
+      "path": "community/tests/test_records.py",
+      "source_sha256": "db4d69996dec0c227cef26a625d1a86aacd2705775427cb4bcefe21755e48da9",
+      "disposition": "kept unchanged",
+      "destination": "community/tests/test_records.py",
+      "destination_sha256": "db4d69996dec0c227cef26a625d1a86aacd2705775427cb4bcefe21755e48da9"
+    },
+    {
+      "source": "workspace",
+      "path": "community/workflow.md",
+      "source_sha256": "0959ee7a4272c8c1da304f907ddf87ea07a04844b8a685505f1a774904bfadaa",
+      "disposition": "kept unchanged",
+      "destination": "community/workflow.md",
+      "destination_sha256": "0959ee7a4272c8c1da304f907ddf87ea07a04844b8a685505f1a774904bfadaa"
+    },
+    {
+      "source": "workspace",
+      "path": "docs/adr/0001-consolidate-community-pipeline.md",
+      "source_sha256": "94721c0138fa25061ce844d4524851f7d2edbcbe2498da07901f6c1b8d7ad896",
+      "disposition": "kept unchanged",
+      "destination": "docs/adr/0001-consolidate-community-pipeline.md",
+      "destination_sha256": "94721c0138fa25061ce844d4524851f7d2edbcbe2498da07901f6c1b8d7ad896"
+    },
+    {
+      "source": "workspace",
+      "path": "docs/adr/0002-use-upstream-flow-decisions.md",
+      "source_sha256": "17c3eca7279149ceb715d780af70ebd4f9423aad59b0e18e3b9dbd8aa75af6ef",
+      "disposition": "kept unchanged",
+      "destination": "docs/adr/0002-use-upstream-flow-decisions.md",
+      "destination_sha256": "17c3eca7279149ceb715d780af70ebd4f9423aad59b0e18e3b9dbd8aa75af6ef"
+    },
+    {
+      "source": "workspace",
+      "path": "docs/adr/0003-publish-static-review-snapshots.md",
+      "source_sha256": "cccc39a5c37811b07103b77af8ef72f10674eb1397d9b6781280319a73652b47",
+      "disposition": "kept unchanged",
+      "destination": "docs/adr/0003-publish-static-review-snapshots.md",
+      "destination_sha256": "cccc39a5c37811b07103b77af8ef72f10674eb1397d9b6781280319a73652b47"
+    },
+    {
+      "source": "workspace",
+      "path": "docs/adr/0004-separate-review-and-provider-status.md",
+      "source_sha256": "1eae3db0cfa0d369ebd13c48b9ff377ee0f5f731da647b22781bb32bef661fd9",
+      "disposition": "kept unchanged",
+      "destination": "docs/adr/0004-separate-review-and-provider-status.md",
+      "destination_sha256": "1eae3db0cfa0d369ebd13c48b9ff377ee0f5f731da647b22781bb32bef661fd9"
+    },
+    {
+      "source": "workspace",
+      "path": "docs/plans/bafu-community/README.md",
+      "source_sha256": "f35f8b9573fb573275d67fe42bd5b32c4bfaad11adc822d524f6ed63486528fa",
+      "disposition": "kept unchanged",
+      "destination": "docs/plans/bafu-community/README.md",
+      "destination_sha256": "f35f8b9573fb573275d67fe42bd5b32c4bfaad11adc822d524f6ed63486528fa"
+    },
+    {
+      "source": "workspace",
+      "path": "docs/plans/bafu-community/migration.md",
+      "source_sha256": "9e93e9521ca3dafd28d6eef8b3870319f69d5ca0a9fef2556255620230bd29bd",
+      "disposition": "kept unchanged",
+      "destination": "docs/plans/bafu-community/migration.md",
+      "destination_sha256": "9e93e9521ca3dafd28d6eef8b3870319f69d5ca0a9fef2556255620230bd29bd"
+    },
+    {
+      "source": "workspace",
+      "path": "docs/plans/bafu-community/naming.md",
+      "source_sha256": "f668d7a77aba9643caac6ed8093578455a86028fce599c62f0faa459c6af242a",
+      "disposition": "kept unchanged",
+      "destination": "docs/plans/bafu-community/naming.md",
+      "destination_sha256": "f668d7a77aba9643caac6ed8093578455a86028fce599c62f0faa459c6af242a"
+    },
+    {
+      "source": "workspace",
+      "path": "docs/plans/bafu-community/source-inventory.json",
+      "source_sha256": "fb1477fd2e6808da0cacfb21d820d32c0b5608bf41553ec7e4362978f6d70888",
+      "disposition": "kept unchanged",
+      "destination": "docs/plans/bafu-community/source-inventory.json",
+      "destination_sha256": "fb1477fd2e6808da0cacfb21d820d32c0b5608bf41553ec7e4362978f6d70888"
+    },
+    {
+      "source": "workspace",
+      "path": "docs/terms-of-use.md",
+      "source_sha256": "bed48b95c18074ba8400839e194d307828585291951f212aaa98b6fdad9e72a1",
+      "disposition": "kept unchanged",
+      "destination": "docs/terms-of-use.md",
+      "destination_sha256": "bed48b95c18074ba8400839e194d307828585291951f212aaa98b6fdad9e72a1"
+    },
+    {
+      "source": "workspace",
+      "path": "evidence/index.json",
+      "source_sha256": "6cfd78bb064720041fa7059cb26ff6173e6aa29cf9f67f8236f984ea60e36b2a",
+      "disposition": "kept unchanged",
+      "destination": "evidence/index.json",
+      "destination_sha256": "6cfd78bb064720041fa7059cb26ff6173e6aa29cf9f67f8236f984ea60e36b2a"
+    },
+    {
+      "source": "workspace",
+      "path": "evidence/index.md",
+      "source_sha256": "566c09be23f02cd29921cf48cce3460f937667c0cd4bd2fb0dd945f70af3c8b7",
+      "disposition": "kept unchanged",
+      "destination": "evidence/index.md",
+      "destination_sha256": "566c09be23f02cd29921cf48cce3460f937667c0cd4bd2fb0dd945f70af3c8b7"
+    },
+    {
+      "source": "workspace",
+      "path": "scripts/audit_flow_mapping.py",
+      "source_sha256": "324ad21757774dffda578d7a00e2be55534709c5c72ea6c86f55d313de2223e2",
+      "disposition": "kept unchanged",
+      "destination": "scripts/audit_flow_mapping.py",
+      "destination_sha256": "324ad21757774dffda578d7a00e2be55534709c5c72ea6c86f55d313de2223e2"
+    },
+    {
+      "source": "workspace",
+      "path": "scripts/audit_registry.py",
+      "source_sha256": "1acb1be4021ff248bf1c14f8abbfbef8bc4350bebf0281ac925a2891335dec22",
+      "disposition": "kept unchanged",
+      "destination": "scripts/audit_registry.py",
+      "destination_sha256": "1acb1be4021ff248bf1c14f8abbfbef8bc4350bebf0281ac925a2891335dec22"
+    },
+    {
+      "source": "workspace",
+      "path": "scripts/build_checks.py",
+      "source_sha256": "5f39ed5a1704e4461d04d9d095023b2f7e3aadded1d6f0def89d68ca7623ec47",
+      "disposition": "kept unchanged",
+      "destination": "scripts/build_checks.py",
+      "destination_sha256": "5f39ed5a1704e4461d04d9d095023b2f7e3aadded1d6f0def89d68ca7623ec47"
+    },
+    {
+      "source": "workspace",
+      "path": "scripts/build_site.py",
+      "source_sha256": "7589295c7b2bbee0225183abfa0fe1b733e6cb28a0d1fa1c4d3c4ad9b0d11093",
+      "disposition": "kept unchanged",
+      "destination": "scripts/build_site.py",
+      "destination_sha256": "7589295c7b2bbee0225183abfa0fe1b733e6cb28a0d1fa1c4d3c4ad9b0d11093"
+    },
+    {
+      "source": "workspace",
+      "path": "scripts/check_site.py",
+      "source_sha256": "1bb00fda8887d7fb670df7f9921ef1c96590616ef25e06335ed788291f9a9eaf",
+      "disposition": "kept unchanged",
+      "destination": "scripts/check_site.py",
+      "destination_sha256": "1bb00fda8887d7fb670df7f9921ef1c96590616ef25e06335ed788291f9a9eaf"
+    },
+    {
+      "source": "workspace",
+      "path": "scripts/community.py",
+      "source_sha256": "a460506c4fe26fd043f20d3f81ece278eeea51a367b33ecb0b6aa1e6e45a101d",
+      "disposition": "kept unchanged",
+      "destination": "scripts/community.py",
+      "destination_sha256": "a460506c4fe26fd043f20d3f81ece278eeea51a367b33ecb0b6aa1e6e45a101d"
+    },
+    {
+      "source": "workspace",
+      "path": "site/README.md",
+      "source_sha256": "1659e3a5e8beacc4e2243280fbc396696c7d71cd9aec4206282a5fb07cd9d5c1",
+      "disposition": "merged",
+      "destination": "site/README.md",
+      "reason": "States that the site tooling runs on Python 3.12 outside the package project, and why; the build command gains --python 3.12.",
+      "destination_sha256": "4a9006b3d42f33fef1b6b0c2091d2b809a0bbdf8fd05be8bf8baddddb18f8c88"
+    },
+    {
+      "source": "workspace",
+      "path": "site/assets/OFL.txt",
+      "source_sha256": "ee9491ad3ea5d390878695bd6cce49beb3cacd5c4312f8ab574b541e9f7afa21",
+      "disposition": "kept unchanged",
+      "destination": "site/assets/OFL.txt",
+      "destination_sha256": "ee9491ad3ea5d390878695bd6cce49beb3cacd5c4312f8ab574b541e9f7afa21"
+    },
+    {
+      "source": "workspace",
+      "path": "site/assets/dds-logo.svg",
+      "source_sha256": "7450c8fb999152f7dec6922c1d842fbb7cc39e1ce3fb14809bc2645f97d0535f",
+      "disposition": "kept unchanged",
+      "destination": "site/assets/dds-logo.svg",
+      "destination_sha256": "7450c8fb999152f7dec6922c1d842fbb7cc39e1ce3fb14809bc2645f97d0535f"
+    },
+    {
+      "source": "workspace",
+      "path": "site/assets/favicon-32x32.png",
+      "source_sha256": "f0fd5467f05e700ed547e301209962464bc2a84259167c46ab4ed52ebc5dcd31",
+      "disposition": "kept unchanged",
+      "destination": "site/assets/favicon-32x32.png",
+      "destination_sha256": "f0fd5467f05e700ed547e301209962464bc2a84259167c46ab4ed52ebc5dcd31"
+    },
+    {
+      "source": "workspace",
+      "path": "site/assets/nunito.ttf",
+      "source_sha256": "bb55a5ca5c2042335b3991af27c4d0705d0ef41cac6164ac737fd8f2a1e85207",
+      "disposition": "kept unchanged",
+      "destination": "site/assets/nunito.ttf",
+      "destination_sha256": "bb55a5ca5c2042335b3991af27c4d0705d0ef41cac6164ac737fd8f2a1e85207"
+    },
+    {
+      "source": "workspace",
+      "path": "site/config.json",
+      "source_sha256": "bace154f08e9d96cefa63ff7f4e47ee47e1318ed146606ca9f518cbd90f0d302",
+      "disposition": "kept unchanged",
+      "destination": "site/config.json",
+      "destination_sha256": "bace154f08e9d96cefa63ff7f4e47ee47e1318ed146606ca9f518cbd90f0d302"
+    },
+    {
+      "source": "workspace",
+      "path": "site/import.md",
+      "source_sha256": "f9a5939224af37425a81555403a5ae7a3ab6e03d4df7919ea3e07d1c124e9282",
+      "disposition": "kept unchanged",
+      "destination": "site/import.md",
+      "destination_sha256": "f9a5939224af37425a81555403a5ae7a3ab6e03d4df7919ea3e07d1c124e9282"
+    },
+    {
+      "source": "workspace",
+      "path": "site/style.css",
+      "source_sha256": "30823f1b0e0fc5b3aa23d24641dd0930821e3cee9994a8617f3c93e98fbafd6a",
+      "disposition": "kept unchanged",
+      "destination": "site/style.css",
+      "destination_sha256": "30823f1b0e0fc5b3aa23d24641dd0930821e3cee9994a8617f3c93e98fbafd6a"
+    },
+    {
+      "source": "workspace",
+      "path": "tests/test_audit_registry.py",
+      "source_sha256": "a661852e60a602f977a2ef3661e9dc892ed9020b68861abcc5af5b3292f8e38c",
+      "disposition": "moved",
+      "destination": "registry-tests/test_audit_registry.py",
+      "reason": "tests/ is the community pytest root (pyproject testpaths); this unittest module imports pandas at module level and would break `uv run pytest` collection. Moved byte-identical to a top-level folder (its parents[1] path to scripts/ still resolves); the GitLab job discovers it there.",
+      "destination_sha256": "a661852e60a602f977a2ef3661e9dc892ed9020b68861abcc5af5b3292f8e38c"
+    }
+  ],
+  "changed_after_merge": [
+    {
+      "path": ".gitlab-ci.yml",
+      "reason": "Registry test path (test move) and the Python 3.12 / --no-project pins."
+    },
+    {
+      "path": "pyproject.toml",
+      "reason": "ruff extend-exclude for the workspace paths."
+    },
+    {
+      "path": "community/build-validation.md",
+      "reason": "Python 3.12 / --no-project for audit_registry.py, with a note about the script's pinned docstring."
+    },
+    {
+      "path": "community/ci/github-actions.yml",
+      "reason": "--no-project --python 3.12 for the site build."
+    },
+    {
+      "path": "site/README.md",
+      "reason": "States the Python 3.12, no-project invocation."
+    },
+    {
+      "path": "README.md",
+      "reason": "Review workspace section and the completed License section."
+    },
+    {
+      "path": "src/bafu_community_fixes/data/README.md",
+      "reason": "ODbL §4.2b/4.3 notice after the unchanged permission paragraph."
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "reason": "Package work section."
+    },
+    {
+      "path": ".github/workflows/pages.yml",
+      "reason": "Integration receipt check, fetch-depth: 0."
+    }
+  ],
+  "added_after_merge": [
+    {
+      "path": "registry-tests/test_audit_registry.py",
+      "reason": "Destination of the moved registry unittest.",
+      "sha256": "a661852e60a602f977a2ef3661e9dc892ed9020b68861abcc5af5b3292f8e38c"
+    },
+    {
+      "path": "docs/migration-history/README.md",
+      "reason": "Index of the verbatim copies with full source SHAs and permalinks.",
+      "sha256": "852881558c63061ae09b02d8c95e9a79f72ea6208d57dda62b9e35d5be4c37f8"
+    },
+    {
+      "path": "docs/migration-history/bafu-community-fixes-053c799-README.md",
+      "reason": "Verbatim community README at 053c799a4d3e129747f47d6775ea88647c0bec78.",
+      "sha256": "7785080ad71f8820896000f7e2f364ca59393a3fb45f6f3f43d29c3a735d6d9f"
+    },
+    {
+      "path": "docs/migration-history/sentier-bafu-a13bbbf-README.md",
+      "reason": "Verbatim workspace README at a13bbbf2e4536e8de62eb8b4a9dd6a6a50faea41.",
+      "sha256": "daaf864b3c49146f8973e308f9b470eb3e09098a9f3c16fbefd687e08983904d"
+    },
+    {
+      "path": "docs/plans/bafu-community/source-inventory-2026-10-23.json",
+      "reason": "Dated inventory of both source heads, refs, PRs, issues and releases on 23 October 2026.",
+      "sha256": "b80033a4a6e67eb18ced23ff04c41fd4baac13cb5109035ca2eedf1da5507911"
+    },
+    {
+      "path": ".gitattributes",
+      "reason": "Marks the generated receipt and inventory so GitHub collapses them in diffs.",
+      "sha256": "17a549c3a7679c3039f213486cdc8f488321123c9b602cfcb3f39970aaabf0cd"
+    },
+    {
+      "path": "scripts/check_integration_receipt.py",
+      "reason": "Checker for this receipt, run in the Documentation workflow.",
+      "sha256": "0789060b58838090fcf9ef9b7a981b5d958304f6276e9861154deacd504fce0d"
+    },
+    {
+      "path": "docs/plans/bafu-community/integration-receipt.md",
+      "reason": "This receipt, generated from its JSON.",
+      "sha256": "334cb5c54c7853ebbfad0c81cb4364598320b733b1f8357b206ed2a6d7a38598"
+    },
+    {
+      "path": "docs/plans/bafu-community/integration-receipt.json",
+      "reason": "Machine-readable receipt.",
+      "sha256": null,
+      "sha256_omitted": "A file cannot contain its own hash."
+    }
+  ],
+  "commits_after_merge": [
+    {
+      "commit": "d4d20c300056b178643f414e9fe478404499ae6e",
+      "subject": "Move the registry unittest out of the community pytest root (#19)"
+    },
+    {
+      "commit": "43a002317d6d36564948472cdcff14a61581c7ea",
+      "subject": "Keep the community ruff scope unchanged after the merge (#19)"
+    },
+    {
+      "commit": "158b11b0c02e1bcab110ea5c499e44cf1d2e7b9e",
+      "subject": "Pin the workspace tooling to Python 3.12 outside the package project (#19)"
+    },
+    {
+      "commit": "a970bde5687ac0bdf167804a61ea47c0236ab41d",
+      "subject": "Keep both original READMEs verbatim as migration history (#19)"
+    },
+    {
+      "commit": "854d98a1f07ab7cd870769737c00844543c47271",
+      "subject": "Compose the root README: add the review workspace and complete the licences (#19)"
+    },
+    {
+      "commit": "22bf9729376a5a1534ea8b944ed1d4e8394066fa",
+      "subject": "Add the ODbL source and licence notice to the Brightway Flows data (#19)"
+    },
+    {
+      "commit": "df20e8fac315dccf6ba6b14daa6ac0e9da6cedbf",
+      "subject": "CONTRIBUTING: add a short section for package work (#19)"
+    }
+  ],
+  "verification": {
+    "environment": "Run on 23 October 2026, macOS 26.5, uv 0.9.2; Python 3.14.7 for the package (from `uv sync --locked`, with `PYTHONPATH` set to the checkout's own `src/` and an assertion that the imported `bafu_community_fixes` lies inside it) and Python 3.12.12 with `--no-project` for the workspace checks. Heavy runs went through the host's `heavy_lock.sh`.",
+    "table": [
+      [
+        "`pytest` (locked env)",
+        "106 passed, 1 skipped (community 053c799)",
+        "106 passed, 1 skipped"
+      ],
+      [
+        "`ruff check`, `ruff format --check`",
+        "passed",
+        "passed (same 43 Python files and `pyproject.toml`, plus the new checker)"
+      ],
+      [
+        "`uv lock --check`",
+        "passed",
+        "passed"
+      ],
+      [
+        "`scripts/community.py check`",
+        "passed (workspace a13bbbf): 2 records, reconciliation of 17 findings",
+        "passed, same output"
+      ],
+      [
+        "`unittest discover -s community/tests`",
+        "32 passed (workspace a13bbbf)",
+        "32 passed"
+      ],
+      [
+        "`build_checks.py community/templates/build-audit.json`",
+        "passed, summary `e0027dcd…`",
+        "passed, same summary"
+      ],
+      [
+        "`build_site.py` (markdown 3.7) + `check_site.py`",
+        "11 pages, links valid",
+        "11 pages, links valid"
+      ],
+      [
+        "Registry `unittest` (pandas 2.2.3, pyarrow 19.0.1)",
+        "4 passed (`tests/`)",
+        "4 passed (`registry-tests/`)"
+      ],
+      [
+        "`scripts/check_integration_receipt.py`",
+        "",
+        "passed"
+      ],
+      [
+        "Relative links in the 32 current Markdown files",
+        "",
+        "70 relative links, none broken, none into a verbatim copy"
+      ],
+      [
+        "pre-commit",
+        "not configured in either source",
+        "not configured"
+      ]
+    ],
+    "notes": [
+      "The skipped test is `tests/test_bafu_release.py`, which needs the full provider archive (`BAFU_ECOSPOLD_DIR`); it passed in the full-release run below. The planning baseline at 15bbfbb was 91 passed and 1 skipped; the 15 extra tests at 053c799 come from #5 and #6.",
+      "Every commit of the branch was checked. At the merge `f310b96` the package suite stops at collection (`tests/test_audit_registry.py` needs pandas) and ruff reports the workspace scripts; `d4d20c3` fixes the first (106 passed, 1 skipped; ruff still reports the workspace paths) and `43a0023` the second. From `43a0023` on, every commit passes the package suite, ruff, `uv lock --check` and all workspace checks; the workspace checks pass at every commit."
+    ],
+    "fixture_intro": [
+      "The public fixture `tests/fixtures/raw_bafu.xml` (one dataset, three exchanges) was run through the pipeline at a clean 053c799 checkout and on this branch, with `xsd_check=\"every-step\"` (`--strict`) and a report, with and without extensions. A driver also ran the pipeline with an extra probe patch that has no `authorised_by`, and with a probe patch that raises."
+    ],
+    "fixture": [
+      [
+        "Output XML, extensions on",
+        "byte-identical (SHA-256 `85627574…`)"
+      ],
+      [
+        "Output XML, `--no-extensions`",
+        "byte-identical (`7313589f…`)"
+      ],
+      [
+        "Extension fields (`bcf:importFix`, `originalNumber`)",
+        "identical (part of the XML)"
+      ],
+      [
+        "`bafu-fixes list` (14 import fixes, 11 patches, authorisation)",
+        "byte-identical"
+      ],
+      [
+        "Step order and per-step dataset/change counts",
+        "identical: 13 of 14 import fixes change the fixture (25 values); all 11 patches change 0 datasets on it"
+      ],
+      [
+        "Run log, all fields",
+        "identical except start/finish times, source/destination paths and the software `git commit`"
+      ],
+      [
+        "Report HTML",
+        "identical after masking timestamps, durations, paths and the `git commit` row (all four modes)"
+      ],
+      [
+        "Unauthorised probe",
+        "warning callout and 2 \"Not yet authorised\" badges in both"
+      ],
+      [
+        "Failing probe",
+        "report still written, run marked failed, in both"
+      ]
+    ],
+    "fixture_notes": [
+      "### Full-release parity\n\nRun locally on 23 October on the licensed BAFU:2026 v1 ecoSpold1 archive (SHA-256 `cbaeed4ae79c0be98709c854211cd72725d4f22f8b9b3fe334b7f343fca152f5`, 11,947 XML files), comparing community 053c799 with the first integration build (`738e385`), whose `src/`, `tests/` and `uv.lock` are byte-identical to 053c799. Settings: all patches, XSD check after import and every patch, report, with and without extensions.",
+      "- 11,947 datasets and 420,063 exchanges read; 11,601 datasets changed; 11,947 files written.\n- Output XML byte-identical before and after on 11,947 of 11,947 files, with extensions (tree SHA-256 `2d1f6928924f5938f41b468492a0a8ee65685efe14fc54d73ccf95b09274da0c`) and without (`3c4a66d98732a2c36cc3cb5700ceef7d3b6776167f44e446774cb8eba305a2df`).\n- Step order, per-step counts and per-step change hashes identical, for the 14 import fixes and the 11 patches. Patches (datasets / values / exchanges): 0001 3/3/3, 0002 25/25/25, 0003 1,289/1,289/0, 0004 1,354/3,542/3,542, 0005 237/1,106/1,106, 0006 206/534/534, 0007 117/129/129, 0008 25/25/25, 0009 4,200/64,825/64,825, 0010 7,727/587,494/293,747, 0011 40/40/0.\n- No unauthorised-step warning; reports identical after masking timestamps, output path, duration and git commit.\n- `tests/test_bafu_release.py` (enabled with `BAFU_ECOSPOLD_DIR`) passed before and after.",
+      "**Why it carries over to this branch:** compared with 053c799, `tests/`, `uv.lock` and `.python-version` here are byte-identical, and `src/` differs in exactly one file, `src/bafu_community_fixes/data/README.md`, which gained the ODbL notice. It is documentation: no code reads it (`data_file()` is called only for the corrections JSON and the crosswalk CSV). `pyproject.toml` differs only by the ruff exclude. There is no code change, so the run was not repeated. The per-file evidence (11,947 output hashes per mode) is kept locally because it is derived from the licensed archive; only these aggregate numbers are published. This shows that the integration does not change runtime behaviour; it does not show that each patch is scientifically correct on real data."
+    ],
+    "package": [
+      "The wheel built from this branch has the same 59 files as one built from 053c799. Three differ: `bafu_community_fixes/data/README.md` (a package resource, so the ODbL notice ships in the wheel), `METADATA` (its long description is the README; all headers are equal) and `RECORD` (which hashes both). The sdist has the same 49 files; `README.md`, `pyproject.toml`, `PKG-INFO` and `src/bafu_community_fixes/data/README.md` differ."
+    ]
+  },
+  "mutation_tests": [
+    {
+      "mutation": "(a) delete a community file after the merge (`patches/p0011_flag_aggregated.py`)",
+      "expected": "fail",
+      "result": "failed",
+      "message": "removed after the merge without a moved/retired entry; destination missing; tree not fully accounted; patch modules are not exactly 0001-0011"
+    },
+    {
+      "mutation": "(b) edit a kept file (`community/findings.md`)",
+      "expected": "fail",
+      "result": "failed",
+      "message": "changed after the merge but not declared; destination hash mismatch; kept unchanged but not byte-identical"
+    },
+    {
+      "mutation": "(c) receipt names a merge commit with the same tree and parents that is not on the branch",
+      "expected": "fail",
+      "result": "failed",
+      "message": "merge commit … is not an ancestor of --rev (the only error)"
+    },
+    {
+      "mutation": "(d) unknown disposition (`copied`)",
+      "expected": "fail",
+      "result": "failed",
+      "message": "disposition 'copied' is not one of (...); stated counts differ from the entries"
+    },
+    {
+      "mutation": "(e) stated counts off by one",
+      "expected": "fail",
+      "result": "failed",
+      "message": "stated counts ... differ from the entries ..."
+    },
+    {
+      "mutation": "(f) the real branch",
+      "expected": "pass",
+      "result": "passed",
+      "message": "All receipt checks passed."
+    }
+  ]
+}

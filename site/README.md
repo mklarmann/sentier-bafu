@@ -9,8 +9,10 @@ The site is built from the records, not written by hand:
 
 A finding record holds dated evidence and no status. The status is computed from the evidence when the site is built. GitHub adds what only the tracker knows: comment counts, last activity, and issues filed as findings that have no record yet (shown by number only). Without network access the site builds from the records alone; `--offline` forces that, `--issues FILE` reads a snapshot, and `--require-issues` fails the build when GitHub cannot be read, which the deploy uses so a failed read keeps the last published site.
 
+The repository root also holds the `bafu-community-fixes` package, which needs Python 3.14 (`.python-version`). The site tooling runs on Python 3.12 outside that project, so pass `--no-project --python 3.12` to `uv run`, as the Documentation workflow does.
+
 ```sh
-uv run --no-project --with markdown==3.7 scripts/build_site.py
+uv run --no-project --python 3.12 --with markdown==3.7 scripts/build_site.py
 python3 scripts/check_site.py _site
 python3 -m http.server 8765 --bind 127.0.0.1 --directory _site
 ```
