@@ -265,6 +265,21 @@ class SiteTests(unittest.TestCase):
         self.assertEqual(set(old[0]), {"id", "title", "status", "stage", "release", "links", "page"})
         self.assertEqual(json.loads((self.out / "status.json").read_text())["findings"], len(findings))
 
+    def test_growing_lists_are_written_one_entry_per_line(self):
+        findings = community.load_findings(ROOT)
+        text = (self.out / "api/v1/findings.json").read_text()
+        rows = [line for line in text.splitlines() if line.startswith('{"id":"F')]
+        self.assertEqual(len(rows), len(findings))
+        self.assertEqual([json.loads(row.rstrip(","))["id"] for row in rows], [f["id"] for f in findings])
+        text = (self.out / "api/v1/datasets.json").read_text()
+        codes = [line.split(":")[0].strip('"') for line in text.splitlines() if re.match(r'"\d+":\{', line)]
+        self.assertEqual(codes, list(json.loads(text)["datasets"]))
+        site = build_site.Site(self.out, offline=True)
+        with tempfile.TemporaryDirectory() as tmp:
+            site.out = Path(tmp)
+            site.write_json("empty.json", {"schema": "x", "findings": []}, one_per_line="findings")
+            self.assertEqual(json.loads((Path(tmp) / "empty.json").read_text()), {"schema": "x", "findings": []})
+
     def test_no_published_file_names_who_answered_for_the_provider(self):
         for path in list(self.out.rglob("*.json")) + list(self.out.rglob("*.html")) + [self.out / "ledger.md"]:
             text = path.read_text()

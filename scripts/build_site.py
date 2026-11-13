@@ -187,8 +187,21 @@ class Site:
         path.write_text(text)
         self.written.add(path)
 
-    def write_json(self, page, data):
-        self.write(page, json.dumps(data, indent=1, ensure_ascii=False) + "\n")
+    def write_json(self, page, data, one_per_line=None):
+        """JSON for tools. A list that grows with the records is written one entry per line:
+        a third of the size of an indented file, and still readable and comparable."""
+        if one_per_line is None:
+            self.write(page, json.dumps(data, indent=1, ensure_ascii=False) + "\n")
+            return
+        entries = data[one_per_line]
+        compact = lambda value: json.dumps(value, ensure_ascii=False, separators=(",", ":"))  # noqa: E731
+        if isinstance(entries, dict):
+            body = ",\n".join(f"{json.dumps(key)}:{compact(value)}" for key, value in entries.items())
+            body = "{\n" + body + "\n}"
+        else:
+            body = "[\n" + ",\n".join(compact(value) for value in entries) + "\n]"
+        head = json.dumps({k: v for k, v in data.items() if k != one_per_line}, indent=1, ensure_ascii=False)
+        self.write(page, head[: head.rindex("}")].rstrip() + f',\n "{one_per_line}": {body}\n}}\n')
 
     # ------------------------------------------------------------------ findings
 
@@ -470,7 +483,7 @@ class Site:
             **identity,
             "statuses": community.statuses(self.provider),
             "findings": [self.finding_summary(f) for f in placed],
-        })
+        }, one_per_line="findings")
         for f in placed:
             summary = self.finding_summary(f)
             self.write_json(f'api/v1/findings/{f["id"]}.json', {
@@ -492,7 +505,7 @@ class Site:
             **identity,
             "roles": community.DATASET_ROLES,
             "datasets": {str(code): entry for code, entry in community.dataset_index(self.findings, self.patches).items()},
-        })
+        }, one_per_line="datasets")
         self.write_json("api/v1/contributions.json", {
             "schema": "sentier-bafu/contributions/1",
             **identity,
