@@ -107,7 +107,7 @@ a.ext:not(.button) {
 
 /* A link that stands alone (not in a sentence) is at least 24 px high to the finger; the
    padding of an inline box does not move the line. */
-:is(.crumb, .record-thread, .path-detail, .links, .plain, .check-link, .facts, .rail, .list-more, .source, .note, .step-where, td) > a,
+:is(.crumb, .path-detail, .links li, .plain li, .check-link, .facts dd, .card, .list-more, .source, .note, .step-where, td) > a:not(.button),
 .thread-line > a, .panel dd > a { padding-block: .25rem; }
 
 /* ------------------------------------------------------------------ layout */
