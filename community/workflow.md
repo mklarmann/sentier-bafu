@@ -1,40 +1,69 @@
-# Contributions
+# Contribution workflow
 
-A contribution is a proposal with evidence and a validation plan: a correction that is not yet a patch, a mapping, a model, a rebuilt inventory or a method variant. Some become community patches. A variant or a rebuilt inventory stays beside the patched release under its own name and never replaces BAFU's numbers.
+This is the working document for people who propose, test or review a contribution. The site's [Contributions](https://sentier-dev.github.io/sentier-bafu/contributions.html) page lists the contributions and gives the short version of this text.
 
-<!-- contributions-list -->
+A contribution is a proposal that goes beyond a single finding: a mapping, a model, a rebuilt inventory, or a method variant such as residual electricity mixes. It comes with its evidence and with the checks it must pass. A contribution never replaces BAFU's numbers.
 
-## What kind of change is it?
+## Kinds of contribution
 
-Name what a change does to BAFU's release. Its class decides where it ends up. The classes are shared with lci-bafu-catalog.
+What a change does to BAFU's release decides where it can go. The record names the kind in its field `class`.
 
-| Class | What it changes | Where it ends up |
+| `class` | Kind | Where it can go |
 |---|---|---|
-| **A** import fix | what every reader has to do: encoding, unit names, exchange numbers | in the import, recorded |
-| **B** linking repair | a declared supplier that does not resolve (F3: location `ENTSO` for datasets registered as `ENTSO-E`) | a community patch; the original declaration is kept |
-| **C** re-declaration | a unit or label that BAFU's own change log corrects (2026 v1: year → hour on 156 datasets) | applied, with the change log as evidence |
-| **D** value change or variant | an amount BAFU has not confirmed, a rebuilt or disaggregated inventory, a method variant such as residual electricity mixes | a separate database under its own name, **never under BAFU's**; it says what it replaces, how, and how well |
-| **E** downstream workaround | a fix in a user's own inventory | not in this repository |
+| `import-fix` | **Import fix.** A preparation that every reader of the release files needs, such as schema repairs, unique exchange numbers and valid location codes. | Can enter the patched release |
+| `linking-repair` | **Linking repair.** An input names a supplier that cannot be found, and is linked to the dataset that exists. | Can enter the patched release |
+| `re-declaration` | **Re-declaration.** A unit or a label that BAFU's own change log corrects. The change log is the evidence. | Can enter the patched release |
+| `variant` | **Variant.** A method variant or a data variant, such as a residual electricity mix. | Stands beside BAFU's numbers, under its own name |
+| `model` | **Model.** A model or a rebuilt inventory: a new inventory with its own tests. | Stands beside BAFU's numbers, under its own name |
+| `mapping` | **Mapping.** A correspondence between flows, datasets or methods. | Stands beside BAFU's numbers, under its own name |
 
-Classes A to C go into the patched release; B and C answer a [finding](findings/README.md). Class D stays beside it. It can be excellent and still not be BAFU's number, so users choose it knowingly.
+A contribution that stands beside BAFU's numbers says what it replaces, how, and how well. It can be excellent and still not be BAFU's number, so it keeps its own name and users choose it knowingly.
 
-## How a contribution moves
+An amount that BAFU has not confirmed does not enter the patched release. A workaround in one user's own inventory does not belong in this repository.
 
-Status: proposed → testing → reviewing → accepted, rejected or superseded.
+lci-bafu-catalog, a separate public project that imports the same release, sorts changes into classes A to E. A is an import fix, B a linking repair, C a re-declaration, D a value change or a variant, and E a workaround in a user's own inventory.
 
-1. **Propose.** Add a record from the [template](templates/contribution.json): the release it builds on, the pinned implementation, the checks it must pass and who reviews it.
-2. **Build beside.** Build the baseline and the candidate separately, from the same pinned inputs. Never change the baseline in place.
-3. **Test.** Run the checks the record names and attach each result. A missing or failed check stays visible. See [evidence](build-validation.md) and [apply and test](application-and-testing.md).
-4. **Review.** The named reviewers approve the exact revision that was tested. Objections are recorded with their answer.
-5. **Decide.** An accepted contribution may become a recommendation to BAFU. Sending it needs an authorised sender, and the delivery and the answer are recorded.
+## The record
+
+A contribution has one record, `contributions/C<number>.json`. Start it from the [template](templates/contribution.json). The fields and their rules are in [the schema](../schema/contribution.schema.json), and `python3 scripts/community.py check` validates every record against it.
+
+The record holds:
+
+- the number, a title that names the thing proposed, the kind and the status;
+- the BAFU release the work is based on, with the repository and revision of the import and the checksums of its inputs;
+- the changed version: where its code or files are, and their exact revision or checksum;
+- the checks the contribution must pass, and every run with the result of each check and a public link to the evidence;
+- the reviewers, their approvals of an exact version, and objections with their answers;
+- what the checks cover and what they do not cover, the next step and who takes it.
+
+## Status
+
+A contribution is **proposed**, then **testing**, then **reviewing**. It ends as **accepted**, **rejected** or **superseded**.
+
+## Steps
+
+1. **Propose.** Open a [contribution issue](https://github.com/sentier-dev/sentier-bafu/issues/new?template=community-contribution.yml). Add the record in a pull request.
+2. **Build beside, never in place.** Build BAFU's release and the changed version separately, from the same inputs, at exact revisions. Keep both builds in a local folder that is not committed, such as `.local/`.
+3. **Test.** Run the checks that the record names. Add each result to the record, with a public link to its evidence. A check that failed or was not run stays in the record. [How builds are checked](build-validation.md) describes the checks on a build, and [application-and-testing.md](application-and-testing.md) shows the steps for C001.
+4. **Review.** The reviewers named in the record approve the exact version that was tested. An objection is recorded with its answer and a link.
+5. **Decide.** A maintainer sets the status. `check` refuses the status `accepted` when a required check has not passed with public evidence, when a named reviewer has not approved the exact version that was tested, or when an objection has no answer.
+6. **Recommend.** An accepted contribution may become a recommendation to BAFU. BAFU decides what it does with it.
+
+To compare two builds, write a run summary for each from the [template](templates/run-summary.json) and run:
+
+```sh
+python3 scripts/community.py compare bafu-release-summary.json changed-version-summary.json --out .local/comparisons/example.json
+```
+
+The command refuses two summaries that are not based on the same build of BAFU's release, or that differ in scope or in the set of measured quantities. It reports the difference for each quantity. It does not decide whether a change is right. That takes evidence and review.
 
 ## What review means here
 
 - People approve. An automated check verifies the record, not the science.
-- An approval names the baseline and the revision it covers. Approving an earlier revision does not carry over.
-- No reviewer or contact is named without their agreement. Silence is not consent.
+- An approval names the BAFU release and the exact version it covers. It does not carry over to a later version.
+- Nobody is named as a reviewer or contact without their agreement. Silence is not consent.
 - A merged pull request is not BAFU's endorsement.
 
-## Assessments
+## Recommendations to BAFU
 
-Longer notes on single contributions: [C001, the Brightcon copied-process contribution](hackathon-assessment.md), and [C002, the mapping import](mutel-mapping-review.md).
+[`recommendations/tracker.json`](recommendations/tracker.json) lists the recommendations. A recommendation is `draft`, then `ready`, `sent`, `acknowledged` and `resolved`. `check` refuses `ready` unless the contribution is accepted and the recipient is named. It refuses `sent` without a link that shows the delivery, and `acknowledged` without a link to the answer.
