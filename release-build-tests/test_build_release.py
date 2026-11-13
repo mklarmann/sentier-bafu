@@ -146,6 +146,12 @@ class Steps(unittest.TestCase):
             with self.assertRaisesRegex(build_release.BuildError, r"exited with 3\s+the reason"):
                 build_release.run([sys.executable, "-c", code], log=Path(temp) / "step.log")
 
+    def test_an_accepted_exit_code_does_not_stop_the_build(self):
+        with tempfile.TemporaryDirectory() as temp:
+            command = [sys.executable, "-c", "import sys; sys.exit(1)"]
+            result = build_release.run(command, log=Path(temp) / "step.log", accept=(0, 1))
+            self.assertEqual(result["returncode"], 1)
+
     def test_the_linking_report_is_taken_from_the_install_log(self):
         with tempfile.TemporaryDirectory() as temp:
             log = Path(temp) / "install.log"
@@ -171,6 +177,25 @@ class Refusals(unittest.TestCase):
             code = build_release.main(["build", str(root / "release"), str(root / "out")])
             self.assertEqual(code, 1)
             self.assertEqual([p.name for p in (root / "out").iterdir()], ["something"])
+
+
+class LatestRelease(unittest.TestCase):
+    def test_latest_asks_the_patch_tool_for_the_release_folder(self):
+        asked = []
+
+        def fake(venvs):
+            asked.append(venvs)
+            return Path("/nowhere/bafu-2026-v1")
+
+        original = build_release.latest_release
+        build_release.latest_release = fake
+        try:
+            with tempfile.TemporaryDirectory() as temp:
+                code = build_release.main(["build", "latest", str(Path(temp) / "out")])
+        finally:
+            build_release.latest_release = original
+        self.assertEqual(asked, [None])
+        self.assertEqual(code, 1)  # the folder the fake names does not exist
 
 
 if __name__ == "__main__":

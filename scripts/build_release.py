@@ -2,6 +2,7 @@
 
     python3 scripts/build_release.py build RELEASE OUT            # the patched release
     python3 scripts/build_release.py build RELEASE OUT --no-patches   # the provider release
+    python3 scripts/build_release.py build latest OUT             # download the release first
     python3 scripts/build_release.py compare BASELINE CANDIDATE --out comparison.json
 
 `build` runs these steps and records each one's time and peak memory in `OUT/build.json`:
@@ -58,8 +59,16 @@ def peak_memory_mb(max_rss: int) -> float:
     return round(max_rss / (1024 * 1024 if sys.platform == "darwin" else 1024), 1)
 
 
-def run(command: list[str], env: dict[str, str] | None = None, log: Path | None = None) -> dict:
-    """Run a command; return its wall time and the peak memory of its process tree."""
+def run(
+    command: list[str],
+    env: dict[str, str] | None = None,
+    log: Path | None = None,
+    accept: tuple[int, ...] = (0,),
+) -> dict:
+    """Run a command; return its wall time and the peak memory of its process tree.
+
+    An exit code outside `accept` stops the build, with the end of the log in the message.
+    """
     started = time.perf_counter()
     with log.open("w") if log else open(os.devnull, "w") as stream:
         process = subprocess.Popen(
@@ -73,7 +82,7 @@ def run(command: list[str], env: dict[str, str] | None = None, log: Path | None 
         "peak_memory_mb": peak_memory_mb(usage.ru_maxrss),
         "returncode": process.returncode,
     }
-    if process.returncode != 0:
+    if process.returncode not in accept:
         tail = (
             "".join(log.read_text(errors="replace").splitlines(keepends=True)[-15:]) if log else ""
         )
@@ -155,16 +164,37 @@ def plan(args: argparse.Namespace) -> dict:
     }
 
 
+def latest_release(venvs: Path | None) -> Path:
+    """The folder the patch tool keeps BAFU's latest release in, downloading it if needed.
+
+    The patch tool checks the download against a known SHA-256 and keeps it in the user's
+    cache folder. Used for `build latest OUT`.
+    """
+    code = "from bafu_community_fixes.download import latest_release; print(latest_release())"
+    env = {"UV_PROJECT_ENVIRONMENT": str(venvs / "bafu-fixes")} if venvs else {}
+    done = subprocess.run(
+        ["uv", "run", "--frozen", "--project", str(REPOSITORY), "python", "-c", code],
+        capture_output=True,
+        text=True,
+        env={**os.environ, **env},
+    )
+    if done.returncode != 0:
+        raise BuildError(f"Could not get the latest release: {done.stderr.strip()[-500:]}")
+    return Path(done.stdout.strip().splitlines()[-1])
+
+
 def build(args: argparse.Namespace) -> int:
+    for program in ("uv", "git"):
+        if shutil.which(program) is None:
+            raise BuildError(f"`{program}` is not on the PATH")
+    if str(args.release) == "latest":
+        args.release = latest_release(args.venvs.resolve() if args.venvs else None)
     paths = plan(args)
     out = paths["out"]
     if not paths["release"].is_dir():
         raise BuildError(f"{paths['release']} is not a folder")
     if out.exists() and any(out.iterdir()):
         raise BuildError(f"{out} is not empty; a build starts in an empty folder")
-    for program in ("uv", "git"):
-        if shutil.which(program) is None:
-            raise BuildError(f"`{program}` is not on the PATH")
     paths["logs"].mkdir(parents=True)
 
     pins = load_pins(args.pins)
@@ -196,12 +226,17 @@ def build(args: argparse.Namespace) -> int:
         "steps": {},
     }
 
-    def step(name: str, command: list[str], env: dict[str, str] | None = None) -> None:
+    def step(
+        name: str,
+        command: list[str],
+        env: dict[str, str] | None = None,
+        accept: tuple[int, ...] = (0,),
+    ) -> None:
         """Run one command of a step; a step of several commands adds up their times."""
         commands = record["steps"].get(name, {}).get("commands", [])
         log = paths["logs"] / f"{name}{len(commands) + 1 if commands else ''}.log"
         print(f"[{name}] {' '.join(command[:8])} ...", flush=True)
-        result = run(command, env, log)
+        result = run(command, env, log, accept)
         previous = record["steps"].get(name, {"seconds": 0.0, "peak_memory_mb": 0.0})
         record["steps"][name] = {
             "commands": [*commands, command],
@@ -304,21 +339,23 @@ def build(args: argparse.Namespace) -> int:
         )
         record["coverage"] = _coverage_lines(paths["logs"] / "install.log")
 
-        # 6. audit
+        # 6. audit (exit code 1: the audit wrote its file and found errors)
         audit_command = brightway.command(
             *("python", str(HELPERS / "audit_brightway.py"), "--project", paths["project"]),
             *("--out", str(paths["audit"]), "--label", paths["label"]),
-            *(["--fail-on-range"] if args.fail_on_range else []),
         )
-        step("audit", audit_command, bw_env)
+        step("audit", audit_command, bw_env, accept=(0, 1))
+        if not (paths["audit"] / "audit.json").is_file():
+            raise BuildError(f"The audit wrote no audit.json; see {paths['logs'] / 'audit.log'}")
         audit = json.loads((paths["audit"] / "audit.json").read_text())
         record["audit"] = {
             "status": audit["status"],
             "file": str(paths["audit"] / "audit.json"),
             "sha256": adapter.sha256_file(paths["audit"] / "audit.json"),
-            "range_flags": audit["scores"]["range_flags"],
+            "errors": audit["errors"],
+            "findings": audit["findings"],
         }
-        record["status"] = "completed"
+        record["status"] = "completed" if audit["status"] == "passed" else "audit failed"
     except (BuildError, adapter.AdapterError) as error:
         record["status"], record["error"] = "failed", str(error)
         raise
@@ -333,9 +370,12 @@ def build(args: argparse.Namespace) -> int:
             f"  {name:8} {result['seconds']:7.1f} s  {memory if memory is not None else '-':>8} MB"
         )
     print(f"Audit {record['audit']['status']}: {record['audit']['file']}")
-    for flag in record["audit"]["range_flags"]:
-        print(f"  outside its plausible range: {flag}")
-    return 0
+    for error in record["audit"]["errors"]:
+        print(f"  error: {error}")
+    for finding in record["audit"]["findings"]:
+        print(f"  finding: {finding}")
+    failed = record["audit"]["status"] != "passed"
+    return int(failed or (args.fail_on_findings and bool(record["audit"]["findings"])))
 
 
 def _modifications(receipt: adapter.Receipt, record: dict) -> dict:
@@ -408,7 +448,12 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     b = sub.add_parser("build", help="Build and audit a Brightway database")
-    b.add_argument("release", type=Path, help="Folder with BAFU's EcoSpold 1 files")
+    b.add_argument(
+        "release",
+        type=Path,
+        help="Folder with BAFU's EcoSpold 1 files, or 'latest' to let the patch tool "
+        "download BAFU's latest release into its cache",
+    )
     b.add_argument("out", type=Path, help="Empty folder for everything the build writes")
     b.add_argument("--no-patches", action="store_true", help="Build the provider release as is")
     b.add_argument("--only", nargs="+", metavar="ID", help="Apply only these patches")
@@ -429,9 +474,10 @@ def main(argv: list[str] | None = None) -> int:
         "builds share one copy (default: OUT/pinned-data)",
     )
     b.add_argument(
-        "--fail-on-range",
+        "--fail-on-findings",
         action="store_true",
-        help="Fail if a sample score is outside its plausible range",
+        help="Fail if the audit has findings (a sample score outside its plausible range, "
+        "elementary flows that lost their EF 3.1 flow)",
     )
     common(b)
     b.set_defaults(run=build)
