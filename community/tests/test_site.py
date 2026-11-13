@@ -22,7 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import community  # noqa: E402
 import triage  # noqa: E402
 
-IGNORED = shutil.ignore_patterns(".git", "_site", ".local", "__pycache__", ".venv")
+IGNORED = shutil.ignore_patterns(".git", "_site", ".local", "__pycache__", ".venv", "output", ".pytest_cache", ".ruff_cache")
 try:
     # Frozen records, where the repository has them (community/tests/frozen.py): what the pages
     # say about a finding is then tested on a copy that does not move when a real finding does.

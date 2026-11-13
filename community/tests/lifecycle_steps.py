@@ -149,7 +149,10 @@ STEPS = (a_new_finding, next_step, not_reproduced, withdrawn, a_new_release, a_n
 def take(step, scratch):
     """One step on its own copy: (what the step is, failed tests or None when it was skipped)."""
     copy = Path(scratch) / step.__name__
-    shutil.copytree(ROOT, copy, ignore=shutil.ignore_patterns(".git", "_site", ".local", "__pycache__", ".venv"))
+    # Not the folders a checkout on a runner does not have: `output` holds the tools and data of
+    # the build checks (CONTRIBUTING.md), several hundred megabytes on a developer's machine.
+    shutil.copytree(ROOT, copy, ignore=shutil.ignore_patterns(
+        ".git", "_site", ".local", "__pycache__", ".venv", "output", ".pytest_cache", ".ruff_cache"))
     what = step.__doc__.strip()
     try:
         step(copy)
