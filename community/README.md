@@ -1,47 +1,18 @@
-# Take part
+# Community records
 
-There are three ways in. Each starts with an issue, so the discussion is public and linked from the [site](https://sentier-dev.github.io/sentier-bafu/).
+This folder holds the records behind the [site](https://sentier-dev.github.io/sentier-bafu/): one file per finding, one file per contribution, and the documents that say how they are handled. To report a finding or repeat a measurement, start on the site's [Take part](https://sentier-dev.github.io/sentier-bafu/take-part.html) page.
 
-## Report a finding
+| Here | What it is | On the site |
+|---|---|---|
+| [`findings/`](findings/README.md) | One JSON record per finding: what was observed, and dated evidence of what happened to it | [Findings](https://sentier-dev.github.io/sentier-bafu/findings.html), [Feedback to BAFU](https://sentier-dev.github.io/sentier-bafu/feedback.html) |
+| [`contributions/`](contributions/) | One JSON record per contribution: what it is based on, its checks and its reviewers | [Contributions](https://sentier-dev.github.io/sentier-bafu/contributions.html) |
+| [`patches.json`](patches.json) | The community patches, with the findings they answer | [Patched release](https://sentier-dev.github.io/sentier-bafu/patched-release.html) |
+| [`workflow.md`](workflow.md) | How a contribution is proposed, tested, reviewed and decided | |
+| [`build-validation.md`](build-validation.md) | How a build is checked, and what was measured so far | |
+| [`runs/`](runs/) | Records of the measured runs that the checks cite | |
+| [`templates/`](templates/) | Empty records to start from | |
+| [`recommendations/`](recommendations/README.md) | Recommendations to BAFU that follow from accepted contributions | |
 
-You measured something in BAFU's data that cannot be right, or that you cannot explain.
+These files are working notes: [application-and-testing.md](application-and-testing.md) on how a contribution is applied and tested, with C001 as the example, [hackathon-assessment.md](hackathon-assessment.md) on C001, and [mutel-mapping-review.md](mutel-mapping-review.md) on C002. [reconciliation.md](reconciliation.md) is a dated receipt of how findings and community patches were brought into agreement in October and November 2026.
 
-1. [Open a finding](https://github.com/sentier-dev/sentier-bafu/issues/new?template=bafu-data-finding.yml) with the dataset code, the release, what you measured and how, and why it cannot be right.
-2. It gets a record in [findings/](findings/), from the [template](templates/finding.json). Its number is the number of the issue. Until a second person has repeated the measurement, its status is "Needs a second measurement".
-3. A second person repeats the measurement on BAFU's release files, never on an import, and says in the issue what they got. The record then names that person, the date and the comment.
-4. Findings are reported to BAFU together. BAFU decides what it changes. Its answer is recorded, and so is the release that contains a correction.
-
-A finding that does not survive re-measurement stays listed as withdrawn, so nobody finds it again.
-
-## Propose a contribution
-
-A correction that is not yet a patch, a mapping, a model, a rebuilt inventory or a method variant. [Open a contribution](https://github.com/sentier-dev/sentier-bafu/issues/new?template=community-contribution.yml) and add a record. [Contributions](workflow.md) explains the classes, the steps and what review means.
-
-## Re-measure or review
-
-The most useful help is a second pair of eyes. Take a finding that is [awaiting a second measurement](https://sentier-dev.github.io/sentier-bafu/findings.html#stage-filed), repeat it on the release files and say what you got in its issue. Or review an open pull request.
-
-Not sure where something belongs? [Start a discussion](https://github.com/sentier-dev/sentier-bafu/issues/new?template=discussion.yml).
-
-## Rules we keep
-
-- Measure on BAFU's release files. Say what you measured and what you did not.
-- Quote dataset names and values. Never paste text from BAFU's LCI reports.
-- No confidential material, restricted exports or private correspondence.
-- People review and merge. Work done by an agent says so.
-- Nothing here implies BAFU's endorsement.
-
-## Check a change
-
-```sh
-python3 scripts/community.py check   # the records
-python3 -m unittest discover -s community/tests
-```
-
-To compare a candidate build with its baseline:
-
-```sh
-python3 scripts/community.py compare baseline-summary.json candidate-summary.json --out .local/comparisons/example.json
-```
-
-A comparison reports differences. It does not decide whether a change is right; that takes evidence and named reviewers.
+The commands for checking a change to the records are in [CONTRIBUTING.md](../CONTRIBUTING.md).
