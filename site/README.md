@@ -9,11 +9,11 @@ The site is built from the records, not written by hand:
 
 A finding record holds dated evidence and no status. The status is computed from the evidence when the site is built. GitHub adds what only the tracker knows: comment counts, last activity, and issues filed as findings that have no record yet (shown by number only). Without network access the site builds from the records alone; `--offline` forces that, `--issues FILE` reads a snapshot, and `--require-issues` fails the build when GitHub cannot be read, which the deploy uses so a failed read keeps the last published site.
 
-The repository root also holds the `bafu-community-fixes` package, which needs Python 3.14 (`.python-version`). The site tooling runs on Python 3.12 outside that project, so pass `--no-project --python 3.12` to `uv run`, as the Documentation workflow does.
+The repository root also holds the patch tool's package, `bafu-community-fixes`, which needs Python 3.14 (`.python-version`). The site tooling runs on Python 3.12 outside that project, so pass `--no-project --python 3.12` to `uv run`, as the workflows do.
 
 ```sh
-uv run --no-project --python 3.12 --with markdown==3.7 scripts/build_site.py
-python3 scripts/check_site.py _site
+uv run --no-project --python 3.12 --with markdown==3.7 python scripts/build_site.py --offline --out _site
+uv run --no-project --python 3.12 python scripts/check_site.py _site
 python3 -m http.server 8765 --bind 127.0.0.1 --directory _site
 ```
 
@@ -73,7 +73,7 @@ A comment on a line of its own is replaced by a generated block. Both forms work
 | `feedback-lists` | reported without answer, answered, resolved, repeated and not yet reported, each as a count and a list; then the reports by date |
 | `second-measurement-list` | the five findings that have waited longest for a second measurement, and a link to all of them |
 | `recent-changes` | the five newest dated steps |
-| `patch-table` | every community patch from `community/patches.json`: what it does, the finding it answers, who wrote it, who authorised it |
+| `patch-table` | every community patch from `community/patches.json`, which `scripts/patches_snapshot.py` writes from the patch registry: what it does, the finding it answers, who wrote it, who authorised it |
 | `data-files` | the machine-readable files with links |
 | `lookup` | the field that looks up a dataset code, a finding number or a word |
 
@@ -135,7 +135,9 @@ The tracker shows the five steps of the path, in these words wherever it appears
 
 Generated text follows the house style: British spelling; "12 October 2026" in prose and "12 Oct 2026" in lists, always inside `<time datetime>`; no person's name except the author and the authoriser of a community patch, as the registry gives them; never stage, triage, ledger, layer, upstream, provider, candidate or fix (except "import fix") for the site's own things.
 
-Provider releases are a fixed list in `site/config.json` (`releases`: id and name). Records name releases by id; registering a new BAFU release is one line there.
+Provider releases are a fixed list in `site/config.json` (`releases`: id and name, and `archive_sha256` where the patch tool downloads the release, so that the manifest of a patched release can name it). Records name releases by id; registering a new BAFU release is one entry there.
+
+`older_numbering_until` in `site/config.json` is the last finding number of an older numbering: above it, the id of a finding is F followed by the number of its issue. It is 47 here, and 47 when the key is absent. A repository whose findings are numbered by their issues from the first one sets it to 0.
 
 ## The findings list
 
@@ -154,10 +156,10 @@ Everything a page needs comes from two modules. Neither is specific to a templat
 | Call | Gives |
 |---|---|
 | `problems(root)` | `(errors, notes, summary)`: every error in the records. The build refuses on any. |
-| `load_config(root)` | `provider`, `repository`, `site_url`, `releases` |
+| `load_config(root)` | `provider`, `repository`, `site_url`, `releases`, `stale_after_days`, `older_numbering_until` |
 | `load_findings(root)` | every finding record in number order; `record.path` is its file in the repository |
 | `load_contributions(root)` | every contribution record; `record.path` likewise |
-| `load_patches(root)` | `community/patches.json`: the community patches with the findings they answer |
+| `load_patches(root)` | `community/patches.json`: the community patches with the findings they answer, as the patch registry has them |
 | `stage(record)` | the status key of a finding |
 | `STATUSES`, `statuses(provider)` | the vocabulary in path order: `key`, `label`, `description` (one sentence, true of every finding with that status) |
 | `status_label(key, provider)`, `status_description(key, provider)` | the words for one key |

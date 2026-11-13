@@ -100,7 +100,10 @@ For a variant such as residual electricity mixes:
 
 1. **A contribution record** with an id (`community/contributions/C<number>.json`), of the
    class `variant`, with its evidence and its required checks. The layer file is the
-   record's implementation; the record's `layer.payloads` should name it.
+   record's implementation, and the record names it in `layer.file`
+   (`community/layers/<id>-<name>.json`). `python3 scripts/community.py check` refuses a
+   record that names a file which is not there or cannot be read, a file that names another
+   contribution, and a file in the folder that no record names.
 2. **The layer file**, as above, written against the patched release it is to be built on.
 3. **Every supplier it substitutes to must be a dataset of the release.** This is the
    limit of the mechanism today: a layer can re-route inputs between datasets that exist,

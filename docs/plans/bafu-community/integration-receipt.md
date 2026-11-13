@@ -3,6 +3,14 @@
 **Status: candidate cutover, to be confirmed with the community maintainers.** Nothing
 here has been pushed, merged into `main` or announced. ADRs 0001–0004 remain `proposed`.
 
+**Since 13 November 2026** the records, the site and the workflows have been reworked on top
+of this integration, so files this receipt lists have moved or gone: the package's `ci.yml`
+is a job of `checks.yml`, `community/findings.md` became one record per finding, and the root
+README is the workspace's front page with the usage guide in `docs/patch-tool.md`. The
+receipt below is unchanged. It describes the tree of the commit that last wrote
+`integration-receipt.json`, and `checks.yml` runs the checker on that commit on every pull
+request.
+
 **Land it with a merge commit only (no squash, no rebase), otherwise one history is lost.**
 A squash or rebase rewrites the integration merge into new commits that no longer have
 `053c799` as an ancestor, and this receipt's checks then fail.

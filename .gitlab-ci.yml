@@ -3,9 +3,9 @@
 image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 
 # The repository root also holds the bafu-community-fixes package (Python >= 3.14,
-# `.python-version`). These jobs check the review workspace only: keep them on the
-# image's Python 3.12 and outside the package project, as the GitHub Documentation
-# workflow does. The package itself is tested by .github/workflows/ci.yml.
+# `.python-version`). These jobs check the records and the site only: keep them on the
+# image's Python 3.12 and outside the package project, as the GitHub workflows do. The
+# package itself is tested by the fourth job of .github/workflows/checks.yml.
 variables:
   UV_PYTHON: "3.12"
 

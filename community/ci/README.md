@@ -1,15 +1,16 @@
-# Documentation and contribution CI
+# Checks in CI
 
-The [Documentation workflow](../../.github/workflows/pages.yml) validates contribution records, runs the synthetic community tests and build-audit checks, then builds and checks the public documentation site. Pull requests never deploy. Updates to `main` publish only the generated `_site/` artifact through GitHub Pages, once a repository administrator has enabled **Settings → Pages → Source: GitHub Actions**.
+[docs/automation.md](../../docs/automation.md) describes every workflow of the repository, and [CONTRIBUTING.md](../../CONTRIBUTING.md#check-a-change) lists the commands of every check for a run on your own machine. This page describes the run on BAFU's full release in more detail.
 
-Run the same contribution checks locally with `python3 scripts/community.py check`, `python3 -m unittest discover -s community/tests` and `python3 scripts/build_checks.py community/templates/build-audit.json`. Site maintenance and hosting links are documented in [site/README.md](../../site/README.md) and the main README.
+- [Checks](../../.github/workflows/checks.yml) validates the records, runs the unit tests, builds the site from the records and checks its links, and runs the patch tool's lint and tests. It needs none of BAFU's data. Pull requests never deploy.
+- [Site](../../.github/workflows/pages.yml) publishes the generated `_site/` folder, and nothing else, through GitHub Pages, once a repository administrator has enabled **Settings → Pages → Source: GitHub Actions**.
 
-The supplied `github-actions.yml` remains a standalone contribution-check template; the Documentation workflow already runs those checks. The portable `.gitlab-ci.yml` provides equivalent validation and Pages publication for a GitLab mirror.
+The supplied `github-actions.yml` is a standalone template of the record checks for a copy of the records elsewhere; this repository does not run it. The portable `.gitlab-ci.yml` provides the record checks and the publication of the site for a GitLab mirror.
 
 ## Full release run
 
 Two workflows run the patch tool and everything built from its output on BAFU's full
-release. The [CI workflow](../../.github/workflows/ci.yml) tests the tool on a small
+release. The [Checks workflow](../../.github/workflows/checks.yml) tests the tool on a small
 fixture; these show what a patch does to the release.
 
 - [Proposed patches](../../.github/workflows/full-release.yml), for each pull request that
@@ -35,15 +36,6 @@ Nothing from the inventory is published. The job summaries and the uploaded file
 
 A new patch needs no change to a workflow: patches are found in `src/bafu_community_fixes/patches/`. Neither does a new contribution layer: layers are found in `community/layers/`.
 
-Run the same locally:
+Run the same locally with the commands under "On BAFU's release" in [CONTRIBUTING.md](../../CONTRIBUTING.md#on-bafus-release).
 
-```sh
-uv sync --locked
-uv run bafu-fixes run latest output/ --strict --summary output/summary.json
-uv run python scripts/check_patched_release.py output/ --summary output/summary.json
-uv run python scripts/full_release_table.py output/summary.json --check
-```
-
-To see what a change does, run it on the other revision too (for example in a `git worktree`) and add `--base other/summary.json --base-output other/ --head-output output/` to the last command. To compare what each patch matched with a release, add `--previous manifest.json`.
-
-The whole path, as the Release build runs it: `python3 scripts/build_release.py release latest output/run`.
+To see what a change does, run it on the other revision too (for example in a `git worktree`) and add `--base other/summary.json --base-output other/ --head-output output/patched` to the command that runs `full_release_table.py`. To compare what each patch matched with a release, add `--previous manifest.json`.

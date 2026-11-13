@@ -149,7 +149,7 @@ release in format 1, unchanged:
 | Field | Content |
 |---|---|
 | `tag`, `built` | the tag; when the patch run finished |
-| `provider_release` | BAFU's release: address, SHA-256 of the archive, fingerprint of the files read, numbers of files, datasets and exchanges |
+| `provider_release` | BAFU's release: address, SHA-256 of the archive, fingerprint of the files read, numbers of files, datasets and exchanges, and its id in `site/config.json`, which names the archive's SHA-256 |
 | `tool` | `bafu-community-fixes`, its version, the commit it was run at |
 | `options` | schema check, extensions, patches selected or skipped |
 | `import_fixes` | per import fix: id, description, result, datasets and values changed |
@@ -165,11 +165,19 @@ release in format 1, unchanged:
 | `contributions` | each contribution built beside the patched release: id, name, database, layer checksum, what it changed, its audit, comparison and export files |
 
 A run can't be released when: the patch tool did not complete or read an unknown release;
-a step failed; a patch changed data and names nobody who authorised it; an audit has an
-error, or the patched build's audit a finding; the comparison did not pass; an export was
-not written or read back differently.
+a step failed; a patch changed data and names nobody who authorised it; a patch names a
+finding that has no record in `community/findings/`; an audit has an error, or the patched
+build's audit a finding; the comparison did not pass; an export was not written or read
+back differently.
+
+The manifest names the author and the authoriser of a patch, and of a contribution's layer,
+and nobody else. Who reported a finding and who answered for BAFU are in the run summary
+and never reach the manifest.
 
 ## In CI
+
+[Automation](automation.md) describes every workflow of the repository. These two run the
+build:
 
 | Workflow | When | What |
 |---|---|---|
@@ -184,7 +192,9 @@ a new import fix needs no change to a workflow.
 
 ## What a release still needs from a person
 
-1. Authorise each patch (`authorised_by` in the patch) and each contribution layer.
+1. Authorise each patch (`authorised_by` in the patch) and each contribution layer. After
+   a change to a patch, `python3 scripts/patches_snapshot.py` writes the list of patches
+   the site reads.
 2. Push the tag. Protect tags `patched-*` in the repository settings so that only
    maintainers can.
 3. When BAFU publishes a release: its address, checksum and fingerprint in

@@ -32,6 +32,7 @@ The record holds:
 - the number, a title that names the thing proposed, the kind and the status;
 - the BAFU release the work is based on, with the repository and revision of the import and the checksums of its inputs;
 - the changed version: where its code or files are, and their exact revision or checksum;
+- for a contribution that changes the inventory, the file in [`community/layers/`](layers/README.md) that states its changes, so that it can be built as a database of its own beside the patched release;
 - the checks the contribution must pass, and every run with the result of each check and a public link to the evidence;
 - the reviewers, their approvals of an exact version, and objections with their answers;
 - what the checks cover and what they do not cover, the next step and who takes it.
