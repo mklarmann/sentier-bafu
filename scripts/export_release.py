@@ -314,7 +314,8 @@ def check_units(nodes, labels):
         listed = ", ".join(f"{unit!r} ({count} nodes)" for unit, count in sorted(unknown.items()))
         raise ExportError(
             f"The JSON-LD writer has no quantity for these units: {listed}. "
-            "Name a label it knows with --openlca-unit-label FROM=TO (amounts stay as they are)."
+            f"Give each a row in the table of labels ({LABELS.name}), or name a label the "
+            "writer knows with --openlca-unit-label FROM=TO (amounts stay as they are)."
         )
 
 
