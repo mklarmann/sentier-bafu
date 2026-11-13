@@ -1,0 +1,148 @@
+name: Release build
+
+# Stage 2: from BAFU's release to a Brightway database with the EF 3.1 methods.
+# The release as BAFU ships it and the patched release are each built and audited
+# (scripts/build_release.py), then compared. On pull requests a lighter job runs
+# the same path on seven made-up datasets instead.
+#
+# Nothing from the inventory leaves the runner. The job summary and the uploaded
+# files hold counts, dataset codes, names and single scores; the release, the
+# patched release, the importer's tables, the Brightway databases and the scores
+# of every dataset are never uploaded.
+
+on:
+  pull_request:
+    paths:
+      - "src/bafu_community_fixes/**"
+      - "scripts/build_release.py"
+      - "scripts/release_build/**"
+      - "release-build-tests/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".python-version"
+      - ".github/workflows/release-build.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/bafu_community_fixes/**"
+      - "scripts/build_release.py"
+      - "scripts/release_build/**"
+      - "release-build-tests/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".python-version"
+      - ".github/workflows/release-build.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-build-${{ github.ref }}
+  # A newer push to a pull request replaces its run; runs on main all finish.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  made-up-release:
+    name: Whole path on a made-up release
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          enable-cache: false
+      - name: Install the patch tool
+        run: uv sync --locked
+      - name: Patch, adapt, import, install and audit seven made-up datasets
+        # Clones sentier-importers and sentier-brightway at the commits in
+        # scripts/release_build/pins.toml and downloads the pinned flow terms,
+        # methods and mapping (37 MB, checked by SHA-256). No BAFU data.
+        env:
+          RELEASE_BUILD_WHOLE_PATH: "1"
+          RELEASE_BUILD_TOOLS: ${{ runner.temp }}/tools
+          RELEASE_BUILD_PINNED_DATA: ${{ runner.temp }}/pinned-data
+        run: |
+          uv run --no-project --python 3.12 python -m unittest discover \
+            -s release-build-tests -p test_whole_path.py
+      - name: Run the build's tests that need pandas, SciPy and bw2data
+        if: ${{ !cancelled() }}
+        run: |
+          uv run --frozen --project "$RUNNER_TEMP/tools/sentier-brightway" --python 3.12 \
+            --extra testing python -m unittest discover -s release-build-tests
+      - name: Check the adapter against what the patch tool writes
+        if: ${{ !cancelled() }}
+        run: uv run --no-sync python -m unittest discover -s release-build-tests -p test_adapter.py
+
+  release:
+    name: Provider and patched release
+    if: ${{ github.event_name != 'pull_request' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          enable-cache: false
+      - name: Install the patch tool
+        run: uv sync --locked
+      - name: Identify BAFU's release
+        id: release
+        # The tool knows the release, its checksum and where it keeps the download.
+        run: |
+          uv run --no-sync python - >> "$GITHUB_OUTPUT" <<'EOF'
+          from bafu_community_fixes.download import CHECKSUMS, LATEST_RELEASE, cache_dir
+
+          print(f"sha256={CHECKSUMS[LATEST_RELEASE]}")
+          print(f"cache={cache_dir()}")
+          EOF
+      - name: Reuse the downloaded release
+        # The same key and path as the Full release workflow, so one download serves both.
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: ${{ steps.release.outputs.cache }}
+          key: bafu-release-${{ steps.release.outputs.sha256 }}
+      - name: Build and audit the release as BAFU ships it
+        # `latest` lets the patch tool download the release if it isn't there, and check
+        # its SHA-256. The audit's findings on BAFU's own release are reported, and do not
+        # fail the job: they are BAFU's data. Errors do.
+        run: |
+          uv run --no-project --python 3.12 python scripts/build_release.py build latest \
+            "$RUNNER_TEMP/builds/provider" --no-patches \
+            --tools "$RUNNER_TEMP/tools" --pinned-data "$RUNNER_TEMP/pinned-data"
+      - name: Build and audit the patched release
+        # Fails on any finding of the audit: an elementary flow that lost its EF 3.1
+        # flow, a sample score outside its plausible range.
+        if: ${{ !cancelled() }}
+        run: |
+          uv run --no-project --python 3.12 python scripts/build_release.py build latest \
+            "$RUNNER_TEMP/builds/patched" --fail-on-findings \
+            --tools "$RUNNER_TEMP/tools" --pinned-data "$RUNNER_TEMP/pinned-data"
+      - name: Compare the patched release with BAFU's
+        # Fails if a changed row or a moved score has no explanation.
+        if: ${{ !cancelled() }}
+        run: |
+          uv run --no-project --python 3.12 python scripts/build_release.py compare \
+            "$RUNNER_TEMP/builds/provider" "$RUNNER_TEMP/builds/patched" \
+            --out "$RUNNER_TEMP/builds/comparison.json" --tools "$RUNNER_TEMP/tools"
+      - name: Say what was built, and set aside the audits and the comparison
+        if: ${{ !cancelled() }}
+        run: |
+          uv run --no-project --python 3.12 python scripts/release_build/job_summary.py \
+            --provider "$RUNNER_TEMP/builds/provider" --patched "$RUNNER_TEMP/builds/patched" \
+            --comparison "$RUNNER_TEMP/builds/comparison.json" \
+            --out "$GITHUB_STEP_SUMMARY" --results "$RUNNER_TEMP/release-build-results"
+      - name: Keep the audits and the comparison (no inventory)
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: release-build-results
+          # This folder only ever holds the three files set aside above.
+          path: ${{ runner.temp }}/release-build-results/
+          if-no-files-found: warn
+          retention-days: 90
