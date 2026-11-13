@@ -719,6 +719,7 @@ def export_release(
     release,
     name=None,
     year=None,
+    credit=None,
     provider="BAFU, Swiss Federal Office for the Environment",
     source_url=None,
     source_sha256=None,
@@ -741,9 +742,9 @@ def export_release(
     check_closure(nodes)
     check_units(nodes, labels)
     year = year or (re.search(r"\b(\d{4})\b", release) or [None, None])[1]
-    if not year:
+    if not (credit or year):
         raise ExportError(f"No release year in {release!r}; pass it")
-    credit = CREDIT.format(year=year)
+    credit = credit or CREDIT.format(year=year)
     record = modifications_record(summary, release, credit, extra_steps)
     text = attribution(record, terms_url)
     notes, matched = dataset_notes(nodes, record)
@@ -878,6 +879,7 @@ def main(argv=None):
     parser.add_argument("--source-url", help="Where the provider release was downloaded")
     parser.add_argument("--source-sha256", help="Checksum of that download")
     parser.add_argument("--terms-url", help="Where BAFU's Terms of Use can be read")
+    parser.add_argument("--credit", help="Default: BAFU's credit with the release year")
     parser.add_argument("--methods-cf", type=Path, help="Impact factors for the openLCA export")
     parser.add_argument("--namespace", default=NAMESPACE, help="Seed of the openLCA ids")
     parser.add_argument("--simapro-product-naming", choices=("linked", "legacy"), default="linked")
@@ -906,6 +908,7 @@ def main(argv=None):
             source_url=args.source_url,
             source_sha256=args.source_sha256,
             terms_url=args.terms_url,
+            credit=args.credit,
             methods=args.methods_cf,
             namespace=args.namespace,
             simapro_naming=args.simapro_product_naming,

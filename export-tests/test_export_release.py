@@ -594,6 +594,14 @@ def test_command_writes_the_exports_and_reports_the_read_back(tmp_path, capsys):
     assert manifest["source"]["sha256"] == "cd" * 32
 
 
+def test_credit_can_be_given_for_data_that_is_not_bafus(tmp_path):
+    manifest, out, _ = export(tmp_path, credit="Made-up test data")
+    assert manifest["status"] == "completed"
+    assert manifest["credit"] == "Made-up test data"
+    assert "Source: Made-up test data." in manifest["statement"]
+    assert "Swiss Federal Administration" not in manifest["statement"]
+
+
 def test_command_exits_1_when_a_read_back_differs(tmp_path, capsys):
     with pytest.raises(SystemExit) as exit:
         step.main(_arguments(tmp_path, "--simapro-product-naming", "legacy"))
