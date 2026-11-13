@@ -40,6 +40,8 @@ from pathlib import Path
 
 AUDIT_VERSION = 1
 BIOSPHERE_DB = "ef-3.1-biosphere"
+PROVIDER_DB = "bafu-2026"  # BAFU's name: only a database of the provider release carries it
+MARKER = "release_build"  # written into the database metadata by `mark_database.py`
 CLIMATE_METHOD = "ef-3.1:climate-change"
 RESIDUAL_TOLERANCE = 1e-8  # relative residual of a linear solve
 AGREEMENT_TOLERANCE = 1e-6  # between the per-dataset solve, the transposed solve and bw2calc
@@ -490,7 +492,11 @@ def audit(project: str, inventory_db: str, sample_path: Path, out_dir: Path, lab
     if not np.isfinite(table).all():
         errors.append("Scores that are not finite numbers")
     with_exchanges = {code for _, _, _, code in data["exchanges"]}
-    findings = [
+    marker = dict(bd.databases[inventory_db]).get(MARKER)
+    if marker and marker.get("modified_data") and inventory_db == PROVIDER_DB:
+        errors.append(f"A database of modified data carries BAFU's name, {PROVIDER_DB}")
+    findings = [] if marker else ["The database's metadata does not say what it was built from"]
+    findings += [
         f"Sample score outside its plausible range: {flag}"
         for flag in scores["summary"]["range_flags"]
     ]
@@ -518,6 +524,12 @@ def audit(project: str, inventory_db: str, sample_path: Path, out_dir: Path, lab
             "biosphere": BIOSPHERE_DB,
             "no_ef_3_1_flow": residual_db,
             "nodes": data["nodes_per_database"],
+        },
+        "built_from": None
+        if marker is None
+        else {
+            key: marker.get(key)
+            for key in ("label", "modified_data", "provider_release", "patches", "import_fixes")
         },
         "datasets": datasets,
         "datasets_without_exchanges": datasets - len(with_exchanges),

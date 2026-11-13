@@ -197,6 +197,13 @@ PROJECT = textwrap.dedent(
     method = bd.Method(("sentier", "EF v3.1", "Climate change"))
     method.register(unit="kg CO2 eq", sentier_method_id="ef-3.1:climate-change")
     method.write([((bio, "co2"), 1.0), ((bio, "ch4"), 30.0), ((bio, "unused"), 7.0)])
+    if "unmarked" not in sys.argv:
+        modified = "modified" in sys.argv
+        bd.databases[inventory]["release_build"] = {
+            "label": "Modified Data" if modified else "Provider release",
+            "modified_data": modified, "provider_release": "X:2026 v1",
+            "patches": ["0001-example"] if modified else [], "import_fixes": []}
+        bd.databases.flush()
     if "renamed" in sys.argv:
         # A flow the flow terms don't hold: sentier-brightway writes it without a compartment
         bd.Database(residual).write({
@@ -303,6 +310,29 @@ class AuditOfAProject(unittest.TestCase):
         self.assertEqual(len(result["findings"]), 1)
         self.assertIn("outside its plausible range: Product B", result["findings"][0])
         self.assertEqual(self.run_audit("--fail-on-findings").returncode, 1)
+
+    def test_the_audit_says_what_the_database_was_built_from(self):
+        self.write_project()
+        self.run_audit()
+        result = json.loads((self.root / "audit" / "audit.json").read_text())
+        self.assertEqual(result["built_from"]["label"], "Provider release")
+        self.assertIs(result["built_from"]["modified_data"], False)
+
+    def test_a_database_without_that_record_is_a_finding(self):
+        self.write_project("unmarked")
+        self.assertEqual(self.run_audit().returncode, 0)
+        result = json.loads((self.root / "audit" / "audit.json").read_text())
+        self.assertIsNone(result["built_from"])
+        self.assertTrue(any("built from" in finding for finding in result["findings"]))
+
+    def test_modified_data_under_bafus_name_fails_the_audit(self):
+        self.write_project("modified")
+        done = self.run_audit()
+        self.assertEqual(done.returncode, 1, done.stderr)
+        result = json.loads((self.root / "audit" / "audit.json").read_text())
+        self.assertEqual(result["status"], "failed")
+        self.assertTrue(any("BAFU's name" in error for error in result["errors"]))
+        self.assertEqual(result["built_from"]["patches"], ["0001-example"])
 
     def test_a_flow_the_flow_terms_do_not_hold_is_a_finding(self):
         self.write_project()

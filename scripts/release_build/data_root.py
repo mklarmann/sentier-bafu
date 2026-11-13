@@ -66,6 +66,35 @@ def pinned_sources(overrides: dict | None = None) -> tuple[tuple, list[dict]]:
     return apply_overrides(sources, overrides or {}, make)
 
 
+SOURCE_IRI = "https://vocab.sentier.dev/sources/"
+FLOW_TYPE = "elementary-flow"
+
+
+def write_flow_terms(terms: Path, target: Path, provider: str, source: str) -> int:
+    """Write the provider's elementary flow terms again under another source name.
+
+    sentier-brightway names the database after the inventory's source and looks up the
+    flow terms of that same source. A patched release has its own source name and, because
+    its elementary exchanges are linked on the flows BAFU declared, exactly the provider's
+    flows. Returns the number of terms written.
+    """
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    wanted = [("type", "==", FLOW_TYPE), ("source", "==", SOURCE_IRI + provider)]
+    tables = [pq.read_table(file, filters=wanted) for file in sorted(terms.glob("*.parquet"))]
+    tables = [table for table in tables if table.num_rows]
+    if not tables:
+        raise ValueError(f"No elementary flow terms of {provider} in {terms}")
+    table = pa.concat_tables(tables)
+    index = table.schema.get_field_index("source")
+    field = table.schema.field(index)
+    renamed = pa.array([SOURCE_IRI + source] * table.num_rows, type=field.type)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    pq.write_table(table.set_column(index, field, renamed), target)
+    return table.num_rows
+
+
 def main(argv: list[str] | None = None) -> int:
     from sentier_brightway.fetch import manifest_key, materialize
 
@@ -73,11 +102,21 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("folder", type=Path, help="Where the pinned files are kept")
     parser.add_argument("--pins", type=Path, help="The build's pins.toml, for `[data.*]`")
     parser.add_argument("--record", type=Path, help="Write the pins that were used, as JSON")
+    parser.add_argument(
+        "--flow-terms",
+        nargs=3,
+        metavar=("PROVIDER", "SOURCE", "FILE"),
+        help="Also write the provider's elementary flow terms under another source name",
+    )
     args = parser.parse_args(argv)
     overrides = tomllib.loads(args.pins.read_text()).get("data", {}) if args.pins else {}
     sources, record = pinned_sources(overrides)
     folder = args.folder / manifest_key(sources)
     materialize(sources, cache_dir=folder)
+    if args.flow_terms:
+        provider, source, target = args.flow_terms
+        count = write_flow_terms(folder / "sentier-vocab" / "terms", Path(target), provider, source)
+        print(f"{count} elementary flow terms of {provider} written for {source}")
     if args.record:
         args.record.write_text(json.dumps({"folder": str(folder), "sources": record}, indent=2))
     for pin in record:

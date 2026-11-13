@@ -14,6 +14,7 @@ import json
 from pathlib import Path
 
 SCHEMA_VERSION = "0.3.0"  # sentier-inventory: one folder per source release
+MODIFIED_LABEL = "Modified Data"  # the label BAFU's Terms of Use ask for
 
 
 def read_columns(folder: Path) -> tuple[dict[str, list[str]], dict[str, int]]:
@@ -76,6 +77,8 @@ def build_metadata(
     if modifications is not None:
         # The schema allows further keys. BAFU's Terms of Use (3.5) ask that modified
         # data is labelled as modified and never presented as the original.
+        metadata["title"] = f"{texts['title']}, patched ({MODIFIED_LABEL})"
+        metadata["label"] = MODIFIED_LABEL
         metadata["modified"] = True
         metadata["modifications"] = modifications
     return metadata
