@@ -332,6 +332,67 @@ class WholePathRecord(unittest.TestCase):
         self.assertEqual(self.release("--contribution", str(layer)), 1)
         self.assertEqual(self.calls, [])
 
+    def layers(self) -> Path:
+        """A layers folder with one layer somebody authorised and one nobody has."""
+        folder = self.root / "layers"
+        folder.mkdir()
+        for number, by in ((901, "Rita Reviewer"), (902, None)):
+            layer = {
+                "schema": "sentier-bafu/contribution-layer/1",
+                "contribution": f"C{number}",
+                "name": "made-up",
+                "database": f"bafu-2026-v1-c{number}-made-up",
+                "title": "A made-up layer",
+                "authored_by": "Ann Author",
+                "authorised_by": by,
+                "changes": [
+                    {
+                        "kind": "supplier-substitution",
+                        "dataset": {"code": "a", "name": "A", "location": "CH"},
+                        "replaced_supplier": {"code": "b", "name": "B", "location": "CH"},
+                        "new_supplier": {"code": "c", "name": "C", "location": "CH"},
+                    }
+                ],
+            }
+            (folder / f"C{number}-made-up.json").write_text(json.dumps(layer))
+        return folder
+
+    def run_with_layers(self, *more):
+        arguments = ["release", str(self.root / "release"), str(self.root / "run")]
+        build_release.main([*arguments, "--layers", str(self.layers()), *more])
+        return self.steps()
+
+    def test_a_release_run_builds_only_layers_that_name_who_authorised_them(self):
+        steps = self.run_with_layers()
+        self.assertIn("C901-made-up-build", self.calls)
+        self.assertNotIn("C902-made-up-build", self.calls)
+        self.assertEqual(steps["C901-made-up build"]["status"], "completed")  # a stand-in
+        skipped = steps["C902-made-up build"]
+        self.assertEqual(skipped["status"], "skipped")
+        self.assertIn("nobody has authorised the layer C902-made-up.json", skipped["reason"])
+        self.assertNotIn("C902-made-up comparison", steps)
+        self.assertNotIn("C902-made-up exports", steps)
+        # a skipped layer is no problem of the run, and no contribution of the manifest
+        manifest = json.loads((self.root / "run" / "manifest.json").read_text())
+        self.assertFalse(any("C902" in problem for problem in manifest["problems"]))
+        self.assertEqual(manifest["contributions"], [])
+
+    def test_an_unauthorised_layer_is_built_when_it_is_named(self):
+        named = self.root / "layers" / "C902-made-up.json"
+        steps = self.run_with_layers("--contribution", str(named))
+        self.assertIn("C902-made-up-build", self.calls)
+        self.assertIn("C901-made-up-build", self.calls)
+        self.assertEqual(self.calls.count("C902-made-up-build"), 1)  # named and found: once
+        self.assertNotEqual(steps["C902-made-up build"]["status"], "skipped")
+
+    def test_which_layers_a_release_run_builds(self):
+        yes, no = {"authorised_by": "Rita Reviewer"}, {"authorised_by": None}
+        build, left = build_release.layers_of_a_release_run(
+            [("named", no)], [("named", no), ("found", yes), ("waiting", no)]
+        )
+        self.assertEqual([path for path, _ in build], ["named", "found"])
+        self.assertEqual([path for path, _ in left], ["waiting"])
+
 
 class Refusals(unittest.TestCase):
     def test_a_build_needs_a_release_folder_and_an_empty_output_folder(self):
@@ -376,6 +437,35 @@ class BuildRecords(unittest.TestCase):
         self.assertIn("3 elementary exchanges", steps[1]["description"])
         for step in steps:  # the shape an export step reads
             self.assertTrue({"id", "kind", "description"} <= set(step))
+
+    def test_a_contribution_says_whether_somebody_authorised_it(self):
+        self.assertEqual(
+            build_release.standing({"authorised_by": None}), "proposed, not authorised"
+        )
+        self.assertEqual(
+            build_release.standing({"authorised_by": "Rita Reviewer"}),
+            "authorised by Rita Reviewer",
+        )
+        contribution = {
+            "step": "C900-made-up",
+            "title": "A made-up layer",
+            "exchanges_changed": 1,
+            "datasets_changed": 1,
+            "layer_file": "C900-made-up.json",
+            "authored_by": "Ann Author",
+            "authorised_by": None,
+            "standing": build_release.standing({"authorised_by": None}),
+            "references": [],
+        }
+        record = self.record | {"contribution": contribution}
+        receipt = build_release.adapter.Receipt(datasets=7)
+        step = build_release._build_steps(record, receipt, Path("inventory"))[-1]
+        self.assertEqual(step["kind"], "contribution")
+        self.assertIn("The contribution is proposed, not authorised.", step["description"])
+        self.assertEqual(
+            build_release._marker(record, [])["contribution"]["standing"],
+            "proposed, not authorised",
+        )
 
     def test_the_marker_lists_the_patch_ids(self):
         marker = build_release._marker(self.record, [])

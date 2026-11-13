@@ -5,9 +5,12 @@ residual electricity mixes. A file is named `<id>-<name>.json`, for example
 `C012-residual-electricity.json`. No such file exists yet.
 
 A contribution is never applied to the patched release. The release build
-(`python3 scripts/build_release.py release`) builds every file in this folder as a database of its
-own: the patched release plus that one contribution, under the contribution's own name. BAFU's
-numbers and the numbers of the patched release stay as they are.
+(`python3 scripts/build_release.py release`) builds every file in this folder that names who
+authorised it (`authorised_by`) as a database of its own: the patched release plus that one
+contribution, under the contribution's own name. BAFU's numbers and the numbers of the patched
+release stay as they are. A file that nobody has authorised is left out of a release run. It is
+built only when it is named (`build … --contribution FILE`), and its database and its exports then
+say "proposed, not authorised".
 
 - The contribution's record, `community/contributions/C<number>.json`, names its file here in
   `layer.file`. `python3 scripts/community.py check` refuses a record that names a file which is

@@ -40,7 +40,9 @@ manifest and the table of the patch run.
 `--tag NAME` names the release in the manifest and makes the command fail if the run can't
 be published. `--previous FILE` gives the manifest of the previous release (or an earlier
 run summary) for the patch run check. `--contribution LAYER` and `--layers FOLDER` choose
-the contributions; without either, every layer in `community/layers/` is built.
+the contributions; without either, every layer in `community/layers/` that names who
+authorised it is built. A layer that nobody has authorised is listed as skipped; it is built
+only when it is named with `--contribution`.
 `--partial-release` is for a test release: that it is unknown and that patches find nothing
 to change in it does not fail the run.
 

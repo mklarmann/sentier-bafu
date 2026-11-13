@@ -18,7 +18,10 @@ python3 scripts/build_release.py compare PATCHED_BUILD OUT --out comparison.json
 ```
 
 or, as part of the whole path, `python3 scripts/build_release.py release RELEASE OUT`, which
-builds every layer in `community/layers/` after the patched release.
+builds, after the patched release, every layer in `community/layers/` that names who
+authorised it. A layer whose `authorised_by` is `null` is left out of a release run and
+listed in it as skipped; it is built only when it is named with `--contribution`, and its
+database and its exports then say "proposed, not authorised".
 
 1. The patch tool, the adapter and the importer run as for the patched release.
 2. The step `layer` applies the layer's changes to the importer's tables
@@ -126,7 +129,8 @@ For a variant such as residual electricity mixes:
    the amount, so a layer that needs other amounts must say so in a change of its own kind,
    with the source of each number. The build never infers an amount.
 5. **A name for the database** that says what it is, and a person who authorises building
-   it. An unauthorised layer is built, marked as not authorised in the manifest, and is not
+   it. An unauthorised layer is built only when it is named, says "proposed, not
+   authorised" in its database and its exports, is left out of a release run, and is not
    part of anything that is released.
 6. **A statement of what the comparison should show**: which datasets' scores are expected
    to move, in which methods, and roughly by how much. The comparison lists every moved

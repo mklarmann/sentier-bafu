@@ -10,8 +10,10 @@
 `release` runs the whole path and writes `OUT/manifest.json`: the provider build, the
 patched build, the check of the written files and of what each patch matched, the
 comparison, the exports with their read-back, and then the same for every contribution
-layer it is given. A step that fails is recorded as failed, the steps that can still run
-do, and the command ends with status 1.
+layer of `community/layers/` that names who authorised it. A layer nobody has authorised
+is built only when it is named with `--contribution`; its database and its exports then
+say that it is proposed and not authorised. A step that fails is recorded as failed, the
+steps that can still run do, and the command ends with status 1.
 
 `build` runs these steps and records each one's time and peak memory in `OUT/build.json`:
 
@@ -81,8 +83,33 @@ BIOSPHERE_DB = "ef-3.1-biosphere"
 RELEASE_NAME = "BAFU:2026 v1"
 
 
+NOT_AUTHORISED = "proposed, not authorised"
+
+
 class BuildError(Exception):
     """A step failed or a precondition doesn't hold; the message says which."""
+
+
+def standing(contribution: dict) -> str:
+    """Whether somebody has authorised a contribution's layer, in words for a reader."""
+    by = contribution.get("authorised_by")
+    return f"authorised by {by}" if by else NOT_AUTHORISED
+
+
+def layers_of_a_release_run(named: list, found: list) -> tuple[list, list]:
+    """The layers a release run builds, and the ones it leaves, each as `(path, layer)`.
+
+    `named` were asked for with `--contribution` and are built whoever authorised them.
+    `found` are the layers of the layers folder: one that names nobody who authorised it
+    is not built.
+    """
+    build, left = list(named), []
+    asked = {path for path, _ in named}
+    for path, layer in found:
+        if path in asked:
+            continue
+        (build if layer.get("authorised_by") else left).append((path, layer))
+    return build, left
 
 
 # --- Running steps ---------------------------------------------------------------------
@@ -202,7 +229,7 @@ def plan(args: argparse.Namespace) -> dict:
     if contribution:
         default_label = (
             f"patched release with contribution {contribution['contribution']} "
-            f"({contribution['name']})"
+            f"({contribution['name']}), {standing(contribution)}"
         )
     return {
         "label": args.label or default_label,
@@ -414,6 +441,7 @@ def build(args: argparse.Namespace) -> int:
                 "database": database,
                 "authored_by": contribution["authored_by"],
                 "authorised_by": contribution["authorised_by"],
+                "standing": standing(contribution),
                 "references": contribution["references"],
                 "layer_file": contribution["file"],
                 "layer_sha256": contribution["sha256"],
@@ -579,6 +607,8 @@ def build(args: argparse.Namespace) -> int:
         paths["record"].write_text(json.dumps(record, indent=2) + "\n")
 
     print(f"Built {database} in project {paths['project']}, {paths['brightway_dir']}")
+    if record.get("contribution"):
+        print(f"Contribution {record['contribution']['id']}: {record['contribution']['standing']}")
     for name, result in record["steps"].items():
         memory = result["peak_memory_mb"]
         print(
@@ -607,7 +637,7 @@ def _modifications(receipt: adapter.Receipt, record: dict) -> dict:
         "record_of_changes": record["release"]["record_of_changes"],
         "contribution": {
             key: record["contribution"][key]
-            for key in ("id", "name", "title", "layer_sha256", "exchanges_changed")
+            for key in ("id", "name", "title", "standing", "layer_sha256", "exchanges_changed")
         }
         if record.get("contribution")
         else None,
@@ -653,7 +683,8 @@ def _build_steps(record: dict, receipt: adapter.Receipt, inventory: Path) -> lis
                 f"{contribution['exchanges_changed']} input(s) of "
                 f"{contribution['datasets_changed']} dataset(s) take another supplier, as "
                 f"the layer {contribution['layer_file']} declares. This database is the "
-                "patched release plus that contribution; it is not the patched release.",
+                "patched release plus that contribution; it is not the patched release. "
+                f"The contribution is {contribution['standing']}.",
                 "datasets": contribution["datasets_changed"],
                 "authored_by": contribution["authored_by"],
                 "authorised_by": contribution["authorised_by"],
@@ -777,14 +808,21 @@ def release(args: argparse.Namespace) -> int:
     source = args.release.resolve()
     if not source.is_dir():
         raise BuildError(f"{source} is not a folder")
-    layers = [path.resolve() for path in args.contribution or ()]
-    layers += [] if args.no_layers else layer_file.find(args.layers)
-    contributions = []
-    for path in layers:
-        try:
-            contributions.append((path, layer_file.load(path)))
-        except layer_file.LayerError as error:
-            raise BuildError(f"The contribution's layer can't be used: {error}") from None
+
+    def loaded(paths) -> list:
+        layers = []
+        for path in paths:
+            try:
+                layers.append((path, layer_file.load(path)))
+            except layer_file.LayerError as error:
+                raise BuildError(f"The contribution's layer can't be used: {error}") from None
+        return layers
+
+    named = loaded(path.resolve() for path in args.contribution or ())
+    found = loaded(
+        path.resolve() for path in ([] if args.no_layers else layer_file.find(args.layers))
+    )
+    contributions, not_authorised = layers_of_a_release_run(named, found)
     logs, results = out / "logs", out / "results"
     logs.mkdir(parents=True)
     results.mkdir()
@@ -896,6 +934,18 @@ def release(args: argparse.Namespace) -> int:
             export_command(build, folder / "exports"),
             why="the contribution's build wrote no database to export",
         )
+
+    for path, contribution in not_authorised:
+        name = layer_file.step_id(contribution)
+        reason = (
+            f"nobody has authorised the layer {path.name}; a release run builds a layer that "
+            "names who authorised it, or one that is named with --contribution"
+        )
+        steps.append(
+            {"name": f"{name} build", "status": "skipped", "seconds": None}
+            | {"peak_memory_mb": None, "reason": reason}
+        )
+        print(f"[{name} build] skipped: {reason}", flush=True)
 
     config = release_manifest.load(REPOSITORY / "site" / "config.json")
     revision = _repository_commit().split()[0]
@@ -1051,8 +1101,8 @@ def main(argv: list[str] | None = None) -> int:
         "--layers",
         type=Path,
         default=LAYERS,
-        help="Folder with contribution layers; each is built beside the patched release "
-        "(default: community/layers)",
+        help="Folder with contribution layers; each one that names who authorised it is "
+        "built beside the patched release (default: community/layers)",
     )
     r.add_argument("--no-layers", action="store_true", help="Build no contribution")
     r.add_argument(
@@ -1066,7 +1116,8 @@ def main(argv: list[str] | None = None) -> int:
         type=Path,
         action="append",
         metavar="LAYER",
-        help="One more contribution layer to build (repeatable)",
+        help="A contribution layer to build whether or not somebody has authorised it "
+        "(repeatable); its database and exports say if nobody has",
     )
     r.add_argument("--xsd-check", choices=("off", "end", "every-step"), default="every-step")
     r.add_argument("--sample", type=Path, help="Datasets the audit scores (see `build`)")

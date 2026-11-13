@@ -215,7 +215,7 @@ the build, a run on request, and a tag `patched-…` on a commit of `main` run o
 `python3 scripts/build_release.py release`, on BAFU's full release: a Brightway database of
 BAFU's release and one of the patched release, their checks and their comparison, the exports of
 the patched release with a read-back of each file, every contribution in `community/layers/`
-built beside the patched release, and the manifest. [The whole path](release-build.md) describes
+that names who authorised it built beside the patched release, and the manifest. [The whole path](release-build.md) describes
 each step and what stops it.
 
 A tag is released by a second job, the only one with a token that can write. The build job
