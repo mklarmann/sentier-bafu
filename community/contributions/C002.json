@@ -1,6 +1,8 @@
 {
   "id": "C002",
+  "issue": null,
   "title": "Integrate the BAFU mapping work with Chris Mutel and reproduce method-specific results",
+  "class": "mapping",
   "status": "proposed",
   "baseline": {
     "dataset": "BAFU/UVEK",

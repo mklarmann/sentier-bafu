@@ -1,6 +1,8 @@
 {
   "id": "C000",
+  "issue": null,
   "title": "",
+  "class": "",
   "status": "proposed",
   "baseline": {
     "dataset": "",

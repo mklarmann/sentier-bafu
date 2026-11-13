@@ -47,7 +47,7 @@ decision about an official distribution.
 
 ## Aggregated dataset list
 
-The [F8 source list and counting criteria](findings/F8.json)
+The [F8 source list and counting criteria](findings/0/F8.json)
 identify the 37 unflagged structural candidates, including their UUIDs. The
 hackathon separately reports 22 of those candidates rebuilt. These counts
 describe different stages; a comparison with another search should use the

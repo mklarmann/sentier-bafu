@@ -83,9 +83,9 @@ p { margin: 0 0 24px; }
 .badge { display: inline-block; background: var(--subtle); border: 1px solid var(--line); border-radius: 4px; padding: 3px 8px; font-size: 12px; font-weight: 700; text-transform: capitalize; white-space: nowrap; }
 .badge.proposed { background: var(--paper); }
 .badge[class*="status-"] { text-transform: none; }
-.badge.status-upstream-fixed { background: var(--green); border-color: var(--green); color: var(--white); }
-.badge.status-upstream-reported { background: var(--sage); border-color: var(--sage); }
-.badge.status-open { background: var(--paper); }
+.badge.status-fixed { background: var(--green); border-color: var(--green); color: var(--white); }
+.badge.status-sent, .badge.status-answered { background: var(--sage); border-color: var(--sage); }
+.badge.status-filed, .badge.status-confirmed { background: var(--paper); }
 .badge.status-withdrawn { text-decoration: line-through; color: var(--muted); }
 .strip strong a { color: inherit; }
 .stages { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 12px; margin: 28px 0 8px; }

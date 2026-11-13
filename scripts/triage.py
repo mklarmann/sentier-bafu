@@ -1,57 +1,42 @@
-"""Assemble the triage view: where each finding stands, where it is discussed, who acts next.
+"""Join the finding records with what only the issue tracker knows.
 
-The stage of a finding comes from its record (community/findings/), which is reviewed. GitHub
-adds only what the tracker knows: comment counts, last activity, labels, and issues filed as
-findings that have no record yet. Without the tracker everything still builds from the records.
+Where a finding stands is computed from the dated evidence in its record (community.stage);
+the tracker never decides it. GitHub adds comment counts, last activity, labels, and issues
+filed as findings that have no record yet. Without the tracker everything still builds from
+the records.
+
+    load_issues(repository, snapshot, offline, require)   {number: issue}, and where it came from
+    assemble(findings, repository, issues, patches)       the joined view the site is built from:
+        findings            every record as a dict with these added keys:
+                              stage         the stage key (community.stage)
+                              path          the record's file in the repository
+                              tracker       the issue's data from GitHub, or None
+                              patches       the community patches that answer it
+                              related       related findings, both directions
+                              changed       date of its newest evidence
+                              waiting_since that date while it is still on the path, else None
+        counts              {stage key: number of findings}
+        unlisted            open finding issues that have no record yet
+        without_issue       ids of records that have no issue in this repository
+        label_differences   for maintainers: issues whose labels do not match their record
+    expected_labels(stage)                                the labels a record's issue should carry
 """
 
 import json
 import os
-import re
 import urllib.request
 from pathlib import Path
 
-# (key, title, what it means). "the provider" is replaced by the provider's name on the site.
-STAGES = [
-    (
-        "needs-triage",
-        "Awaiting a second measurement",
-        "Reported with a measurement. A second person has not yet repeated it on the release files.",
-    ),
-    (
-        "open",
-        "Measured, not yet sent to the provider",
-        "Measured on the release files. It goes to the provider with the next batch.",
-    ),
-    (
-        "upstream-reported",
-        "Reported to the provider",
-        "The provider decides what it changes. A community patch may apply the correction for those who need it now.",
-    ),
-    (
-        "upstream-fixed",
-        "Fixed by the provider",
-        "The provider shipped the correction in a named release.",
-    ),
-    (
-        "handled-in-layer",
-        "Handled in a layer, question open",
-        "A patch or layer applies it in a candidate build. The question to the provider is still open.",
-    ),
-    (
-        "informational",
-        "For information",
-        "A method or scope difference, not a defect. Recorded so nobody derives it again.",
-    ),
-    (
-        "withdrawn",
-        "Withdrawn",
-        "Did not survive re-measurement. Kept so nobody finds it again.",
-    ),
-]
-STAGE_ORDER = {key: n for n, (key, _, _) in enumerate(STAGES)}
-ISSUE = re.compile(r"https://github\.com/([^/]+/[^/]+)/issues/(\d+)")
+import community
+
 FINDING_LABEL = "bafu-finding"
+HELP_LABEL = "help wanted"
+STAGE_LABEL = "stage: {}"
+# Labels of the earlier model, and the form's `needs-triage`, which now means only
+# "an issue without a record": none of them belongs on an issue that has a record.
+RETIRED_LABELS = {
+    "needs-triage", "upstream-reported", "upstream-fixed", "informational", "handled-in-layer", "withdrawn",
+}
 
 
 def slug(repository):
@@ -104,35 +89,62 @@ def load_issues(repository, snapshot=None, offline=False, require=False):
         return {}, None
 
 
-def assemble(findings, repository, issues):
+def expected_labels(stage):
+    """The labels an issue should carry for a record at this stage. Labels follow records."""
+    labels = {FINDING_LABEL, STAGE_LABEL.format(stage)}
+    if stage == "filed":
+        labels.add(HELP_LABEL)
+    return labels
+
+
+def label_differences(placed, issues):
+    """For maintainers and the label sync, never for a public page: issues whose labels do
+    not match their record. An issue shared by several findings shows the earliest stage."""
+    by_issue = {}
+    for finding in placed:
+        if finding["issue"] in issues:
+            by_issue.setdefault(finding["issue"], []).append(finding)
+    stage_labels = {STAGE_LABEL.format(s["key"]) for s in community.STATUSES}
+    differences = []
+    for number, findings in sorted(by_issue.items()):
+        earliest = min((f["stage"] for f in findings), key=community.STAGE_ORDER.get)
+        expected = expected_labels(earliest)
+        present = set(issues[number]["labels"])
+        add = sorted(expected - present)
+        remove = sorted((present & (stage_labels | RETIRED_LABELS | {HELP_LABEL})) - expected)
+        if add or remove:
+            ids = sorted((f["id"] for f in findings), key=lambda rid: int(rid[1:]))
+            differences.append(dict(issue=number, findings=ids, stage=earliest, add=add, remove=remove))
+    return differences
+
+
+def assemble(findings, repository, issues, patches=None):
     """Findings with their stage and discussion, plus finding issues that have no record yet."""
-    repo = slug(repository)
-    placed, cited, counts = [], set(), {}
+    by_finding = community.patches_by_finding(patches)
+    relations = community.related(findings)
+    placed, counts = [], {}
     for record in findings:
-        own = [int(n) for name, n in ISSUE.findall(" ".join(record["links"])) if name == repo]
-        cited.update(own)
-        issue = issues.get(own[0]) if own else None
-        awaiting = record["awaiting_second_measurement"]
-        stage = "needs-triage" if awaiting else record["status"]
-        # The issue's labels should mirror the record; say so when they do not.
-        label_differs = bool(issue) and (
-            (record["status"] != "open" and record["status"] not in issue["labels"])
-            or awaiting != ("needs-triage" in issue["labels"])
-        )
+        stage = community.stage(record)
         counts[stage] = counts.get(stage, 0) + 1
         placed.append(
             dict(
                 record,
                 stage=stage,
-                issue=issue,
-                issue_number=own[0] if own else None,
-                other_issues=own[1:],
-                external=[u for u in record["links"] if f"github.com/{repo}/" not in u],
-                label_differs=label_differs,
+                path=getattr(record, "path", None) or community.record_path(record),
+                tracker=issues.get(record["issue"]) if record["issue"] else None,
+                patches=by_finding.get(record["id"], []),
+                related=relations[record["id"]],
+                changed=community.last_change(record),
+                waiting_since=community.waiting_since(record),
             )
         )
-    placed.sort(key=lambda f: (STAGE_ORDER[f["stage"]], -int(f["id"][1:])))
-    unlisted = [
-        i for n, i in sorted(issues.items()) if n not in cited and i["state"] == "open"
-    ]
-    return dict(findings=placed, unlisted=unlisted, counts=counts)
+    placed.sort(key=lambda f: (community.STAGE_ORDER[f["stage"]], -community.finding_number(f)))
+    cited = {f["issue"] for f in placed if f["issue"]}
+    unlisted = [i for n, i in sorted(issues.items()) if n not in cited and i["state"] == "open"]
+    return dict(
+        findings=placed,
+        unlisted=unlisted,
+        counts=counts,
+        without_issue=sorted((f["id"] for f in placed if not f["issue"]), key=lambda rid: int(rid[1:])),
+        label_differences=label_differences(placed, issues),
+    )

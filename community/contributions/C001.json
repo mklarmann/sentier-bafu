@@ -1,6 +1,8 @@
 {
   "id": "C001",
+  "issue": null,
   "title": "Validate the hackathon copied-process layer before representation or forecasting recommendations",
+  "class": "model",
   "status": "proposed",
   "baseline": {
     "dataset": "BAFU/UVEK",
