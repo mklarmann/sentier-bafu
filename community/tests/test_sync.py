@@ -280,9 +280,9 @@ class RecordedTests(unittest.TestCase):
         for item in fake.issues.values():
             self.assertEqual(sum(1 for label in item["labels"] if label.startswith("status: ")), 1)
             self.assertFalse(set(item["labels"]) & sync.RETIRED_LABELS)
-        calls = len(fake.calls)
+        writes = len(fake.writes())
         self.assertEqual(sync.apply([], api, "BAFU"), (0, 0, None))
-        self.assertEqual(len(fake.calls), calls, "with nothing to write, nothing is even read")
+        self.assertEqual(len(fake.writes()), writes)
 
 
 class ApplyTests(unittest.TestCase):
@@ -322,7 +322,14 @@ class ApplyTests(unittest.TestCase):
                          "Filed as a finding; no record of it has been merged yet.")
         # Labels the job does not define are used as they are.
         self.assertEqual(self.fake.labels["help wanted"]["description"], "")
-        self.assertEqual([call[2]["name"] for call in self.fake.writes() if call[:2] == ("POST", "/labels")], [FILED])
+        self.assertEqual(self.fake.labels["bafu-finding"]["description"], "")
+        # Every status label and the label of the contribution form exist after the first run:
+        # a form applies a label only if the label exists.
+        created = [call[2]["name"] for call in self.fake.writes() if call[:2] == ("POST", "/labels")]
+        self.assertEqual(created, sorted(["contribution"] + list(sync.status_labels("BAFU"))))
+        writes = len(self.fake.writes())
+        self.sync([finding()])
+        self.assertEqual(len(self.fake.writes()), writes, "and are not created twice")
 
     def test_no_comment_is_posted_when_asked_not_to(self):
         self.sync([finding()], comments=False)
@@ -343,7 +350,7 @@ class ApplyTests(unittest.TestCase):
         for n in range(49, 58):
             self.fake.add_issue(n, ["bafu-finding", "needs-triage"])
         differences = sync.plan(findings, sync.read_issues(self.api, findings), CONFIG)
-        self.fake.remaining = 14  # used up in the middle of an issue
+        self.fake.remaining = 22  # used up in the middle of an issue
         done, left, stopped = sync.apply(differences, self.api, "BAFU", pause=self.pauses.append, reserve=0)
         self.assertEqual(stopped, "the rate limit is used up")
         self.assertEqual(done + left, 10)

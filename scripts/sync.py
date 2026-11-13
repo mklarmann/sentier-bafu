@@ -39,6 +39,7 @@ ROOT = community.ROOT
 FINDING_LABEL = "bafu-finding"
 HELP_LABEL = "help wanted"
 TRIAGE_LABEL = "needs-triage"
+CONTRIBUTION_LABEL = "contribution"
 STATUS_PREFIX = "status: "
 # Labels of the earlier model. None of them is written any more; each is taken off.
 RETIRED_LABELS = {"upstream-reported", "upstream-fixed", "informational", "handled-in-layer", "withdrawn"}
@@ -83,11 +84,16 @@ def owned(label):
 
 
 def definitions(provider):
-    """The labels this job creates when they are missing: {name: (colour, description)}."""
+    """The labels this job creates when they are missing: {name: (colour, description)}.
+
+    The status labels, and the two the issue forms set that a new repository does not have:
+    a form applies a label only if the label exists.
+    """
     wanted = {
         name: (STATUS_COLOURS[key], WRITTEN) for name, key in status_labels(provider).items()
     }
     wanted[TRIAGE_LABEL] = ("ededed", "Filed as a finding; no record of it has been merged yet.")
+    wanted[CONTRIBUTION_LABEL] = ("84ae99", "A proposed correction, mapping, model or variant, with its evidence.")
     return wanted
 
 
@@ -263,11 +269,10 @@ def snapshot_issues(path, findings):
     return issues
 
 
-def label_changes(existing, differences, provider):
+def label_changes(existing, provider):
     """Label definitions to create or to describe again: ([(name, colour, description)], [(name, description)])."""
     wanted = definitions(provider)
-    needed = {label for entry in differences for label in entry["add"]}
-    create = [(name, *wanted[name]) for name in sorted(needed) if name in wanted and name not in existing]
+    create = [(name, *wanted[name]) for name in sorted(wanted) if name not in existing]
     describe = [
         (name, wanted[name][1])
         for name in sorted(wanted)
@@ -285,11 +290,9 @@ def apply(differences, api, provider, comments=True, pause=None, reserve=RESERVE
     done, pause = 0, pause or time.sleep
     # What is left for a person is no work for this job.
     differences = [entry for entry in differences if any(entry[key] for key in ("add", "remove", "announce", "close"))]
-    if not differences:
-        return 0, 0, None
     try:
         existing = {label["name"]: label for label in api.pages("/labels")}
-        create, describe = label_changes(existing, differences, provider)
+        create, describe = label_changes(existing, provider)
         for name, colour, description in create:
             api.post("/labels", {"name": name, "color": colour, "description": description})
         for name, description in describe:
