@@ -112,7 +112,7 @@ def exports(folder: Path) -> list[str]:
         lines.append(f"{line}  {read}".rstrip())
     lines.append(
         f"  label {section['label']}; "
-        "the files stay on this machine and are not offered for download"
+        "a build with a tag keeps these files under its tag; any other keeps none"
     )
     return lines
 

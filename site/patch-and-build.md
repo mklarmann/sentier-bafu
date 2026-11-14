@@ -12,11 +12,11 @@ A community patch is not BAFU's correction. BAFU decides what it changes in its 
 
 GitHub makes a build when a change to the patch tool or to the build is accepted, once a month, and when a maintainer asks for one. The build at the top of this page is the last of those, also when it failed. Nothing in it is written by hand: the numbers come from the record the build kept, and the lines are the lines it printed.
 
-Most builds are only looked at. A maintainer gives a tag to the build that others should use. The build is then made again for that tag, and its manifest is kept under the tag: checksums, counts and the list of changes, and no file of the data.
+Most builds are only looked at. A maintainer gives a tag to the build that others should use. The build is then made again for that tag and kept under the tag: its files for LCA tools, the record of changes, and its manifest with checksums and counts.
 
 <!-- generated: build-files -->
 
-**Not offered yet:** the files themselves. They are written and read back in every build, and they stay on the machine that made it. BAFU's Terms of Use ask that whoever receives the data accepts them first, and no download exists yet that asks for that.
+**Downloads.** A file is offered here only where a tagged build holds those very bytes. A click on it first shows BAFU's Terms of Use in short, and the file comes only when you accept them; nothing about the click is recorded. The page of the tag on GitHub lists the same files, with the terms at the top. A build without a tag keeps no file: its files stay on the machine that made it.
 
 ## Before you share a build
 
@@ -52,13 +52,13 @@ Everything is written to the folder `output/release-run`. That folder holds BAFU
 
 **Works:** the import fixes and the community patches can be applied to the files of BAFU:2026 v1. The result is a patched copy of the release in BAFU's file format (ecoSpold v1), with a report of what each step changed. From that copy, one command of this repository builds a Brightway database, checks it, compares it with a database of BAFU's release, and writes files for Brightway, openLCA, ILCD and SimaPro, and the patched copy again as ecoSpold v1. Each file is read back. The files for Brightway, openLCA and SimaPro are compared with the database exchange by exchange. In the ILCD file the datasets are counted. The ecoSpold v1 files are compared with the files the patches were applied to: nothing differs but the label and the credit.
 
-**Does not exist yet:** a download of those files. No file has been opened in openLCA or in SimaPro yet: the checks read the files with separate programs.
+**Downloads:** from a tagged build, after a question that asks you to accept BAFU's Terms of Use. **Not checked yet:** no file has been opened in openLCA or in SimaPro; the checks read the files with separate programs.
 
 The steps, from the files that an LCA tool can open back to BAFU's files:
 
 | Step | What happens | State |
 |---|---|---|
-| 7. Exports | Files for Brightway, openLCA, ILCD and SimaPro are written, and the patched copy again as ecoSpold v1, with BAFU's credit, the label *Modified Data* and the list of changes. Each file is read back. | Works on your own machine and in the checks of this repository. The files are not offered for download. |
+| 7. Exports | Files for Brightway, openLCA, ILCD and SimaPro are written, and the patched copy again as ecoSpold v1, with BAFU's credit, the label *Modified Data* and the list of changes. Each file is read back. | Works on your own machine and in the checks of this repository. A tagged build keeps the files, and this page offers them after asking you to accept BAFU's terms. |
 | 6. Checks | Each database is checked: the datasets and exchanges are counted, every input must be linked to its supplier, and every score is computed. The two databases are then compared, and each difference is traced to an import fix or a patch. | Works |
 | 5. Brightway database | Two Brightway databases are built, with the EF 3.1 impact methods: one of BAFU's release and one of the patched copy. | Works |
 | 4. Elementary flows | BAFU's elementary flows are linked to the flows that the impact methods use. The Brightway build does this with the Sentier mappings. Patch 0010 does it with links to Brightway Flows. | Two ways exist. They do not agree yet. |

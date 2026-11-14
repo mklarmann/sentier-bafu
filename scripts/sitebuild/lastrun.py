@@ -60,7 +60,7 @@ SHOWN_STEPS = ("Set up job", "Complete job")  # GitHub's own two; the rest are t
 # page are the run's own, and where a run stands as to its tag is said with the answers.
 TAG = {
     "nothing blocks": "Nothing in this run.",
-    "is kept": "It is kept under the tag <code>{tag}</code>: its manifest, and no file of the data.",
+    "is kept": "It is kept under the tag <code>{tag}</code>.",
     "was not kept": "It was made for the tag <code>{tag}</code>, and it was not kept.",
     "no tag": "It has no tag. A maintainer gives a tag to the build that others should use.",
     "none yet": "No build has a tag yet.",

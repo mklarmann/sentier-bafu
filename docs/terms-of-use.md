@@ -55,6 +55,12 @@ BAFU's terms in short, and the file is handed out only when the reader accepts t
 time. It needs JavaScript; without it, a download link leads to this section and hands out
 nothing. The manifest of a build holds no data and is linked as it is.
 
+The files are kept under the build's tag on GitHub, and the page of a tag lists them without
+asking anything. Its notes therefore begin with the same terms, in the same words, and lead
+here (Manuel Klarmann, 14 November 2026: the files are kept on GitHub, and the dialog is the
+way in). The record of changes in the files names who confirmed a problem for BAFU only as
+"BAFU (date)".
+
 ## What a copy must carry
 
 A served build, a package, a parquet set or an export derived from the Data

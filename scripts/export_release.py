@@ -33,9 +33,11 @@ Reads one or more databases from a Brightway project and writes, into one folder
 
 The patched copy is Modified Data under BAFU's Terms of Use: each file carries the
 credit, the label and the ids of the modifications inside it, and the full record
-travels beside it. The list of modifications comes from `bafu-fixes run --summary`.
-The step exports only a database that the build marked as Modified Data and that was
-built from the files that summary describes.
+travels beside it. The record names who confirmed a problem for the provider in the
+public form (`release_build/public_summary.py`): the organisation and the date, never a
+person, because the files may be handed on. The list of modifications comes from
+`bafu-fixes run --summary`. The step exports only a database that the build marked as
+Modified Data and that was built from the files that summary describes.
 
 Unit and compartment labels come from a declared table (`release_build/export_labels.toml`).
 A label is a name: no amount is converted. A technosphere input whose declared unit is
@@ -80,7 +82,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from release_build import ecospold_export  # noqa: E402
+from release_build import ecospold_export, public_summary  # noqa: E402
 from release_build import labels as label_table  # noqa: E402
 
 SCHEMA = "sentier-bafu/export-manifest/2"
@@ -1166,6 +1168,9 @@ def export_release(
     out = Path(out)
     if out.exists() and any(out.iterdir()):
         raise ExportError(f"{out} is not empty")
+    # The files may be handed on, so the record in them names who confirmed a problem for
+    # the provider as the public form does: the organisation and the date, never a person.
+    summary = public_summary.public(summary)
     labels = labels or load_labels()
     check_marker(databases, summary)
     nodes = all_nodes(databases)

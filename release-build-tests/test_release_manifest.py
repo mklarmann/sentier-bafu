@@ -5,8 +5,10 @@ of a real run on the made-up release is checked in `test_whole_path.py`.
 """
 
 import copy
+import hashlib
 import io
 import json
+import shutil
 import sys
 import tempfile
 import unittest
@@ -465,7 +467,12 @@ class WholeManifest(Folder):
         )
         self.assertEqual(set(exports_["read_back_matches"].values()), {True})
         self.assertIs(exports_["published"], False)
-        self.assertIs(data["exports"]["published"], False)
+        # made for a tag and nothing in the way: its export files are to be kept under the tag
+        self.assertIs(data["exports"]["published"], True)
+        self.assertEqual(data["exports"]["note"], rm.KEPT.format(tag="patched-2026-v1.1"))
+        untagged = self.manifest(tag=None)
+        self.assertIs(untagged["exports"]["published"], False)
+        self.assertEqual(untagged["exports"]["note"], rm.NOT_PUBLISHED)
         self.assertEqual(data["check_against_previous"]["patches"][0]["id"], "0001-amount")
 
     def test_a_finding_without_a_record_blocks_the_release(self):
@@ -618,7 +625,7 @@ class Shape(Folder):
 
         self.assertEqual(self.errors(format_), [f"format is not {rm.FORMAT}"])
 
-    def test_a_manifest_never_says_that_export_files_are_published(self):
+    def test_a_manifest_says_its_export_files_are_kept_only_for_a_tag(self):
         def published(data):
             data["exports"]["patched"]["published"] = True
 
@@ -627,11 +634,20 @@ class Shape(Folder):
             ["exports.patched: a manifest never says that export files are published"],
         )
 
-        def overall(data):
+        def untagged(data):
+            data["tag"] = None
             data["exports"]["published"] = True
 
         self.assertEqual(
-            self.errors(overall), ["exports: a manifest never says that export files are published"]
+            self.errors(untagged),
+            ["exports: a manifest says that its export files are kept only for a tag"],
+        )
+
+        def unsaid(data):
+            data["exports"]["published"] = "yes"
+
+        self.assertEqual(
+            self.errors(unsaid), ["exports: says whether its export files are kept, true or false"]
         )
 
 
@@ -649,12 +665,70 @@ class Command(Folder):
         self.assertEqual(code, 0, said)
         self.assertIn("a manifest of 2 patches, and nothing else", said)
         text = notes.read_text()
-        self.assertIn("Under this tag only `manifest.json` is kept.", text)
-        self.assertIn(rm.NOT_PUBLISHED, text)
+        self.assertIn("Under this tag are kept the files for LCA tools listed below", text)
+        self.assertIn(rm.KEPT.format(tag="patched-2026-v1.1"), text)
         self.assertIn("| bafu-2026-v1-patched-simapro.csv | 20 | `" + B + "` |", text)
         self.assertIn("| 0001-amount | F1 | Ann Author | Rita Reviewer | applied | 2 |", text)
         self.assertIn("`bafu-2026-v1-c900-other`. It is not part of the patched copy.", text)
         self.assertIn("The provider decides what it changes.", text)
+
+    def kept_files(self, data):
+        """The export files of a manifest, as the build hands them to the job that keeps them."""
+        folder = self.out / "handed-over"
+        folder.mkdir()
+        exports = data["exports"]["patched"]
+        for entry in exports["files"]:
+            content = entry["name"].encode()
+            (folder / entry["name"]).write_bytes(content)
+            entry["bytes"], entry["sha256"] = len(content), hashlib.sha256(content).hexdigest()
+        return folder
+
+    def test_the_files_kept_under_a_tag_are_exactly_those_the_manifest_lists(self):
+        path, notes = self.out / "manifest.json", self.out / "notes.md"
+        data = self.manifest()
+        folder = self.kept_files(data)
+        rm.write(data, path)
+        site = "https://example.github.io/sentier-bafu/"
+        options = ("--verify", str(path), "--release", "--notes", str(notes))
+        code, said = self.run_main(*options, "--files", str(folder), "--site-url", site)
+        self.assertEqual(code, 0, said)
+        self.assertIn(f"and the {len(data['exports']['patched']['files'])} files it lists", said)
+        text = notes.read_text()
+        # the page of the tag can't ask: its text begins with the terms, in the site's words
+        terms = json.loads(rm.CONFIG.read_text())["download"]
+        self.assertTrue(text.startswith("**Modified Data under BAFU's Terms of Use.**"))
+        for point in terms["points"]:
+            self.assertIn(f"- {point}", text.split("---")[0])
+        self.assertIn(f"{site}about/terms.html#downloads-from-this-site", text)
+        # a file with other bytes of the same size, one that is missing, and one not listed
+        first = folder / data["exports"]["patched"]["files"][0]["name"]
+        first.write_bytes(b"x" * first.stat().st_size)
+        (folder / data["exports"]["patched"]["files"][1]["name"]).unlink()
+        (folder / "left-over.txt").write_text("")
+        code, said = self.run_main(*options, "--files", str(folder), "--site-url", site)
+        self.assertEqual(code, 1)
+        self.assertIn("not the file the manifest lists (size or SHA-256)", said)
+        self.assertIn("listed in the manifest, and not in", said)
+        self.assertIn("left-over.txt: not listed in the manifest", said)
+        # no file is kept without the address of the terms
+        code, said = self.run_main(*options, "--files", str(self.kept_files_again(data)))
+        self.assertEqual(code, 1)
+        self.assertIn("only with the terms a download asks for, and the site's address", said)
+
+    def kept_files_again(self, data):
+        shutil.rmtree(self.out / "handed-over")
+        return self.kept_files(data)
+
+    def test_a_manifest_that_keeps_no_file_has_no_files_to_keep(self):
+        path = self.out / "manifest.json"
+        data = self.manifest(tag=None)
+        rm.write(data, path)
+        self.assertEqual(
+            rm.files_errors(data, self.out), ["the manifest says that no export file of it is kept"]
+        )
+        notes = rm.notes(data, rm.terms_of(json.loads(rm.CONFIG.read_text())), "https://x/")
+        self.assertIn("Under this tag only `manifest.json` is kept.", notes)
+        self.assertNotIn("Terms of Use.**", notes)
 
     def test_verify_refuses_what_is_not_a_manifest_or_not_a_release(self):
         path = self.out / "manifest.json"

@@ -49,8 +49,9 @@ anything:
 - a record that names a changed dataset the database does not have;
 - exchanges that point at a database you did not name (the writers would drop the rows).
 
-The export files are produced and read back in CI but are not offered until a download
-exists that asks for acceptance of BAFU's terms.
+A build with a tag keeps the export files under its tag on GitHub, beside its manifest, with
+BAFU's terms at the top of the tag's notes. The site offers each file only after asking the
+reader to accept those terms. A build without a tag keeps no export file.
 
 ## What it writes
 

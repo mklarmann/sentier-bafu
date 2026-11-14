@@ -142,12 +142,21 @@ matches anything; the audit says so and the row in the table can go.
 
 A maintainer gives a tag to the build that others should use: a person pushes a tag
 `patched-…` on a commit of `main`. The workflow runs the command with `--tag`, and a second
-job, the only one with a token that can write, receives one file, checks that it has exactly
-the shape of a manifest and that the run can be kept, and keeps `manifest.json` under the
-tag and nothing else (as what GitHub calls a Release of that tag).
+job, the only one with a token that can write, receives the manifest and the export files.
+It checks that the manifest has exactly the shape of a manifest and that the run can be kept,
+and that the files are exactly those the manifest lists, byte for byte
+(`release_manifest.py --verify … --release --files …`). Then it keeps `manifest.json` and
+the files under the tag (as what GitHub calls a Release of that tag): the files for
+Brightway, openLCA, ILCD and SimaPro, the ecoSpold v1 archive, and `MODIFICATIONS.md` and
+`MODIFICATIONS.json`. Last, it deletes the copy of the files that the first job handed over,
+also when keeping them failed (Manuel Klarmann, 14 November 2026).
 
-The export files are produced and read back in CI but are not offered until a download
-exists that asks for acceptance of BAFU's terms.
+The files are Modified Data, and BAFU's Terms of Use ask that whoever receives them accepts
+the terms. The site offers each file only after asking for that ("Downloads from this site"
+in [Data and terms](terms-of-use.md)). A page of a tag on GitHub can't ask: the notes of the
+tag begin with the terms, in the words the site's dialog uses, and lead to the site's page of
+them. The record of changes in the files names who confirmed a problem for BAFU only as
+"BAFU (date)".
 
 The manifest (`scripts/release_build/release_manifest.py`, format
 `sentier-bafu/patched-release/2`). Its first ten fields are the manifest of a patched
@@ -168,7 +177,7 @@ copy in format 1, unchanged:
 | `brightway` | both databases: name, label, audit result with errors and findings, counts, checksums of the audit and of the scores, tool commits and data pins |
 | `comparison` | rows changed by step, scores moved by method and step, what has no explanation |
 | `declared_units` | inputs whose declared unit is not their supplier's, with the amount used and the finding |
-| `exports` | per export file its name, size and SHA-256; per format whether it was written and read back; `published: false` |
+| `exports` | per export file its name, size and SHA-256; per format whether it was written and read back; `published`: true when the build was made for a tag and may be kept, so its files are kept under the tag |
 | `contributions` | each contribution built beside the patched copy: id, name, database, layer checksum, what it changed, its audit, comparison and export files |
 
 A run can't be kept under a tag when: the patch tool did not complete or read an unknown release;

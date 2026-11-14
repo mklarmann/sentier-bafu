@@ -242,12 +242,14 @@ keeps it, and so that a change at the address of BAFU's release or in a pinned t
 
 A build made for a tag is kept by a second job, the only one with a token that can write. The
 build job refuses a tag that is not on `main`. The second job receives one file, checks that it
-is a manifest and nothing else and that the run may be kept
-(`python3 -I scripts/release_build/release_manifest.py --verify … --release`), and keeps that
-one file under the tag (as what GitHub calls a Release of the tag).
+is a manifest and that the run may be kept, checks that the export files the first job handed
+over are exactly those the manifest lists
+(`python3 -I scripts/release_build/release_manifest.py --verify … --release --files …`), and
+keeps the manifest and those files under the tag (as what GitHub calls a Release of the tag),
+with BAFU's terms at the top of its notes. Then it deletes the handed-over copy.
 
-The export files are produced and read back in CI but are not offered until a download exists
-that asks for acceptance of BAFU's terms. No inventory leaves the runner.
+Otherwise no inventory leaves the runner: the export files leave it only for a tag. The site
+offers them after asking the reader to accept BAFU's terms.
 
 The manifest (`scripts/release_build/release_manifest.py`, format
 `sentier-bafu/patched-release/2`). The first ten fields are the contract with the site and the

@@ -1,13 +1,19 @@
-"""The manifest of a build: the one file that is kept of a build made for a tag.
+"""The manifest of a build: what a build made for a tag says of itself, kept under the tag.
 
     python3 scripts/release_build/release_manifest.py --verify manifest.json [--notes notes.md]
+        [--release] [--files FOLDER --site-url URL]
 
 `build_release.py release` writes the manifest from what the run left behind. It holds
 checksums, counts, dataset numbers and codes, names of people, and the names and single
 values that an audit finding quotes. It holds no inventory: no table of amounts, no
-exchange list, no text of a dataset. A GitHub Release of a patched copy holds this file
-and nothing else, because BAFU's terms ask that whoever receives the data accepts them
-first, and a release page can't ask for that.
+exchange list, no text of a dataset.
+
+Under a tag, the build keeps this file and the files it lists under `exports`: the files for
+LCA tools and the record of modifications (Manuel Klarmann, 14 November 2026). They are
+Modified Data under BAFU's Terms of Use, which ask that whoever receives the data accepts
+them. The site offers each file after asking the reader to accept them; a page of a tag on
+GitHub can't ask, so its notes begin with the same terms (`notes`). `--files` checks that a
+folder holds exactly the files the manifest lists, byte for byte, before they are kept.
 
 The first ten fields (`CORE_KEYS`) are the contract with the site and the records
 (`docs/automation.md` has the table): inside this format a field is never renamed or removed,
@@ -72,10 +78,24 @@ FIX_KEYS = ("id", "description", "result", "datasets_changed", "values_changed")
 OPTION_KEYS = ("XSD schema check", "extensions in output", "only patches", "skipped patches")
 RESULTS = ("applied", "not needed", "failed")
 MAX_BYTES = 8_000_000
+#: What the manifest says of its export files: they are kept only for a tag.
 NOT_PUBLISHED = (
-    "The export files are produced and read back in CI but are not offered until a download "
-    "exists that asks for acceptance of BAFU's terms."
+    "The export files are produced and read back here. They are kept only for a build with a "
+    "tag, under that tag."
 )
+#: ... and for a build made for a tag that may be kept.
+KEPT = (
+    "Made for the tag `{tag}`: once it passes the gate, its export files are kept under that tag "
+    "with this manifest. The site offers each after asking the reader to accept BAFU's terms; "
+    "the tag's page on GitHub lists them, with the terms at the top."
+)
+#: Where the words of those terms are: the site's configuration.
+CONFIG = Path(__file__).resolve().parents[2] / "site" / "config.json"
+
+
+def exports_note(tag, keepable):
+    """What the manifest says of its export files, and whether they are to be kept."""
+    return (KEPT.format(tag=tag), True) if tag and keepable else (NOT_PUBLISHED, False)
 
 
 def sha256_file(path: Path) -> str:
@@ -447,6 +467,7 @@ def manifest(
         for folder in sorted((out / "contributions").glob("*/"))
         if (folder / "build").is_dir()
     ]
+    note, kept = exports_note(tag, not problems and not not_releasable)
     return {
         **first,
         "status": "failed" if problems else "completed",
@@ -457,7 +478,7 @@ def manifest(
         "brightway": builds,
         "comparison": comparison,
         "declared_units": declared_units_section(out / "patched"),
-        "exports": {"patched": exports, "published": False, "note": NOT_PUBLISHED},
+        "exports": {"patched": exports, "published": kept, "note": note},
         "contributions": contributions,
     }
 
@@ -874,8 +895,11 @@ def shape_errors(data) -> list[str]:
     if shape.keys(data["exports"], "exports", ("patched", "published", "note")):
         _check_exports(shape, data["exports"]["patched"], "exports.patched")
         shape.text(data["exports"]["note"], "exports.note", 400)
-        if data["exports"]["published"] is not False:
-            shape.fail("exports", "a manifest never says that export files are published")
+        published = data["exports"]["published"]
+        if not isinstance(published, bool):
+            shape.fail("exports", "says whether its export files are kept, true or false")
+        elif published and not data.get("tag"):
+            shape.fail("exports", "a manifest says that its export files are kept only for a tag")
     contributions = data["contributions"]
     names = (
         "id",
@@ -923,16 +947,52 @@ def release_errors(data: dict) -> list[str]:
     return found
 
 
-def notes(data: dict) -> str:
-    """The text that goes with the tag: what the manifest says, in words. No inventory."""
+def terms_of(config: dict) -> dict | None:
+    """The words a download asks with (site/config.json "download"), or None."""
+    terms = (config or {}).get("download")
+    return terms if isinstance(terms, dict) and terms.get("points") else None
+
+
+def notes(
+    data: dict, terms: dict | None = None, site_url: str | None = None, names: dict | None = None
+) -> str:
+    """The text that goes with the tag: what the manifest says, in words. No inventory.
+    Where files are kept under the tag, it begins with the terms (`terms`, the site's words
+    for a download) and leads to the site's page of them (`site_url`): a page of a tag on
+    GitHub lists its files, and can't ask the reader to accept anything."""
     release, output = data["provider_release"], data["output"]
-    lines = [
-        f"Patched copy `{data['tag']}`." if data["tag"] else "Patched copy.",
-        "",
-        "Under this tag only `manifest.json` is kept. It holds no inventory: build the patched "
-        "copy yourself with the patch tool at the revision below, and compare the "
-        "fingerprint of what you built.",
-        "",
+    lines = []
+    if data["exports"].get("published") and terms:
+        name = (names or {}).get(release.get("id"), "BAFU's release")
+        lines += [
+            f"**Modified Data under BAFU's Terms of Use.** The files under this tag are a "
+            f"patched copy of {name}, not BAFU's original data. Download them only if you "
+            "accept BAFU's Terms of Use, and with them these conditions:",
+            "",
+            *(f"- {point}" for point in terms["points"]),
+            "",
+            f"{terms['more']}: {(site_url or '').rstrip('/')}/{terms['page']}#{terms['anchor']}",
+            "",
+            "---",
+            "",
+        ]
+    lines += [f"Patched copy `{data['tag']}`." if data["tag"] else "Patched copy.", ""]
+    if data["exports"].get("published"):
+        lines += [
+            "Under this tag are kept the files for LCA tools listed below, the record of "
+            "modifications (`MODIFICATIONS.md`, `MODIFICATIONS.json`) and `manifest.json`, "
+            "which says how they were built. To check them, build the patched copy yourself "
+            "with the patch tool at the revision below, and compare the fingerprint.",
+            "",
+        ]
+    else:
+        lines += [
+            "Under this tag only `manifest.json` is kept. It holds no inventory: build the "
+            "patched copy yourself with the patch tool at the revision below, and compare the "
+            "fingerprint of what you built.",
+            "",
+        ]
+    lines += [
         f"- Provider release: {release['url']} (archive SHA-256 `{release['archive_sha256']}`), "
         f"{release['datasets']:,} datasets",
         f"- Tool: {data['tool']['name']} {data['tool']['version'] or ''} at revision "
@@ -991,6 +1051,32 @@ def notes(data: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
+def files_errors(data: dict, folder: Path) -> list[str]:
+    """Why `folder` does not hold exactly the export files the manifest lists, byte for byte:
+    the files a build keeps under its tag beside the manifest."""
+    exports = (data.get("exports") or {}).get("patched")
+    if not data["exports"].get("published") or not exports:
+        return ["the manifest says that no export file of it is kept"]
+    listed = {entry["name"]: entry for entry in exports["files"]}
+    if "manifest.json" in listed:
+        return ["an export file is named manifest.json, as the manifest is"]
+    found = {path.name: path for path in Path(folder).iterdir()}
+    errors = [
+        f"{name}: listed in the manifest, and not in {folder}"
+        for name in sorted(set(listed) - set(found))
+    ]
+    errors += [f"{name}: not listed in the manifest" for name in sorted(set(found) - set(listed))]
+    for name in sorted(set(listed) & set(found)):
+        path, entry = found[name], listed[name]
+        if (
+            not path.is_file()
+            or path.stat().st_size != entry["bytes"]
+            or sha256_file(path) != entry["sha256"]
+        ):
+            errors.append(f"{name}: not the file the manifest lists (size or SHA-256)")
+    return errors
+
+
 def write(data: dict, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
@@ -1002,6 +1088,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--notes", type=Path, help="Also write the text that goes with the tag here"
     )
+    parser.add_argument(
+        "--files",
+        type=Path,
+        metavar="FOLDER",
+        help="Also check that FOLDER holds exactly the export files the manifest lists",
+    )
+    parser.add_argument("--site-url", help="The site's address, for the notes' link to the terms")
     parser.add_argument(
         "--release",
         action="store_true",
@@ -1023,11 +1116,29 @@ def main(argv: list[str] | None = None) -> int:
         errors = [f"not a release: {error}" for error in release_errors(data)]
     for error in errors[:20]:
         print(f"{name}: {error}")
+    config = load(CONFIG) or {}
+    terms = terms_of(config)
+    if args.files:
+        errors = files_errors(data, args.files)
+        if not terms or not args.site_url:
+            errors.append(
+                "files are kept only with the terms a download asks for, and the site's address"
+            )
+    for error in errors[:20]:
+        print(f"{name}: {error}")
     if errors:
         return 1
     if args.notes:
-        args.notes.write_text(notes(data), encoding="utf-8")
-    print(f"{name}: a manifest of {len(data['patches'])} patches, and nothing else")
+        names = {
+            r["id"]: r["name"] for r in config.get("releases") or () if "id" in r and "name" in r
+        }
+        args.notes.write_text(notes(data, terms, args.site_url, names), encoding="utf-8")
+    kept = (
+        f" and the {len(list(args.files.iterdir()))} files it lists"
+        if args.files
+        else ", and nothing else"
+    )
+    print(f"{name}: a manifest of {len(data['patches'])} patches{kept}")
     return 0
 
 

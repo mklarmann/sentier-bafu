@@ -7,16 +7,19 @@ name: Build
 #   comparison -> exports, each read back -> every contribution layer in
 #   community/layers, built beside the patched copy -> manifest
 #
-# For a tag, ONE file is then kept under the tag, manifest.json (as what GitHub calls a
-# Release of the tag): the provider release and its checksum, the tool revision, each patch with its findings, author,
-# authoriser, result and the numbers of the datasets it changed, the name and checksum
-# of every export file, and the audit results. Never an inventory file and never an
-# export file: BAFU's terms ask that whoever receives the data accepts them first, and a
-# page of a tag on GitHub can't ask for that. The export files are produced and read back here and
-# stay on the runner.
+# For a tag, the build is then kept under the tag (as what GitHub calls a Release of the
+# tag): manifest.json, with the provider release and its checksum, the tool revision, each
+# patch with its findings, author, authoriser, result and the numbers of the datasets it
+# changed, the name and checksum of every export file, and the audit results; and the export
+# files it lists, for LCA tools and the record of modifications (Manuel Klarmann, 14 November
+# 2026). They are Modified Data, and BAFU's terms ask that whoever receives them accepts the
+# terms: the site offers each file after asking, and the notes of the tag begin with the
+# terms, because a page of a tag on GitHub can't ask. The second job checks that the files
+# are exactly those the manifest lists, byte for byte, before it keeps them.
 #
-# Nothing from the inventory leaves the runner. The job summary and the uploaded files
-# hold counts, checksums, dataset codes, names and single scores.
+# Otherwise nothing from the inventory leaves the runner. The job summary and the uploaded
+# results hold counts, checksums, dataset codes, names and single scores. The export files
+# leave it only for a tag, handed to the job that keeps them, and that copy is deleted again.
 #
 # The run is also kept as it was printed: scripts/release_build/transcript.py passes every
 # line on and writes them, with the time of each, to transcript.json beside the manifest.
@@ -60,6 +63,9 @@ jobs:
     timeout-minutes: 90
     permissions:
       contents: read
+    outputs:
+      # the copy of the export files handed to the second job, which deletes it
+      files: ${{ steps.files.outputs.artifact-id }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
@@ -126,7 +132,7 @@ jobs:
         if: ${{ !cancelled() }}
         run: |
           uv run --no-project --python 3.12 python scripts/release_build/public_summary.py \
-            --check "$RUNNER_TEMP/release-run/results"
+            --check "$RUNNER_TEMP/release-run/results" "$RUNNER_TEMP/release-run/exports/patched"
       - name: Keep the manifest, the transcript, the audits and the comparisons (no inventory)
         if: ${{ !cancelled() && steps.public.outcome == 'success' }}
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
@@ -144,15 +150,30 @@ jobs:
           path: ${{ runner.temp }}/release-run/results/manifest.json
           if-no-files-found: error
           retention-days: 90
+      - name: Hand the export files to the job that keeps them
+        # For a tag only: the files the manifest lists, without the exports' own manifest and
+        # checksum list. Kept one day at most; the job that keeps them deletes this copy.
+        id: files
+        if: ${{ github.ref_type == 'tag' && steps.public.outcome == 'success' }}
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: patched-copy-files
+          path: |
+            ${{ runner.temp }}/release-run/exports/patched/
+            !${{ runner.temp }}/release-run/exports/patched/manifest.json
+            !${{ runner.temp }}/release-run/exports/patched/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 1
 
   publish:
-    name: Keep the manifest under the tag, and nothing else
+    name: Keep the manifest and the export files under the tag
     if: ${{ github.ref_type == 'tag' }}
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 20
     permissions:
-      contents: write # the GitHub Release of the tag, which holds manifest.json
+      contents: write # the GitHub Release of the tag, which holds the manifest and the files
+      actions: write # to delete the copy of the files that the first job handed over
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
@@ -161,20 +182,36 @@ jobs:
         with:
           name: patched-release-manifest
           path: ${{ runner.temp }}/release
-      - name: Check that the one file is a manifest, of a build that may be kept, and nothing else
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          name: patched-copy-files
+          path: ${{ runner.temp }}/files
+      - name: Check the manifest, and that the files are exactly the ones it lists
         # Refuses a file with any other field, a run that failed, a patch that changed
         # data without an authoriser, an audit with findings, an export that did not
-        # read back.
+        # read back, and a file that is missing, other bytes, or not listed. Writes the
+        # notes of the tag, which begin with BAFU's terms in the site's words.
+        env:
+          SITE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
         run: |
           test "$(find "$RUNNER_TEMP/release" -type f | wc -l)" -eq 1
           python3 -I scripts/release_build/release_manifest.py \
             --verify "$RUNNER_TEMP/release/manifest.json" --release \
+            --files "$RUNNER_TEMP/files" --site-url "$SITE_URL" \
             --notes "$RUNNER_TEMP/notes.md"
-      - name: Keep the manifest under the tag, and only the manifest
+      - name: Keep the manifest and the export files under the tag, with the terms at the top
         env:
           GH_TOKEN: ${{ github.token }}
         # A tag is used once: this fails when it holds a manifest already.
         run: |
           gh release create "$GITHUB_REF_NAME" "$RUNNER_TEMP/release/manifest.json" \
+            "$RUNNER_TEMP"/files/* \
             --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" \
             --notes-file "$RUNNER_TEMP/notes.md" --verify-tag
+      - name: Delete the copy of the files that was handed over
+        # Also when keeping them failed: the files leave the runner only under the tag.
+        if: ${{ always() && needs.build.outputs.files != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FILES_ARTIFACT: ${{ needs.build.outputs.files }}
+        run: gh api -X DELETE "repos/$GITHUB_REPOSITORY/actions/artifacts/$FILES_ARTIFACT"

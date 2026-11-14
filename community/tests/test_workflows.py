@@ -114,7 +114,7 @@ class WorkflowTests(unittest.TestCase):
             ("pages.yml", "build"): {"contents: read", "issues: read", "actions: read"},
             ("pages.yml", "deploy"): {"pages: write", "id-token: write"},
             ("release-build.yml", "build"): {"contents: read"},
-            ("release-build.yml", "publish"): {"contents: write"},
+            ("release-build.yml", "publish"): {"contents: write", "actions: write"},
         }
         for (name, job), wanted in expected.items():
             body = jobs(FILES[name])[job]

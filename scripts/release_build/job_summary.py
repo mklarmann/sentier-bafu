@@ -22,8 +22,8 @@ except ImportError:  # run as a script, from its own folder
 
 CLIMATE = "ef-3.1:climate-change"
 NOT_PUBLISHED = (
-    "The export files are produced and read back in CI but are not offered until a download "
-    "exists that asks for acceptance of BAFU's terms."
+    "The export files are produced and read back here. They are kept only for a build with a "
+    "tag, under that tag."
 )
 
 
@@ -207,8 +207,8 @@ def summarise(run: Path) -> str:
     kept = sorted(path.name for path in (run / "results").glob("*")) if run.is_dir() else []
     lines += [
         f"Kept from this run: {', '.join(kept) or 'nothing'} (counts, checksums, dataset "
-        "codes, names and single scores). The build folders and the export files hold BAFU's "
-        f"inventory and are not uploaded. {NOT_PUBLISHED}",
+        "codes, names and single scores). The build folders hold BAFU's inventory and are not "
+        f"uploaded. {NOT_PUBLISHED}",
         "",
     ]
     table = run / "results" / "patch-run.md"

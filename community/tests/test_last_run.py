@@ -591,7 +591,7 @@ class PageTests(unittest.TestCase):
         tagged = a_manifest(tag="patched-2026-v1.1")
         markup, _, text = shown(a_record(tagged, publish="success"))
         self.assertIn("for the tag patched-2026-v1.1", text)
-        self.assertIn("It is kept under the tag patched-2026-v1.1: its manifest, and no file of the data.", text)
+        self.assertIn("It is kept under the tag patched-2026-v1.1.", text)
         # the steps are the run's own also here: where it stands as to its tag is said with the answers
         self.assertEqual(markup.count('class="run-tab '), 6)
         self.assertNotIn("is-not-run", markup)

@@ -1267,3 +1267,28 @@ def test_command_takes_the_folder_of_the_patch_run_and_says_how_ecospold_ended(t
     output = capsys.readouterr().out
     assert "ecospold1: NOT WRITTEN (EcospoldError: The files in " in output
     assert "simapro: read back and matches" in output
+
+
+def test_no_file_names_who_confirmed_a_problem_for_the_provider(tmp_path):
+    """The run summary may name a person who confirmed for the provider. The files may be
+    handed on, so the record in them says only the organisation and the date."""
+    files = tmp_path / "patched"
+    count, fingerprint = patched_files(files)
+    name, names = project()
+    databases = step.load_databases(name, names)
+    databases[INVENTORY]["metadata"][step.MARKER] = marker(built_release_tree_sha256=fingerprint)
+    summary = run_summary()
+    summary["output"] = {"files": count, "bytes": 1, "fingerprint": fingerprint}
+    summary["steps"][1]["confirmed_by"] = "Jane Someone, BAFU (email, 12 October 2026)"
+    out = tmp_path / "out"
+    manifest = step.export_release(databases, summary, out, release=RELEASE, ecospold=files)
+    assert manifest["status"] == "completed"
+    record = json.loads((out / "MODIFICATIONS.json").read_text())
+    (step_,) = [entry for entry in record["steps"] if entry["id"] == "0001-flour-share"]
+    assert step_["confirmed_by"] == "BAFU (12 October 2026)"
+    assert "Confirmed by: BAFU (12 October 2026)" in (out / "MODIFICATIONS.md").read_text()
+    texts = [path.read_bytes() for path in out.iterdir() if path.suffix in (".json", ".md", ".csv")]
+    for archive in out.glob("*.zip"):
+        with zipfile.ZipFile(archive) as packed:
+            texts += [packed.read(member) for member in packed.namelist()]
+    assert texts and not any(b"Jane Someone" in text for text in texts)

@@ -19,7 +19,7 @@ EVERYTHING = [PROPOSED, BUILD, *ACTIONS.values()]
 
 def test_actions_are_pinned_by_commit_or_are_this_repositorys_own():
     uses = [action for text in EVERYTHING for action in re.findall(r"uses: (\S+)", text)]
-    assert len(uses) == 14
+    assert len(uses) == 16
     own = [action for action in uses if action.startswith("./")]
     assert sorted(set(own)) == ["./.github/actions/bafu-release", "./.github/actions/patch-run"]
     for action in set(uses) - set(own):
@@ -39,6 +39,7 @@ def test_tokens_can_only_read_except_in_the_job_that_publishes():
     assert "permissions:\n      contents: read\n" in jobs["build"]
     assert "contents: write" not in jobs["build"]
     assert "permissions:\n      contents: write" in jobs["publish"]
+    assert "actions: write" in jobs["publish"] and "actions: write" not in jobs["build"]
     assert "if: ${{ github.ref_type == 'tag' }}" in jobs["publish"]
     for text in EVERYTHING:
         assert "pull_request_target" not in text
@@ -76,10 +77,25 @@ def test_only_summaries_and_results_without_inventory_are_uploaded():
     assert [re.findall(r"\bpath: (.*)", upload) for upload in uploads] == [
         ["${{ runner.temp }}/release-run/results/"],
         ["${{ runner.temp }}/release-run/results/manifest.json"],
+        ["|"],
     ]
+    # The export files leave the runner for a tag only, handed to the job that keeps them:
+    # the files the manifest lists, for a day at most.
+    handed = uploads[2]
+    assert "name: patched-copy-files" in handed and "retention-days: 1" in handed
+    assert re.findall(r"\n {12}(\S.*)", handed)[:3] == [
+        "${{ runner.temp }}/release-run/exports/patched/",
+        "!${{ runner.temp }}/release-run/exports/patched/manifest.json",
+        "!${{ runner.temp }}/release-run/exports/patched/SHA256SUMS",
+    ]
+    condition = BUILD.split("name: Hand the export files to the job that keeps them")[1].split(
+        "uses:"
+    )[0]
+    assert "if: ${{ github.ref_type == 'tag' && steps.public.outcome == 'success' }}" in condition
     for text in EVERYTHING:
         assert "--report" not in text  # the HTML report quotes the data
-        assert "exports/" not in text  # the export files stay in the run folder
+    assert "exports/" not in PROPOSED
+    assert BUILD.count("release-run/exports/patched") == 4  # the check, and the hand-over
 
 
 def test_what_is_uploaded_or_summarised_names_nobody_who_confirmed_for_the_provider():
@@ -95,7 +111,12 @@ def test_what_is_uploaded_or_summarised_names_nobody_who_confirmed_for_the_provi
     # Build: what the run set aside is checked before either upload
     check = BUILD.index(f'{public} \\\n            --check "$RUNNER_TEMP/release-run/results"')
     uploads = [match.start() for match in re.finditer("uses: actions/upload-artifact@", BUILD)]
-    assert len(uploads) == 2 and all(check < upload for upload in uploads)
+    assert len(uploads) == 3 and all(check < upload for upload in uploads)
+    # the record of modifications that travels with the export files is checked the same way
+    assert (
+        '--check "$RUNNER_TEMP/release-run/results" "$RUNNER_TEMP/release-run/exports/patched"'
+        in BUILD
+    )
     # An upload that runs after a failed step waits for that check all the same
     for text in (PROPOSED, BUILD):
         for condition in re.findall(r"if: (.*)\n +uses: actions/upload-artifact@", text):
@@ -123,7 +144,12 @@ def test_every_upload_and_job_summary_of_the_repository_is_one_we_know():
     assert sinks == {
         # reads run summaries: through the public form (the test above)
         "full-release.yml": ["job summary", "upload-artifact"],
-        "release-build.yml": ["job summary", "upload-artifact", "upload-artifact"],
+        "release-build.yml": [
+            "job summary",
+            "upload-artifact",
+            "upload-artifact",
+            "upload-artifact",
+        ],
         # the site, built from the records, and the result of the issue sync: no run summary
         "pages.yml": ["upload-pages-artifact"],
         "sync.yml": ["job summary"],
@@ -142,17 +168,31 @@ def test_no_record_of_the_repository_names_who_confirmed_for_the_provider():
     assert public_summary.check([REPO / "community", REPO / "site"]) == []
 
 
-def test_a_release_is_one_file_and_it_is_checked_before_it_is_published():
+def test_a_tag_keeps_the_manifest_and_the_files_it_lists_checked_before_and_with_the_terms():
     publish = BUILD.split("\n  publish:\n")[1]
     assert 'test "$(find "$RUNNER_TEMP/release" -type f | wc -l)" -eq 1' in publish
     verify = publish.index("release_manifest.py")
     create = publish.index("gh release create")
     assert verify < create
     assert '--verify "$RUNNER_TEMP/release/manifest.json" --release' in publish
-    command = publish[create:].replace("\\\n", " ")
-    assets = [word for word in command.split() if word.endswith('.json"')]
-    assert assets == ['"$RUNNER_TEMP/release/manifest.json"']
+    # the files handed over are exactly those the manifest lists; the notes begin with the terms
+    assert '--files "$RUNNER_TEMP/files" --site-url "$SITE_URL"' in publish
+    assert '--notes "$RUNNER_TEMP/notes.md"' in publish[:create]
+    command = publish[create:].split("\n      - name:")[0].replace("\\\n", " ")
+    assets = [word for word in command.split() if word.startswith('"$RUNNER_TEMP')]
+    assert assets == [
+        '"$RUNNER_TEMP/release/manifest.json"',
+        '"$RUNNER_TEMP"/files/*',
+        '"$RUNNER_TEMP/notes.md"',
+    ]
     assert "--verify-tag" in command
+    # the copy that was handed over is deleted, also when keeping failed
+    delete = publish.index("Delete the copy of the files that was handed over")
+    assert create < delete
+    assert "if: ${{ always() && needs.build.outputs.files != '' }}" in publish[delete:]
+    assert (
+        'gh api -X DELETE "repos/$GITHUB_REPOSITORY/actions/artifacts/$FILES_ARTIFACT"' in publish
+    )
     assert BUILD.count("gh release create") == 1 and "gh release upload" not in BUILD
     assert "gh release" not in PROPOSED
     # a tag is built from a commit of main, and only a tag reaches the job that publishes
