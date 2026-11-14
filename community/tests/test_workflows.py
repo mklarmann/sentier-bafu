@@ -179,6 +179,8 @@ class WorkflowTests(unittest.TestCase):
         self.assertIn("--require-issues", build)
         # The build says which repository builds it: a fork's copy then says that it is a preview.
         self.assertIn('--built-by "$GITHUB_REPOSITORY"', build)
+        # The links to source files go to what is built, so that a fork's copy finds its own files.
+        self.assertIn('--source-repository "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" --source-ref "$GITHUB_REF_NAME"', build)
         # Only a run on the default branch deploys, in this repository and in a fork of it.
         text = FILES["pages.yml"]
         on_default = ("if: github.event_name == 'schedule' || "
