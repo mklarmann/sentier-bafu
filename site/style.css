@@ -727,7 +727,7 @@ td:first-child { font-weight: 600; }
 .page-opening { padding-top: var(--s6); }
 .page-opening .prose > h1 + p { max-width: 58rem; margin-top: var(--s3); }
 .page.after-opening { padding-top: var(--s7); }
-.run { margin-top: var(--s5); --on: #f0eee1; --on-soft: var(--stage-soft); --on-quiet: var(--stage-quiet); --well: var(--stage-well); --rule: rgba(255, 255, 255, .13); --bad: #f4b3a9; }
+.run { margin-top: var(--s5); --on: #f0eee1; --on-soft: var(--stage-soft); --on-quiet: var(--stage-quiet); --well: var(--stage-well); --rule: rgba(255, 255, 255, .13); --bad: #f4b3a9; --ok: #a8d5ba; }
 .run-top { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s4); }
 .prose .run-title { margin: 0; font-size: var(--t-xs); font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); line-height: 1.4; }
 .run-verdict { display: inline-flex; align-items: center; gap: .45rem; padding: .25rem .8rem .25rem .6rem; border-radius: 999px; font-size: var(--t-sm); font-weight: 800; line-height: 1.4; }
@@ -745,7 +745,7 @@ td:first-child { font-weight: 600; }
 .run-no strong { color: var(--fail); }
 .run-more { white-space: nowrap; font-weight: 700; }
 
-.run-stage { margin-top: var(--s3); padding: var(--s4); border-radius: 14px; background: var(--index-dark); color: var(--on); display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s4); }
+.run-stage { scroll-margin-top: var(--s4); margin-top: var(--s3); padding: var(--s4); border-radius: 14px; background: var(--index-dark); color: var(--on); display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s4); }
 .run-stage :focus-visible { outline: 2px solid var(--on); outline-offset: 2px; }
 .run-stage a { color: #fff; text-decoration-color: var(--on-quiet); }
 .run-stage code { background: rgba(255, 255, 255, .1); color: inherit; }
@@ -800,13 +800,40 @@ td:first-child { font-weight: 600; }
 .run-term-bar { display: flex; justify-content: space-between; gap: var(--s3); padding: .55rem .9rem; border-bottom: 1px solid var(--rule); font-size: var(--t-xs); font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--on-quiet); line-height: 1.5; }
 .run-term-id { font-weight: 400; letter-spacing: 0; text-transform: none; font-family: var(--mono); }
 .run-clock { font-weight: 400; letter-spacing: 0; text-transform: none; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.prose pre.transcript { position: relative; flex: 1 1 auto; margin: 0; padding: var(--s3) var(--s4) var(--s4); border: 0; border-radius: 0; background: transparent; color: var(--on); max-height: 32rem; overflow: auto; font-size: var(--t-xs); line-height: 1.65; white-space: pre; tab-size: 4; scrollbar-width: thin; scrollbar-color: var(--on-quiet) transparent; }
-.transcript .tl::before { content: attr(data-clock); display: inline-block; width: 4.2em; color: var(--stage-clock); -webkit-user-select: none; user-select: none; }
-.transcript .tl-step { color: #fff; font-weight: 700; }
+.run-term-bar { align-items: center; flex-wrap: wrap; row-gap: .35rem; }
+.run-term-tools { display: flex; gap: .35rem; margin-left: auto; }
+.run-tool { padding: .2rem .55rem; border: 1px solid rgba(255, 255, 255, .28); border-radius: 6px; background: transparent; color: var(--on-quiet); font: 700 var(--t-xs)/1.25 var(--font); letter-spacing: 0; text-transform: none; cursor: pointer; }
+.run-tool:hover { color: var(--on); border-color: rgba(255, 255, 255, .5); }
+.run-tool[aria-pressed="true"] { background: rgba(255, 255, 255, .15); border-color: transparent; color: var(--on); }
+.run-term-body { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.prose pre.transcript { position: relative; flex: 1 1 auto; margin: 0; padding: var(--s3) var(--s4) var(--s4); border: 0; border-radius: 0; background: transparent; color: var(--on); max-height: 32rem; overflow: auto; overflow-x: hidden; font-size: var(--t-xs); line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; tab-size: 4; scrollbar-width: thin; scrollbar-color: var(--on-quiet) transparent; }
+.transcript .tl { display: block; padding-left: 4.4em; text-indent: -4.4em; }
+.transcript .tl-at { display: inline-block; width: 4.4em; text-indent: 0; color: var(--stage-clock); text-decoration: none; background: none; padding: 0; -webkit-user-select: none; user-select: none; }
+.transcript .tl-at::before { content: attr(data-clock); }
+.transcript .tl-at:hover { color: var(--on); text-decoration: underline; }
+/* a line someone pointed at */
+.run:not(.is-live) .transcript .tl:target, .transcript .tl.is-marked { background: rgba(255, 255, 255, .1); box-shadow: inset 2px 0 0 var(--index-soft); }
+.run.is-live .transcript .tl.is-marked { color: var(--on); }
+/* the reader's other choice: every line on one line, and the block scrolls sideways */
+.prose .run.no-wrap pre.transcript { white-space: pre; overflow-wrap: normal; overflow-x: auto; }
+.run.no-wrap .transcript .tl { padding-left: 0; text-indent: 0; }
+/* The parts of a line, told apart quietly. The run prints no colour: these are the page's marks. */
+.transcript b, .transcript i { font: inherit; }
+.transcript .tk-ok { color: var(--ok); }
+.transcript .tk-bad { color: var(--bad); font-weight: 700; }
+.transcript .tk-sum { color: var(--stage-clock); }
+.transcript .tk-prompt { color: var(--index-soft); }
+.transcript .tl-cmd { color: var(--on-quiet); }
+.transcript .tl-step .tk-step { color: #fff; font-weight: 700; }
 .transcript [hidden] { display: none; }
 .run.is-live .transcript .tl { color: var(--stage-dim); transition: color .25s ease; }
 .run.is-live .transcript .tl.is-on { color: var(--on); }
-.run.is-live .transcript .tl-step.is-on { color: #fff; }
+.run.is-live .transcript .tl:not(.is-on) :is(.tk-ok, .tk-bad, .tk-prompt, .tk-step) { color: inherit; }
+.run.is-live .transcript .tl-cmd.is-on { color: var(--on-quiet); }
+/* while the run is replayed, a cursor waits where the next line will come */
+.run.is-playing .transcript .tl.is-last::after { content: "\258d"; color: var(--on); animation: run-cursor 1s steps(2, start) infinite; }
+@keyframes run-cursor { to { visibility: hidden; } }
+@media (prefers-reduced-motion: reduce) { .run.is-playing .transcript .tl.is-last::after { animation: none; } }
 /* with the script: one step at a time. The steps share one place, so that the stage keeps
    its height from step to step, and the transcript takes the height the step beside it has */
 .run.is-live .run-panels { gap: 0; }
@@ -819,6 +846,7 @@ td:first-child { font-weight: 600; }
 .packages > * + * { margin-top: var(--s4); }
 .packages .table-wrap { margin-top: var(--s3); }
 .releases > li + li { margin-top: var(--s3); }
+.toc .downloads { margin-top: var(--s6); }
 .downloads { padding: var(--s4); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
 .downloads ul { list-style: none; margin: var(--s3) 0; padding: 0; border-top: 1px solid var(--line); }
 .downloads li { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--s3); align-items: baseline; padding: .45rem 0; border-bottom: 1px solid var(--line); line-height: 1.35; }
@@ -837,20 +865,27 @@ tr.run-failed td:nth-child(2) { color: var(--fail); font-weight: 700; }
   .run-stage { padding: var(--s4) var(--s5) var(--s5); gap: var(--s4); }
   .run-body { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: var(--s5); align-items: stretch; }
   .run-side { padding: var(--s2) var(--s3) 0 var(--s2); }
-  .run.is-live .run-term { position: relative; min-height: 20rem; }
-  .prose .run.is-live pre.transcript { position: absolute; inset: 2.35rem 0 0 0; height: auto; }
+  .run.is-live .run-term { min-height: 20rem; }
+  .prose .run.is-live pre.transcript { position: absolute; inset: 0; height: auto; }
+  /* wider: the step above, the lines below over the whole width */
+  .run.is-wide .run-body { grid-template-columns: minmax(0, 1fr); }
+  .prose .run.is-live.is-wide pre.transcript { position: relative; inset: auto; height: 30rem; }
 }
 @media (max-width: 39.99rem) {
   .run-stage { margin-inline: calc(var(--gutter) * -.5); border-radius: 12px; padding: var(--s3); }
   .run-figures dd { font-size: 1.625rem; }
   .prose pre.transcript { max-height: 22rem; }
   .prose .run.is-live pre.transcript { height: 19rem; }
+  [data-run-wide], .run-term-id { display: none; }
+  .run-term-tools { margin-left: 0; }
 }
 @media print {
   .run-stage { background: none; color: #000; padding: 0; }
   .run-stage a, .prose .run-panel h3, .run-figures dd, .run-panel > p, .run-notes, .run-step, .run-figures dt, .run-tab-time { color: #000; }
   .run-term { background: none; border: 1px solid #999; }
   .prose pre.transcript { max-height: none; height: auto; color: #000; }
-  .transcript .tl, .transcript .tl-step, .transcript .tl::before { color: #000 !important; }
+  .transcript .tl, .transcript .tl *, .transcript .tl-at::before { color: #000 !important; }
+  .run .transcript .tl:target, .transcript .tl.is-marked { background: none; box-shadow: none; }
+  .run-term-tools { display: none; }
   .run-controls, .run-tabs { display: none; }
 }

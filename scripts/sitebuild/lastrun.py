@@ -95,6 +95,49 @@ def visible(text):
     return esc("".join(chr(0x2400 + ord(c)) if ord(c) < 32 and c != "\t" else c for c in text))
 
 
+TOKENS = re.compile(
+    r"\b(completed|passed|applied|matches)\b|\b(failed|differs|not run|refused)\b|\b([0-9a-f]{12,64})\b"
+)
+
+
+def marked(text):
+    """A line of the transcript with its parts told apart for the eye: the step it names, a
+    command, a word that says how something ended, a checksum. Nothing is added to the text and
+    nothing is taken from it: the parts are wrapped, each escaped as the rest of the line is.
+    The run prints no colour of its own; these are the page's marks, by the words alone."""
+    def words(part):
+        out, at = "", 0
+        for found in TOKENS.finditer(part):
+            kind = "ok" if found.group(1) else "bad" if found.group(2) else "sum"
+            out += visible(part[at:found.start()]) + f'<i class="tk-{kind}">{visible(found.group(0))}</i>'
+            at = found.end()
+        return out + visible(part[at:])
+
+    if text.startswith("[") and "]" in text:
+        end = text.index("]") + 1
+        return f'<b class="tk-step">{visible(text[:end])}</b>{words(text[end:])}'
+    plain = text.lstrip(" ")
+    if plain.startswith("$ "):
+        return f'{visible(text[: len(text) - len(plain)])}<i class="tk-prompt">$</i>{visible(plain[1:])}'
+    return words(text)
+
+
+def line_class(text):
+    return "tl" + (" tl-step" if text.startswith("[") else " tl-cmd" if text.lstrip(" ").startswith("$ ") else "")
+
+
+def line(number, t, text, place=0):
+    """One line of the transcript. Its time is drawn by the stylesheet and is no text of the
+    page, so that what a reader copies is what the run printed. The time is also the link to
+    the line, as a line number is in a log on GitHub: a line can be pointed at."""
+    at = clock(t)
+    return (
+        f'<span class="{line_class(text)}" id="run-line-{number}" data-step="{place}" data-t="{float(t):.1f}" '
+        f'data-clock="{at}"><a class="tl-at" href="#run-line-{number}" tabindex="-1" aria-hidden="true" '
+        f'data-clock="{at}"></a>{marked(text)}\n</span>'
+    )
+
+
 def stopped_at(record):
     """The first step GitHub records as failed, cancelled or out of time: (job, step)."""
     for job in record.get("jobs") or ():
@@ -190,14 +233,14 @@ def blocking(site, record):
             said.append(text)
     items += [sentence(text) for text in said]
     if not said and manifest["status"] == "completed":
-        items.append("Nothing in this run keeps it from being published as a release.")
+        items.append("Nothing in this run keeps it from being published.")
     tag = manifest.get("tag")
     if tag and published(record):
-        items.append(f"It is published as the release <code>{esc(tag)}</code>: its manifest, and no file of the data.")
+        items.append(f"It is published under the tag <code>{esc(tag)}</code>: its manifest, and no file of the data.")
     elif tag:
-        items.append(f"It was built for the tag <code>{esc(tag)}</code>, and that release was not published.")
+        items.append(f"It was built for the tag <code>{esc(tag)}</code>, and it was not published.")
     else:
-        items.append("It is not a release. A release is built when a maintainer pushes a tag.")
+        items.append("Publication was not asked for. A maintainer asks for it by pushing a tag.")
     exports = manifest.get("exports") or {}
     if exports.get("published") is False and exports.get("note"):
         items.append(sentence(exports["note"]))
@@ -216,10 +259,10 @@ def blocking_in_short(site, record):
         return sentence(said[0]) + more
     tag = manifest.get("tag")
     if tag and published(record):
-        return f"Nothing. It is published as the release <code>{esc(tag)}</code>."
+        return f"Nothing. It is published under the tag <code>{esc(tag)}</code>."
     if tag:
-        return f"Nothing in the run. The release <code>{esc(tag)}</code> was not published."
-    return "Nothing in the run. It is not a release: no tag was pushed for it."
+        return f"Nothing in the run. The build for the tag <code>{esc(tag)}</code> was not published."
+    return "Nothing in the run. Publication was not asked for: a maintainer asks for it by pushing a tag."
 
 
 def answered(site, patches, up):
@@ -405,10 +448,13 @@ def notes(site, name, record, up):
 
 
 def release_word(record):
-    """Where the run stands as a release: (the word, how the step is drawn)."""
+    """Where the run stands as to publication: (the word, how the step is drawn). A run that
+    nobody asked to publish has not failed and has not been left undone: it is drawn as open,
+    and not as a step that did not run. The word "release" is the provider's: what is published
+    here is a patched copy of a release, and the page does not call it one."""
     if record["manifest"].get("tag"):
         return ("published", "completed") if published(record) else ("not published", "not-run")
-    return ("not a release", "not-run")
+    return ("not asked for", "open")
 
 
 def showcase(site, record, up):
@@ -444,13 +490,14 @@ def showcase(site, record, up):
         state = step.get("state") or step["status"].replace(" ", "-")
         seconds = step["seconds"] if isinstance(step.get("seconds"), (int, float)) else None
         time = duration(seconds) if seconds is not None else ""
-        share = f"{max(2, round(100 * seconds / longest))}%" if seconds is not None else "0"
+        # The bar is the step's share of the longest step's time; a step without a time has none.
+        bar = (f'<span class="run-tab-bar" aria-hidden="true"><span style="width:{max(2, round(100 * seconds / longest))}%">'
+               "</span></span>") if seconds is not None else ""
         result = esc(step["status"]) + (f" · {time}" if time else "")
         tabs += (
             f'<li><a class="run-tab is-{esc(state)}" href="#run-step-{n}" data-step="{n - 1}">'
             f'<span class="run-tab-n">{n}</span><span class="run-tab-name">{esc(words["short"])}</span>'
-            f'<span class="run-tab-time">{esc(time or step["status"])}</span>'
-            f'<span class="run-tab-bar" aria-hidden="true"><span style="width:{share}"></span></span></a></li>'
+            f'<span class="run-tab-time">{esc(time or step["status"])}</span>{bar}</a></li>'
         )
         shown = "".join(f"<div><dt>{esc(label)}</dt><dd>{esc(value)}</dd></div>" for value, label in figures(name, manifest))
         reason = f'<p class="run-reason">{sentence(step["reason"])}</p>' if step.get("reason") else ""
@@ -470,16 +517,19 @@ def showcase(site, record, up):
         lines = data["lines"]
         places = steps_of(lines, [step["name"] for step in manifest["steps"]])
         body = "".join(
-            f'<span class="tl{" tl-step" if text.startswith("[") else ""}" data-step="{place}" '
-            f'data-t="{float(t):.1f}" data-clock="{clock(t)}">{visible(text)}\n</span>'
-            for (t, text), place in zip(lines, places)
+            line(number, t, text, place) for number, ((t, text), place) in enumerate(zip(lines, places), 1)
         )
         build = f' {int(run["number"])}' if isinstance(run.get("number"), int) else ""
         terminal = (
             '<div class="run-term"><p class="run-term-bar"><span>What the run printed'
             f'<span class="run-term-id"> · build{build} · {esc(str(run.get("commit") or "")[:7])}</span></span>'
+            # How the lines are laid out is the reader's choice; the script shows these two.
+            '<span class="run-term-tools" hidden>'
+            '<button type="button" class="run-tool" data-run-wrap aria-pressed="true">Wrap lines</button>'
+            '<button type="button" class="run-tool" data-run-wide aria-pressed="false">Wider</button>'
+            '<button type="button" class="run-tool" data-run-copy title="Copy the lines as the run printed them">Copy</button></span>'
             '<span class="run-clock" data-run-clock></span></p>'
-            f'<pre class="transcript" tabindex="0" role="region" aria-label="What the run printed">{body}</pre></div>'
+            f'<div class="run-term-body"><pre class="transcript" tabindex="0" role="region" aria-label="What the run printed">{body}</pre></div></div>'
         )
     controls = (
         '<p class="run-controls" hidden><button type="button" class="run-btn primary" data-run-play>Play the run</button>'
@@ -551,10 +601,7 @@ def plain(site, record, up):
     table = steps_table(record)
     data, printed = record.get("transcript"), ""
     if data is not None:
-        body = "".join(
-            f'<span class="tl{" tl-step" if text.startswith("[") else ""}" data-step="0" data-t="{float(t):.1f}" '
-            f'data-clock="{clock(t)}">{visible(text)}\n</span>' for t, text in data["lines"]
-        )
+        body = "".join(line(number, t, text) for number, (t, text) in enumerate(data["lines"], 1))
         printed = (
             '<h3 id="what-the-run-printed">What the run printed</h3>'
             f'<p>{plural(len(data["lines"]), "line")}, exactly as the run printed them. SHA-256 of the lines: <code>{esc(data["sha256"])}</code>.</p>'

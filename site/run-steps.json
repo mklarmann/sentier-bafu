@@ -32,9 +32,9 @@
       "text": "The patched release is written as files for Brightway, openLCA, ILCD and SimaPro. Each carries BAFU's credit, the label Modified Data and the list of changes. Each is read back and compared with the database."
     },
     "release": {
-      "short": "Release",
-      "title": "From a run to a release",
-      "text": "A run is not a release. A maintainer pushes a tag, and the run is repeated for that tag. What is then published is the manifest of the run, and no file of the data."
+      "short": "Publication",
+      "title": "From a run to a published copy",
+      "text": "Every run ends here unless someone asks for its result to be published. A maintainer asks by pushing a tag. The run is then repeated for that tag and its manifest is published, and no file of the data."
     },
     "contribution build": {
       "short": "Contribution",

@@ -382,17 +382,117 @@ class PageTests(unittest.TestCase):
         self.assertEqual(page.lines[1], "bell ␇ and escape ␛[31m\n")
         self.assertNotIn("\x1b", markup)
 
+    def test_the_marks_on_a_line_add_no_character_and_take_none(self):
+        """The page tells the parts of a line apart by the words alone. What a reader copies is
+        still the line the run printed."""
+        lines = [
+            "[exports] completed in 179.0 s, peak memory 2353 MB",
+            "  $ uv run --python 3.12 scripts/export_release.py --brightway-dir run/patched/brightway ...",
+            "  bafu-2026-v1-patched.openlca.zip   48,280,457 bytes  sha256 50e4b53d7fe2  read back: matches",
+            "[patched build] failed: audit failed: 3 findings",
+            "  patch 0009 refused, 2 steps not run, 1 file differs",
+            "  completed</i><script>x</script> 0123456789ab<b> $ not a command",
+            "[no end of the name",
+            "plain line: incompleted, unmatches, 0123456789a, abcdefabcdefg",
+            "",
+            "[exports] a <b>bold</b> & word after the name of a step",
+            "  $ echo <script>alert(1)</script> & more",
+            "[<i>] the name of a step is text as well",
+        ]
+        for line in lines:
+            made = lastrun.marked(line)
+            tags = __import__("re").sub(r"</?(?:b|i)(?: class=\"tk-[a-z]+\")?>", "", made)
+            self.assertEqual(tags, lastrun.visible(line), line)
+            self.assertNotIn("<script", made)
+        self.assertEqual(
+            lastrun.marked(lines[0]),
+            '<b class="tk-step">[exports]</b> <i class="tk-ok">completed</i> in 179.0 s, peak memory 2353 MB',
+        )
+        self.assertTrue(lastrun.marked(lines[1]).startswith('  <i class="tk-prompt">$</i> uv run'))
+        self.assertNotIn("tk-ok", lastrun.marked(lines[1]), "a command is shown as typed, not judged")
+        self.assertIn('<i class="tk-sum">50e4b53d7fe2</i>', lastrun.marked(lines[2]))
+        self.assertIn('<i class="tk-ok">matches</i>', lastrun.marked(lines[2]))
+        self.assertEqual(lastrun.marked(lines[3]).count('<i class="tk-bad">failed</i>'), 2)
+        for word in ("refused", "not run", "differs"):
+            self.assertIn(f'<i class="tk-bad">{word}</i>', lastrun.marked(lines[4]))
+        # a word inside another word, and a number too short for a checksum, are left alone
+        self.assertEqual(lastrun.marked(lines[7]), lastrun.visible(lines[7]))
+        self.assertEqual(lastrun.marked(lines[6]), lastrun.visible(lines[6]))
+        self.assertEqual(lastrun.line_class(lines[0]), "tl tl-step")
+        self.assertEqual(lastrun.line_class(lines[1]), "tl tl-cmd")
+        self.assertEqual(lastrun.line_class(lines[2]), "tl")
+
+    def test_a_long_line_is_wrapped_and_the_reader_can_choose_otherwise(self):
+        """A line longer than the terminal was cut off at its right edge. Lines wrap unless the
+        reader asks for them as printed; the two switches need the script, so it shows them."""
+        markup, page, _ = shown(a_record())
+        tools = markup.split('<span class="run-term-tools"')[1].split("</span>")[0]
+        self.assertTrue(tools.startswith(" hidden>"), "without the script there is nothing to switch")
+        self.assertIn('data-run-wrap aria-pressed="true">Wrap lines</button>', tools)
+        self.assertIn('data-run-wide aria-pressed="false">Wider</button>', tools)
+        self.assertNotIn("Wrap lines", " ".join(page.lines))
+        style = (ROOT / "site" / "style.css").read_text(encoding="utf-8")
+        wrapped = style.split(".prose pre.transcript {")[1].split("}")[0]
+        self.assertIn("white-space: pre-wrap", wrapped)
+        self.assertIn("overflow-wrap: anywhere", wrapped)
+        self.assertRegex(style, r"\.run\.no-wrap pre\.transcript \{[^}]*white-space: pre;[^}]*overflow-x: auto")
+        script = (ROOT / "site" / "assets" / "replay.js").read_text(encoding="utf-8")
+        for name in ("data-run-wrap", "data-run-wide", "no-wrap", "is-wide", "aria-pressed"):
+            self.assertIn(name, script)
+
+    def test_a_line_can_be_pointed_at_and_its_link_adds_nothing_to_what_the_run_printed(self):
+        """As a line number in a log on GitHub: the time of a line is the link to it."""
+        for record in (a_record(), a_record(manifest=None)):
+            markup, page, _ = shown(record)
+            self.assertEqual([text for _, text in LINES], [line.rstrip("\n") for line in page.lines])
+            for number, (t, _) in enumerate(LINES, 1):
+                self.assertEqual(markup.count(f' id="run-line-{number}" '), 1)
+                self.assertIn(
+                    f'<a class="tl-at" href="#run-line-{number}" tabindex="-1" aria-hidden="true" '
+                    f'data-clock="{lastrun.clock(t)}"></a>', markup,
+                )
+            self.assertNotIn(f'id="run-line-{len(LINES) + 1}"', markup)
+        tools = shown(a_record())[0].split('<span class="run-term-tools"')[1].split("</span>")[0]
+        self.assertIn("data-run-copy", tools)
+        script = (ROOT / "site" / "assets" / "replay.js").read_text(encoding="utf-8")
+        self.assertIn("#run-line-", script)
+        # what is copied is the text of the lines, which holds no time and no mark
+        self.assertIn('lines.map(function (line) { return line.textContent; }).join("")', script)
+
     def test_a_run_that_worked_says_so_and_says_what_is_still_between_it_and_a_release(self):
         _, _, text = shown(a_record())
         self.assertIn("Release build 7 of 13 November 2026, 20:11 UTC, on commit 526d712 of main, after a change was accepted.", text)
         self.assertIn("Yes. All 6 steps completed, in 13 min 53 s.", text)
-        self.assertIn("Nothing in this run keeps it from being published as a release.", text)
-        self.assertIn("It is not a release. A release is built when a maintainer pushes a tag.", text)
+        self.assertIn("Nothing in this run keeps it from being published.", text)
+        self.assertIn("Publication was not asked for. A maintainer asks for it by pushing a tag.", text)
         self.assertIn(release_manifest.NOT_PUBLISHED, text)
-        self.assertIn("Nothing in the run. It is not a release: no tag was pushed for it.", text)
+        self.assertIn("Nothing in the run. Publication was not asked for: a maintainer asks for it by pushing a tag.", text)
         self.assertIn("It worked", text)
         self.assertNotIn("No.", text)
         self.assertNotIn("It did not work", text)
+
+    def test_a_run_nobody_asked_to_release_does_not_look_as_if_a_step_failed_or_was_left_out(self):
+        """A reader took "not a release" on a dashed step for a failure. The last step of a run
+        without a tag says that no release was asked for, and is drawn as open."""
+        markup, _, text = shown(a_record())
+        last = markup.split('<li><a class="run-tab ')[-1].split("</li>")[0]
+        self.assertTrue(last.startswith('is-open"'), last[:40])
+        self.assertIn('<span class="run-tab-time">not asked for</span>', last)
+        self.assertNotIn("run-tab-bar", last, "a step without a time has no bar of its time")
+        self.assertNotIn("is-not-run", markup)
+        self.assertNotIn("is-failed", markup)
+        self.assertNotIn("not a release", text)
+        self.assertIn("Step 7 of 7 · not asked for", text)
+        self.assertIn('<span class="run-tab-name">Publication</span>', last)
+        # "release" is the provider's word: the last step does not use it for what is published here
+        panel = markup.split('id="run-step-7"')[1].split("</article>")[0]
+        said = html.unescape(__import__("re").sub(r"<[^>]+>", " ", last + panel))
+        self.assertNotRegex(said, r"(?i)\brelease\b")
+        self.assertEqual(markup.count("run-tab-bar"), 6, "every step of the run has its bar")
+        # a release that was asked for and not published is another matter, and is said
+        tagged = shown(a_record(a_manifest(tag="patched-2026-v1.1"), publish="skipped"))[0]
+        self.assertIn('class="run-tab is-not-run"', tagged)
+        self.assertIn('<span class="run-tab-time">not published</span>', tagged)
 
     def test_a_run_that_failed_is_shown_as_failed_with_the_step_and_the_reason(self):
         record = a_record(a_manifest(failed="patched build"), conclusion="failure", failed_step="Run the whole path")
@@ -442,9 +542,9 @@ class PageTests(unittest.TestCase):
         tagged = a_manifest(tag="patched-2026-v1.1")
         _, _, text = shown(a_record(tagged, publish="success"))
         self.assertIn("for the tag patched-2026-v1.1", text)
-        self.assertIn("It is published as the release patched-2026-v1.1: its manifest, and no file of the data.", text)
+        self.assertIn("It is published under the tag patched-2026-v1.1: its manifest, and no file of the data.", text)
         _, _, text = shown(a_record(tagged, publish="skipped"))
-        self.assertIn("It was built for the tag patched-2026-v1.1, and that release was not published.", text)
+        self.assertIn("It was built for the tag patched-2026-v1.1, and it was not published.", text)
         self.assertNotIn("It is published", text)
 
     def test_what_was_in_it_comes_from_the_manifest(self):
