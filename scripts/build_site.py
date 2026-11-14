@@ -26,6 +26,7 @@ from urllib.parse import urlsplit
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import community  # noqa: E402
 import github_api  # noqa: E402
+import last_run  # noqa: E402
 import triage  # noqa: E402
 from sitebuild import contributions, data, findings, lastrun, overview, pages, prose, shell, status, theme  # noqa: E402
 from sitebuild.text import esc, plural  # noqa: E402,F401
@@ -116,20 +117,20 @@ class Site:
             self.repo, issues_snapshot, offline, require_issues
         )
         self.triage = triage.assemble(self.findings, self.repo, issues, self.patches)
-        # The last release build, read from the runs of the repository that builds this site:
-        # only for a site that has a page for it. A dataset without a release build has none.
+        # The last run of the workflow that site/config.json names under "run", read from the
+        # runs of the repository that builds this site: only for a site that has a page for it.
         shows_run = any(
             RUN_BLOCKS.search((self.root / source).read_text())
             for doc in self.docs for source in [doc["source"], *doc.get("also", [])]
             if (self.root / source).is_file()
         )
-        # scripts/last_run.py and scripts/release_build/ belong to the release build: a repository
-        # without one does not have them, so they are loaded here and not with this file.
+        self.run = last_run.settings(self.config)
         self.last_run = self.run_reader = None
         if shows_run:
-            import last_run
+            if self.run is None:
+                raise ValueError('a page shows the last run, and site/config.json has no "run" that says which workflow')
             self.run_reader = last_run
-            self.last_run = last_run.load(self.built_by, last_run_snapshot, offline)
+            self.last_run = last_run.load(self.built_by, self.run, last_run_snapshot, offline)
         self.built = build_date()
         self.revision = revision(self.root)
         self.written = set()

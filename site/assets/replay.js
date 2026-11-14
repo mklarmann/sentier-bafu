@@ -1,4 +1,4 @@
-// The last run on "Patch and release": one step at a time beside what the run printed, and a
+// The last run of a workflow, on the page that shows it: one step at a time beside what the run printed, and a
 // replay of the run. Without this script the page holds every step and every line, in order.
 // The text of a line is never changed: a line is shown, hidden or dimmed, nothing else.
 (function () {

@@ -120,7 +120,10 @@ class Recording(unittest.TestCase):
         self.assertEqual(transcript.shape_errors(data), [])
 
     def test_more_lines_than_a_page_can_show_are_passed_on_and_recorded_as_cut(self):
-        limit, transcript.MAX_LINES = transcript.MAX_LINES, 3
+        limit, transcript.shared.MAX_LINES = (
+            transcript.shared.MAX_LINES,
+            3,
+        )  # the wrapper reads its own
         try:
             stream = io.StringIO()
             many = "for n in range(10): print('line', n)"
@@ -130,7 +133,7 @@ class Recording(unittest.TestCase):
             self.assertEqual((len(data["lines"]), data["cut"]), (3, True))
             self.assertEqual(transcript.shape_errors(data), [])
         finally:
-            transcript.MAX_LINES = limit
+            transcript.shared.MAX_LINES = limit
 
     def test_a_file_that_was_changed_is_not_a_transcript(self):
         _, _, data = self.record()

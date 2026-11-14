@@ -285,9 +285,19 @@ class WholePathRecord(unittest.TestCase):
             "step exports not run: the patched build wrote no database to export",
             manifest["problems"],
         )
+        # what is kept of a run that failed: its manifest, and its own account for the site
         self.assertEqual(
-            sorted(p.name for p in (self.root / "run" / "results").iterdir()), ["manifest.json"]
+            sorted(p.name for p in (self.root / "run" / "results").iterdir()),
+            ["manifest.json", "run.json"],
         )
+        account = json.loads((self.root / "run" / "results" / "run.json").read_text())
+        self.assertEqual(account["status"], "failed")
+        said = {step["name"]: (step["status"], step["reason"]) for step in account["steps"]}
+        self.assertEqual(said["patched build"], ("failed", "the build wrote no record"))
+        self.assertEqual(
+            said["exports"], ("not run", "the patched build wrote no database to export")
+        )
+        self.assertIn("step patched build failed: the build wrote no record", account["blocking"])
 
     def test_a_step_that_fails_without_a_record_gives_the_end_of_its_log(self):
         patched = self.root / "run" / "patched"

@@ -11,6 +11,7 @@ sibling would start them. Then the tests hold the colour to its rules: whether a
 read is computed, not judged by eye.
 """
 
+import html
 import io
 import json
 import re
@@ -43,8 +44,9 @@ except ModuleNotFoundError:  # the markdown package is a site-build dependency o
 SHARED = (
     "scripts/build_site.py", "scripts/check_site.py", "scripts/community.py", "scripts/triage.py",
     "scripts/intake.py", "scripts/sync.py", "scripts/github_api.py", "scripts/sitebuild",
-    "site/style.css", "site/assets/list.js", "site/assets/nunito-latin.woff2", "site/assets/OFL.txt",
-    "site/assets/dds-logo.svg", "site/assets/favicon-32x32.png", "schema",
+    "scripts/last_run.py", "scripts/runrecord",
+    "site/style.css", "site/assets/list.js", "site/assets/replay.js", "site/assets/nunito-latin.woff2",
+    "site/assets/OFL.txt", "site/assets/dds-logo.svg", "site/assets/favicon-32x32.png", "schema",
 )
 REPO = "https://github.com/sentier-dev/sentier-agribalyse"
 SITE = "https://sentier-dev.github.io/sentier-agribalyse/"
@@ -142,7 +144,7 @@ class SiblingSite(unittest.TestCase):
         script of the shared set that reaches for a file outside the set fails here."""
         present = sorted(p.relative_to(self.root).as_posix() for p in (self.root / "scripts").iterdir())
         self.assertEqual(present, sorted(name for name in SHARED if name.startswith("scripts/")))
-        for gone in ("scripts/last_run.py", "scripts/release_build", "scripts/build_release.py",
+        for gone in ("scripts/release_build", "scripts/build_release.py", "scripts/export_release.py",
                      "scripts/patches_snapshot.py", "src", "site/patched-release.md", "site/run-steps.json"):
             self.assertFalse((self.root / gone).exists(), gone)
 
@@ -156,7 +158,7 @@ class SiblingSite(unittest.TestCase):
         out = Path(self.temp.name) / "its-own-build"
         built = run("scripts/build_site.py", "--offline", "--out", str(out))
         self.assertEqual(built.returncode, 0, built.stdout + built.stderr)
-        self.assertNotIn("release build", built.stdout)
+        self.assertNotIn("Last ", built.stdout, "a site that shows no run reads none")
         self.assertEqual(run("scripts/check_site.py", str(out)).returncode, 0)
         self.assertEqual((out / "findings.html").read_text(), self.pages["findings.html"].replace(str(self.out), str(out)))
         # the scripts the workflows start with the runner's own Python and nothing installed
@@ -166,6 +168,75 @@ class SiblingSite(unittest.TestCase):
         self.assertEqual(names.stdout.strip(),
                          "('Records and unit tests', 'Site build and links') agribalyse-finding agribalyse-finding "
                          ".github/ISSUE_TEMPLATE/agribalyse-data-finding.yml")
+
+    def test_it_walks_through_a_run_of_its_own_workflow_with_the_shared_files_alone(self):
+        """Its own workflow, its own steps and its own words for them. The run is recorded by the
+        shared wrapper, says of itself what it did in the shared format, and the shared page shows
+        it: also a stage it could not run in public, and a run that was made on a machine of its own."""
+        root = sibling(Path(self.temp.name) / "with-a-run", run={"name": "Linking run", "workflow": "link.yml", "artifact": "link-results"})
+        config = json.loads((root / "site/config.json").read_text())
+        config["documents"].append({"title": "The run", "source": "site/run.md", "page": "run.html", "description": "The last linking run."})
+        config["nav"].append(["run.html", "The run"])
+        (root / "site/config.json").write_text(json.dumps(config, indent=2) + "\n")
+        (root / "site/run.md").write_text("# The run\n\nWhat the last run did.\n\n<!-- generated: last-run -->\n\n## How to run it\n\nWith a licence of your own.\n")
+        (root / "site/run-steps.json").write_text(json.dumps({"steps": {
+            "export as shipped": {"short": "The export", "title": "The export, as it is shipped", "text": "The file is checked against its recorded checksum."},
+            "licensed files": {"short": "Licensed files", "title": "The files a licence covers", "text": "They are read where a licence is held."},
+        }}))
+        # its own run: a command that names its steps, and its own account of them, in a script of its own
+        (root / "scripts/its_run.py").write_text(
+            "import sys; sys.path.insert(0, 'scripts')\n"
+            "from runrecord import summary\n"
+            "print('[export as shipped] checking', flush=True)\n"
+            "print('[export as shipped] completed', flush=True)\n"
+            "print('[licensed files] not run here: needs a licence', flush=True)\n"
+            "summary.write(summary.account('completed', [\n"
+            "    summary.step('export as shipped', 'completed', 1.3, figures=[(18176, 'process blocks')]),\n"
+            "    summary.step('licensed files', 'not run here', reason='needs a licence of the reader\\'s own'),\n"
+            "], contents=['The export as shipped.']), __import__('pathlib').Path(sys.argv[1]))\n"
+        )
+
+        def run(*arguments):
+            return subprocess.run([sys.executable, *arguments], cwd=root, capture_output=True, text=True, check=False)
+
+        kept = Path(self.temp.name) / "kept"
+        recorded = run("-I", "scripts/runrecord/transcript.py", "--out", str(kept / "t.json"), "--",
+                       sys.executable, "scripts/its_run.py", str(kept / "run.json"))
+        self.assertEqual(recorded.returncode, 0, recorded.stdout + recorded.stderr)
+        self.assertEqual(recorded.stdout.count("\n"), 3, "the wrapper passes the lines on and adds none")
+        self.assertEqual(run("-I", "scripts/runrecord/transcript.py", "--keep", str(kept / "t.json"), "--into", str(kept)).returncode, 0)
+        made = run("-I", "scripts/last_run.py", "--local", "--summary", str(kept / "run.json"),
+                   "--transcript", str(kept / "transcript.json"), "--commit", "1e67bf0", "--out", str(kept / "record.json"))
+        self.assertEqual(made.returncode, 0, made.stdout + made.stderr)
+        self.assertIn("Last linking run: a run of", made.stdout)
+        out = Path(self.temp.name) / "with-a-run-site"
+        built = run("scripts/build_site.py", "--offline", "--last-run", str(kept / "record.json"), "--out", str(out))
+        self.assertEqual(built.returncode, 0, built.stdout + built.stderr)
+        self.assertEqual(run("scripts/check_site.py", str(out)).returncode, 0)
+        page = (out / "run.html").read_text()
+        text = " ".join(html.unescape(re.sub(r"<[^>]+>", " ", page)).split())
+        self.assertIn("Linking run of", text)
+        self.assertIn("Not a run on GitHub.", text)
+        self.assertIn("The export, as it is shipped", text)
+        self.assertIn("<div><dt>process blocks</dt><dd>18,176</dd></div>", page)
+        self.assertIn('class="run-tab is-open"', page)
+        self.assertIn("Needs a licence of the reader's own.", text)
+        self.assertIn("1 of 2 steps completed, and none failed", text)
+        self.assertIn("[licensed files] not run here: needs a licence", text)
+        self.assertTrue((out / "assets/replay.js").is_file())
+        self.assertEqual(json.loads((out / "api/v1/last-run.json").read_text())["name"], "Linking run")
+        for word in ("BAFU", "bafu", "Brightway", "patched", "tag"):
+            self.assertNotIn(word, text.replace("stage", ""), word)
+        # without the record the page says that no run is shown, and the site is built all the same
+        plain = Path(self.temp.name) / "with-a-run-offline"
+        self.assertEqual(run("scripts/build_site.py", "--offline", "--out", str(plain)).returncode, 0)
+        self.assertIn("built without reading GitHub", (plain / "run.html").read_text())
+        # a page that asks for a run on a site that names no workflow is refused, with the reason
+        config.pop("run")
+        (root / "site/config.json").write_text(json.dumps(config, indent=2) + "\n")
+        refused = run("scripts/build_site.py", "--offline", "--out", str(plain))
+        self.assertNotEqual(refused.returncode, 0)
+        self.assertIn('has no "run"', refused.stderr)
 
     def test_a_release_id_is_a_name_of_the_configured_list_whatever_its_shape(self):
         record = json.loads((self.root / "community/findings/0/F2.json").read_text())
@@ -366,7 +437,7 @@ class Names(unittest.TestCase):
         # every script of the site and the records is either shared or named as not shared
         scripts = sorted(p.relative_to(ROOT).as_posix() for p in (ROOT / "scripts").iterdir()
                          if p.suffix == ".py" or p.is_dir() and p.name != "__pycache__")
-        own = {"scripts/release_build", "scripts/build_release.py", "scripts/export_release.py", "scripts/last_run.py",
+        own = {"scripts/release_build", "scripts/build_release.py", "scripts/export_release.py",
                "scripts/patches_snapshot.py", "scripts/full_release_table.py", "scripts/check_patched_release.py",
                "scripts/new_patch.py", "scripts/build_brightway_flows_data.py", "scripts/check_integration_receipt.py",
                "scripts/audit_flow_mapping.py", "scripts/audit_registry.py", "scripts/build_checks.py"}
@@ -377,14 +448,21 @@ class Names(unittest.TestCase):
         Two things carry this repository's name on purpose: the names of the file formats of the
         site's data files, which are the same on every site, and the client name sent to GitHub."""
         shared = [ROOT / "scripts" / name for name in
-                  ("community.py", "intake.py", "sync.py", "triage.py", "github_api.py", "build_site.py", "check_site.py")]
-        shared += sorted((ROOT / "scripts/sitebuild").glob("*.py")) + [ROOT / "site/assets/list.js"]
-        allowed = re.compile(r'"schema": "sentier-bafu/[a-z-]+/\d"|sentier-bafu-automation')
+                  ("community.py", "intake.py", "sync.py", "triage.py", "github_api.py", "build_site.py", "check_site.py",
+                   "last_run.py")]
+        shared += sorted((ROOT / "scripts/sitebuild").glob("*.py")) + sorted((ROOT / "scripts/runrecord").glob("*.py"))
+        shared += [ROOT / "site/assets/list.js", ROOT / "site/assets/replay.js"]
+        # the third: transcripts written before the wrapper was shared carry this name of their format
+        allowed = re.compile(r'"schema": "sentier-bafu/[a-z-]+/\d"|sentier-bafu-automation|"sentier-bafu/transcript/1"')
         for path in shared:
-            if path.name == "lastrun.py":
-                continue  # the release build of this repository; a site without one never loads it
             for number, line in enumerate(path.read_text().splitlines(), 1):
                 self.assertNotRegex(allowed.sub("", line).lower(), "bafu", f"{path.name}:{number}")
+        # the page of a run and what reads it know no tool of this repository and no word for what only
+        # a provider does: a sibling's run has steps and words of its own
+        for path in (ROOT / "scripts/sitebuild/lastrun.py", ROOT / "scripts/last_run.py", ROOT / "site/assets/replay.js",
+                     *sorted((ROOT / "scripts/runrecord").glob("*.py"))):
+            for number, line in enumerate(path.read_text().splitlines(), 1):
+                self.assertNotRegex(line, r"(?i)brightway|openlca|simapro|ilcd|\\bpatch|import fix|provider build", f"{path.name}:{number}")
 
 
 if __name__ == "__main__":

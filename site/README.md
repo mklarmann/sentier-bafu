@@ -67,15 +67,26 @@ The scripts in `scripts/`, the stylesheet and the two scripts of the pages are t
 
 The shared files, which a sibling copies as they are:
 
-- `scripts/build_site.py`, `scripts/check_site.py`, `scripts/community.py`, `scripts/triage.py`, `scripts/intake.py`, `scripts/sync.py`, `scripts/github_api.py` and the folder `scripts/sitebuild`;
-- `site/style.css`, and of `site/assets`: `list.js`, `nunito-latin.woff2`, `OFL.txt`, `dds-logo.svg`, `favicon-32x32.png`;
+- `scripts/build_site.py`, `scripts/check_site.py`, `scripts/community.py`, `scripts/triage.py`, `scripts/intake.py`, `scripts/sync.py`, `scripts/github_api.py`, `scripts/last_run.py` and the folders `scripts/sitebuild` and `scripts/runrecord`;
+- `site/style.css`, and of `site/assets`: `list.js`, `replay.js`, `nunito-latin.woff2`, `OFL.txt`, `dds-logo.svg`, `favicon-32x32.png`;
 - the folder `schema`.
 
 Everything else is a repository's own: its configuration, its pages, its records, its issue forms and its workflows. `scripts/intake.py` reports the checks under the names that the repository's own `.github/workflows/checks.yml` gives its jobs.
 
-What belongs to the patch tool and the release build is not shared, and the shared files run without it: `src/`, `scripts/release_build/`, `scripts/build_release.py`, `scripts/export_release.py`, `scripts/last_run.py`, `scripts/patches_snapshot.py`, `site/patched-release.md`, `site/run-steps.json`, `site/assets/replay.js`, and the workflows `full-release.yml` and `release-build.yml`. The test builds its sibling from the shared files alone and starts the sibling's own copy of the scripts, so a shared file that reaches for one of these fails there.
+What belongs to the patch tool and the release build is not shared, and the shared files run without it: `src/`, `scripts/release_build/`, `scripts/build_release.py`, `scripts/export_release.py`, `scripts/patches_snapshot.py`, `site/patched-release.md`, `site/run-steps.json`, and the workflows `full-release.yml` and `release-build.yml`. The test builds its sibling from the shared files alone and starts the sibling's own copy of the scripts, so a shared file that reaches for one of these fails there.
 
-A site has a page for the patched release only if `documents` lists `patched-release.html`. Without it no page links there, the build reads no release build, and `api/v1/last-run.json` is not written.
+### The walk through a run
+
+A site can show the last run of one workflow of its repository, step by step and line for line. The shared files do all of it and know no dataset and no tool; a repository brings four things of its own.
+
+1. `"run"` in `site/config.json`: `{"name": "Build", "workflow": "build.yml", "artifact": "build-results"}`. `name` is what a run is called on the page ("Build 4 of 14 November"). A workflow that also runs for a tag and then keeps its result under that tag adds `"tagged": {"job": "Keep", "tags": "v"}`: how the name of the job that keeps it begins, and how such a tag begins.
+2. A workflow that starts its command through the shared wrapper, with the runner's own Python: `python3 scripts/runrecord/transcript.py --out transcript.json -- COMMAND`. The command names each step where it begins, `[name of the step] ...`. Afterwards `--keep transcript.json --into FOLDER` sets the transcript aside if a page can show it.
+3. The run's own account, `run.json`, written by the command into the same folder, in the format `scripts/runrecord/summary.py` describes and checks: each step with its result, its time, its figures and its notes; what was in the run; what stands in the way of using its result. The folder is uploaded as the artifact the configuration names. A step that this place can't run by a rule (it needs a licence, a machine, a secret) has the status `not run here` and the reason: the page draws it as open, and the run is not failed for it.
+4. `site/run-steps.json`: what each step does, in plain words and without a number, under the name the run gives the step (`short` for its button, `title`, `text`). A step without words is shown under its own name.
+
+A page asks for the walk with `<!-- generated: last-run -->`. The Site workflow reads the run with the token of its job (`actions: read`). A site shows a run only if one of its pages asks for it: without such a page the build reads no run, `"run"` is not needed, and `api/v1/last-run.json` is not written.
+
+A run that did not happen on GitHub can be shown as well: `python3 scripts/last_run.py --local --summary run.json --transcript transcript.json --out record.json` makes its record from the two files, and `scripts/build_site.py --last-run record.json` builds a site with it. The page marks it: "Not a run on GitHub". Whether a published site may show such a record is the repository's own rule; a workflow that never passes `--last-run` never does.
 
 A finding names its datasets by number (`code`, a whole number). Where the datasets of a provider have no number, a finding lists none and says in `scope` what it is about.
 

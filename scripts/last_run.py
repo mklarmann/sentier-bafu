@@ -1,21 +1,41 @@
-"""The last release build, as GitHub and the run itself recorded it.
+"""The last run of a workflow, as GitHub and the run itself recorded it.
 
     python3 scripts/last_run.py --repository owner/name --out FILE
+    python3 scripts/last_run.py --local --summary run.json --transcript transcript.json --out FILE
 
-For the workflow `release-build.yml` of one repository this reads
+Which workflow, and what it is called on the page, is said in `site/config.json`:
 
-- GitHub's own record of the last run that has ended: its number, its commit, what
-  started it, how it ended, and every step with its result. Anyone can read this.
-- what that run kept: `manifest.json` and `transcript.json` of its artifact
-  `release-build-results`. Reading an artifact needs a token (`actions: read`).
+    "run": {
+      "name": "Build",                       what a run is called: "Build 4 of ..."
+      "workflow": "build.yml",               the workflow whose last run is shown
+      "artifact": "build-results",           the artifact that holds run.json and transcript.json
+      "tagged": {"job": "Keep", "tags": "v"}                    optional: see below
+    }
 
-and returns one record. The site shows it as it is (`scripts/sitebuild/lastrun.py`): the
-last run, not the last run that worked. A run that failed is shown as failed, with the step
-and the reason; a run that kept nothing is shown with what GitHub recorded about it.
+For that workflow of one repository this reads
 
-Nothing here is trusted because it came from a run: the two files are read with limits,
-checked for their shape and for the names a public page must not carry, and the site
-escapes every text of them.
+- GitHub's own record of the last run that has ended: its number, its commit, what started
+  it, how it ended, and every step with its result. Anyone can read this.
+- what that run kept in its artifact: `run.json`, the run's own account of its steps
+  (`scripts/runrecord/summary.py`), and `transcript.json`, every line it printed
+  (`scripts/runrecord/transcript.py`). Reading an artifact needs a token (`actions: read`).
+
+and returns one record. The site shows it as it is (`scripts/sitebuild/lastrun.py`): the last
+run, not the last run that worked. A run that failed is shown as failed, with the step and
+the reason; a run that kept nothing is shown with what GitHub recorded about it.
+
+`tagged` is for a workflow that also runs for a tag and then keeps its result under that
+tag: `job` is how the name of the job that keeps it begins, `tags` how such a tag begins.
+What is kept under such tags is then read as well, with its files, and the page says where
+this run stands as to that.
+
+`--local` makes the record of a run that did not happen on GitHub, from the two files the
+run wrote: a run on a machine that holds what a public runner may not hold. GitHub has no
+record of such a run, and the record says so; the page shows it marked as such.
+
+Nothing here is trusted because it came from a run: the two files are read with limits and
+checked for their shape, a key the formats do not know is refused, and the site escapes
+every text of them.
 
     state       read | no run | not read | unreadable
     kept        read | none | expired | needs a token | unreadable     (when state is read)
@@ -29,6 +49,7 @@ import datetime
 import io
 import json
 import os
+import re
 import sys
 import urllib.request
 import zipfile
@@ -36,22 +57,54 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import github_api  # noqa: E402
-from release_build import public_summary, release_manifest, transcript  # noqa: E402
+from runrecord import summary, transcript  # noqa: E402
 
-FORMAT = "sentier-bafu/last-run/1"
-WORKFLOW = "release-build.yml"
-ARTIFACT = "release-build-results"
+FORMAT = "sentier/last-run/2"
 MAX_ARCHIVE = 30 * 1024 * 1024
 MAX_FILE = 12 * 1024 * 1024
 STATES = ("read", "no run", "not read", "unreadable")
 KEPT = ("read", "none", "expired", "needs a token", "unreadable")
+FILES = {
+    "summary": ("run.json", summary.shape_errors),
+    "transcript": ("transcript.json", transcript.shape_errors),
+}
+WORKFLOW_FILE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*\.ya?ml")
+PLAIN_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9 ._-]{0,79}")
+
+
+def settings(config):
+    """What `site/config.json` says about the run a site shows, checked: None when it says
+    nothing. Raises ValueError for a setting that can't be used."""
+    value = (config or {}).get("run")
+    if value is None:
+        return None
+    wrong = 'site/config.json: "run" is {"name", "workflow", "artifact"} and may hold "tagged"'
+    if not isinstance(value, dict) or set(value) - {"name", "workflow", "artifact", "tagged"}:
+        raise ValueError(wrong)
+    if not all(isinstance(value.get(key), str) for key in ("name", "workflow", "artifact")):
+        raise ValueError(wrong)
+    if not WORKFLOW_FILE.fullmatch(value["workflow"]):
+        raise ValueError(
+            'site/config.json: run.workflow is the file name of a workflow, as "build.yml"'
+        )
+    for key in ("name", "artifact"):
+        if not PLAIN_NAME.fullmatch(value[key]):
+            raise ValueError(f"site/config.json: run.{key} is a short plain name")
+    tagged = value.get("tagged")
+    if tagged is not None and (
+        not isinstance(tagged, dict)
+        or set(tagged) != {"job", "tags"}
+        or not all(isinstance(v, str) and PLAIN_NAME.fullmatch(v) for v in tagged.values())
+    ):
+        raise ValueError('site/config.json: run.tagged is {"job", "tags"}, two short plain names')
+    return {**value, "tagged": tagged}
 
 
 def now():
     return datetime.datetime.now(datetime.UTC).replace(microsecond=0).isoformat()
 
 
-def empty(state, repository=None, note=None, read=None):
+def empty(state, repository=None, run=None, note=None, read=None):
     """A record that holds no run, and says why. `read` is when GitHub was read; a record
     made without reading it has no time, so that two builds of one revision are the same."""
     return {
@@ -59,7 +112,8 @@ def empty(state, repository=None, note=None, read=None):
         "state": state,
         "note": note,
         "repository": repository,
-        "workflow": WORKFLOW,
+        "workflow": (run or {}).get("workflow"),
+        "name": (run or {}).get("name"),
         "read": read,
     }
 
@@ -115,47 +169,42 @@ def job_facts(job):
 
 
 def unpack(archive):
-    """manifest.json and transcript.json of an artifact's archive, each parsed or None,
-    and what was wrong. A file that is too large, unreadable or of another shape is left out."""
-    found, problems = {"manifest": None, "transcript": None}, []
+    """run.json and transcript.json of an artifact's archive, each parsed or None, and what
+    was wrong. A file that is too large, unreadable or of another shape is left out."""
+    found, problems = {key: None for key in FILES}, []
     try:
         with zipfile.ZipFile(io.BytesIO(archive)) as bundle:
-            for key in found:
+            for key, (name, _) in FILES.items():
                 try:
-                    info = bundle.getinfo(f"{key}.json")
+                    info = bundle.getinfo(name)
                 except KeyError:
                     continue
                 if info.file_size > MAX_FILE:
-                    problems.append(f"{key}.json is larger than a run's record can be")
+                    problems.append(f"{name} is larger than a run's record can be")
                     continue
                 try:
                     found[key] = json.loads(bundle.read(info).decode("utf-8"))
                 except ValueError:  # a text that is not UTF-8 is a ValueError too
-                    problems.append(f"{key}.json is not JSON")
+                    problems.append(f"{name} is not JSON")
     except zipfile.BadZipFile:
         return found, ["the artifact is not an archive"]
-    checks = (
-        ("manifest", release_manifest.shape_errors),
-        ("transcript", transcript.shape_errors),
-    )
-    for key, check in checks:
+    for key, (name, check) in FILES.items():
         if found[key] is None:
             continue
         errors = check(found[key])
-        errors += public_summary.named(found[key])
         if errors:
-            problems.append(f"{key}.json: {errors[0]}")
+            problems.append(f"{name}: {errors[0]}")
             found[key] = None
     return found, problems
 
 
-def releases_of(github):
-    """The published releases of patched data, the newest first: tag, date, address and the
-    files each one holds. A draft is not a release, and neither is a tag of another kind."""
+def releases_of(github, tags):
+    """What is kept under a tag that begins with `tags`, the newest first: tag, date, address
+    and the files each holds. A draft is not kept yet."""
     found = []
     for release in github.get("/releases?per_page=30") or ():
         tag = release.get("tag_name") or ""
-        if release.get("draft") or not tag.startswith("patched-"):
+        if release.get("draft") or not tag.startswith(tags):
             continue
         found.append(
             {
@@ -175,10 +224,10 @@ def releases_of(github):
     return found
 
 
-def kept_by(github, run_id, fetch=fetch_address):
-    """What a run kept: (kept, note, manifest, transcript)."""
+def kept_by(github, run_id, artifact_name, fetch=fetch_address):
+    """What a run kept: (kept, note, its own account, its transcript)."""
     listing = github.get(f"/actions/runs/{int(run_id)}/artifacts?per_page=100") or {}
-    wanted = [a for a in listing.get("artifacts") or () if a.get("name") == ARTIFACT]
+    wanted = [a for a in listing.get("artifacts") or () if a.get("name") == artifact_name]
     if not wanted:
         return "none", None, None, None
     artifact = wanted[0]
@@ -190,28 +239,29 @@ def kept_by(github, run_id, fetch=fetch_address):
     if address is None:
         return "needs a token", None, None, None
     found, problems = unpack(fetch(address))
-    if found["manifest"] is None and found["transcript"] is None:
+    if found["summary"] is None and found["transcript"] is None:
         return "unreadable", "; ".join(problems) or "it holds no record", None, None
-    return "read", "; ".join(problems) or None, found["manifest"], found["transcript"]
+    return "read", "; ".join(problems) or None, found["summary"], found["transcript"]
 
 
-def fetch(repository, token=None, transport=None, fetch=fetch_address):
-    """The record of the last ended run of the release build of `repository`."""
+def fetch(repository, run, token=None, transport=None, fetch=fetch_address):
+    """The record of the last ended run of the workflow `run` names, in `repository`."""
     github = github_api.GitHub(repository, token, transport=transport)
     try:
-        listing = github.get(f"/actions/workflows/{WORKFLOW}/runs?per_page=20") or {}
+        listing = github.get(f"/actions/workflows/{run['workflow']}/runs?per_page=20") or {}
     except github_api.NotFound:
-        return empty("no run", repository, "the repository has no release build", now())
+        return empty("no run", repository, run, "the repository has no such workflow", now())
     runs = listing.get("workflow_runs") or []
-    ended = [run for run in runs if run.get("status") == "completed"]
+    ended = [one for one in runs if one.get("status") == "completed"]
     if not ended:
-        return empty("no run", repository, None, now())
-    run = ended[0]
-    newer = runs[0] if runs[0] is not run else None
-    jobs = github.get(f"/actions/runs/{int(run['id'])}/jobs?per_page=100") or {}
-    kept, note, manifest, lines = kept_by(github, run["id"], fetch)
-    return empty("read", repository, read=now()) | {
-        "run": run_facts(run),
+        return empty("no run", repository, run, None, now())
+    last = ended[0]
+    newer = runs[0] if runs[0] is not last else None
+    jobs = github.get(f"/actions/runs/{int(last['id'])}/jobs?per_page=100") or {}
+    kept, note, account, lines = kept_by(github, last["id"], run["artifact"], fetch)
+    tagged = run.get("tagged")
+    return empty("read", repository, run, read=now()) | {
+        "run": run_facts(last),
         "newer": None
         if newer is None
         else {
@@ -221,22 +271,59 @@ def fetch(repository, token=None, transport=None, fetch=fetch_address):
         "jobs": [job_facts(job) for job in jobs.get("jobs") or ()],
         "kept": kept,
         "kept_note": note,
-        "manifest": manifest,
+        "summary": account,
         "transcript": lines,
-        "releases": releases_of(github),
+        "tagged": tagged,
+        "releases": releases_of(github, tagged["tags"]) if tagged else [],
+    }
+
+
+def local(account, lines, run=None, commit=None):
+    """The record of a run that did not happen on GitHub, from the two files it wrote.
+    `account` is its run.json, `lines` its transcript.json; both are checked. GitHub holds no
+    record of the run: the record has no `run`, and `local` says when the run was."""
+    errors = summary.shape_errors(account) + transcript.shape_errors(lines)
+    if errors:
+        raise ValueError(errors[0])
+    if commit is not None and not re.fullmatch(r"[0-9a-f]{7,40}", commit):
+        raise ValueError("a commit is 7 to 40 hexadecimal digits")
+    return empty("read", None, run) | {
+        "run": None,
+        "local": {
+            "started": text(lines.get("started"), 40),
+            "seconds": lines.get("seconds"),
+            "commit": commit,
+        },
+        "newer": None,
+        "jobs": [],
+        "kept": "read",
+        "kept_note": None,
+        "summary": account,
+        "transcript": lines,
+        "tagged": None,
+        "releases": [],
     }
 
 
 def said(record):
     """One line for a build log: which run a site shows, and what was read of it."""
+    name = record.get("name") or "run"
+    name = name[:1].lower() + name[1:]
     if record["state"] != "read":
-        return f"Last release build: {record['state']}" + (
+        return f"Last {name}: {record['state']}" + (
             f" ({record['note']})" if record.get("note") else ""
         )
+    have = [
+        what
+        for key, what in (("summary", "its own account"), ("transcript", "transcript"))
+        if record.get(key) is not None
+    ]
+    if record.get("run") is None:
+        started = record["local"].get("started")
+        return f"Last {name}: a run of {started} that was not on GitHub ({' and '.join(have)})"
     run = record["run"]
-    have = [name for name in ("manifest", "transcript") if record.get(name) is not None]
     return (
-        f"Last release build: run {run['id']} of {run.get('started')}, {run.get('conclusion')}; "
+        f"Last {name}: run {run['id']} of {run.get('started')}, {run.get('conclusion')}; "
         f"its record: {record['kept']}" + (f" ({' and '.join(have)})" if have else "")
     )
 
@@ -251,9 +338,12 @@ def shape_errors(record):
         return []
     found = []
     run = record.get("run")
-    if not isinstance(run, dict) or not isinstance(run.get("id"), int):
+    if run is None:
+        if not isinstance(record.get("local"), dict) or record.get("summary") is None:
+            return ["a record without GitHub's record of a run holds the run's own account"]
+    elif not isinstance(run, dict) or not isinstance(run.get("id"), int):
         return ["`run` is not GitHub's record of a run"]
-    if not str(run.get("url") or "").startswith("https://github.com/"):
+    elif not str(run.get("url") or "").startswith("https://github.com/"):
         found.append("`run.url` is not an address on GitHub")
     if record.get("kept") not in KEPT:
         found.append("`kept` is not one of " + ", ".join(KEPT))
@@ -266,17 +356,30 @@ def shape_errors(record):
         for release in releases:
             addresses = [release.get("url"), *(a.get("url") for a in release.get("assets") or ())]
             if not all(str(a or "").startswith("https://github.com/") for a in addresses):
-                found.append("a release or one of its files is not at an address on GitHub")
+                found.append(
+                    "what is kept under a tag, or one of its files, is not at an address on GitHub"
+                )
                 break
-    if record.get("manifest") is not None:
-        found += [f"manifest: {e}" for e in release_manifest.shape_errors(record["manifest"])]
-    if record.get("transcript") is not None:
-        found += [f"transcript: {e}" for e in transcript.shape_errors(record["transcript"])]
-    found += [f"names who confirmed for the provider: {p}" for p in public_summary.named(record)]
+    try:
+        settings(
+            {
+                "run": {
+                    "name": "x",
+                    "workflow": "x.yml",
+                    "artifact": "x",
+                    "tagged": record.get("tagged"),
+                }
+            }
+        )
+    except ValueError:
+        found.append("`tagged` is not {job, tags}")
+    for key, (name, check) in FILES.items():
+        if record.get(key) is not None:
+            found += [f"{name}: {error}" for error in check(record[key])]
     return found
 
 
-def load(repository, snapshot=None, offline=False):
+def load(repository, run, snapshot=None, offline=False):
     """The record for a build of the site: from a file, else from GitHub, else one that says
     it was not read. A site is built without it rather than not built."""
     if snapshot:
@@ -286,26 +389,57 @@ def load(repository, snapshot=None, offline=False):
             raise SystemExit(f"{snapshot} is not a record of a run: {errors[0]}")
         return record
     if offline:
-        return empty("not read", repository, "this copy of the site was built without GitHub")
+        return empty("not read", repository, run, "this copy of the site was built without GitHub")
+    name = run["name"]
     try:
-        record = fetch(repository, os.environ.get("GITHUB_TOKEN"))
+        record = fetch(repository, run, os.environ.get("GITHUB_TOKEN"))
     except Exception as error:  # noqa: BLE001 - the site is built without the run
-        name = type(error).__name__
-        print(f"The last release build was not read ({name}); the page says so.")
-        return empty("unreadable", repository, "GitHub could not be read when the site was built")
+        print(f"The last {name} was not read ({type(error).__name__}); the page says so.")
+        return empty(
+            "unreadable", repository, run, "GitHub could not be read when the site was built"
+        )
     errors = shape_errors(record)
     if errors:
-        print(f"The last release build is not shown: {github_api.plain(errors[0])}")
-        return empty("unreadable", repository, "the record of the run could not be read")
+        print(f"The last {name} is not shown: {github_api.plain(errors[0])}")
+        return empty("unreadable", repository, run, "the record of the run could not be read")
     return record
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--repository", required=True, help="owner/name")
+    parser.add_argument("--repository", help="owner/name")
+    parser.add_argument(
+        "--config", type=Path, default=Path("site/config.json"), help="Default: site/config.json"
+    )
+    parser.add_argument(
+        "--local", action="store_true", help="A run that was not on GitHub, from its two files"
+    )
+    parser.add_argument("--summary", type=Path, help="With --local: the run.json of the run")
+    parser.add_argument(
+        "--transcript", type=Path, help="With --local: the transcript.json of the run"
+    )
+    parser.add_argument("--commit", help="With --local: the commit the run was made of")
     parser.add_argument("--out", type=Path, required=True, help="Where to write the record")
     args = parser.parse_args(argv)
-    record = fetch(args.repository, os.environ.get("GITHUB_TOKEN"))
+    try:
+        run = settings(json.loads(args.config.read_text(encoding="utf-8")))
+        if run is None:
+            raise ValueError(f'{args.config} says nothing about a run: it has no "run"')
+        if args.local:
+            if not (args.summary and args.transcript):
+                parser.error("--local needs --summary FILE and --transcript FILE")
+            read = [
+                json.loads(path.read_text(encoding="utf-8"))
+                for path in (args.summary, args.transcript)
+            ]
+            record = local(*read, run=run, commit=args.commit)
+        elif args.repository:
+            record = fetch(args.repository, run, os.environ.get("GITHUB_TOKEN"))
+        else:
+            parser.error("give --repository owner/name, or --local with the two files of a run")
+    except (OSError, ValueError) as error:
+        print(f"not written: {error}")
+        return 1
     errors = shape_errors(record)
     if errors:
         print(f"not written: {errors[0]}")

@@ -58,7 +58,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from release_build import adapter, public_summary, release_manifest, step_lines  # noqa: E402
+from release_build import adapter, public_summary, release_manifest, run_summary, step_lines  # noqa: E402
 from release_build import layer as layer_file  # noqa: E402
 
 REPOSITORY = Path(__file__).resolve().parents[1]
@@ -1044,8 +1044,14 @@ def release(args: argparse.Namespace) -> int:
         data["status"] = "failed"
         data["problems"] = [*data["problems"], *(f"manifest: {error}" for error in errors)]
     release_manifest.write(data, out / "manifest.json")
+    # The run's own account for the site: what each step did, in words, from the manifest.
+    try:
+        run_summary.write(data, out / "run.json")
+    except (ValueError, KeyError) as error:
+        print(f"The run's own account for the site was not written: {error}")
     keep = {
         "manifest.json": out / "manifest.json",
+        "run.json": out / "run.json",
         "run-summary.json": summary,
         "provider-audit.json": provider / "audit" / "audit.json",
         "patched-audit.json": patched / "audit" / "audit.json",

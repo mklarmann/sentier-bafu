@@ -27,6 +27,15 @@
   "ledger_notes": [
     "Dataset values and names are quoted; text from the LCI reports is never pasted (Terms of Use clause 4)."
   ],
+  "run": {
+    "name": "Build",
+    "workflow": "release-build.yml",
+    "artifact": "release-build-results",
+    "tagged": {
+      "job": "Publish",
+      "tags": "patched-"
+    }
+  },
   "repository": "https://github.com/sentier-dev/sentier-bafu",
   "site_url": "https://sentier-dev.github.io/sentier-bafu/",
   "source_ref": "main",

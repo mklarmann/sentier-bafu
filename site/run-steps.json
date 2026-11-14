@@ -1,5 +1,10 @@
 {
-  "about": "What each step of a release build does, in plain words, for the page 'Patch and release'. The key is the name the run gives the step. The numbers beside a text come from the run; none is typed here. 'short' is the name on the step's button.",
+  "about": "What each step of a release build does, in plain words, for the page 'Patch and release'. The key is the name the run gives the step. The numbers beside a text come from the run; none is typed here. 'short' is the name on the step's button. 'endings' names the step whose words stand for every step whose name ends alike (a contribution's steps carry its number). 'tagged' is the step the page adds to a run that was made for a tag.",
+  "endings": {
+    " build": "contribution build",
+    " comparison": "contribution comparison",
+    " exports": "contribution exports"
+  },
   "steps": {
     "provider build": {
       "short": "BAFU's release",
@@ -31,10 +36,10 @@
       "title": "Files for LCA tools",
       "text": "The patched release is written as files for Brightway, openLCA, ILCD and SimaPro. Each carries BAFU's credit, the label Modified Data and the list of changes. Each is read back and compared with the database."
     },
-    "release": {
-      "short": "Publication",
-      "title": "From a run to a published copy",
-      "text": "Every run ends here unless someone asks for its result to be published. A maintainer asks by pushing a tag. The run is then repeated for that tag and its manifest is published, and no file of the data."
+    "tagged": {
+      "short": "Tag",
+      "title": "Kept under its tag",
+      "text": "A maintainer gives a tag to the build that others should use. The run is then made again for that tag, and its manifest is kept under the tag, and no file of the data."
     },
     "contribution build": {
       "short": "Contribution",
