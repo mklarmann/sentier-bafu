@@ -45,6 +45,8 @@ line-length = 100
 # the community lint scope stays exactly what it was. Bringing them under ruff is a
 # separate, visible change.
 extend-exclude = [
+    # Scripts of a recorded run keep the bytes their README pins by sha256.
+    "community/runs/",
     "community/tests/",
     "registry-tests/",
     "scripts/audit_flow_mapping.py",
