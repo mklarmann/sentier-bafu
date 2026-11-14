@@ -28,7 +28,11 @@ python -I structural_checks.py <pr-src> <pinned-inventory> <inventory-main> <dem
   This was `main` on 21 October 2026 and still was on 26 October.
 - `<demo-values.parquet>`: generated from the pinned inventory by the PR's own builder:
   `python -I <pr-src>/build_demo_schema_files.py --data-root <pinned-inventory> --sector 02-electricity --out <dir>`
-  (32,458 rows; the 26 October output had sha256 `1c1e664ac9dcb8f1e322dade56b0faa874087bef0c3461cd8e9e65fdf8d855f9`).
+  32,458 rows. The row count is the pin: a parquet file's sha256 moves with the writer's
+  version. The 26 October output had sha256
+  `1c1e664ac9dcb8f1e322dade56b0faa874087bef0c3461cd8e9e65fdf8d855f9`; on 14 November, pandas
+  3.1.1 with a newer pyarrow wrote `a7da9d79…b96ea7`, with the same rows and the same counts
+  from `structural_checks.py`.
 
 ## Environment (`venv-pulp3`, built with `uv`)
 
@@ -36,6 +40,15 @@ Python 3.12.12, pandas 3.0.6, numpy 2.5.4, pyarrow 26.0.0, pulp 3.3.2 (bundled C
 pycountry-convert 0.7.2, pycountry 26.2.16, python-dateutil 3.0.0, tzdata 2026.5.
 
 The PR's requirements.txt says `pulp>=2.7`, which resolves to 4.1.0. The forecast code does not run under 4.1.0 (see `pin_deviation` in the record).
+
+## Reproduced elsewhere
+
+On 14 November 2026 both scripts were run again on the same pins on x86-64 Linux (pulp 3.3.2).
+Every structural count and every forecast score matched, and so did the baseline, except the
+block `sensitivity_aggregates_also_removed_from_training`: global MAE 0.0568 / F1 0.5941 and
+regional 0.0538 / 0.5673 there, against 0.0588 / 0.6056 and 0.0553 / 0.5899 in the record.
+That block depends on the solver build: CBC can break ties differently on another build or
+platform. Its verdict does not change; the model stays below the baseline.
 
 ## Record fields the scripts do not produce
 
