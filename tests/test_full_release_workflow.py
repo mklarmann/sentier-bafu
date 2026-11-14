@@ -195,8 +195,10 @@ def test_a_tag_keeps_the_manifest_and_the_files_it_lists_checked_before_and_with
     )
     assert BUILD.count("gh release create") == 1 and "gh release upload" not in BUILD
     assert "gh release" not in PROPOSED
-    # a tag is built from a commit of main, and only a tag reaches the job that publishes
-    assert 'git merge-base --is-ancestor "$GITHUB_SHA" origin/main' in BUILD
+    # a tag is built from a commit of the default branch (main; a fork's integration branch on
+    # a fork), and only a tag reaches the job that publishes
+    assert 'git merge-base --is-ancestor "$GITHUB_SHA" "origin/$DEFAULT_BRANCH"' in BUILD
+    assert "DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}" in BUILD
     assert 'tags: ["patched-*"]' in BUILD
 
 

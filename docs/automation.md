@@ -17,7 +17,7 @@ when the site is built, or done by a workflow.
 | Authorise a community patch | review the pull request; the patch names the authoriser |
 | Report findings to BAFU | send them; then `python3 scripts/community.py send --batch … F48 F51` |
 | Record BAFU's answer | `python3 scripts/community.py answer F48 --outcome … --summary "…"` |
-| Tag a patched copy | push a tag `patched-…` on a commit of `main` |
+| Tag a patched copy | push a tag `patched-…` on a commit of the default branch (`main`) |
 | Register a new release of BAFU | one entry in `site/config.json`, then `python3 scripts/intake.py form` |
 | Confirm a correction by BAFU | `python3 scripts/community.py fixed F48 --release …` |
 | Withdraw a finding | `python3 scripts/community.py close F48 --as withdrawn --reason "…"` |
@@ -225,7 +225,7 @@ The release, the patched files and the report that quotes the data stay on the r
 ### release-build.yml
 
 For patches that are accepted, and for a release. A push to `main` that touches the patch tool or
-the build, a run on request, and a tag `patched-…` on a commit of `main` run one command,
+the build, a run on request, and a tag `patched-…` on a commit of the default branch (`main`) run one command,
 `python3 scripts/build_release.py release`, on BAFU's full release: a Brightway database of
 BAFU's release and one of the patched copy, their checks and their comparison, the exports of
 the patched copy with a read-back of each file, every contribution in `community/layers/`
@@ -241,9 +241,9 @@ runs once a month, so that the record of the last run is never older than the 90
 keeps it, and so that a change at the address of BAFU's release or in a pinned tool is noticed.
 
 A build made for a tag is kept by a second job, the only one with a token that can write. The
-build job refuses a tag that is not on `main`. The second job receives one file, checks that it
-is a manifest and that the run may be kept, checks that the export files the first job handed
-over are exactly those the manifest lists
+build job refuses a tag that is not on the default branch (`main`). The second job receives
+the manifest and the export files. It checks that the manifest is a manifest and that the run
+may be kept, and that the files are exactly those the manifest lists
 (`python3 -I scripts/release_build/release_manifest.py --verify … --release --files …`), and
 keeps the manifest and those files under the tag (as what GitHub calls a Release of the tag),
 with BAFU's terms at the top of its notes. Then it deletes the handed-over copy.
@@ -325,7 +325,7 @@ the text of a comment, and a login. All of it is untrusted.
 | A stranger floods the repository with proposals | One issue gives one branch and one pull request. The form's label starts the intake, so a flood of issues gives a flood of pull requests: GitHub's own limits and "block user" apply. Nothing merges by itself. |
 | A stranger suppresses a comment of the workflow by posting its hidden marker | Possible, and harmless: the comments are information; labels, records and pull requests do not depend on them. |
 | A collaborator prepares a branch `intake/F48` with other changes | A branch without an open pull request is set back to `main` before the record is written. On a branch with an open pull request, a change by a person stops the workflow from writing. The maintainer sees the whole difference in the pull request. |
-| A changed tag builds a release from unreviewed code | The build refuses a tag that is not on `main`. Protect tags `patched-*` in the repository settings. |
+| A changed tag builds a release from unreviewed code | The build refuses a tag that is not on the default branch (`main`). Protect tags `patched-*` in the repository settings. |
 | A release asset that holds inventory | The publish job receives one file, checks that it has exactly the shape of a manifest, and uploads that file and nothing else (tested). |
 | The token leaks to another address | `github_api.py` sends it only to an https address or to this machine. |
 

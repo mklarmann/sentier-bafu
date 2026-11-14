@@ -141,7 +141,8 @@ matches anything; the audit says so and the row in the table can go.
 ## A tagged build
 
 A maintainer gives a tag to the build that others should use: a person pushes a tag
-`patched-…` on a commit of `main`. The workflow runs the command with `--tag`, and a second
+`patched-…` on a commit of the default branch (`main`; on a fork, the fork's own default
+branch). The workflow runs the command with `--tag`, and a second
 job, the only one with a token that can write, receives the manifest and the export files.
 It checks that the manifest has exactly the shape of a manifest and that the run can be kept,
 and that the files are exactly those the manifest lists, byte for byte

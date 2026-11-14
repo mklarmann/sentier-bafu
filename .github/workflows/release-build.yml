@@ -69,12 +69,15 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
-          # The whole history: a tagged build is made from a commit of main, and this is checked.
+          # The whole history: a tagged build is made from a commit of the default branch
+          # (main here; a fork's own integration branch on a fork), and this is checked.
           fetch-depth: 0
           persist-credentials: false
-      - name: Build tags from main only
+      - name: Build tags from the default branch only
         if: ${{ github.ref_type == 'tag' }}
-        run: git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: git merge-base --is-ancestor "$GITHUB_SHA" "origin/$DEFAULT_BRANCH"
       - name: Install the patch tool and get BAFU's release
         uses: ./.github/actions/bafu-release
       - name: Get the manifest of the previous tagged build, to compare what each patch matched
