@@ -252,6 +252,16 @@ class ReadingTests(unittest.TestCase):
         finally:
             last_run.fetch = real
 
+    def test_the_build_log_says_which_run_a_site_shows(self):
+        record, _ = read(GitHubAnswers([a_run(7, conclusion="failure")]),
+                         an_archive(**{"manifest.json": a_manifest(), "transcript.json": a_transcript()}))
+        self.assertEqual(last_run.said(record), "Last release build: run 1007 of 2026-11-13T20:11:20Z, failure; "
+                                                "its record: read (manifest and transcript)")
+        nothing, _ = read(GitHubAnswers([a_run(7)], artifacts=[]))
+        self.assertTrue(last_run.said(nothing).endswith("success; its record: none"))
+        self.assertEqual(last_run.said(last_run.load(REPOSITORY, offline=True)),
+                         "Last release build: not read (this copy of the site was built without GitHub)")
+
     def test_a_record_from_a_file_is_refused_when_it_is_not_one(self):
         record, _ = read(GitHubAnswers([a_run(7)]), an_archive(**{"manifest.json": a_manifest(), "transcript.json": a_transcript()}))
         elsewhere = copy.deepcopy(record)

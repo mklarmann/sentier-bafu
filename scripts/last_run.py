@@ -200,6 +200,20 @@ def fetch(repository, token=None, transport=None, fetch=fetch_address):
     }
 
 
+def said(record):
+    """One line for a build log: which run a site shows, and what was read of it."""
+    if record["state"] != "read":
+        return f"Last release build: {record['state']}" + (
+            f" ({record['note']})" if record.get("note") else ""
+        )
+    run = record["run"]
+    have = [name for name in ("manifest", "transcript") if record.get(name) is not None]
+    return (
+        f"Last release build: run {run['id']} of {run.get('started')}, {run.get('conclusion')}; "
+        f"its record: {record['kept']}" + (f" ({' and '.join(have)})" if have else "")
+    )
+
+
 def shape_errors(record):
     """What is wrong with a record read from a file; nothing when a page can show it."""
     if not isinstance(record, dict) or record.get("format") != FORMAT:
@@ -262,8 +276,7 @@ def main(argv=None):
         return 1
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(record, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
-    kept = record.get("kept", "nothing")
-    print(f"Last release build of {args.repository}: {record['state']}, kept: {kept}")
+    print(said(record))
     return 0
 
 

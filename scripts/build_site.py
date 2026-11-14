@@ -364,6 +364,7 @@ class Site:
                 if not any(folder.iterdir()):
                     folder.rmdir()
         print(f"Built {self.dataset}: {len(self.pages)} pages in {out}")
+        print(last_run.said(self.last_run))
         # For maintainers, in the build log only: a public page does not name labels.
         differences = self.triage["label_differences"]
         if differences:
