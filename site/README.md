@@ -93,6 +93,8 @@ A run that did not happen on GitHub can be shown as well: `python3 scripts/last_
 
 A finding names its datasets by number (`code`, a whole number). Where the datasets of a provider have no number, a finding lists none and says in `scope` what it is about.
 
+**A preview on a fork.** GitHub starts a workflow by hand or on a schedule only if the workflow is on the repository's default branch. A fork that previews the site and the walk therefore needs three settings: the branch that holds the workflows is its default branch, Pages is built by a workflow, and that branch may deploy to the `github-pages` environment. The Site workflow passes `--source-repository` and `--source-ref` to the build, so that links to source files lead to the branch that was built: a file that only the fork's branch has is then found.
+
 ### The index colour
 
 Every Sentier dataset site has the same frame: the logo, the paper, the type. The index colour marks which dataset a reader is on: a band over the masthead, the current item of the navigation, headings, links, buttons, the focus ring, and the dark stage of the walk through a run. Three signals stay the same on every site and are never the index colour: amber for waiting, red-brown for failed, green for good.
