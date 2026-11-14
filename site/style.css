@@ -697,3 +697,24 @@ td:first-child { font-weight: 600; }
   .prose a[href^="http"]::after { content: " (" attr(href) ")"; font-size: 11px; overflow-wrap: anywhere; background: none; -webkit-mask: none; mask: none; width: auto; height: auto; }
   .record, .step, tr, .panel > div, pre { break-inside: avoid; }
 }
+
+/* ------------------------------------------------------------ the last run */
+.run-facts { margin-top: var(--s5); }
+.run-facts .plain > li + li { margin-top: var(--s2); }
+.run-yes strong { color: var(--green); }
+.run-no strong { color: var(--fail); }
+tr.run-failed td:nth-child(2) { color: var(--fail); font-weight: 700; }
+.replay { margin-top: var(--s4); }
+.replay-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3); margin-bottom: var(--s3); }
+.replay-bar .button { margin: 0; }
+.replay-clock { font-size: var(--t-sm); color: var(--muted); font-variant-numeric: tabular-nums; }
+.prose pre.transcript {
+  background: var(--green-dark); color: #f0eee1; border: 0; border-radius: var(--radius);
+  padding: var(--s4); margin: 0; max-height: 34rem; overflow: auto;
+  font-size: var(--t-xs); line-height: 1.6; white-space: pre; tab-size: 4;
+}
+.transcript:focus-visible { outline: 3px solid var(--sage); outline-offset: 2px; }
+.transcript .tl::before { content: attr(data-clock); display: inline-block; width: 4.2em; color: #b9c9bf; -webkit-user-select: none; user-select: none; }
+.transcript .tl-step { color: #fff; font-weight: 700; }
+.transcript [hidden] { display: none; }
+@media print { .prose pre.transcript { max-height: none; color: #000; } .transcript .tl::before { color: #555; } .replay-bar { display: none; } }

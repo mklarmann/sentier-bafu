@@ -378,6 +378,7 @@ DATA_FILES = (
     ("api/v1/datasets.json", "For every dataset code a finding names: its name and location, the findings with their role, the patches."),
     ("api/v1/contributions.json", "The classes and one entry per contribution."),
     ("api/v1/status.json", "The number of findings by status and the identity of the build."),
+    ("api/v1/last-run.json", "The last release build: GitHub's record of the run, the manifest it kept and every line it printed."),
     ("schema/finding.schema.json", "The JSON Schema of a finding record."),
     ("schema/contribution.schema.json", "The JSON Schema of a contribution record."),
     ("ledger.md", "The findings as one table, one line each, in Markdown."),

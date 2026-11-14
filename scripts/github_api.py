@@ -6,6 +6,7 @@ a shell command. The token comes from the environment and is sent only to the AP
     GitHub(repository, token, api, transport)   a client for one repository ("owner/name")
     .get(path) .post(path, body) .put(...) .patch(...) .delete(...)   one request; returns the JSON
     .pages(path)                                 every item of a listed resource, a hundred a page
+    .location(path)                              where a path redirects to; the redirect is not followed
     .comment_once(issue, marker, text)           a comment that is posted once, however often it is asked for
     .remaining                                   requests left in the rate limit window, if known
     ApiError, NotFound, RateLimited              what a request can raise
@@ -65,6 +66,22 @@ def http(method, url, headers, body):
         return error.code, {k.lower(): v for k, v in error.headers.items()}, error.read()
 
 
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, *args, **kwargs):
+        return None
+
+
+def http_once(method, url, headers, body):
+    """One request that follows no redirect: (status, headers, body), a 302 included."""
+    opener = urllib.request.build_opener(_NoRedirect)
+    request = urllib.request.Request(url, data=body, headers=headers, method=method)
+    try:
+        with opener.open(request, timeout=30) as response:
+            return response.status, {k.lower(): v for k, v in response.headers.items()}, response.read()
+    except urllib.error.HTTPError as error:
+        return error.code, {k.lower(): v for k, v in error.headers.items()}, error.read()
+
+
 class GitHub:
     def __init__(self, repository, token=None, api=None, transport=None):
         api = (api or os.environ.get("GITHUB_API_URL") or API).rstrip("/")
@@ -74,6 +91,7 @@ class GitHub:
             raise ValueError("the repository is named owner/name")
         self.api, self.repository, self.token = api, repository, token
         self.transport = transport or http
+        self.once = transport or http_once
         self.remaining = None
         self.requests = 0
 
@@ -111,6 +129,25 @@ class GitHub:
 
     def get(self, path):
         return self.request("GET", path)
+
+    def location(self, path):
+        """Where a path sends its reader on to (the file of an artifact), or None.
+
+        GitHub answers such a path with the address of the file at its storage, good for a
+        minute. The token goes to the API and never to that address: the redirect is not
+        followed here, and whoever reads the address sends it no header of ours.
+        """
+        headers = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28",
+                   "User-Agent": "sentier-bafu-automation"}
+        if self.token:
+            headers["Authorization"] = f"Bearer {self.token}"
+        status, answer, _ = self.once("GET", f"{self.api}/repos/{self.repository}{path}", headers, None)
+        self.requests += 1
+        if status in (301, 302, 303, 307, 308) and str(answer.get("location", "")).startswith("https://"):
+            return answer["location"]
+        if status in (401, 403, 404, 410):
+            return None
+        raise ApiError("GET", path, status)
 
     def post(self, path, body):
         return self.request("POST", path, body)

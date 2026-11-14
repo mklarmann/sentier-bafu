@@ -32,6 +32,12 @@ The steps from BAFU's files to files that an LCA tool can open:
 | 6. Checks | Each database is checked: the datasets and exchanges are counted, every input must be linked to its supplier, and every score is computed. The two databases are then compared, and each difference is traced to an import fix or a patch. | Works |
 | 7. Exports | Files for Brightway, openLCA, ILCD and SimaPro are written, with BAFU's credit, the label *Modified Data* and the list of changes. Each file is read back. | Works on your own machine and in the checks of this repository. The files are not published. |
 
+## The last run
+
+GitHub runs the steps above on BAFU's full release: when a change to the patch tool or to the build is accepted, once a month, and when a maintainer asks for it. This is the last of those runs, as it was recorded: whether it worked, what is blocking, what was in it, and every line it printed. It is the last run, also when that run failed. Nothing in this section is written by hand.
+
+<!-- generated: last-run -->
+
 ## Run it yourself
 
 You need [git](https://git-scm.com/) and [uv](https://docs.astral.sh/uv/), a tool that installs Python programs. BAFU's Terms of Use apply to the files that the run downloads: read [data and terms](../docs/terms-of-use.md) first.

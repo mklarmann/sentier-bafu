@@ -192,13 +192,29 @@ build:
 | Workflow | When | What |
 |---|---|---|
 | `full-release.yml` (Proposed patches) | a pull request that touches the patch tool, the build, the export or a layer; on request | the patch run on BAFU's full release for this revision and the base revision, with what the pull request changes and what each patch matched; and the whole path on a made-up release, with the build, export and adapter tests |
-| `release-build.yml` (Release build) | a push to `main` that touches the same; on request; a tag `patched-*` | the command above on BAFU's full release, the job summary, the files of `results/` as an artifact; for a tag, the release with the manifest |
+| `release-build.yml` (Release build) | a push to `main` that touches the same; once a month; on request; a tag `patched-*` | the command above on BAFU's full release, the job summary, the files of `results/` as an artifact, among them what the run printed; for a tag, the release with the manifest |
 
 Two composite actions hold what both need: `.github/actions/bafu-release` installs the
 patch tool and makes BAFU's release available (the tool's own download folder from the
 Actions cache, the SHA-256 checked by the tool), and `.github/actions/patch-run` runs the
 patch tool strictly and checks the written files. A new patch, a new contribution layer or
 a new import fix needs no change to a workflow.
+
+## What a run prints, and what is kept of it
+
+When a step ends, the command prints its result, its time and what it produced: the database
+and what its audit counted, each patch with the findings it answers and the number of datasets
+it changed, the rows that differ between the two builds, each export file with its size, its
+checksum and whether it read back. These lines are read from the record the step wrote
+(`scripts/release_build/step_lines.py`), with the functions that fill the manifest. They hold
+counts, checksums and names of patches, findings, databases and files, and nothing of the
+inventory. A step whose record can't be read prints nothing more.
+
+In CI the command runs inside `scripts/release_build/transcript.py`. It changes nothing of what
+is printed. It writes every line with the seconds since the start, how the command ended and the
+SHA-256 of the lines to `transcript.json`, which is kept beside the manifest: also when the run
+failed, and when it was stopped. The site shows that file line for line on the page *Patched
+release*, with the result of the run and what blocks a release, read from the manifest.
 
 ## What a release still needs from a person
 

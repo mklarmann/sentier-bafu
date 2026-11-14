@@ -61,11 +61,11 @@ publishes a release.
 | Workflow | Starts on | Token | Writes |
 |---|---|---|---|
 | `checks.yml` | every pull request; push to `main`; called by `intake.yml` | `contents: read` | nothing |
-| `pages.yml` | push to `main`; daily; an issue opened, closed or reopened; on request | build: `contents: read`, `issues: read`. deploy: `pages: write`, `id-token: write` | the site on GitHub Pages |
+| `pages.yml` | push to `main`; daily; an issue opened, closed or reopened; on request | build: `contents: read`, `issues: read`, `actions: read`. deploy: `pages: write`, `id-token: write` | the site on GitHub Pages |
 | `intake.yml` | an issue opened or edited that carries `bafu-finding`; a comment on an issue that begins with `/repeated` or `/record` | record: `contents: write`, `pull-requests: write`, `issues: write`. checks: `contents: read`. status: `contents: read`, `statuses: write` | a branch `intake/F<n>` or `repeat/F<n>` with one file; one pull request; one comment; the label `needs-info`; commit statuses |
 | `sync.yml` | push to `main` that changes a record, `site/config.json` or the script; nightly; on request | `contents: read`, `issues: write` | labels, one comment per change of status, the state of finding issues; label definitions |
 | `full-release.yml` | a pull request that touches the patch tool, the build, the exports or a file in `community/layers/`; on request | `contents: read` | the run summaries as an artifact (counts, checksums, dataset numbers) |
-| `release-build.yml` | a push to `main` that touches the same; on request; a tag `patched-*` | build: `contents: read`. publish (tags only): `contents: write` | the manifest, the audits and the comparisons as an artifact (codes, names, single scores); for a tag, a GitHub Release that holds `manifest.json` |
+| `release-build.yml` | a push to `main` that touches the same; once a month; on request; a tag `patched-*` | build: `contents: read`. publish (tags only): `contents: write` | the manifest, what the run printed, the audits and the comparisons as an artifact (codes, names, single scores); for a tag, a GitHub Release that holds `manifest.json` |
 | `provider-release.yml` | on request, after a release of BAFU was registered | `contents: write`, `pull-requests: write` | one pull request that sets `fixed_in`. **Specified in section 6, not built** |
 
 The two composite actions hold what both build workflows need: `.github/actions/bafu-release`
@@ -115,6 +115,13 @@ Builds the site with the issues (comment counts, last activity, issues filed as 
 have no record yet) and deploys it. If the issues cannot be read the build fails and the last
 published site stays. It runs daily so that "waiting since" and the counts stay current. It does
 not run on label changes: labels follow records, and a change of a record arrives as a push.
+
+The build also reads the last release build of its own repository (`scripts/last_run.py`):
+GitHub's record of the last run that has ended, and the manifest and the transcript that run
+kept. That is what `actions: read` is for. The page *Patched release* shows the run as it was
+recorded, also when it failed. A site is built without the run rather than not built: when the
+record cannot be read the page says so. A release build that ends after the site was built is
+shown by the next build, which is at most a day later.
 
 ### intake.yml
 
@@ -217,6 +224,13 @@ BAFU's release and one of the patched release, their checks and their comparison
 the patched release with a read-back of each file, every contribution in `community/layers/`
 that names who authorised it built beside the patched release, and the manifest. [The whole path](release-build.md) describes
 each step and what stops it.
+
+The command runs inside `scripts/release_build/transcript.py`, which passes every line on and
+writes the lines, with the time of each, to `transcript.json`. That file is kept beside the
+manifest, also when the run failed, and is never edited: a transcript that names who confirmed a
+problem for BAFU is not kept, and the job fails. The site shows it line for line. The build also
+runs once a month, so that the record of the last run is never older than the 90 days GitHub
+keeps it, and so that a change at the address of BAFU's release or in a pinned tool is noticed.
 
 A tag is released by a second job, the only one with a token that can write. The build job
 refuses a tag that is not on `main`. The publish job receives one file, checks that it is a

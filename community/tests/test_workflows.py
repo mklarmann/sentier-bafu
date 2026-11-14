@@ -111,7 +111,7 @@ class WorkflowTests(unittest.TestCase):
             ("intake.yml", "checks"): {"contents: read"},
             ("intake.yml", "status"): {"contents: read", "statuses: write"},
             ("sync.yml", "sync"): {"contents: read", "issues: write"},
-            ("pages.yml", "build"): {"contents: read", "issues: read"},
+            ("pages.yml", "build"): {"contents: read", "issues: read", "actions: read"},
             ("pages.yml", "deploy"): {"pages: write", "id-token: write"},
             ("release-build.yml", "build"): {"contents: read"},
             ("release-build.yml", "publish"): {"contents: write"},
@@ -178,6 +178,23 @@ class WorkflowTests(unittest.TestCase):
         build = jobs(FILES["pages.yml"])["build"]
         self.assertIn("--require-issues", build)
         self.assertLess(build.index("scripts/check_site.py"), build.index("upload-pages-artifact"))
+
+    def test_the_release_build_keeps_what_it_printed_and_the_site_may_read_it(self):
+        """The one command runs inside the wrapper that records its lines; the transcript is set
+        beside the results before the check of what is kept; the site's build reads the record of
+        the last run from its own repository, with a token that reads and writes nothing else."""
+        build = jobs(FILES["release-build.yml"])["build"]
+        wrapped = next(block for block in run_blocks(build) if 'scripts/build_release.py "$@"' in block)
+        self.assertRegex(re.sub(r"\s+", " ", wrapped.replace("\\\n", " ")),
+                         r'transcript\.py --out "\$RUNNER_TEMP/transcript\.json" -- uv run .* scripts/build_release\.py "\$@"')
+        keep = build.index('--keep "$RUNNER_TEMP/transcript.json" --into "$RUNNER_TEMP/release-run/results"')
+        self.assertLess(build.index("transcript.py \\\n            --out"), keep)
+        self.assertLess(keep, build.index('--check "$RUNNER_TEMP/release-run/results"'))
+        self.assertLess(keep, build.index("uses: actions/upload-artifact@"))
+        self.assertIn("schedule:", FILES["release-build.yml"].split("\njobs:\n")[0])
+        publish = jobs(FILES["release-build.yml"])["publish"]
+        self.assertNotIn("transcript", publish, "a release holds the manifest and nothing else")
+        self.assertTrue((ROOT / "scripts/last_run.py").is_file())
 
     def test_a_release_is_checked_by_the_gate_before_it_is_published(self):
         """The job that publishes is the only one that can write, and it publishes what

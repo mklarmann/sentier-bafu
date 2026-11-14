@@ -86,6 +86,32 @@ def named(data, provider: str = PROVIDER, where: str = "") -> list[str]:
     return found
 
 
+_NAME = r"[A-ZÀ-Þ][\w'’.-]*(?: [A-ZÀ-Þ][\w'’.-]*)+"
+
+
+def confirmers(data, provider: str = PROVIDER) -> set[str]:
+    """What a text would repeat if it named who confirmed: every `confirmed_by` of `data`
+    that is not in the public form, and each run of two or more capitalised words in it,
+    which is how a person's name is written. The provider's own name and a date are not
+    among them. For text that has no fields to rewrite (`transcript.py`)."""
+    found: set[str] = set()
+
+    def walk(value):
+        if isinstance(value, dict):
+            for key, item in value.items():
+                if key == FIELD and isinstance(item, str) and not is_public(item, provider):
+                    found.add(item)
+                    found.update(re.findall(_NAME, re.sub(_DATE, " ", item)))
+                else:
+                    walk(item)
+        elif isinstance(value, list):
+            for item in value:
+                walk(item)
+
+    walk(data)
+    return {word for word in found if word.strip() and word != provider}
+
+
 def json_files(paths) -> list[Path]:
     files = []
     for path in map(Path, paths):

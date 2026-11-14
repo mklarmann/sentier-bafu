@@ -58,7 +58,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from release_build import adapter, public_summary, release_manifest  # noqa: E402
+from release_build import adapter, public_summary, release_manifest, step_lines  # noqa: E402
 from release_build import layer as layer_file  # noqa: E402
 
 REPOSITORY = Path(__file__).resolve().parents[1]
@@ -896,7 +896,16 @@ def release(args: argparse.Namespace) -> int:
         }
         if not ok:
             print(f"[{name}] failed: {steps[-1]['reason']}", flush=True)
-        return ok
+            return False
+        # What the step produced, from its own record: the log of a run says what was in it.
+        print(
+            f"[{name}] completed in {result['seconds']} s, "
+            f"peak memory {result['peak_memory_mb']:.0f} MB",
+            flush=True,
+        )
+        for line in step_lines.lines(name, out):
+            print(line, flush=True)
+        return True
 
     provider, patched = out / "provider", out / "patched"
     summary = patched / "release-summary.json"

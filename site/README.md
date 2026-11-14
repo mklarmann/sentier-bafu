@@ -74,6 +74,7 @@ A comment on a line of its own is replaced by a generated block. Both forms work
 | `second-measurement-list` | the five findings that have waited longest for a second measurement, and a link to all of them |
 | `recent-changes` | the five newest dated steps |
 | `patch-table` | every community patch from `community/patches.json`, which `scripts/patches_snapshot.py` writes from the patch registry: what it does, the finding it answers, who wrote it, who authorised it |
+| `last-run` | the last release build as it was recorded: whether it worked, what is blocking, what was in it, each step, and every line the run printed, with a replay. Read by `scripts/last_run.py` from GitHub when the site is built; `--last-run FILE` gives a saved record instead, and `--offline` builds without one |
 | `data-files` | the machine-readable files with links |
 | `lookup` | the field that looks up a dataset code, a finding number or a word |
 

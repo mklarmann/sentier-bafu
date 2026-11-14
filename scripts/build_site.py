@@ -25,8 +25,10 @@ from urllib.parse import urlsplit
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import community  # noqa: E402
+import github_api  # noqa: E402
+import last_run  # noqa: E402
 import triage  # noqa: E402
-from sitebuild import contributions, data, findings, overview, pages, prose, shell, status  # noqa: E402
+from sitebuild import contributions, data, findings, lastrun, overview, pages, prose, shell, status  # noqa: E402
 from sitebuild.text import esc, plural  # noqa: E402,F401
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -58,7 +60,8 @@ def build_date():
 
 class Site:
     def __init__(self, out, source_repository=None, source_ref=None, preview_url=None,
-                 issues_snapshot=None, offline=False, require_issues=False, root=ROOT):
+                 issues_snapshot=None, offline=False, require_issues=False, root=ROOT,
+                 last_run_snapshot=None, runs_repository=None):
         self.out = Path(out)
         self.root = Path(root)
         # A record that `community.py check` refuses must not be built into a page either.
@@ -92,6 +95,9 @@ class Site:
             self.repo, issues_snapshot, offline, require_issues
         )
         self.triage = triage.assemble(self.findings, self.repo, issues, self.patches)
+        # The last release build, read from the runs of the repository that builds this site.
+        runs = runs_repository or os.environ.get("GITHUB_REPOSITORY") or github_api.repository_slug(self.repo)
+        self.last_run = last_run.load(runs, last_run_snapshot, offline)
         self.built = build_date()
         self.revision = revision(self.root)
         self.written = set()
@@ -245,6 +251,7 @@ class Site:
             "second-measurement-list": (lambda: overview.second_measurement_list(self, up), False),
             "recent-changes": (lambda: pages.change_lines(self, self.changes[:5], up), False),
             "patch-table": (lambda: pages.patch_table(self, up), False),
+            "last-run": (lambda: lastrun.last_run(self, up), False),
             "data-files": (lambda: pages.data_files(self, up), False),
             "lookup": (lambda: shell.lookup(self, up), False),
         }
@@ -343,6 +350,7 @@ class Site:
         # GitHub Pages serves 404.html for any missing address, so its links start at the root.
         self.write("404.html", shell.not_found(self))
         data.write_data(self)
+        self.write_json("api/v1/last-run.json", lastrun.public_record(self.last_run))
         self.write("sitemap.xml", pages.sitemap(self))
 
         for page, source in self.site_links.items():
@@ -371,8 +379,9 @@ class Site:
 
 
 def build(out, source_repository=None, source_ref=None, preview_url=None, issues_snapshot=None,
-          offline=False, require_issues=False, root=ROOT):
-    Site(out, source_repository, source_ref, preview_url, issues_snapshot, offline, require_issues, root).build()
+          offline=False, require_issues=False, root=ROOT, last_run_snapshot=None, runs_repository=None):
+    Site(out, source_repository, source_ref, preview_url, issues_snapshot, offline, require_issues, root,
+         last_run_snapshot, runs_repository).build()
 
 
 if __name__ == "__main__":
@@ -384,6 +393,8 @@ if __name__ == "__main__":
     parser.add_argument("--issues", type=Path, help="Issue snapshot (JSON) instead of reading GitHub")
     parser.add_argument("--offline", action="store_true", help="Do not read issues from GitHub")
     parser.add_argument("--require-issues", action="store_true", help="Fail when GitHub cannot be read")
+    parser.add_argument("--last-run", type=Path, help="Record of the last release build (JSON) instead of reading GitHub")
+    parser.add_argument("--runs-repository", help="owner/name whose release builds are shown (default: this repository)")
     args = parser.parse_args()
     build(args.out, args.source_repository, args.source_ref, args.preview_url, args.issues,
-          args.offline, args.require_issues)
+          args.offline, args.require_issues, last_run_snapshot=args.last_run, runs_repository=args.runs_repository)
