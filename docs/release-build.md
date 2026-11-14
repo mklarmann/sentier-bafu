@@ -61,6 +61,10 @@ process; peak memory is the largest resident size of the step's process tree:
 | exports | 188 | 3.0 GB | four formats written, each read back without a difference |
 | the whole command | 615 | 3.2 GB | |
 
+Since 14 November 2026 the exports step also packs the patched files as ecoSpold v1 with
+the label and the credit. In build 8 on GitHub that took 11 s to write and 17 s to read
+back, without a difference.
+
 A second run, in another checkout with the tools cloned and the pinned data downloaded
 again, and through the workflow's own steps, gave the same patched files (fingerprint
 `f08a6b23…0978`), the same importer tables, the same scores of every dataset in all 25

@@ -186,10 +186,13 @@ datasets, 420,063 exchanges, 1,927 elementary flows in use):
 | `bafu-2026-v1-patched-openlca.zip` | 48.3 MB | 11,947 processes and 13,874 flows; every exchange with its flow, unit, provider and amount; credit and label in every process |
 | `bafu-2026-v1-patched-ilcd.zip` | 54.8 MB | 11,947 process datasets counted; the credit and the label searched in each. Not compared exchange by exchange |
 | `bafu-2026-v1-patched-simapro.csv` | 50.9 MB | 11,947 processes; 114,291 input rows, each resolving to one product; 293,747 elementary rows with section, name, subcompartment, unit and amount |
+| `bafu-2026-v1-patched-ecospold1.zip` | 46.8 MB | 11,947 files, one for every dataset of the database; each valid EcoSpold 1, with the label and the credit; with those taken off, each equal to the file the patch run wrote (267 MB in all, fingerprint `f08a6b23…0978`) |
 | `MODIFICATIONS.json`, `MODIFICATIONS.md` | 4.3 MB, 19 kB | |
 
-No difference was found in any of the four, in each of three runs. The step took 188 s
+No difference was found in any of the first four, in each of three runs. The step took 188 s
 and 3.0 GB at its peak in the first run (330 s in the two others, on a machine under load).
+The ecoSpold v1 archive was added on 14 November 2026 and has been measured in one run,
+build 8 on GitHub: written in 11 s, read back in 17 s, no difference.
 The SimaPro file has 78 input rows fewer than the database has technosphere exchanges: an
 input of a dataset's own product is not a row, it is subtracted from the product amount.
 
@@ -219,9 +222,16 @@ Read these before relying on a file. Each is pinned by a test in `export-tests/`
   differed in its metadata where that names this repository's revision. The openLCA archive
   differed: every dataset in it carries the time the patch run finished.
 - **Formulas** of parameterised amounts are not written; the amounts are.
+- **The ecoSpold v1 archive is not compared with the database exchange by exchange.** It is
+  compared with the files the database was built from, and with the database by its
+  datasets only. On the test data the same files give the same archive; on BAFU:2026 v1 its
+  checksum has been measured in one run.
+- **A contribution has no ecoSpold v1 archive.** Its changes exist in its database and in
+  the four other formats.
 - **No file has been imported into openLCA or SimaPro.** The checks read the files with
   independent parsers. Scores recomputed from the files equal Brightway's on the test
-  database; that is a reading of the files, not a run of either tool.
+  database; that is a reading of the files, not a run of either tool. The ecoSpold v1
+  archive has not been opened in a tool either.
 
 ## Tests
 
@@ -229,6 +239,9 @@ Read these before relying on a file. Each is pinned by a test in `export-tests/`
 uv run --no-project --python 3.12 --with-requirements export-tests/requirements.txt \
     pytest export-tests
 ```
+
+The ecoSpold v1 archive has tests of its own, on files that a real patch run wrote:
+`uv run pytest tests/test_ecospold_export.py`.
 
 The tests build a small made-up database (`export-tests/synthetic.py`), export it, read it
 back and compare. Tests marked `xfail` state what the writers do not do yet; they fail the
