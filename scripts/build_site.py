@@ -359,8 +359,9 @@ class Site:
             opening, rendered = rendered.split(OPENING_END, 1)
         # The packages of a release are also offered beside the text, under "On this page".
         beside = lastrun.rail_box(self, up) if "build-files" in used else ""
-        # A file offered under terms asks first: the question, once on the page that offers it.
-        if "data-download=" in rendered + beside:
+        # A file offered under terms asks first: the question, once on the page that offers it,
+        # wherever on the page the link is (the run that opens the page, the text, beside it).
+        if "data-download=" in opening + rendered + beside:
             rendered += lastrun.download_dialog(self, up)
         return shell.prose_page(self, doc, rendered, sections, listing=wide, up=up, opening=opening, beside=beside)
 
@@ -416,12 +417,18 @@ class Site:
         self.write("404.html", shell.not_found(self))
         data.write_data(self)
         if self.last_run is not None:
-            self.write_json("api/v1/last-run.json", lastrun.public_record(self.last_run))
+            self.write_json("api/v1/last-run.json", lastrun.public_record(self.last_run, self))
         self.write("sitemap.xml", pages.sitemap(self))
 
         for page, source in self.site_links.items():
             if not (out / page).is_file() or (out / page) not in self.written:
                 raise ValueError(f"{source} links to {page}, which the site does not have")
+        # A file handed out only after the question is never reachable from the site without it.
+        if self.last_run is not None and (found := lastrun.direct_links(self, out)):
+            raise ValueError(
+                "The built site leads to a file around the question that hands it out: "
+                + "; ".join(f"{page}: {address}" for page, address in found[:5])
+            )
         if rebuilt:
             # A file of an earlier build that this one no longer writes would stay reachable.
             for stale in sorted(p for p in out.rglob("*") if p.is_file() and p not in self.written and p.name != ".nojekyll"):

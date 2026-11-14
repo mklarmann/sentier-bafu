@@ -414,7 +414,10 @@ def shape_errors(record):
         found.append("`releases` is not a list")
     else:
         for release in releases:
-            addresses = [release.get("url"), *(a.get("url") for a in release.get("assets") or ())]
+            # A file may be named without its address: a site that asks before a download
+            # leaves the address out of its own copy of the record.
+            assets = [a.get("url") for a in release.get("assets") or () if a.get("url") is not None]
+            addresses = [release.get("url"), *assets]
             if not all(str(a or "").startswith("https://github.com/") for a in addresses):
                 found.append(
                     "what is kept under a tag, or one of its files, is not at an address on GitHub"

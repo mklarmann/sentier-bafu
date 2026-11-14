@@ -5,6 +5,7 @@ each names the gap. They start failing the day the writer closes it, which is th
 signal to turn them into ordinary tests.
 """
 
+import bz2
 import copy
 import hashlib
 import json
@@ -1288,6 +1289,7 @@ def test_no_file_names_who_confirmed_a_problem_for_the_provider(tmp_path):
     assert step_["confirmed_by"] == "BAFU (12 October 2026)"
     assert "Confirmed by: BAFU (12 October 2026)" in (out / "MODIFICATIONS.md").read_text()
     texts = [path.read_bytes() for path in out.iterdir() if path.suffix in (".json", ".md", ".csv")]
+    texts += [bz2.decompress(path.read_bytes()) for path in out.glob("*.bw2package")]
     for archive in out.glob("*.zip"):
         with zipfile.ZipFile(archive) as packed:
             texts += [packed.read(member) for member in packed.namelist()]

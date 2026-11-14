@@ -167,3 +167,40 @@ class Files(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class NamesOutsideJson(unittest.TestCase):
+    """A file written from a run summary may carry who confirmed outside any JSON field."""
+
+    def test_the_check_searches_every_kept_file_and_archive_for_who_confirmed(self):
+        import bz2
+        import zipfile
+
+        confirmed = "Jane Someone, BAFU (email, 12 October 2026)"
+        raw = {"steps": [{"id": "0001", "confirmed_by": confirmed}]}
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            raw_file = root / "release-summary.json"
+            raw_file.write_text(json.dumps(raw))
+            kept = root / "kept"
+            kept.mkdir()
+            (kept / "MODIFICATIONS.json").write_text(json.dumps(public_summary.public(raw)))
+            (kept / "clean.csv").write_text("Confirmed by: BAFU (12 October 2026)\n")
+            arguments = ["--check", str(kept), "--names-from", str(raw_file)]
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(public_summary.main(arguments), 0)
+            (kept / "MODIFICATIONS.md").write_text("Confirmed by: Jane Someone, BAFU\n")
+            with zipfile.ZipFile(kept / "copy.zip", "w") as archive:
+                archive.writestr("inside.xml", '<a comment="Jane Someone"/>')
+            package = json.dumps({"x": "Jane Someone"}).encode()
+            (kept / "copy.bw2package").write_bytes(bz2.compress(package))
+            said = io.StringIO()
+            with contextlib.redirect_stdout(said):
+                self.assertEqual(public_summary.main(arguments), 1)
+            text = said.getvalue()
+            for place in ("MODIFICATIONS.md", "copy.zip:inside.xml", "copy.bw2package"):
+                self.assertIn(place, text)
+            self.assertNotIn("clean.csv", text)
+            # without the run's own summary only the JSON fields are read, as before
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(public_summary.main(["--check", str(kept)]), 0)

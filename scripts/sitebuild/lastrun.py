@@ -640,11 +640,12 @@ def megabytes(size):
 
 
 def tagged_files(record):
-    """Every file kept under a tag, by its SHA-256, the newest first: {sha256: file}."""
+    """Every file kept under a tag, by its SHA-256, the newest first: {sha256: file}. A file
+    whose address the record does not give can't be offered and is left out."""
     held = {}
     for release in record.get("releases") or ():
         for asset in release.get("assets") or ():
-            if SHA256.fullmatch(str(asset.get("sha256") or "")):
+            if SHA256.fullmatch(str(asset.get("sha256") or "")) and asset.get("url"):
                 held.setdefault(asset["sha256"], asset)
     return held
 
@@ -752,7 +753,7 @@ def packages(site, up=""):
         listed_ = '<ul class="plain releases">' + "".join(
             f'<li><strong><code>{esc(release["tag"])}</code></strong> <span class="quiet">· {day(release["published"], long=True)}</span> · '
             f'{ext(release["url"], TAG["on GitHub"])}'
-            + "".join(f'<br>{download(site, asset["url"], asset["name"], megabytes(asset["size"]), "<code>" + esc(asset["name"]) + "</code>", up)}'
+            + "".join(f'<br>{download(site, asset["url"], asset["name"], megabytes(asset["size"]), "<code>" + esc(asset["name"]) + "</code>", up) if asset.get("url") else "<code>" + esc(asset["name"]) + "</code>"}'
                       f' <span class="quiet">{megabytes(asset["size"])}</span>'
                       for asset in release["assets"])
             + "</li>"
@@ -807,6 +808,38 @@ def rail_box(site, up=""):
     )
 
 
-def public_record(record):
-    """The record as a file of the site: as it was read."""
-    return record
+def asked(site, asset):
+    """Whether a file kept under a tag is handed out only after the question."""
+    terms = getattr(site, "download", None)
+    return bool(terms) and asset.get("name") not in terms["free"]
+
+
+def public_record(record, site=None):
+    """The record as a file of the site: as it was read, except that where the site asks
+    before a download, a file it asks about is named without its address. The page leads to
+    each such file through the question; its own copy of the record must not lead around it."""
+    if not any(asked(site, a) for release in record.get("releases") or () for a in release.get("assets") or ()):
+        return record
+    return record | {"releases": [
+        release | {"assets": [asset | {"url": None} if asked(site, asset) else asset for asset in release.get("assets") or ()]}
+        for release in record["releases"]
+    ]}
+
+
+def direct_links(site, out):
+    """Where the built site holds the plain address of a file it hands out only after the
+    question: [(file of the site, address)]. Read from the built files, every page and every
+    data file, so that a link written by hand into a page is found too."""
+    addresses = {
+        asset["url"] for release in (site.last_run or {}).get("releases") or ()
+        for asset in release.get("assets") or () if asset.get("url") and asked(site, asset)
+    }
+    found = []
+    for path in sorted(p for p in out.rglob("*") if p.suffix in (".html", ".json", ".xml") and p.is_file()):
+        text = path.read_text(encoding="utf-8", errors="replace")
+        for address in addresses:
+            # inside data-download="…" the address is what the question hands out: allowed
+            plain = text.replace(f'data-download="{esc(address)}"', "")
+            if address in plain or esc(address) in plain:
+                found.append((str(path.relative_to(out)), address))
+    return found

@@ -226,6 +226,8 @@ def from_manifest(manifest, names=None) -> dict:
         if quoted(text, summary.MAX_TEXT) not in said:
             said.append(quoted(text, summary.MAX_TEXT))
     exports = manifest.get("exports") or {}
+    # A build made for a tag: the page says itself whether it was kept, from GitHub's record
+    # of the job that keeps it, so the manifest's note about that is not repeated there.
     remarks = (
         [quoted(exports["note"], summary.MAX_TEXT)]
         if exports.get("published") is False and exports.get("note")

@@ -130,12 +130,15 @@ jobs:
             "$RUNNER_TEMP/release-run" --out "$GITHUB_STEP_SUMMARY"
       - name: Check that what is kept names nobody who confirmed for BAFU
         # The run writes its summary in the public form and checks the folder itself; this
-        # is the same check again, on what the next two steps upload.
+        # is the same check again, on what the next steps upload, and it searches every kept
+        # file, the export files and the members of their archives too, for who the run's own
+        # summary says confirmed.
         id: public
         if: ${{ !cancelled() }}
         run: |
           uv run --no-project --python 3.12 python scripts/release_build/public_summary.py \
-            --check "$RUNNER_TEMP/release-run/results" "$RUNNER_TEMP/release-run/exports/patched"
+            --check "$RUNNER_TEMP/release-run/results" "$RUNNER_TEMP/release-run/exports/patched" \
+            --names-from "$RUNNER_TEMP/release-run/patched/release-summary.json"
       - name: Keep the manifest, the transcript, the audits and the comparisons (no inventory)
         if: ${{ !cancelled() && steps.public.outcome == 'success' }}
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0

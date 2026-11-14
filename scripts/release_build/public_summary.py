@@ -12,19 +12,26 @@ Nothing else of the field survives. The date is the only part that is copied, an
 it has the shape of a date.
 
     python3 scripts/release_build/public_summary.py IN [IN ...] --out FOLDER
-    python3 scripts/release_build/public_summary.py --check PATH [PATH ...]
+    python3 scripts/release_build/public_summary.py --check PATH [PATH ...] [--names-from SUMMARY]
 
 The first writes the public form of each JSON file (or of every `*.json` in a folder) into
 FOLDER and checks what it wrote. `--check` fails, with status 1, if a JSON file below a path
-holds a `confirmed_by` that is not in the public form. Standard library only, and it runs on
-the Python a runner has.
+holds a `confirmed_by` that is not in the public form. With `--names-from` and the run's own
+summary, it also searches every file below the paths, of any kind, and every member of a zip
+or bzip2 file among them, for who that summary says confirmed: a file written from the
+summary (the record of changes inside an export) may carry a name outside any JSON field.
+Standard library only, and it runs on the Python a runner has.
 """
 
 import argparse
+import bz2
+import contextlib
 import copy
+import html
 import json
 import re
 import sys
+import zipfile
 from pathlib import Path
 
 PROVIDER = "BAFU"
@@ -132,6 +139,40 @@ def check(paths, provider: str = PROVIDER) -> list[str]:
     return found
 
 
+def contents(file: Path):
+    """(where, bytes) of a file, and of each member if it is a zip or bzip2 file."""
+    if zipfile.is_zipfile(file):
+        with zipfile.ZipFile(file) as archive:
+            for member in archive.namelist():
+                yield f"{file.name}:{member}", archive.read(member)
+        return
+    data = file.read_bytes()
+    if data[:3] == b"BZh":
+        with contextlib.suppress(OSError, ValueError):  # not bzip2 after all: searched as it is
+            data = bz2.decompress(data)
+    yield file.name, data
+
+
+def mentions(paths, names) -> list[str]:
+    """Every file below `paths`, or member of one, that holds one of `names`: as written, as
+    JSON writes it, or as HTML escapes it."""
+    needles = set()
+    for name in names:
+        needles |= {name.encode(), json.dumps(name)[1:-1].encode(), html.escape(name).encode()}
+    files = []
+    for path in map(Path, paths):
+        if path.is_dir():
+            files += sorted(p for p in path.rglob("*") if p.is_file())
+        elif path.is_file():
+            files.append(path)
+    return [
+        where
+        for file in files
+        for where, data in contents(file)
+        if any(needle in data for needle in needles)
+    ]
+
+
 def write_public(paths, out: Path, provider: str = PROVIDER) -> list[Path]:
     """The public form of each JSON file of `paths`, written into `out` under its name."""
     out.mkdir(parents=True, exist_ok=True)
@@ -150,6 +191,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--out", type=Path, help="Write the public form of each file here")
     parser.add_argument("--check", action="store_true", help="Only check; write nothing")
     parser.add_argument("--provider", default=PROVIDER, help=f"Default: {PROVIDER}")
+    parser.add_argument(
+        "--names-from",
+        type=Path,
+        metavar="SUMMARY",
+        help="The run's own summary: also search every file for who it says confirmed",
+    )
     args = parser.parse_args(argv)
     if args.check == bool(args.out):
         parser.error("give --out FOLDER to write the public form, or --check to check files")
@@ -159,6 +206,9 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Wrote the public form of {len(written)} file(s) to {args.out}")
         checked = [args.out]
     found = check(checked, args.provider)
+    if args.names_from and args.names_from.is_file():
+        names = confirmers(json.loads(args.names_from.read_text(encoding="utf-8")), args.provider)
+        found += [f"{place}: names who confirmed" for place in mentions(checked, names)]
     for place in found:
         print(f"names who confirmed otherwise than as {args.provider} and a date: {place}")
     return int(bool(found))

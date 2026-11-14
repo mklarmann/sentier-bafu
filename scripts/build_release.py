@@ -1051,6 +1051,8 @@ def release(args: argparse.Namespace) -> int:
     if errors:
         data["status"] = "failed"
         data["problems"] = [*data["problems"], *(f"manifest: {error}" for error in errors)]
+        # a build that failed keeps no file under its tag, and its manifest says so
+        data["exports"] |= {"published": False, "note": release_manifest.NOT_PUBLISHED}
     release_manifest.write(data, out / "manifest.json")
     # The run's own account for the site: what each step did, in words, from the manifest.
     try:

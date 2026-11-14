@@ -900,6 +900,11 @@ def shape_errors(data) -> list[str]:
             shape.fail("exports", "says whether its export files are kept, true or false")
         elif published and not data.get("tag"):
             shape.fail("exports", "a manifest says that its export files are kept only for a tag")
+        elif published and (data.get("status") != "completed" or data.get("not_releasable")):
+            shape.fail(
+                "exports",
+                "a manifest says that its export files are kept only for a build that may be kept",
+            )
     contributions = data["contributions"]
     names = (
         "id",
@@ -1114,11 +1119,11 @@ def main(argv: list[str] | None = None) -> int:
     errors = shape_errors(data)
     if not errors and args.release:
         errors = [f"not a release: {error}" for error in release_errors(data)]
-    for error in errors[:20]:
-        print(f"{name}: {error}")
     config = load(CONFIG) or {}
     terms = terms_of(config)
-    if args.files:
+    # The files are checked only for a manifest that passed: a file check never replaces
+    # what the manifest's own check found.
+    if not errors and args.files:
         errors = files_errors(data, args.files)
         if not terms or not args.site_url:
             errors.append(

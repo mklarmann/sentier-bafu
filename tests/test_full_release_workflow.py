@@ -117,6 +117,8 @@ def test_what_is_uploaded_or_summarised_names_nobody_who_confirmed_for_the_provi
         '--check "$RUNNER_TEMP/release-run/results" "$RUNNER_TEMP/release-run/exports/patched"'
         in BUILD
     )
+    # ... and every kept file, archives included, for who the run's own summary says confirmed
+    assert '--names-from "$RUNNER_TEMP/release-run/patched/release-summary.json"' in BUILD
     # An upload that runs after a failed step waits for that check all the same
     for text in (PROPOSED, BUILD):
         for condition in re.findall(r"if: (.*)\n +uses: actions/upload-artifact@", text):

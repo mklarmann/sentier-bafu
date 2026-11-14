@@ -1171,6 +1171,7 @@ def export_release(
     # The files may be handed on, so the record in them names who confirmed a problem for
     # the provider as the public form does: the organisation and the date, never a person.
     summary = public_summary.public(summary)
+    extra_steps = public_summary.public(list(extra_steps))
     labels = labels or load_labels()
     check_marker(databases, summary)
     nodes = all_nodes(databases)

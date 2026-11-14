@@ -743,6 +743,46 @@ class PageTests(unittest.TestCase):
         self.assertNotIn("data-download", lastrun.packages(plain) + lastrun.last_run(plain))
         self.assertEqual(lastrun.download_dialog(plain), "")
 
+    def test_the_sites_own_copy_of_the_record_does_not_lead_around_the_question(self):
+        record = a_record()
+        files = [f["name"] for f in record["summary"]["files"]]
+        releases, base = self.kept(record, *files)
+        record = a_record(releases=releases)
+        site = a_site(record)
+        site.download = lastrun.download_settings(json.loads((ROOT / "site/config.json").read_text()), {"about/terms.html"})
+        public = lastrun.public_record(record, site)
+        text = json.dumps(public)
+        for name in files:
+            self.assertNotIn(f"{base}/{name}", text)
+        self.assertIn(f"{base}/manifest.json", text)  # holds no data: its address stays
+        # the files are still named, with their size and checksum; the copy is a valid record
+        assets = public["releases"][0]["assets"]
+        self.assertEqual([a["name"] for a in assets], ["manifest.json", *files])
+        self.assertTrue(all(a["sha256"] for a in assets))
+        self.assertEqual(last_run.shape_errors(public), [])
+        # read back as a record, it offers nothing: a file without an address can't be offered
+        self.assertEqual(lastrun.offered(public), {})
+        # a site that asks nothing keeps the record as it was read
+        self.assertIs(lastrun.public_record(record, a_site(record)), record)
+
+    def test_a_built_site_that_leads_to_a_file_around_the_question_is_found(self):
+        record = a_record()
+        files = [f["name"] for f in record["summary"]["files"]]
+        releases, base = self.kept(record, *files)
+        site = a_site(a_record(releases=releases))
+        site.download = lastrun.download_settings(json.loads((ROOT / "site/config.json").read_text()), {"about/terms.html"})
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp)
+            (out / "asks.html").write_text(lastrun.packages(site) + lastrun.last_run(site))
+            (out / "free.html").write_text(f'<a href="{base}/manifest.json">manifest</a>')
+            self.assertEqual(lastrun.direct_links(site, out), [])
+            (out / "by-hand.html").write_text(f'<a href="{base}/{files[0]}">the file</a>')
+            (out / "api.json").write_text(json.dumps({"url": f"{base}/{files[1]}"}))
+            self.assertEqual(
+                lastrun.direct_links(site, out),
+                [("api.json", f"{base}/{files[1]}"), ("by-hand.html", f"{base}/{files[0]}")],
+            )
+
     def test_the_terms_of_a_download_are_checked_before_anything_is_built(self):
         config = json.loads((ROOT / "site/config.json").read_text())
         terms = config["download"]
@@ -1155,6 +1195,25 @@ class SiteTests(unittest.TestCase):
                     self.assertNotIn(f'href="{base}/{name_}"', source)
                 # the link leads to a section of the terms that exists, where a reader without the script lands
                 self.assertIn('id="downloads-from-this-site"', (out / "about/terms.html").read_text())
+
+    def test_a_page_with_only_the_run_carries_the_question_too(self):
+        """The run opens its page, above the text: a file it offers asks first all the same."""
+        record = a_record()
+        releases, _ = PageTests.kept(record, *[f["name"] for f in record["summary"]["files"]])
+        source = Path(DATA) / "site" / "only-the-run.md"
+        with tempfile.TemporaryDirectory() as tmp:
+            snapshot = Path(tmp) / "last-run.json"
+            snapshot.write_text(json.dumps(a_record(releases=releases)))
+            source.write_text("# Only the run\n\n<!-- generated: last-run -->\n\nSome text.\n")
+            try:
+                with contextlib_silence():
+                    site = build_site.Site(Path(tmp) / "site", offline=True, root=DATA, last_run_snapshot=snapshot)
+                    page = site.document({"title": "Only the run", "source": "site/only-the-run.md", "page": "only-the-run.html"})
+            finally:
+                source.unlink()
+        self.assertGreater(page.count("data-download="), 0)
+        self.assertEqual(page.count('<dialog class="download-terms"'), 1)
+        self.assertEqual(page.count("assets/download.js"), 1)
 
     def test_the_patched_release_page_shows_the_last_run_and_the_site_holds_its_record(self):
         record = a_record(a_manifest(failed="patched build"), conclusion="failure", failed_step="Run the whole path")

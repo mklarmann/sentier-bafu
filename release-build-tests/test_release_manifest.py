@@ -715,6 +715,47 @@ class Command(Folder):
         self.assertEqual(code, 1)
         self.assertIn("only with the terms a download asks for, and the site's address", said)
 
+    def test_a_file_check_never_replaces_what_the_manifest_check_found(self):
+        """The publish job always passes --files: each of these still stops the keeping."""
+        site = "https://example.github.io/sentier-bafu/"
+        cases = (
+            ("an extra field", lambda d: d.__setitem__("inventory", [{"amount": 1.0}])),
+            (
+                "something in the way",
+                lambda d: d["not_releasable"].append("the audit has findings"),
+            ),
+            (
+                "a failed run",
+                lambda d: (d.__setitem__("status", "failed"), d["problems"].append("x")),
+            ),
+            (
+                "a person who confirmed",
+                lambda d: d["patches"][0].__setitem__("confirmed_by", "Jane Doe, BAFU"),
+            ),
+        )
+        for what, change in cases:
+            data = self.manifest()
+            shutil.rmtree(self.out / "handed-over", ignore_errors=True)
+            folder = self.kept_files(data)
+            change(data)
+            path = self.out / "manifest.json"
+            rm.write(data, path)
+            code, said = self.run_main(
+                "--verify", str(path), "--release", "--files", str(folder), "--site-url", site
+            )
+            self.assertEqual(code, 1, what)
+            self.assertNotIn("files it lists", said, what)
+
+    def test_a_manifest_says_its_files_are_kept_only_for_a_build_that_may_be_kept(self):
+        data = self.manifest()
+        self.assertIs(data["exports"]["published"], True)
+        data["status"] = "failed"
+        self.assertIn(
+            "exports: a manifest says that its export files are kept only for a build that "
+            "may be kept",
+            rm.shape_errors(data),
+        )
+
     def kept_files_again(self, data):
         shutil.rmtree(self.out / "handed-over")
         return self.kept_files(data)
