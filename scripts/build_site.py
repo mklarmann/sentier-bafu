@@ -114,7 +114,7 @@ class Site:
                 self.routes.setdefault(source, f"contributions/{cid}.html")
         self.findings = community.load_findings(self.root)
         self.contributions = community.load_contributions(self.root)
-        self.patches = community.load_patches(self.root)
+        self.patches = self.patches_as_built(community.load_patches(self.root))
         issues, self.issues_source = triage.load_issues(
             self.repo, issues_snapshot, offline, require_issues
         )
@@ -205,6 +205,24 @@ class Site:
         if page:
             return page + (sep + fragment if sep else ""), True
         return f"{self.source_repo}/blob/{self.ref}/{relative}" + (sep + fragment if sep else ""), False
+
+    def patches_as_built(self, data):
+        """The patches with their links leading to the source that is built. The record names
+        each patch's file in the repository the site belongs to. A copy built from another
+        repository or branch links to that one, like every other link to a source file: a patch
+        that only a fork's branch has is then found. Built from the repository and branch the
+        record names, nothing changes."""
+        if not data:
+            return data
+        source = data["source"]
+        recorded = f'{source["repository"]}/blob/{source["ref"]}/'
+        built = f"{self.source_repo}/blob/{self.ref}/"
+        if recorded == built:
+            return data
+        return data | {"patches": [
+            patch | {"url": built + patch["url"][len(recorded):]} if patch["url"].startswith(recorded) else patch
+            for patch in data["patches"]
+        ]}
 
     def render(self, text, source, up="", shift=0):
         """Markdown of a prose source to (html, sections); see sitebuild/prose.py."""

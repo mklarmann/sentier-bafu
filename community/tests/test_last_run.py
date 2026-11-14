@@ -1079,6 +1079,29 @@ class SiteTests(unittest.TestCase):
             self.assertNotIn("&lt;", json.dumps(kept), "the file holds the lines as they are, not as HTML")
             self.assertEqual(html.unescape("&lt;b&gt;"), "<b>")
 
+    def test_a_copy_built_from_a_fork_links_every_patch_to_the_branch_that_was_built(self):
+        """The record names a patch's file in the repository the site belongs to. A fork's copy
+        links to its own branch: a patch that is not in that repository yet is then found."""
+        fork, branch, own = "https://github.com/someone/sentier-bafu", "their/branch", f"https://github.com/{REPOSITORY}"
+        patches = json.loads((DATA / "community/patches.json").read_text())["patches"]
+        self.assertTrue(patches)
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            with contextlib_silence():
+                build_site.build(tmp / "fork", fork, branch, offline=True, root=DATA, built_by="someone/sentier-bafu")
+                build_site.build(tmp / "named", own, "main", offline=True, root=DATA)
+                build_site.build(tmp / "plain", offline=True, root=DATA)
+            page = (tmp / "fork" / "patch-and-build.html").read_text()
+            for patch in patches:
+                file = patch["url"].split("/blob/main/", 1)[1]
+                self.assertIn(f'href="{fork}/blob/{branch}/{file}"', page, patch["id"])
+            everything = "".join(path.read_text() for path in (tmp / "fork").rglob("*.html"))
+            self.assertNotIn(f"{own}/blob/main/src/", everything)
+            # Built from the repository and the branch the record names, nothing changes.
+            self.assertIn(f'href="{patches[0]["url"]}"', (tmp / "plain" / "patch-and-build.html").read_text())
+            for path in sorted(path for path in (tmp / "plain").rglob("*") if path.is_file()):
+                self.assertEqual(path.read_bytes(), (tmp / "named" / path.relative_to(tmp / "plain")).read_bytes(), path.name)
+
     def test_a_copy_built_by_another_repository_says_on_every_page_that_it_is_a_preview(self):
         with tempfile.TemporaryDirectory() as tmp:
             with contextlib_silence():
