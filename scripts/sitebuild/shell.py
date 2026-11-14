@@ -52,24 +52,29 @@ def shell(site, title, body, current, up="", page=None, description=None, head="
 '''
 
 
-def contents(sections):
-    """"On this page", beside a prose page with three or more sections."""
-    if len(sections) < 3:
+def contents(sections, beside=""):
+    """"On this page", beside a prose page with three or more sections; and what else the
+    page puts beside its text."""
+    if len(sections) < 3 and not beside:
         return ""
-    return (
-        '<aside class="rail toc" aria-label="On this page"><p class="card-label">On this page</p><ul>'
+    listed = (
+        '<div class="toc-list"><p class="card-label">On this page</p><ul>'
         + "".join(f'<li><a href="#{esc(anchor)}">{name}</a></li>' for anchor, name in sections)
-        + "</ul></aside>"
-    )
+        + "</ul></div>"
+    ) if len(sections) >= 3 else ""
+    return f'<aside class="rail toc" aria-label="On this page">{listed}{beside}</aside>'
 
 
-def prose_page(site, doc, body, sections, listing=False, up=""):
+def prose_page(site, doc, body, sections, listing=False, up="", opening="", beside=""):
     """A Markdown page. A page that holds a list of records takes the full width; any other
-    keeps the reading width and gets its contents beside it."""
+    keeps the reading width and gets its contents beside it. `opening` is what stands above
+    both, over the full width: the page's title and the block that opens it."""
+    top = f'<div class="wrap page-opening"><div class="prose wide">{opening}</div></div>' if opening else ""
+    after = " after-opening" if opening else ""
     if listing:
-        inner = f'<div class="wrap page"><article class="prose wide">{body}</article></div>'
+        inner = f'{top}<div class="wrap page{after}"><article class="prose wide">{body}</article></div>'
     else:
-        inner = f'<div class="wrap page with-rail"><article class="prose">{body}</article>{contents(sections)}</div>'
+        inner = f'{top}<div class="wrap page with-rail{after}"><article class="prose">{body}</article>{contents(sections, beside)}</div>'
     return shell(site, doc["title"], inner, doc.get("nav", doc["page"]), up=up, page=doc["page"],
                  description=doc.get("description"))
 

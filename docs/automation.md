@@ -123,7 +123,7 @@ than this one builds says on every page that it is a preview and not the publish
 
 The build also reads the last release build of its own repository (`scripts/last_run.py`):
 GitHub's record of the last run that has ended, and the manifest and the transcript that run
-kept. That is what `actions: read` is for. The page *Patched release* shows the run as it was
+kept, and the published releases. That is what `actions: read` is for. The page *Patch and release* opens with the run as it was
 recorded, also when it failed. A site is built without the run rather than not built: when the
 record cannot be read the page says so. A release build that ends after the site was built is
 shown by the next build, which is at most a day later.

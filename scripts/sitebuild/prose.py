@@ -163,6 +163,10 @@ def steps(head, rows):
     said = {"ok": "works", "part": "works in part", "todo": "not yet"}
     items = ""
     for number, row in enumerate(rows, 1):
+        # A step keeps the number its row gives it ("7. Exports"), so a list can also be told
+        # from its end; a row without a number is counted.
+        written = re.match(r"\s*(\d+)\.\s*", row[0])
+        number = int(written.group(1)) if written else number
         title = re.sub(r"^\s*\d+\.\s*", "", row[0])
         kind, state = tone(row[-1])
         middle = row[1:-1]

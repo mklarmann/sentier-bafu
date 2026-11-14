@@ -149,6 +149,32 @@ def unpack(archive):
     return found, problems
 
 
+def releases_of(github):
+    """The published releases of patched data, the newest first: tag, date, address and the
+    files each one holds. A draft is not a release, and neither is a tag of another kind."""
+    found = []
+    for release in github.get("/releases?per_page=30") or ():
+        tag = release.get("tag_name") or ""
+        if release.get("draft") or not tag.startswith("patched-"):
+            continue
+        found.append(
+            {
+                "tag": text(tag, 100),
+                "published": text(release.get("published_at"), 30),
+                "url": text(release.get("html_url")),
+                "assets": [
+                    {
+                        "name": text(asset.get("name"), 200),
+                        "size": asset.get("size"),
+                        "url": text(asset.get("browser_download_url"), 500),
+                    }
+                    for asset in release.get("assets") or ()
+                ],
+            }
+        )
+    return found
+
+
 def kept_by(github, run_id, fetch=fetch_address):
     """What a run kept: (kept, note, manifest, transcript)."""
     listing = github.get(f"/actions/runs/{int(run_id)}/artifacts?per_page=100") or {}
@@ -197,6 +223,7 @@ def fetch(repository, token=None, transport=None, fetch=fetch_address):
         "kept_note": note,
         "manifest": manifest,
         "transcript": lines,
+        "releases": releases_of(github),
     }
 
 
@@ -232,6 +259,15 @@ def shape_errors(record):
         found.append("`kept` is not one of " + ", ".join(KEPT))
     if not isinstance(record.get("jobs"), list):
         found.append("`jobs` is not a list")
+    releases = record.get("releases", [])
+    if not isinstance(releases, list):
+        found.append("`releases` is not a list")
+    else:
+        for release in releases:
+            addresses = [release.get("url"), *(a.get("url") for a in release.get("assets") or ())]
+            if not all(str(a or "").startswith("https://github.com/") for a in addresses):
+                found.append("a release or one of its files is not at an address on GitHub")
+                break
     if record.get("manifest") is not None:
         found += [f"manifest: {e}" for e in release_manifest.shape_errors(record["manifest"])]
     if record.get("transcript") is not None:

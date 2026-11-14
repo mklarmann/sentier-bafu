@@ -22,18 +22,48 @@
   "sibling_name": "AGRIBALYSE preview",
   "sibling_url": "https://mklarmann.github.io/sentier-agribalyse/",
   "nav": [
-    ["index.html", "Overview"],
-    ["findings.html", "Findings"],
-    ["feedback.html", "Feedback to BAFU"],
-    ["contributions.html", "Contributions"],
-    ["patched-release.html", "Patched release"],
-    ["take-part.html", "Take part"]
+    [
+      "index.html",
+      "Overview"
+    ],
+    [
+      "findings.html",
+      "Findings"
+    ],
+    [
+      "feedback.html",
+      "Feedback to BAFU"
+    ],
+    [
+      "contributions.html",
+      "Contributions"
+    ],
+    [
+      "patched-release.html",
+      "Patch and release"
+    ],
+    [
+      "take-part.html",
+      "Take part"
+    ]
   ],
   "footer": [
-    ["about/terms.html", "Data and terms"],
-    ["about/checks.html", "How builds are checked"],
-    ["about/data.html", "Data (JSON)"],
-    ["housekeeping.html", "Housekeeping"]
+    [
+      "about/terms.html",
+      "Data and terms"
+    ],
+    [
+      "about/checks.html",
+      "How builds are checked"
+    ],
+    [
+      "about/data.html",
+      "Data (JSON)"
+    ],
+    [
+      "housekeeping.html",
+      "Housekeeping"
+    ]
   ],
   "documents": [
     {
@@ -55,11 +85,13 @@
       "description": "Proposals that go beyond a single finding: mappings, models, rebuilt inventories and method variants, each with its checks and reviewers."
     },
     {
-      "title": "Patched release",
+      "title": "Patch and release",
       "source": "site/patched-release.md",
       "page": "patched-release.html",
-      "also": ["site/import.md"],
-      "description": "BAFU's release with import fixes and community patches applied: what works today, what is planned, and what to check before sharing a build."
+      "also": [
+        "site/import.md"
+      ],
+      "description": "How a change reaches a patched release: the last run on BAFU's full release, step by step and line for line, what blocks a release, and how to run it yourself."
     },
     {
       "title": "Take part",

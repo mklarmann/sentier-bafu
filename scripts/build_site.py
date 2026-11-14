@@ -37,6 +37,10 @@ RECORD_FILE = re.compile(r"community/(findings|contributions)/(?:[^/]+/)*([FC][0
 # <!-- findings-list --> or <!-- generated: findings-list -->, alone in a paragraph or not.
 MARKER = re.compile(r"<p>\s*<!--\s*(?:generated:\s*)?([a-z][a-z-]*)\s*-->\s*</p>|<!--\s*(?:generated:\s*)?([a-z][a-z-]*)\s*-->")
 COUNT = re.compile(r"<!--\s*(?:generated:\s*)?count:([a-z:-]+)\s*-->")
+# A block that opens its page: what precedes it and the block itself stand above the page's two
+# columns, over the full width; "On this page" begins below it.
+OPENING = {"last-run"}
+OPENING_END = "<!-- end of the opening -->"
 SAFE_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 
 
@@ -258,6 +262,7 @@ class Site:
             "recent-changes": (lambda: pages.change_lines(self, self.changes[:5], up), False),
             "patch-table": (lambda: pages.patch_table(self, up), False),
             "last-run": (lambda: lastrun.last_run(self, up), False),
+            "release-packages": (lambda: lastrun.packages(self, up), False),
             "data-files": (lambda: pages.data_files(self, up), False),
             "lookup": (lambda: shell.lookup(self, up), False),
         }
@@ -291,7 +296,7 @@ class Site:
 
         text = COUNT.sub(count, (self.root / source).read_text())
         rendered, sections = self.render(text, source, up)
-        blocks, wide = self.blocks(up), False
+        blocks, wide, used = self.blocks(up), False, set()
 
         def block(match):
             nonlocal wide
@@ -300,10 +305,16 @@ class Site:
                 return match.group(0)
             make, full = blocks[name]
             wide = wide or full
-            return make()
+            used.add(name)
+            return make() + (OPENING_END if name in OPENING else "")
 
         rendered = MARKER.sub(block, rendered)
-        return shell.prose_page(self, doc, rendered, sections, listing=wide, up=up)
+        opening = ""
+        if OPENING_END in rendered:
+            opening, rendered = rendered.split(OPENING_END, 1)
+        # The packages of a release are also offered beside the text, under "On this page".
+        beside = lastrun.rail_box(self, up) if "release-packages" in used else ""
+        return shell.prose_page(self, doc, rendered, sections, listing=wide, up=up, opening=opening, beside=beside)
 
     # --------------------------------------------------------------------- build
 

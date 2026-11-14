@@ -116,11 +116,12 @@ def an_archive(**files):
 class GitHubAnswers:
     """Recorded answers of the API. Every request is kept, with its headers."""
 
-    def __init__(self, runs, jobs=None, artifacts=None, location=STORAGE, no_workflow=False):
+    def __init__(self, runs, jobs=None, artifacts=None, location=STORAGE, no_workflow=False, releases=()):
         self.runs, self.jobs = runs, jobs or some_jobs()
         self.artifacts = [{"id": 7, "name": "release-build-results", "expired": False, "size_in_bytes": 4000,
                            "expires_at": "2027-02-11T20:25:08Z"}] if artifacts is None else artifacts
         self.location, self.no_workflow, self.requests = location, no_workflow, []
+        self.releases = list(releases)
 
     def __call__(self, method, url, headers, body):
         self.requests.append((method, url, dict(headers)))
@@ -133,6 +134,8 @@ class GitHubAnswers:
             return 200, {}, json.dumps(self.jobs).encode()
         if path.endswith("/artifacts?per_page=100"):
             return 200, {}, json.dumps({"artifacts": self.artifacts}).encode()
+        if path == "/releases?per_page=30":
+            return 200, {}, json.dumps(self.releases).encode()
         if path == "/actions/artifacts/7/zip":
             if self.location is None:
                 return 401, {}, b'{"message": "Requires authentication"}'
@@ -329,7 +332,7 @@ class Lines(HTMLParser):
 
 def a_site(record, findings=("F1", "F3")):
     return types.SimpleNamespace(
-        last_run=record, provider="BAFU", by_id={f: {} for f in findings},
+        last_run=record, provider="BAFU", by_id={f: {} for f in findings}, root=ROOT,
         release_name=lambda rid: {"2026-v1": "BAFU:2026 v1"}.get(rid, rid),
     )
 
@@ -341,10 +344,11 @@ def shown(record, **options):
     return markup, page, " ".join(page.text.split())
 
 
-def a_record(manifest="completed", lines=LINES, conclusion="success", failed_step=None, publish=None, **changes):
+def a_record(manifest="completed", lines=LINES, conclusion="success", failed_step=None, publish=None,
+             releases=(), **changes):
     if manifest == "completed":
         manifest = a_manifest()
-    answers = GitHubAnswers([a_run(7, conclusion=conclusion)], jobs=some_jobs(failed_step, publish))
+    answers = GitHubAnswers([a_run(7, conclusion=conclusion)], jobs=some_jobs(failed_step, publish), releases=releases)
     files = {}
     if manifest is not None:
         files["manifest.json"] = manifest
@@ -385,8 +389,10 @@ class PageTests(unittest.TestCase):
         self.assertIn("Nothing in this run keeps it from being published as a release.", text)
         self.assertIn("It is not a release. A release is built when a maintainer pushes a tag.", text)
         self.assertIn(release_manifest.NOT_PUBLISHED, text)
-        self.assertIn("were written, and each was read back.", text)
+        self.assertIn("Nothing in the run. It is not a release: no tag was pushed for it.", text)
+        self.assertIn("It worked", text)
         self.assertNotIn("No.", text)
+        self.assertNotIn("It did not work", text)
 
     def test_a_run_that_failed_is_shown_as_failed_with_the_step_and_the_reason(self):
         record = a_record(a_manifest(failed="patched build"), conclusion="failure", failed_step="Run the whole path")
@@ -396,7 +402,12 @@ class PageTests(unittest.TestCase):
         self.assertNotIn("Yes.", text)
         self.assertNotIn("Nothing in this run keeps it", text)
         self.assertIn('class="run-no"', markup)
-        self.assertIn('<tr role="row" class="run-failed">', markup)
+        self.assertIn("It did not work", text)
+        self.assertNotIn("It worked", text)
+        # the step that failed is drawn as failed, and its place says why, in the run's words
+        self.assertEqual(markup.count('class="run-tab is-failed"'), 1)
+        self.assertIn('<span class="run-result is-failed">failed', markup)
+        self.assertIn('<p class="run-reason">Audit failed: 3 findings.</p>', markup)
         self.assertIn("It ended with status 1.", text)
 
     def test_what_blocks_a_release_is_said_in_the_runs_own_words(self):
@@ -440,20 +451,107 @@ class PageTests(unittest.TestCase):
         record = a_record()
         manifest = record["manifest"]
         markup, _, text = shown(record, findings=tuple(manifest["patches"][0]["findings"]))
-        release = manifest["provider_release"]
-        self.assertIn(f'{release["datasets"]:,} datasets and {release["exchanges"]:,} exchanges', text)
+        release, comparison = manifest["provider_release"], manifest["comparison"]
+        for value, label in ((release["datasets"], "datasets"), (release["exchanges"], "exchanges"),
+                             (len(manifest["patches"]), "community patches"),
+                             (comparison["exchange_rows_compared"], "exchanges compared"),
+                             (comparison["exchange_rows_changed"], "differ"),
+                             (comparison["rows_no_step_explains"], "unexplained")):
+            self.assertIn(f"<div><dt>{label}</dt><dd>{value:,}</dd></div>", markup)
         self.assertIn(release["archive_sha256"][:12], text)
         for finding in manifest["patches"][0]["findings"]:
             self.assertIn(f'href="findings/{finding}.html"', markup)
-        comparison = manifest["comparison"]
-        self.assertIn(f'{comparison["exchange_rows_changed"]:,} of {comparison["exchange_rows_compared"]:,} exchange rows differ', text)
+        # a number on the page follows the record: another count in the manifest, another figure
+        changed = copy.deepcopy(record)
+        changed["manifest"]["comparison"]["exchange_rows_changed"] = 4321
+        self.assertIn("<div><dt>differ</dt><dd>4,321</dd></div>", shown(changed)[0])
 
     def test_a_record_without_a_run_states_no_result(self):
         for state, wanted in lastrun.NOT_SHOWN.items():
             markup, page, text = shown(last_run.empty(state, REPOSITORY))
-            self.assertEqual(text, wanted)
+            self.assertEqual(text, "The last run" + wanted)
             self.assertEqual(page.lines, [])
             self.assertNotIn("Yes", text)
+            self.assertNotIn("It worked", text)
+            self.assertNotIn("replay.js", markup)
+
+    def test_a_step_only_groups_the_lines_and_never_moves_one(self):
+        names = ["provider build", "patched build", "exports"]
+        lines = [[0.0, "Downloading something"], [0.1, "[provider build] a database"], [0.2, "  $ python x"],
+                 [5.0, "[provider build] completed in 5 s"], [5.0, "[patched build] the patches"],
+                 [9.0, "[patched build] failed: [not a step] inside"], [9.1, "[exports] not run: no database"],
+                 [9.2, "Release run failed: /tmp/x/manifest.json"], [9.2, "  provider build   completed"]]
+        self.assertEqual(lastrun.steps_of(lines, names), [0, 0, 0, 0, 1, 1, 2, 3, 3])
+        record = a_record(a_manifest(), lines=lines)
+        markup, page, _ = shown(record)
+        self.assertEqual([line.rstrip("\n") for line in page.lines], [text for _, text in lines])
+        places = [int(n) for n in __import__("re").findall(r'<span class="tl[^"]*" data-step="(\d+)"', markup)]
+        self.assertEqual(places, sorted(places), "the lines stand in the order of the run")
+
+    def test_every_step_has_its_place_and_its_words_and_no_number_is_typed(self):
+        record = a_record()
+        markup, _, text = shown(record)
+        steps = record["manifest"]["steps"]
+        total = len(steps) + 1  # and what a release needs, after the run's own steps
+        self.assertEqual(markup.count('class="run-tab '), total)
+        self.assertEqual(markup.count('<article class="run-panel"'), total)
+        for n in range(1, total + 1):
+            self.assertIn(f'href="#run-step-{n}"', markup)
+            self.assertIn(f'id="run-step-{n}"', markup)
+            self.assertIn(f"Step {n} of {total}", text)
+        words = json.loads((ROOT / "site/run-steps.json").read_text())["steps"]
+        for step in steps:
+            self.assertIn(step["name"], words, "a step of the whole path has its words")
+        for name, entry in words.items():
+            for key in ("short", "title", "text"):
+                self.assertNotRegex(entry[key], r"\d", f"{name}: a number on the page comes from the run")
+        # a step the page has no words for is still shown, under its own name
+        other = copy.deepcopy(record)
+        other["manifest"]["steps"][2]["name"] = "something new"
+        self.assertIn("something new", shown(other)[2])
+        contribution = copy.deepcopy(record)
+        contribution["manifest"]["steps"][2]["name"] = "C900-other build"
+        self.assertIn("A contribution, built beside the patched release", shown(contribution)[2])
+
+    def test_nothing_is_offered_for_download_that_no_release_holds(self):
+        record = a_record()
+        files = [f["name"] for f in record["manifest"]["exports"]["patched"]["files"] if f["kind"] in lastrun.EXPORT_NAMES]
+        self.assertTrue(files)
+        site = a_site(record)
+        block, box = lastrun.packages(site), lastrun.rail_box(site)
+        self.assertIn("No release has been published yet.", block)
+        for name in files:
+            self.assertIn(f"<code>{name}</code>", block)
+        self.assertEqual(block.count("not published"), len(files))
+        self.assertEqual(box.count("not published"), len(files))
+        self.assertNotIn("Download", block + box)
+        self.assertIn('data-show-after="release-packages"', box)
+        self.assertIn('id="release-packages"', block)
+        # a release that holds one of the files: that one can be downloaded, from GitHub
+        base = "https://github.com/sentier-dev/sentier-bafu/releases"
+        release = {"tag_name": "patched-2026-v1.1", "draft": False, "published_at": "2026-11-20T10:00:00Z",
+                   "html_url": f"{base}/tag/patched-2026-v1.1",
+                   "assets": [{"name": "manifest.json", "size": 2000, "browser_download_url": f"{base}/download/patched-2026-v1.1/manifest.json"},
+                              {"name": files[0], "size": 16000000, "browser_download_url": f"{base}/download/patched-2026-v1.1/{files[0]}"}]}
+        drafts = [{"tag_name": "patched-draft", "draft": True, "html_url": f"{base}/x", "assets": []},
+                  {"tag_name": "v1.0", "draft": False, "html_url": f"{base}/y", "assets": []}]
+        released = a_record(releases=[*drafts, release])
+        self.assertEqual([r["tag"] for r in released["releases"]], ["patched-2026-v1.1"])
+        site = a_site(released)
+        block, box = lastrun.packages(site), lastrun.rail_box(site)
+        self.assertNotIn("No release has been published yet.", block)
+        self.assertIn("patched-2026-v1.1", block)
+        self.assertEqual(block.count(">Download</a>"), 1)
+        self.assertEqual(box.count(">Download</a>"), 1)
+        self.assertEqual(block.count("not published"), len(files) - 1)
+        self.assertIn(f'href="{base}/download/patched-2026-v1.1/{files[0]}"', box)
+        # a file that is said to be somewhere else than on GitHub is refused with its record
+        elsewhere = copy.deepcopy(released)
+        elsewhere["releases"][0]["assets"][1]["url"] = "https://example.org/file.zip"
+        self.assertTrue(any("not at an address on GitHub" in e for e in last_run.shape_errors(elsewhere)))
+        # without a run that kept its files there is nothing to list beside the text
+        self.assertEqual(lastrun.rail_box(a_site(a_record(None, None))), "")
+        self.assertIn("were not read", lastrun.packages(a_site(last_run.empty("not read", REPOSITORY))))
 
     def test_the_file_of_the_site_is_the_record_without_the_dataset_lists(self):
         record = a_record()
@@ -474,9 +572,27 @@ class SiteTests(unittest.TestCase):
             snapshot.write_text(json.dumps(record))
             with contextlib_silence():
                 build_site.build(out, offline=True, root=DATA, last_run_snapshot=snapshot)
+            source = (out / "patched-release.html").read_text()
             page = Lines()
-            page.feed((out / "patched-release.html").read_text())
+            page.feed(source)
             self.assertEqual([line.rstrip("\n") for line in page.lines], [text for _, text in LINES])
+            # the run opens the page, above the text and above "On this page"; the releases come first below
+            opening, columns = source.index('class="wrap page-opening"'), source.index('class="wrap page with-rail after-opening"')
+            self.assertLess(opening, source.index("<h1"))
+            self.assertLess(source.index("<h1"), source.index('data-run'))
+            self.assertLess(source.index('data-run'), columns)
+            self.assertLess(columns, source.index('aria-label="On this page"'))
+            listed = __import__("re").findall(r'<li><a href="#([a-z0-9-]+)">', source.split('class="toc-list"')[1].split("</ul>")[0])
+            self.assertEqual(listed[0], "releases")
+            self.assertEqual(listed[-1], "bafus-release")
+            self.assertNotIn("the-last-run", listed)
+            self.assertEqual(source.count("<h1"), 1)
+            self.assertIn('aria-current="page">Patch and release</a>', source)
+            self.assertIn("<title>Patch and release ·", source)
+            self.assertIn('data-show-after="release-packages"', source.split('aria-label="On this page"')[1])
+            # the steps are told from the end, and each keeps its own number
+            numbers = __import__("re").findall(r'class="step-num" aria-hidden="true">(\d+)<', source)
+            self.assertEqual(numbers, sorted(numbers, reverse=True))
             self.assertIn("No. 5 of 6 steps completed. Failed: patched build.", " ".join(page.text.split()))
             self.assertTrue((out / "assets/replay.js").is_file())
             kept = json.loads((out / "api/v1/last-run.json").read_text())
@@ -514,6 +630,8 @@ class SiteTests(unittest.TestCase):
             text = (out / "patched-release.html").read_text()
             self.assertIn(lastrun.NOT_SHOWN["not read"], html.unescape(text))
             self.assertNotIn("replay.js", text)
+            self.assertNotIn("data-show-after", text)
+            self.assertIn("The releases were not read from GitHub for this copy of the site.", text)
             self.assertEqual(json.loads((out / "api/v1/last-run.json").read_text())["state"], "not read")
 
 

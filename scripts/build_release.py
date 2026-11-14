@@ -757,6 +757,52 @@ def compare(args: argparse.Namespace) -> int:
 # --- The whole path ----------------------------------------------------------------------
 
 
+# What each step of the whole path does, in the words the run prints when it starts one.
+STEP_SAYS = {
+    "provider build": "a Brightway database of BAFU's release, as it is",
+    "patched build": "the import fixes and the community patches, then a database of the result",
+    "written files": "every file that was written, read again",
+    "patch run": "what each patch matched",
+    "comparison": "the two databases, compared exchange by exchange and score by score",
+    "exports": "files for Brightway, openLCA, ILCD and SimaPro, each read back",
+}
+CONTRIBUTION_SAYS = {
+    " build": "a contribution, built beside the patched release",
+    " comparison": "the contribution's database, compared with the patched release",
+    " exports": "files of the contribution's database, each read back",
+}
+
+
+def step_says(name: str) -> str:
+    """What a step does, for the line that announces it."""
+    if name in STEP_SAYS:
+        return STEP_SAYS[name]
+    for ending, words in CONTRIBUTION_SAYS.items():
+        if name.endswith(ending):
+            return words
+    return "started"
+
+
+def shown_command(command: list[str], out: Path, limit: int = 7) -> str:
+    """A command as a reader can follow it: the interpreter by its name, a file of this
+    repository or of the run's folder by its path from there, any other path by its last
+    part. The first `limit` words; the log of the step has the rest."""
+    words = []
+    for word in command[:limit]:
+        path = Path(word)
+        if word == sys.executable:
+            word = "python"
+        elif path.is_absolute():
+            for base, prefix in ((REPOSITORY, ""), (out, "run/")):
+                if path.is_relative_to(base):
+                    word = prefix + path.relative_to(base).as_posix()
+                    break
+            else:
+                word = f".../{path.name}"
+        words.append(word)
+    return " ".join(words) + (" ..." if len(command) > limit else "")
+
+
 def _last_line(log: Path) -> str | None:
     if not log.is_file():
         return None
@@ -884,7 +930,8 @@ def release(args: argparse.Namespace) -> int:
         if not ready or command is None:
             print(f"[{name}] not run: {steps[-1]['reason']}", flush=True)
             return False
-        print(f"[{name}] {' '.join(command[:6])} ...", flush=True)
+        print(f"[{name}] {step_says(name)}", flush=True)
+        print(f"  $ {shown_command(command, out)}", flush=True)
         log = logs / f"{name.replace(' ', '-').replace('/', '-')}.log"
         result = run(command, env, log, accept=tuple(range(256)))
         ok = result["returncode"] == 0

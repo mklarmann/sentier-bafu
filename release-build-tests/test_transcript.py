@@ -286,12 +286,44 @@ class StepLines(unittest.TestCase):
         self.assertEqual(step_lines.lines("comparison", self.out), [])
         self.assertEqual(step_lines.lines("provider build", self.out), [])
 
+    def test_a_step_is_announced_in_words_with_a_command_a_reader_can_follow(self):
+        import build_release
+
+        for step in self.steps:
+            said = build_release.step_says(step["name"])
+            self.assertNotEqual(said, "started", step["name"])
+            self.assertNotIn("/", said)
+        self.assertEqual(build_release.step_says("something new"), "started")
+        self.assertIn("contribution", build_release.step_says("C900-other comparison"))
+        out = self.out
+        command = [
+            sys.executable,
+            str(build_release.REPOSITORY / "scripts" / "build_release.py"),
+            "build",
+            "/home/somebody/.cache/bafu/bafu-2026-v1",
+            str(out / "provider"),
+            "--no-patches",
+            "--pins",
+            str(build_release.REPOSITORY / "scripts" / "release_build" / "pins.toml"),
+            "--more",
+        ]
+        shown = build_release.shown_command(command, out)
+        self.assertEqual(
+            shown,
+            "python scripts/build_release.py build .../bafu-2026-v1 run/provider "
+            "--no-patches --pins ...",
+        )
+        self.assertNotIn(str(out), shown)
+        self.assertNotIn("somebody", shown)
+        self.assertEqual(build_release.shown_command(["uv", "run", "x"], out), "uv run x")
+
     def test_the_release_run_prints_them_when_a_step_ends(self):
         text = (REPOSITORY / "scripts" / "build_release.py").read_text()
         ended = text.index('print(f"[{name}] failed:')
         said = text.index("for line in step_lines.lines(name, out):")
         self.assertLess(ended, said)
         self.assertIn("f\"[{name}] completed in {result['seconds']} s, \"", text)
+        self.assertLess(text.index('print(f"[{name}] {step_says(name)}", flush=True)'), ended)
 
 
 if __name__ == "__main__":
