@@ -1,6 +1,12 @@
 {
   "dataset": "BAFU/UVEK",
   "provider": "BAFU",
+  "index": {
+    "color": "#3e5c76",
+    "dark": "#2e4558",
+    "soft": "#849aae",
+    "tint": "#dce3e9"
+  },
   "releases": [
     {
       "id": "2025-v2",
