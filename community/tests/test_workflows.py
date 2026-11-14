@@ -187,6 +187,10 @@ class WorkflowTests(unittest.TestCase):
         wrapped = next(block for block in run_blocks(build) if 'scripts/build_release.py "$@"' in block)
         self.assertRegex(re.sub(r"\s+", " ", wrapped.replace("\\\n", " ")),
                          r'transcript\.py --out "\$RUNNER_TEMP/transcript\.json" -- uv run .* scripts/build_release\.py "\$@"')
+        # Started with the runner's own Python: `uv run` would print its own lines first, and the
+        # transcript would then not hold everything the step printed.
+        self.assertEqual(wrapped.count("transcript.py"), 1)
+        self.assertIn("          python3 scripts/release_build/transcript.py \\\n            --out", wrapped)
         keep = build.index('--keep "$RUNNER_TEMP/transcript.json" --into "$RUNNER_TEMP/release-run/results"')
         self.assertLess(build.index("transcript.py \\\n            --out"), keep)
         self.assertLess(keep, build.index('--check "$RUNNER_TEMP/release-run/results"'))

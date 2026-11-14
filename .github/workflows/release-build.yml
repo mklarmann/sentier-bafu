@@ -101,7 +101,9 @@ jobs:
           if [ -f "$RUNNER_TEMP/previous/manifest.json" ]; then
             set -- "$@" --previous "$RUNNER_TEMP/previous/manifest.json"
           fi
-          uv run --no-project --python 3.12 python scripts/release_build/transcript.py \
+          # The wrapper is started with the runner's own Python, which prints nothing: every
+          # line of this step is then a line of the command, and all of them are kept.
+          python3 scripts/release_build/transcript.py \
             --out "$RUNNER_TEMP/transcript.json" -- \
             uv run --no-project --python 3.12 python scripts/build_release.py "$@"
       - name: Set what the run printed beside its results
@@ -109,7 +111,7 @@ jobs:
         # is never edited: one that names who confirmed for BAFU is not kept, and this fails.
         if: ${{ !cancelled() }}
         run: |
-          uv run --no-project --python 3.12 python scripts/release_build/transcript.py \
+          python3 scripts/release_build/transcript.py \
             --keep "$RUNNER_TEMP/transcript.json" --into "$RUNNER_TEMP/release-run/results" \
             --summary "$RUNNER_TEMP/release-run/patched/release-summary.json"
       - name: Say what was built
