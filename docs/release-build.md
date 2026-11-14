@@ -26,7 +26,7 @@ folder, which holds BAFU's inventory and stays local.
 | written files | every written file against the EcoSpold 1 schema, and the file set against the run summary | a file is invalid, or the files are not the ones the summary describes |
 | patch run | the table of the patch run, and what each patch matched now and in the previous tagged build | the release is not a known one, a step stopped, or a patch changes nothing |
 | comparison | patched against provider: every changed row and every moved score attributed to a step | a changed row or a moved score has no explanation |
-| exports | Brightway package, openLCA JSON-LD, ILCD and SimaPro CSV of the patched database, each read back | a format can't be written, or reads back differently. The other formats are still written and checked |
+| exports | Brightway package, openLCA JSON-LD, ILCD and SimaPro CSV of the patched database, and the patched files again as ecoSpold v1 with the label, each read back | a format can't be written, or reads back differently. The other formats are still written and checked |
 | per contribution | build beside the patched copy, comparison with it, exports | as above, for the contribution's own database |
 | manifest | `manifest.json` from what the steps left behind | never; a failed step is recorded in it |
 

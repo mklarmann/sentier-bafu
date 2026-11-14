@@ -1,8 +1,9 @@
 # Exports of the patched copy
 
 `scripts/export_release.py` turns a Brightway build of the patched copy into files for
-openLCA, SimaPro and Brightway, each with its provenance. It is the last step of a build and
-runs outside the package project, on its own pinned requirements.
+openLCA, SimaPro and Brightway, each with its provenance. It also packs the patched copy in
+the format BAFU's release comes in, ecoSpold v1, with the same provenance. It is the last
+step of a build and runs outside the package project, on its own pinned requirements.
 
 The writers come from [bw-interchange-export](https://gitlab.com/eos-lci/bw-interchange-export)
 (MIT), pinned by commit in the script. The step adds what BAFU's
@@ -31,6 +32,9 @@ uv run --python 3.12 scripts/export_release.py \
     --release "BAFU:2026 v1" --name bafu-2026-v1-patched --out output/exports
 ```
 
+Add `--ecospold output/patched/release`, the folder the patch run wrote, to get the
+ecoSpold v1 archive too. The whole path always does, for the patched copy.
+
 `--brightway-dir` is required: the step reads only the Brightway folder you name and never
 the projects in the default location. The output folder must be new or empty. `--summary`
 is the run summary of the patch tool (`bafu-fixes run --summary`); the address and the
@@ -56,6 +60,7 @@ exists that asks for acceptance of BAFU's terms.
 | `<name>-openlca.zip` | openLCA | its JSON-LD import |
 | `<name>-ilcd.zip` | ILCD readers | written by the same call; counted, not compared |
 | `<name>-simapro.csv` | SimaPro | its CSV import |
+| `<name>-ecospold1.zip` | readers of ecoSpold v1, BAFU's own format | an EcoSpold 1 import; `bafu-fixes` reads the files too |
 | `MODIFICATIONS.md`, `MODIFICATIONS.json` | everyone | the record of modifications |
 | `manifest.json`, `SHA256SUMS` | everyone | provenance, tool versions, checksums, checks |
 
@@ -73,6 +78,7 @@ sentier-brightway writes for calculating without a project.
 | openLCA | each process: restrictions | same | each process: description | `MODIFICATIONS.*` beside it |
 | ILCD | each process: access restrictions | same | not written | `MODIFICATIONS.*` beside it |
 | SimaPro | header, one literature reference | same | each process: comment | `MODIFICATIONS.*` beside it |
+| ecoSpold v1 | each dataset: `bcf:dataset` (`label`, `credit`) and the start of its general comment | each dataset: `bcf:importFix`, `bcf:patch` | each dataset: the start of its general comment | `MODIFICATIONS.*` and `NOTICE.txt` inside the archive |
 
 The per-dataset note says *Modified Data* on every dataset and names the steps that
 changed it. The run summary names a changed dataset by its file, `process_<code>.xml`, and
@@ -128,6 +134,25 @@ the CSV each of them carries its code after its name, so that they stay differen
 uses 1,927. The openLCA, ILCD and SimaPro files hold the flows in use. The Brightway
 package holds the databases whole.
 
+## The ecoSpold v1 archive
+
+Nothing is converted for it. The patches are applied to BAFU's EcoSpold 1 files, and the
+Brightway database of a build is made from the result. The archive holds those files, one
+for every dataset, and the step adds one thing to each dataset: the label and the credit.
+They are written twice, because one file can be passed on without the others:
+
+- in the dataset's extension element, `<bcf:dataset label="Modified Data" credit="...">`,
+  where the patch tool already lists the import fixes and patches that changed the dataset.
+  A program reads the label there;
+- at the start of the dataset's general comment (`referenceFunction/@generalComment`), which
+  LCA tools show. BAFU's own comment follows, unchanged.
+
+`MODIFICATIONS.md`, `MODIFICATIONS.json` and `NOTICE.txt` (the statement) travel inside the
+archive. The same patched files give the same archive, byte for byte.
+
+A contribution's database gets no ecoSpold v1 archive: a contribution changes the tables the
+database is built from, and no EcoSpold 1 file holds its changes.
+
 ## What the step checks
 
 After writing, every file is read back with an independent reader (`olca_schema`,
@@ -135,6 +160,14 @@ After writing, every file is read back with an independent reader (`olca_schema`
 amounts and units; every link resolves, by provider in openLCA and by product name in
 SimaPro; each elementary flow is in the section of its compartment; the credit and the
 label are present; an input with a declared unit of another quantity carries its note.
+
+The ecoSpold v1 archive is checked against the files it was packed from, because the
+database was built from those. Before packing, the files must be the ones the run summary
+describes (the same number, the same fingerprint). After packing, the archive is read back:
+it holds one file for every dataset of the database and no other; every file is valid by
+the EcoSpold 1 schema; every dataset carries the label, the credit and its note; and with
+those taken off again, every file equals the file the patch run wrote, compared as canonical
+XML. It is not compared exchange by exchange with the database.
 
 Each format is written and checked on its own. One that can't be written, or that reads
 back differently, is recorded in `manifest.json` under `formats` with the stage (`write` or

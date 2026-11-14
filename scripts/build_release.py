@@ -597,6 +597,11 @@ def build(args: argparse.Namespace) -> int:
             "release": paths["release_name"],
             "labels": str(paths["labels"]),
             "name": database,
+            # The patched copy is also handed on in BAFU's own format. A contribution's
+            # database is not: its changes are made to the tables, and no file holds them.
+            "ecospold": str(paths["patched_release"])
+            if paths["patched"] and not contribution
+            else None,
         }
         record["status"] = "completed" if audit["status"] == "passed" else "audit failed"
     except (BuildError, adapter.AdapterError) as error:
@@ -764,7 +769,8 @@ STEP_SAYS = {
     "written files": "every file that was written, read again",
     "patch run": "what each patch matched",
     "comparison": "the two databases, compared exchange by exchange and score by score",
-    "exports": "files for Brightway, openLCA, ILCD and SimaPro, each read back",
+    "exports": "files for Brightway, openLCA, ILCD and SimaPro, and ecoSpold v1 again, "
+    "each read back",
 }
 CONTRIBUTION_SAYS = {
     " build": "a contribution, built beside the patched copy",
@@ -837,6 +843,8 @@ def export_command(folder: Path, destination: Path) -> list[str] | None:
         command += ["--database", database]
     command += ["--summary", export["summary"], "--extra-steps", export["extra_steps"]]
     command += ["--release", export["release"], "--name", export["name"]]
+    if export.get("ecospold"):
+        command += ["--ecospold", export["ecospold"]]
     return [*command, "--labels", export["labels"], "--out", str(destination)]
 
 

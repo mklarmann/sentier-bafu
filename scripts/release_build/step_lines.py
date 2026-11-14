@@ -17,7 +17,7 @@ try:
 except ImportError:  # run as a script, from its own folder
     import release_manifest
 
-READ_BACK = ("brightway", "openlca", "ilcd", "simapro")
+READ_BACK = ("brightway", "openlca", "ilcd", "simapro", "ecospold1")
 FINDINGS_SHOWN = 5
 
 

@@ -177,6 +177,11 @@ class ExchangeExtension(Extension):
 
 class DatasetExtension(Extension):
     maintenance: Annotated[AnyString | None, Attr("maintenance")] = None
+    # Written by the export of a patched copy, never by a patch run: the label the copy
+    # is handed on under ("Modified Data") and the provider's credit. Read here so that
+    # this tool can read such a copy again.
+    label: Annotated[AnyString | None, Attr("label")] = None
+    credit: Annotated[AnyString | None, Attr("credit")] = None
     import_fixes: Annotated[list[AnyString], Text("importFix")] = []
     patches: Annotated[list[AnyString], Text("patch")] = []
 

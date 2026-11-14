@@ -6,10 +6,12 @@
 #     "bw-simapro-csv==0.5",
 #     "bw2data==4.8",
 #     "bw2io==0.9.17",
+#     "lxml>=6.1",
 #     "olca-schema==2.6.2",
 # ]
 # ///
-"""Export a Brightway build of the patched copy for openLCA, SimaPro and Brightway.
+"""Export a Brightway build of the patched copy for openLCA, SimaPro and Brightway, and
+the patched copy as ecoSpold v1 files again.
 
 A contribution's database (the patched copy plus one contribution's layer) is exported
 too, and never as the patched copy: its statement, its record of modifications, the note
@@ -22,6 +24,9 @@ Reads one or more databases from a Brightway project and writes, into one folder
 * `<name>.bw2package`: the databases for Brightway (`bw2io.BW2Package.import_file`);
 * `<name>-openlca.zip`: openLCA JSON-LD, and `<name>-ilcd.zip`: the same as ILCD;
 * `<name>-simapro.csv`: SimaPro CSV;
+* `<name>-ecospold1.zip`, with `--ecospold DIR`: the files the patch run wrote, in BAFU's
+  own format, each dataset with the label and the credit (`release_build/ecospold_export.py`).
+  Not for a contribution's database: no patch run wrote that one as files;
 * `MODIFICATIONS.json` and `MODIFICATIONS.md`: the record of modifications;
 * `manifest.json` and `SHA256SUMS`: provider, release, credit, label, tool versions,
   checksums and the result of reading every file back.
@@ -40,15 +45,17 @@ and is listed in the manifest with the finding it belongs to.
 
 Every file is read back after writing (`olca_schema`, `bw_simapro_csv`, `bw2io`) and
 compared with the database: same datasets, exchanges, amounts and units, links intact,
-provenance present. Each format is written and checked on its own: one that can't be
-written, or that reads back differently, is recorded as failed in the manifest with
-the reason, the others are still written, and the step exits 1.
+provenance present. The ecoSpold v1 archive is compared with the files it was packed from
+(the database was built from those): the same datasets as the database, every file valid
+EcoSpold 1, and nothing changed but the label. Each format is written and checked on its
+own: one that can't be written, or that reads back differently, is recorded as failed in
+the manifest with the reason, the others are still written, and the step exits 1.
 
 Usage:
 
     uv run scripts/export_release.py --brightway-dir DIR --project NAME \\
         --database NAME [--database NAME ...] --release "BAFU:2026 v1" \\
-        --summary run-summary.json --out DIR
+        --summary run-summary.json --out DIR [--ecospold DIR]
 
 `--brightway-dir` is required on purpose: the step never opens the Brightway
 projects in the default location. See docs/exports.md.
@@ -73,6 +80,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from release_build import ecospold_export  # noqa: E402
 from release_build import labels as label_table  # noqa: E402
 
 SCHEMA = "sentier-bafu/export-manifest/2"
@@ -105,6 +113,7 @@ TOOLS = (
     "bw-simapro-csv",
     "bw2io",
     "bw2data",
+    "lxml",
 )
 TECHNOSPHERE_SECTIONS = ("Materials/fuels", "Electricity/heat", "Waste to treatment")
 ELEMENTARY_SECTIONS = (
@@ -1048,6 +1057,31 @@ def check_ilcd(path, activities, marks):
 
 FAILED = object()
 FORMATS = ("brightway", "openlca", "ilcd", "simapro")
+#: The fifth format, written only when the files of the patch run are given.
+ECOSPOLD = "ecospold1"
+#: The files that travel inside the ecoSpold v1 archive, beside the datasets.
+ECOSPOLD_NOTICE = "NOTICE.txt"
+
+
+def ecospold_notes(notes, credit):
+    """`{code: note}` for an ecoSpold v1 file: the note of the dataset, then the credit.
+
+    A file can be passed on alone, so the credit is in the note of every dataset, where
+    the other formats name it once for the whole file.
+    """
+    return {key[1]: f"{note} Source: {credit}." for key, note in notes.items()}
+
+
+def ecospold_notice(text):
+    """The statement that travels inside the ecoSpold v1 archive, as plain text."""
+    return (
+        f"{text}\n\n"
+        "In this archive: one EcoSpold 1 file for every dataset, as the patch run wrote it. "
+        "Every dataset carries the label and the credit: in its extension element "
+        "(bcf:dataset, attributes label and credit), beside the import fixes and patches "
+        "that changed it, and at the start of its general comment. Nothing else was "
+        "changed. MODIFICATIONS.md and MODIFICATIONS.json are the record of modifications.\n"
+    )
 
 
 def provenance_record(
@@ -1114,9 +1148,13 @@ def export_release(
     openlca_unit_labels=None,
     extra_steps=(),
     labels=None,
+    ecospold=None,
 ):
     """Write the exports with their provenance into `out`, read them back, and return
     the manifest.
+
+    `ecospold` is the folder of the files the patch run wrote: with it, the patched copy
+    is also packed as ecoSpold v1. A contribution's database has no such files.
 
     Raises, before anything is written, when the database is not one to export: no
     Modified Data marker, built from other files than the summary describes, exchanges
@@ -1137,6 +1175,14 @@ def export_release(
         raise ExportError(f"No release year in {release!r}; pass it")
     credit = credit or CREDIT.format(year=year)
     contribution = contribution_of(databases)
+    if ecospold and contribution:
+        raise ExportError(
+            "The ecoSpold v1 files are the patched copy's: no patch run wrote the database "
+            f"of contribution {contribution['id']} as files"
+        )
+    if ecospold and not Path(ecospold).is_dir():
+        raise ExportError(f"{ecospold} is not a folder")
+    kinds = (*FORMATS, ECOSPOLD) if ecospold else FORMATS
     record = modifications_record(
         summary,
         release,
@@ -1159,6 +1205,7 @@ def export_release(
         "openlca": out / f"{name}-openlca.zip",
         "ilcd": out / f"{name}-ilcd.zip",
         "simapro": out / f"{name}-simapro.csv",
+        ECOSPOLD: out / f"{name}-ecospold1.zip",
         "modifications": out / "MODIFICATIONS.json",
         "modifications_readable": out / "MODIFICATIONS.md",
     }
@@ -1183,7 +1230,7 @@ def export_release(
         differences=[_public(row) for row in other_quantity],
     )  # fmt: skip
 
-    formats = {kind: {"status": "completed", "seconds": {}} for kind in FORMATS}
+    formats = {kind: {"status": "completed", "seconds": {}} for kind in kinds}
     checks, stats = {}, {}
 
     def attempt(kinds, stage, action):
@@ -1287,6 +1334,32 @@ def export_release(
 
             read_back("simapro", check)
 
+    if ecospold:
+        # Stands on its own: it is packed from the patch run's files, not from the package.
+        packed = {
+            "notes": ecospold_notes(notes, credit),
+            "mark": LABEL,
+            "credit": credit,
+            "members": {
+                files["modifications"].name: files["modifications"].read_bytes(),
+                files["modifications_readable"].name: files["modifications_readable"].read_bytes(),
+                ECOSPOLD_NOTICE: ecospold_notice(text).encode("utf-8"),
+            },
+        }
+        output = summary.get("output") or {}
+        stats[ECOSPOLD] = attempt(
+            (ECOSPOLD,),
+            "write",
+            lambda: ecospold_export.write(
+                ecospold,
+                files[ECOSPOLD],
+                expected=(output.get("files"), output.get("fingerprint")),
+                **packed,
+            ),
+        )
+        if stats[ECOSPOLD] is not FAILED:
+            read_back(ECOSPOLD, lambda: ecospold_export.check(files[ECOSPOLD], ecospold, **packed))
+
     pairs = Counter(
         f"{row['declared_unit']} for a {'flow' if row['kind'] == 'biosphere' else 'dataset'} "
         f"in {row['supplier_unit']}"
@@ -1353,6 +1426,22 @@ def export_release(
             "links": links,
             "written": None if stats.get("simapro") in (None, FAILED) else stats["simapro"],
         },
+        **(
+            {
+                ECOSPOLD: {
+                    "what": "the files the patch run wrote, in EcoSpold 1, each dataset "
+                    "with the label and the credit; nothing else is changed",
+                    "label_and_credit": [
+                        "bcf:extensions/bcf:dataset, attributes label and credit",
+                        "the start of referenceFunction/@generalComment",
+                    ],
+                    "inside": sorted(packed["members"]),
+                    "written": None if stats.get(ECOSPOLD) in (None, FAILED) else stats[ECOSPOLD],
+                }
+            }
+            if ecospold
+            else {}
+        ),
         "tools": tools,
         "files": {
             kind: {"name": path.name, "bytes": path.stat().st_size, "sha256": sha256(path)}
@@ -1365,7 +1454,7 @@ def export_release(
                 "problems": checks.get(kind, ["not checked"])[:50],
                 "total": len(checks.get(kind, ["not checked"])),
             }
-            for kind in FORMATS
+            for kind in kinds
         },
     }
     (out / "manifest.json").write_text(
@@ -1426,6 +1515,12 @@ def main(argv=None):
     parser.add_argument(
         "--extra-steps", type=Path, help="JSON list of further modification steps to record"
     )
+    parser.add_argument(
+        "--ecospold",
+        type=Path,
+        metavar="DIR",
+        help="The files the patch run wrote: packs the patched copy as ecoSpold v1 too",
+    )
     args = parser.parse_args(argv)
 
     os.environ["BRIGHTWAY2_DIR"] = str(args.brightway_dir.resolve())
@@ -1449,6 +1544,7 @@ def main(argv=None):
             openlca_unit_labels=_pairs(args.openlca_unit_label, "--openlca-unit-label"),
             extra_steps=extra,
             labels=load_labels(args.labels),
+            ecospold=args.ecospold,
         )
     except (ExportError, ValueError) as error:
         sys.exit(f"Not exported: {error}")

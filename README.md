@@ -48,12 +48,12 @@ One more command builds what follows from the patched files:
 uv run --no-project --python 3.12 python scripts/build_release.py release latest output/release-run
 ```
 
-It builds a Brightway database of BAFU's release and one of the patched copy, both with the EF 3.1 impact methods. It checks both and compares them. Then it writes the patched copy as files for Brightway, openLCA, ILCD and SimaPro, and reads each file back. The files carry BAFU's credit, the label *Modified Data* and the list of changes.
+It builds a Brightway database of BAFU's release and one of the patched copy, both with the EF 3.1 impact methods. It checks both and compares them. Then it writes the patched copy as files for Brightway, openLCA, ILCD and SimaPro, and again in BAFU's own format (ecoSpold v1), and reads each file back. The files carry BAFU's credit, the label *Modified Data* and the list of changes.
 
 Its state:
 
 - [`community/patches.json`](community/patches.json) lists the community patches with the findings they answer. A script writes it from the patches in `src/bafu_community_fixes/patches/`.
-- The files for Brightway, openLCA, ILCD and SimaPro are written and read back on your own machine and in the checks of this repository. They are not offered for download: no download exists yet that asks for acceptance of BAFU's Terms of Use. This repository and the site hold no inventory files.
+- The files for Brightway, openLCA, ILCD and SimaPro, and the ecoSpold v1 files, are written and read back on your own machine and in the checks of this repository. They are not offered for download: no download exists yet that asks for acceptance of BAFU's Terms of Use. This repository and the site hold no inventory files.
 - No file has been opened in openLCA or in SimaPro yet. The checks read the files with separate programs.
 - Of the build that a maintainer gave a tag, one file is kept: a manifest with checksums and counts. A local build can be compared with it.
 

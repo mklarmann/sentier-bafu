@@ -34,7 +34,7 @@
     "exports": {
       "short": "Files for LCA tools",
       "title": "Files for LCA tools",
-      "text": "The patched copy is written as files for Brightway, openLCA, ILCD and SimaPro. Each carries BAFU's credit, the label Modified Data and the list of changes. Each is read back and compared with the database."
+      "text": "The patched copy is written as files for Brightway, openLCA, ILCD and SimaPro, and again as ecoSpold, the format of BAFU's own files. Each carries BAFU's credit, the label Modified Data and the list of changes. Each is read back and compared with what it was written from."
     },
     "contribution build": {
       "short": "Contribution",

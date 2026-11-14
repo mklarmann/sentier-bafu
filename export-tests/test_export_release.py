@@ -6,6 +6,7 @@ signal to turn them into ordinary tests.
 """
 
 import copy
+import hashlib
 import json
 import math
 import uuid
@@ -1067,3 +1068,202 @@ def test_command_needs_the_summary_and_an_explicit_brightway_folder(tmp_path, ca
     assert exit.value.code == 2 and "--brightway-dir" in capsys.readouterr().err
     with pytest.raises(SystemExit, match="Not exported: No Brightway project 'nope'"):
         step.main([*arguments[:3], "nope", *arguments[4:]])
+
+
+# --- The patched copy as ecoSpold v1 again ---------------------------------------------
+
+ECOSPOLD = """<?xml version='1.0' encoding='UTF-8'?>
+<ecoSpold xmlns="http://www.EcoInvent.org/EcoSpold01" xmlns:bcf="urn:bafu-community-fixes:extensions:1">
+  <dataset number="{number}" generator="made up" timestamp="2026-01-01T00:00:00">
+    <metaInformation>
+      <processInformation>
+        <referenceFunction datasetRelatesToProduct="true" name="{code}" localName="{code}" infrastructureProcess="false" amount="1.0" unit="kg" category="made up" subCategory="made up" localCategory="made up" localSubCategory="made up"{comment}/>
+        <geography location="CH" text=""/>
+        <technology text="Made up"/>
+        <timePeriod dataValidForEntirePeriod="true">
+          <startDate>2026-01-01</startDate>
+          <endDate>2026-12-31</endDate>
+        </timePeriod>
+        <dataSetInformation type="1" impactAssessmentResult="false" timestamp="2026-01-01T00:00:00" version="1.0" internalVersion="1.0" energyValues="0" languageCode="en" localLanguageCode="de"/>
+      </processInformation>
+      <modellingAndValidation>
+        <representativeness percent="100.0"/>
+        <source number="1" sourceType="0" firstAuthor="Doe J." additionalAuthors="" year="2026" title="Made up" placeOfPublications="Nowhere"/>
+        <validation proofReadingDetails="" proofReadingValidator="1"/>
+      </modellingAndValidation>
+      <administrativeInformation>
+        <dataEntryBy person="1"/>
+        <dataGeneratorAndPublication person="1" dataPublishedIn="0" copyright="false" accessRestrictedTo="0"/>
+        <person number="1" name="Jane Doe" address="Nowhere" companyCode="MADEUPX" countryCode="CH"/>
+      </administrativeInformation>
+    </metaInformation>
+    <flowData>
+      <exchange number="{number}" category="made up" subCategory="made up" name="{code}" location="CH" unit="kg" meanValue="1.0" uncertaintyType="0" infrastructureProcess="false">
+        <outputGroup>0</outputGroup>
+      </exchange>
+    </flowData>{extensions}
+  </dataset>
+</ecoSpold>
+"""  # noqa: E501
+CHANGED_BY = """
+    <bcf:extensions>
+      <bcf:dataset>
+        <bcf:patch>0001-flour-share</bcf:patch>
+      </bcf:dataset>
+    </bcf:extensions>"""
+
+
+def patched_files(folder):
+    """Made-up EcoSpold 1 files, one for every activity of the synthetic database, as a
+    patch run would have written them, and their `(count, fingerprint)`."""
+    folder.mkdir()
+    codes = sorted(synthetic.databases()[INVENTORY])
+    for number, (_, code) in enumerate(codes, start=1):
+        text = ECOSPOLD.format(
+            number=number,
+            code=code,
+            comment="" if code == "heat" else ' generalComment="Made up."',
+            extensions=CHANGED_BY if code == "bread-ch" else "",
+        )
+        (folder / f"process_{code}.xml").write_text(text, encoding="utf-8")
+    digest = hashlib.sha256()
+    for file in sorted(folder.iterdir()):
+        digest.update(file.name.encode() + b"\0" + file.read_bytes())
+    return len(codes), digest.hexdigest()
+
+
+def ecospold_export(tmp_path, change=None):
+    """The export with the files of the patch run: `(manifest, folder)`. `change(files)`
+    runs after the summary was written, as something that happened to the files since."""
+    files = tmp_path / "patched"
+    count, fingerprint = patched_files(files)
+    name, names = project()
+    databases = step.load_databases(name, names)
+    databases[INVENTORY]["metadata"][step.MARKER] = marker(built_release_tree_sha256=fingerprint)
+    summary = run_summary()
+    summary["output"] = {"files": count, "bytes": 1, "fingerprint": fingerprint}
+    if change:
+        change(files)
+    out = tmp_path / "out"
+    manifest = step.export_release(databases, summary, out, release=RELEASE, ecospold=files)
+    return manifest, out
+
+
+@pytest.fixture(scope="module")
+def ecospold(tmp_path_factory):
+    return ecospold_export(tmp_path_factory.mktemp("ecospold"))
+
+
+def test_the_patched_files_are_packed_as_ecospold_v1_and_read_back(ecospold):
+    manifest, out = ecospold
+    assert manifest["status"] == "completed"
+    assert manifest["formats"]["ecospold1"]["status"] == "completed"
+    assert set(manifest["formats"]["ecospold1"]["seconds"]) == {"write", "read back"}
+    assert manifest["checks"]["ecospold1"] == {"passed": True, "problems": [], "total": 0}
+    assert list(manifest["formats"]) == ["brightway", "openlca", "ilcd", "simapro", "ecospold1"]
+    archive = path(out, manifest, "ecospold1")
+    assert archive.name == "synthetic-2026-v1-patched-ecospold1.zip"
+    assert (
+        f"{manifest['files']['ecospold1']['sha256']}  {archive.name}"
+        in (out / "SHA256SUMS").read_text()
+    )
+    assert manifest["ecospold1"]["written"]["files"] == 9
+    assert manifest["ecospold1"]["written"]["datasets"] == 9
+    assert manifest["ecospold1"]["inside"] == [
+        "MODIFICATIONS.json",
+        "MODIFICATIONS.md",
+        "NOTICE.txt",
+    ]
+    assert "lxml" in manifest["tools"]
+
+
+def test_every_ecospold_dataset_carries_the_label_the_credit_and_what_changed_it(ecospold):
+    manifest, out = ecospold
+    part = "Modified Data: part of a patched copy of SYNTHETIC:2026 v1, not BAFU's original."
+    with zipfile.ZipFile(path(out, manifest, "ecospold1")) as archive:
+        names = [name for name in archive.namelist() if name.endswith(".xml")]
+        texts = {name: archive.read(name).decode() for name in names}
+        record, notice = archive.read("MODIFICATIONS.json"), archive.read("NOTICE.txt").decode()
+    assert len(texts) == 9
+    for text in texts.values():
+        assert f'<bcf:dataset label="Modified Data" credit="{CREDIT}"' in text
+        assert f'generalComment="{part}' in text
+        assert f"Source: {CREDIT}." in text
+    bread, heat = texts["process_bread-ch.xml"], texts["process_heat.xml"]
+    assert f"{part} Changed by: 0001-flour-share. Source: {CREDIT}.&#10;&#10;Made up." in bread
+    assert "<bcf:patch>0001-flour-share</bcf:patch>" in bread
+    # a dataset that had no comment has the note alone
+    assert f'generalComment="{part} Source: {CREDIT}."' in heat
+    assert record == (out / "MODIFICATIONS.json").read_bytes()
+    assert notice.startswith(manifest["statement"])
+
+
+def test_without_the_files_of_a_patch_run_nothing_is_packed_as_ecospold(base):
+    manifest, out, _ = base
+    assert "ecospold1" not in manifest
+    assert "ecospold1" not in manifest["formats"] and "ecospold1" not in manifest["checks"]
+    assert "ecospold1" not in manifest["files"]
+    assert not list(out.glob("*ecospold*"))
+
+
+def test_files_that_are_not_the_ones_of_the_patch_run_fail_ecospold_and_leave_the_others(
+    tmp_path,
+):
+    def change(files):
+        file = files / "process_wheat.xml"
+        file.write_text(file.read_text().replace('meanValue="1.0"', 'meanValue="2.0"'))
+
+    manifest, out = ecospold_export(tmp_path, change)
+    assert manifest["status"] == "failed"
+    entry = manifest["formats"]["ecospold1"]
+    assert (entry["status"], entry["stage"]) == ("failed", "write")
+    assert "are not the ones the summary of the patch run describes" in entry["error"]
+    assert not manifest["checks"]["ecospold1"]["passed"]
+    assert "ecospold1" not in manifest["files"] and not list(out.glob("*ecospold*"))
+    for kind in ("brightway", "openlca", "ilcd", "simapro"):
+        assert manifest["formats"][kind]["status"] == "completed"
+
+
+def test_an_ecospold_archive_without_the_label_is_found_out(tmp_path, monkeypatch):
+    monkeypatch.setattr(step.ecospold_export, "label", lambda root, note, mark, credit: None)
+    manifest, _ = ecospold_export(tmp_path)
+    entry, check = manifest["formats"]["ecospold1"], manifest["checks"]["ecospold1"]
+    assert (entry["status"], entry["stage"]) == ("failed", "read back")
+    assert check["total"] == 2 * 9
+    assert "the extension lacks the label or the credit" in " ".join(check["problems"])
+    assert manifest["status"] == "failed"
+
+
+def test_a_contributions_database_is_not_packed_as_ecospold(tmp_path):
+    files = tmp_path / "patched"
+    patched_files(files)
+    name, names = project()
+    databases = step.load_databases(name, names)
+    databases[INVENTORY]["metadata"][step.MARKER] = marker(
+        contribution={
+            "id": "C900",
+            "name": "other-flour",
+            "step": "C900-other-flour",
+            "database": "synthetic-v1-c900-other-flour",
+            "title": "A made-up contribution",
+            "authored_by": "Ann Author",
+            "authorised_by": None,
+            "layer_sha256": "0" * 64,
+            "changes": [],
+        }
+    )
+    with pytest.raises(step.ExportError, match="no patch run wrote the database of contribution"):
+        step.export_release(
+            databases, run_summary(), tmp_path / "out", release=RELEASE, ecospold=files
+        )
+    assert not (tmp_path / "out").exists()
+
+
+def test_command_takes_the_folder_of_the_patch_run_and_says_how_ecospold_ended(tmp_path, capsys):
+    patched_files(tmp_path / "patched")  # not the files the summary of `_arguments` describes
+    with pytest.raises(SystemExit) as exit:
+        step.main(_arguments(tmp_path, "--ecospold", str(tmp_path / "patched")))
+    assert exit.value.code == 1
+    output = capsys.readouterr().out
+    assert "ecospold1: NOT WRITTEN (EcospoldError: The files in " in output
+    assert "simapro: read back and matches" in output

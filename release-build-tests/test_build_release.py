@@ -482,6 +482,40 @@ class BuildRecords(unittest.TestCase):
         self.assertTrue(marker["patched"])
 
 
+class ExportCommand(unittest.TestCase):
+    """The command of the export step, from what a build recorded for it."""
+
+    RECORD = {
+        "brightway_dir": "/run/patched/brightway",
+        "project": "bafu-2026-v1-patched",
+        "databases": ["bafu-2026-v1-patched", "ef-3.1-biosphere"],
+        "summary": "/run/patched/release-summary.json",
+        "extra_steps": "/run/patched/build-steps.json",
+        "release": "X:2026 v1",
+        "labels": "/labels.toml",
+        "name": "bafu-2026-v1-patched",
+    }
+
+    def command(self, **changes):
+        with tempfile.TemporaryDirectory() as folder:
+            record = {"export": self.RECORD | changes}
+            (Path(folder) / "build.json").write_text(json.dumps(record))
+            return build_release.export_command(Path(folder), Path("/run/exports"))
+
+    def test_the_patched_copy_is_exported_with_the_files_the_patch_run_wrote(self):
+        command = self.command(ecospold="/run/patched/release")
+        self.assertEqual(command[command.index("--ecospold") + 1], "/run/patched/release")
+        self.assertEqual(command[-2:], ["--out", "/run/exports"])
+
+    def test_a_build_without_such_files_is_exported_without_them(self):
+        # a contribution's build records none, and so does a record of an earlier revision
+        self.assertNotIn("--ecospold", self.command(ecospold=None))
+        self.assertNotIn("--ecospold", self.command())
+
+    def test_a_build_that_wrote_no_summary_is_not_exported(self):
+        self.assertIsNone(self.command(summary=None))
+
+
 class Syntax(unittest.TestCase):
     def test_the_build_files_are_python_3_12(self):
         """The tools' environments are on 3.12; the package's own lint targets 3.14."""

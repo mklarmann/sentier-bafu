@@ -29,6 +29,7 @@ EXPORT_NAMES = {
     "openlca": "openLCA",
     "ilcd": "ILCD",
     "simapro": "SimaPro",
+    "ecospold1": "ecoSpold v1",
 }
 UNNAMED = "A release this site does not name"
 

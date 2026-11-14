@@ -24,6 +24,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 
 REPOSITORY = Path(__file__).resolve().parents[1]
@@ -274,7 +275,13 @@ class WholePath(unittest.TestCase):
         self.assertEqual(manifest["status"], "completed", manifest["checks"])
         self.assertEqual(
             {kind: check["passed"] for kind, check in manifest["checks"].items()},
-            {"brightway": True, "openlca": True, "ilcd": True, "simapro": True},
+            {
+                "brightway": True,
+                "openlca": True,
+                "ilcd": True,
+                "simapro": True,
+                "ecospold1": True,
+            },
         )
         self.assertEqual(manifest["label"], "Modified Data")
         self.assertEqual(manifest["counts"]["activities"], 8)
@@ -292,6 +299,7 @@ class WholePath(unittest.TestCase):
                 "bafu-2026-v1-patched-openlca.zip",
                 "bafu-2026-v1-patched-ilcd.zip",
                 "bafu-2026-v1-patched-simapro.csv",
+                "bafu-2026-v1-patched-ecospold1.zip",
                 "MODIFICATIONS.json",
                 "MODIFICATIONS.md",
             },
@@ -301,6 +309,43 @@ class WholePath(unittest.TestCase):
         steps = [step["id"] for step in manifest["modifications"]["steps"]]
         self.assertIn(AMOUNT, steps)
         self.assertEqual(steps[-2:], ["build-ef-3.1-links", "build-declared-flow-identity"])
+
+    def test_the_patched_copy_is_handed_on_as_ecospold_v1_again(self):
+        record = self.load("patched", "build.json")
+        files = (self.out / "patched" / "release").resolve()
+        self.assertEqual(Path(record["export"]["ecospold"]).resolve(), files)
+        manifest = self.load("exports", "patched", "manifest.json")
+        written = manifest["ecospold1"]["written"]
+        summary = self.load("patched", "release-summary.json")
+        self.assertEqual(written["files"], 8)
+        self.assertEqual(written["fingerprint_before_the_label"], summary["output"]["fingerprint"])
+        archive = self.out / "exports" / "patched" / "bafu-2026-v1-patched-ecospold1.zip"
+        with zipfile.ZipFile(archive) as packed:
+            names = packed.namelist()
+            texts = [packed.read(n).decode() for n in names if n.endswith(".xml")]
+            record_inside = packed.read("MODIFICATIONS.json")
+        self.assertEqual(
+            sorted(n for n in names if n.endswith(".xml")),
+            sorted(path.name for path in files.iterdir() if path.suffix == ".xml"),
+        )
+        self.assertEqual(len(texts), 8)
+        for text in texts:
+            self.assertIn('label="Modified Data" credit="Life Cycle Inventory database', text)
+            self.assertIn('generalComment="Modified Data: part of a patched copy of ', text)
+        berries = next(text for text in texts if "<bcf:patch>" + AMOUNT in text)
+        self.assertIn(AMOUNT, berries.split("generalComment=", 1)[1].split('"', 2)[1])
+        self.assertEqual(
+            record_inside, (self.out / "exports" / "patched" / "MODIFICATIONS.json").read_bytes()
+        )
+        # the step said so, line for line, where the transcript of a run is read from
+        self.assertIn("bafu-2026-v1-patched-ecospold1.zip", self.done.stdout)
+
+    def test_a_contribution_is_not_handed_on_as_ecospold(self):
+        record = json.loads((self.contribution / "build" / "build.json").read_text())
+        self.assertIsNone(record["export"]["ecospold"])
+        manifest = json.loads((self.contribution / "exports" / "manifest.json").read_text())
+        self.assertNotIn("ecospold1", manifest["formats"])
+        self.assertFalse(list((self.contribution / "exports").glob("*ecospold*")))
 
     # --- A contribution, built beside the patched copy ------------------------------------
 
@@ -428,6 +473,7 @@ class WholePath(unittest.TestCase):
                 "patched-audit.json",
                 "provider-audit.json",
                 "run-summary.json",
+                "run.json",
             ],
         )
 

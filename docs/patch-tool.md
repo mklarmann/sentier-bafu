@@ -108,6 +108,11 @@ output stays valid. Extensions record:
 - which import fixes and patches changed each dataset
 - the original BAFU number of each exchange that got a dummy number (`originalNumber`)
 
+The tool reads two more attributes of a dataset there and never writes them itself: `label`
+and `credit`. The export of a build writes them (*Modified Data* and BAFU's credit) into the
+copy it packs as ecoSpold v1, see [Exports](exports.md), so that the tool can read such a
+copy again.
+
 ## Exchange numbers
 
 BAFU exchange numbers are identifiers: the reference product has the dataset's own number,
