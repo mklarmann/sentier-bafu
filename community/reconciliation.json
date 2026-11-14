@@ -1,5 +1,6 @@
 {
   "reconciled_on": "2026-10-21",
+  "updated_on": "2026-11-06",
   "scope": "Findings F1-F17 (21 October), F19, F21 and F29-F31 (added 4 November) and contributions C001/C002 against the public metadata of the bafu-community-fixes patches. Provider responses are cited as recorded in that public metadata; no private correspondence is reproduced. A patch never closes a finding: only a verified official BAFU release (provider_correction_shipped) does. `retained` keeps asks, objections and earlier interpretations that a status change must not erase.",
   "sources": {
     "community_fixes": {
