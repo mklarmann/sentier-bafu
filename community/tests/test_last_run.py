@@ -443,21 +443,44 @@ class PageTests(unittest.TestCase):
 
     def test_a_long_line_is_wrapped_and_the_reader_can_choose_otherwise(self):
         """A line longer than the terminal was cut off at its right edge. Lines wrap unless the
-        reader asks for them as printed; the two switches need the script, so it shows them."""
+        reader asks for them as printed, and the terminal can take the whole window. The switches
+        need the script, so it shows them; each says what it does, for it is drawn as a mark."""
         markup, page, _ = shown(a_record())
-        tools = markup.split('<span class="run-term-tools"')[1].split("</span>")[0]
+        tools = markup.split('<span class="run-term-tools"')[1].split("</button></span>")[0]
         self.assertTrue(tools.startswith(" hidden>"), "without the script there is nothing to switch")
-        self.assertIn('data-run-wrap aria-pressed="true">Wrap lines</button>', tools)
-        self.assertIn('data-run-wide aria-pressed="false">Wider</button>', tools)
-        self.assertNotIn("Wrap lines", " ".join(page.lines))
+        for wanted in ('data-run-wrap aria-pressed="true" aria-label="Wrap long lines" title="Wrap long lines">',
+                       'data-run-copy aria-label="Copy the lines as the run printed them"',
+                       'data-run-full aria-pressed="false" aria-label="Full screen" title="Full screen">'):
+            self.assertIn(wanted, tools)
+        self.assertEqual(tools.count("<button"), 3)
+        self.assertEqual(tools.count('aria-hidden="true"'), tools.count("<svg"), "a mark is no text of the page")
+        self.assertNotIn("Wrap", " ".join(page.lines))
         style = (ROOT / "site" / "style.css").read_text(encoding="utf-8")
         wrapped = style.split(".prose pre.transcript {")[1].split("}")[0]
         self.assertIn("white-space: pre-wrap", wrapped)
         self.assertIn("overflow-wrap: anywhere", wrapped)
         self.assertRegex(style, r"\.run\.no-wrap pre\.transcript \{[^}]*white-space: pre;[^}]*overflow-x: auto")
+        self.assertRegex(style, r"\.run\.is-full \.run-stage \{[^}]*position: fixed; inset: 0;")
         script = (ROOT / "site" / "assets" / "replay.js").read_text(encoding="utf-8")
-        for name in ("data-run-wrap", "data-run-wide", "no-wrap", "is-wide", "aria-pressed"):
+        for name in ("data-run-wrap", "data-run-full", "no-wrap", "is-full", "aria-pressed", "Escape"):
             self.assertIn(name, script)
+
+    def test_the_run_has_one_button_and_it_never_pauses(self):
+        """The end of a replay is the page as it is, with every step and every line. So there is
+        nothing to pause for: one button replays the run and, while it plays, goes to its end."""
+        markup, _, text = shown(a_record())
+        self.assertEqual(markup.count("data-run-play "), 1)
+        self.assertIn('data-run-play hidden>', markup, "without the script nothing is replayed")
+        self.assertIn("<span data-run-play-label>Replay</span>", markup)
+        for gone in ("data-run-prev", "data-run-next", "run-controls", "Pause", "Continue"):
+            self.assertNotIn(gone, markup)
+        script = (ROOT / "site" / "assets" / "replay.js").read_text(encoding="utf-8")
+        for gone in ("Pause", "Continue", "data-run-prev", "data-run-next"):
+            self.assertNotIn(gone, script)
+        self.assertIn('"Skip"', script)
+        # without the script the page still holds every step and every line
+        self.assertEqual(markup.count('<article class="run-panel"'), 6)
+        self.assertEqual(len(__import__("re").findall(r'<span class="tl[ "]', markup)), len(LINES))
 
     def test_a_line_can_be_pointed_at_and_its_link_adds_nothing_to_what_the_run_printed(self):
         """As a line number in a log on GitHub: the time of a line is the link to it."""
@@ -471,8 +494,7 @@ class PageTests(unittest.TestCase):
                     f'data-clock="{lastrun.clock(t)}"></a>', markup,
                 )
             self.assertNotIn(f'id="run-line-{len(LINES) + 1}"', markup)
-        tools = shown(a_record())[0].split('<span class="run-term-tools"')[1].split("</span>")[0]
-        self.assertIn("data-run-copy", tools)
+        self.assertIn("data-run-copy", shown(a_record())[0])
         script = (ROOT / "site" / "assets" / "replay.js").read_text(encoding="utf-8")
         self.assertIn("#run-line-", script)
         # what is copied is the text of the lines, which holds no time and no mark
@@ -483,7 +505,7 @@ class PageTests(unittest.TestCase):
         self.assertIn("Build 7 of 13 November 2026, 20:11 UTC, on commit 526d712 of main, after a change was accepted.", text)
         self.assertIn("Yes. All 6 steps completed, in 13 min 53 s.", text)
         self.assertIn("Nothing in this run.", text)
-        self.assertIn("It has no tag: it shows where the work stood on that day.", text)
+        self.assertIn("It has no tag. A maintainer gives a tag to the build that others should use.", text)
         self.assertIn(release_manifest.NOT_PUBLISHED, text)
         self.assertIn("It worked", text)
         self.assertNotIn("No.", text)
@@ -506,7 +528,7 @@ class PageTests(unittest.TestCase):
         self.assertIn(f"Step {len(own)} of {len(own)} · completed", text)
         # what stands in the way is said in full, where the answers are, and links to no step
         self.assertNotIn("All of it", markup)
-        self.assertIn("A maintainer gives a tag to the one that others should use.", text)
+        self.assertIn("A maintainer gives a tag to the build that others should use.", text)
         # the page's own words for this hold neither of the two words that claim more
         said = " ".join(lastrun.TAG.values()) + json.dumps(json.loads((ROOT / "site/run-steps.json").read_text())["steps"]["tagged"])
         self.assertNotRegex(said, r"(?i)\b(release|releases|released|publication|published|publish)\b")
@@ -650,7 +672,7 @@ class PageTests(unittest.TestCase):
         self.assertIn("something new", shown(other)[2])
         contribution = copy.deepcopy(record)
         contribution["summary"]["steps"][2]["name"] = "C900-other build"
-        self.assertIn("A contribution, built beside the patched release", shown(contribution)[2])
+        self.assertIn("A contribution, built beside the patched copy", shown(contribution)[2])
 
     def test_nothing_is_offered_for_download_that_no_release_holds(self):
         record = a_record()
@@ -911,12 +933,12 @@ class SiteTests(unittest.TestCase):
             self.assertLess(source.index('data-run'), columns)
             self.assertLess(columns, source.index('aria-label="On this page"'))
             listed = __import__("re").findall(r'<li><a href="#([a-z0-9-]+)">', source.split('class="toc-list"')[1].split("</ul>")[0])
-            self.assertEqual(listed[0], "releases")
+            self.assertEqual(listed[0], "builds-and-tags")
             self.assertEqual(listed[-1], "bafus-release")
             self.assertNotIn("the-last-run", listed)
             self.assertEqual(source.count("<h1"), 1)
-            self.assertIn('aria-current="page">Patch and release</a>', source)
-            self.assertIn("<title>Patch and release ·", source)
+            self.assertIn('aria-current="page">Patch and build</a>', source)
+            self.assertIn("<title>Patch and build ·", source)
             self.assertIn('data-show-after="release-packages"', source.split('aria-label="On this page"')[1])
             # the steps are told from the end, and each keeps its own number
             numbers = __import__("re").findall(r'class="step-num" aria-hidden="true">(\d+)<', source)

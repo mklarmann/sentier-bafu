@@ -1,5 +1,5 @@
 {
-  "about": "What each step of a release build does, in plain words, for the page 'Patch and release'. The key is the name the run gives the step. The numbers beside a text come from the run; none is typed here. 'short' is the name on the step's button. 'endings' names the step whose words stand for every step whose name ends alike (a contribution's steps carry its number). 'tagged' is the step the page adds to a run that was made for a tag.",
+  "about": "What each step of a build does, in plain words, for the page 'Patch and build'. The key is the name the run gives the step. The numbers beside a text come from the run; none is typed here. 'short' is the name on the step's button. 'endings' names the step whose words stand for every step whose name ends alike (a contribution's steps carry its number). 'tagged' is the step the page adds to a run that was made for a tag.",
   "endings": {
     " build": "contribution build",
     " comparison": "contribution comparison",
@@ -24,7 +24,7 @@
     "patch run": {
       "short": "Patches checked",
       "title": "What each patch found",
-      "text": "Each patch must still find the data it was written for. A patch that changes nothing stops the run. One that changes less than in the release before is marked for a person to look at."
+      "text": "Each patch must still find the data it was written for. A patch that changes nothing stops the run. One that changes less than in the tagged build before is marked for a person to look at."
     },
     "comparison": {
       "short": "Compared",
@@ -34,7 +34,7 @@
     "exports": {
       "short": "Files for LCA tools",
       "title": "Files for LCA tools",
-      "text": "The patched release is written as files for Brightway, openLCA, ILCD and SimaPro. Each carries BAFU's credit, the label Modified Data and the list of changes. Each is read back and compared with the database."
+      "text": "The patched copy is written as files for Brightway, openLCA, ILCD and SimaPro. Each carries BAFU's credit, the label Modified Data and the list of changes. Each is read back and compared with the database."
     },
     "tagged": {
       "short": "Tag",
@@ -43,13 +43,13 @@
     },
     "contribution build": {
       "short": "Contribution",
-      "title": "A contribution, built beside the patched release",
-      "text": "A contribution that changes the inventory is built as a database of its own, beside the patched release, and checked in the same way. It keeps its own name."
+      "title": "A contribution, built beside the patched copy",
+      "text": "A contribution that changes the inventory is built as a database of its own, beside the patched copy, and checked in the same way. It keeps its own name."
     },
     "contribution comparison": {
       "short": "Contribution compared",
       "title": "The contribution, compared",
-      "text": "The contribution's database is compared with the patched release. Each difference must be one the contribution declares."
+      "text": "The contribution's database is compared with the patched copy. Each difference must be one the contribution declares."
     },
     "contribution exports": {
       "short": "Contribution files",

@@ -63,7 +63,7 @@
     ],
     [
       "patched-release.html",
-      "Patch and release"
+      "Patch and build"
     ],
     [
       "take-part.html",
@@ -108,13 +108,13 @@
       "description": "Proposals that go beyond a single finding: mappings, models, rebuilt inventories and method variants, each with its checks and reviewers."
     },
     {
-      "title": "Patch and release",
+      "title": "Patch and build",
       "source": "site/patched-release.md",
       "page": "patched-release.html",
       "also": [
         "site/import.md"
       ],
-      "description": "How a change reaches a patched release: the last run on BAFU's full release, step by step and line for line, what blocks a release, and how to run it yourself."
+      "description": "How a change is applied to a copy of BAFU's release: the last build, step by step and line for line, what stands in the way of its use, and how to run it yourself."
     },
     {
       "title": "Take part",

@@ -121,9 +121,10 @@ default branch is another one, the same workflow deploys the fork's own copy, st
 the build is told which repository builds it (`--built-by`), and a copy that another repository
 than this one builds says on every page that it is a preview and not the published site.
 
-The build also reads the last release build of its own repository (`scripts/last_run.py`):
-GitHub's record of the last run that has ended, and the manifest and the transcript that run
-kept, and the published releases. That is what `actions: read` is for. The page *Patch and release* opens with the run as it was
+The build also reads the last run of the workflow that `site/config.json` names under `run`
+(`scripts/last_run.py`): GitHub's record of the last run that has ended, the run's own account
+and the transcript that run kept, and the builds that have a tag. That is what `actions: read`
+is for. The page *Patch and build* opens with the run as it was
 recorded, also when it failed. A site is built without the run rather than not built: when the
 record cannot be read the page says so. A release build that ends after the site was built is
 shown by the next build, which is at most a day later.
@@ -232,7 +233,8 @@ each step and what stops it.
 
 The command runs inside `scripts/release_build/transcript.py`, which passes every line on and
 writes the lines, with the time of each, to `transcript.json`. That file is kept beside the
-manifest, also when the run failed, and is never edited: a transcript that names who confirmed a
+manifest and beside `run.json`, the run's own account of its steps, also when the run failed,
+and is never edited: a transcript that names who confirmed a
 problem for BAFU is not kept, and the job fails. The site shows it line for line. The build also
 runs once a month, so that the record of the last run is never older than the 90 days GitHub
 keeps it, and so that a change at the address of BAFU's release or in a pinned tool is noticed.

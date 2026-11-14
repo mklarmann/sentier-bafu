@@ -214,9 +214,14 @@ inventory. A step whose record can't be read prints nothing more.
 In CI the command runs inside `scripts/release_build/transcript.py`. It changes nothing of what
 is printed. It writes every line with the seconds since the start, how the command ended and the
 SHA-256 of the lines to `transcript.json`, which is kept beside the manifest: also when the run
-failed, and when it was stopped. The site shows that file line for line at the top of the page
-*Patch and release*, step by step, with the result of the run and what blocks a release, read
-from the manifest.
+failed, and when it was stopped.
+
+The run also writes its own account for the site, `run.json`, from the manifest
+(`scripts/release_build/run_summary.py`): each step with its result, its time, its figures and
+its notes, what was in the run, and what stands in the way of using its result. The format is
+the one any run can write (`scripts/runrecord/summary.py`), and a number in it is a number of
+the manifest. The site shows the two files at the top of the page *Patch and build*, step by
+step and line for line, and types no number of its own.
 
 ## What a release still needs from a person
 

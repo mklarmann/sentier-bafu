@@ -57,7 +57,7 @@ TAG = {
     "nothing blocks": "Nothing in this run.",
     "is kept": "It is kept under the tag <code>{tag}</code>: its manifest, and no file of the data.",
     "was not kept": "It was made for the tag <code>{tag}</code>, and it was not kept.",
-    "no tag": "It has no tag: it shows where the work stood on that day. A maintainer gives a tag to the one that others should use.",
+    "no tag": "It has no tag. A maintainer gives a tag to the build that others should use.",
     "short kept": "Nothing. It is kept under the tag <code>{tag}</code>.",
     "short not kept": "Nothing in the run. It was made for the tag <code>{tag}</code>, and it was not kept.",
     "none yet": "No build has a tag yet.",
@@ -170,6 +170,23 @@ def stopped_at(record):
             if step.get("conclusion") in STOPPED:
                 return job, step
     return None, None
+
+
+# The marks on the terminal's buttons. Each is drawn with the colour of its button's text.
+def icon(shape, filled=False):
+    paint = 'fill="currentColor" stroke="none"' if filled else (
+        'fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"')
+    return f'<svg class="run-icon" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false" {paint}>{shape}</svg>'
+
+
+ICONS = {
+    "play": icon('<path d="M4.5 2.8v10.4a.6.6 0 0 0 .9.5l8.4-5.2a.6.6 0 0 0 0-1L5.4 2.3a.6.6 0 0 0-.9.5z"/>', filled=True),
+    "end": icon('<path d="M3 2.8v10.4a.6.6 0 0 0 .9.5L10.5 9.6v3.6c0 .4.3.8.8.8h.9c.4 0 .8-.4.8-.8V2.8c0-.4-.4-.8-.8-.8h-.9c-.5 0-.8.4-.8.8v3.6L3.9 2.3a.6.6 0 0 0-.9.5z"/>', filled=True),
+    "wrap": icon('<path d="M2 4h12M2 8h9.2a2.3 2.3 0 0 1 0 4.6H8.4m0 0 1.7-1.7m-1.7 1.7 1.7 1.7M2 12h3.2"/>'),
+    "copy": icon('<rect x="5.5" y="5.5" width="8" height="8" rx="1.6"/><path d="M10.5 5.5v-1.4A1.6 1.6 0 0 0 8.9 2.5H4.1a1.6 1.6 0 0 0-1.6 1.6v4.8a1.6 1.6 0 0 0 1.6 1.6h1.4"/>'),
+    "full": icon('<path d="M2.5 6V2.5H6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10"/>'),
+    "small": icon('<path d="M6 2.5V6H2.5M13.5 6H10V2.5M10 13.5V10h3.5M2.5 10H6v3.5"/>'),
+}
 
 
 # ---------------------------------------------------------------------- a text of the run
@@ -473,24 +490,27 @@ def showcase(site, record, up):
         )
         commit = (run or record.get("local") or {}).get("commit")
         which = (f" · run{number_of(run)}" if number_of(run) else "") + (f" · {esc(str(commit)[:7])}" if commit else "")
-        terminal = (
-            '<div class="run-term"><p class="run-term-bar"><span>What the run printed'
-            f'<span class="run-term-id">{which}</span></span>'
-            # How the lines are laid out is the reader's choice; the script shows these.
+        # The buttons need the script, which shows them. One replays the run and, while it
+        # plays, ends the replay: the end is the page as it is, with every step and every
+        # line. The others are how the lines are laid out, which is the reader's choice.
+        tools = (
             '<span class="run-term-tools" hidden>'
-            '<button type="button" class="run-tool" data-run-wrap aria-pressed="true">Wrap lines</button>'
-            '<button type="button" class="run-tool" data-run-wide aria-pressed="false">Wider</button>'
-            '<button type="button" class="run-tool" data-run-copy title="Copy the lines as the run printed them">Copy</button></span>'
-            '<span class="run-clock" data-run-clock></span></p>'
+            f'<button type="button" class="run-tool" data-run-wrap aria-pressed="true" aria-label="Wrap long lines" title="Wrap long lines">{ICONS["wrap"]}</button>'
+            f'<button type="button" class="run-tool" data-run-copy aria-label="Copy the lines as the run printed them" title="Copy the lines as the run printed them">{ICONS["copy"]}</button>'
+            f'<button type="button" class="run-tool" data-run-full aria-pressed="false" aria-label="Full screen" title="Full screen">'
+            f'<span class="run-when-small">{ICONS["full"]}</span><span class="run-when-full">{ICONS["small"]}</span></button></span>'
+        )
+        terminal = (
+            '<div class="run-term"><div class="run-term-bar">'
+            f'<button type="button" class="run-play" data-run-play hidden><span class="run-when-idle">{ICONS["play"]}</span>'
+            f'<span class="run-when-playing">{ICONS["end"]}</span><span data-run-play-label>Replay</span></button>'
+            f'<span class="run-term-title">What the run printed<span class="run-term-id">{which}</span></span>'
+            f'<span class="run-clock" data-run-clock></span>{tools}'
+            '<span class="run-progress" aria-hidden="true"><span data-run-progress></span></span></div>'
             f'<div class="run-term-body"><pre class="transcript" tabindex="0" role="region" aria-label="What the run printed">{body}</pre></div></div>'
         )
-    controls = (
-        '<p class="run-controls" hidden><button type="button" class="run-btn primary" data-run-play>Play the run</button>'
-        '<button type="button" class="run-btn" data-run-prev>Back</button>'
-        '<button type="button" class="run-btn" data-run-next>Next</button></p>'
-    )
     stage = (
-        f'<div class="run-stage"><ol class="run-tabs" aria-label="The steps of the run">{tabs}</ol>{controls}'
+        f'<div class="run-stage"><ol class="run-tabs" aria-label="The steps of the run">{tabs}</ol>'
         f'<div class="run-body"><div class="run-side"><div class="run-panels">{panels}</div></div>{terminal}</div></div>'
     )
     note = ""
@@ -502,7 +522,7 @@ def showcase(site, record, up):
         note = (
             f'<p class="note run-note">{plural(len(data["lines"]), "line")}, exactly as the run printed them, each with its time since the start. '
             f"{ended}{cut} The replay shortens the waits and changes nothing else. "
-            f'SHA-256 of the lines: <code>{esc(data["sha256"])}</code>. '
+            f'SHA-256 of the lines: {short(data["sha256"])}. '
             f'The same record as a file: <a href="{up}api/v1/last-run.json"><code>api/v1/last-run.json</code></a>.</p>'
         )
     return (
@@ -674,7 +694,7 @@ def rail_box(site, up=""):
     return (
         '<div class="downloads" data-show-after="release-packages">'
         f'<p class="card-label">{title}</p><ul>{items}</ul>'
-        f'<a class="arrow" href="#tagged-builds">{TAG["about"]}</a></div>'
+        f'<a class="arrow" href="#release-packages">{TAG["about"]}</a></div>'
     )
 
 

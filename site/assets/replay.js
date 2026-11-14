@@ -1,5 +1,6 @@
-// The last run of a workflow, on the page that shows it: one step at a time beside what the run printed, and a
-// replay of the run. Without this script the page holds every step and every line, in order.
+// The last run of a workflow, on the page that shows it: one step at a time beside what the
+// run printed, and a replay of the run in which the steps come one after the other as they
+// did. Without this script the page holds every step and every line, in order.
 // The text of a line is never changed: a line is shown, hidden or dimmed, nothing else.
 (function () {
   var CAP = 650, FLOOR = 38, DWELL = 1900; // waits of the run, shortened; the pause after a step
@@ -8,78 +9,52 @@
   [].forEach.call(document.querySelectorAll("[data-run]"), function (run) {
     var tabs = [].slice.call(run.querySelectorAll(".run-tab")), panels = [].slice.call(run.querySelectorAll(".run-panel"));
     var lines = [].slice.call(run.querySelectorAll(".tl")), pre = run.querySelector("pre.transcript");
-    var controls = run.querySelector(".run-controls"), play = run.querySelector("[data-run-play]");
-    var prev = run.querySelector("[data-run-prev]"), next = run.querySelector("[data-run-next]");
+    var play = run.querySelector("[data-run-play]"), label = run.querySelector("[data-run-play-label]");
     var clock = run.querySelector("[data-run-clock]"), strip = run.querySelector(".run-tabs");
-    var tools = run.querySelector(".run-term-tools");
-    if (!tabs.length || tabs.length !== panels.length || !controls || !play || !prev || !next) return;
+    var tools = run.querySelector(".run-term-tools"), bar = run.querySelector("[data-run-progress]");
+    var stage = run.querySelector(".run-stage");
+    if (!tabs.length || tabs.length !== panels.length) return;
     var stepOf = lines.map(function (line) { return Math.min(panels.length - 1, +line.getAttribute("data-step")); });
     var time = lines.map(function (line) { return +line.getAttribute("data-t"); });
     var end = lines.length ? lines[lines.length - 1].getAttribute("data-clock") : "";
     var current = 0, at = 0, timer = null;
     run.classList.add("is-live");
-    controls.hidden = false;
-    if (!lines.length) play.hidden = true;
-    // How the lines are laid out: wrapped (as a log is read on GitHub or GitLab) or each on one
-    // line; beside the step or below it over the whole width.
-    if (tools) {
-      tools.hidden = false;
-      [["[data-run-wrap]", "no-wrap", true], ["[data-run-wide]", "is-wide", false]].forEach(function (tool) {
-        var button = tools.querySelector(tool[0]);
-        if (!button) return;
-        button.addEventListener("click", function () {
-          var on = button.getAttribute("aria-pressed") !== "true";
-          button.setAttribute("aria-pressed", on ? "true" : "false");
-          run.classList.toggle(tool[1], tool[2] ? !on : on);
-          var first = stepOf.indexOf(current);
-          if (!timer && first >= 0) pre.scrollTop = Math.max(0, lines[first].offsetTop - 10);
-        });
-      });
+    if (play && lines.length) play.hidden = false;
+
+    function first(step) { return stepOf.indexOf(step); }
+    function toStep() { // the lines of the step that is shown, at the top of their window
+      var n = first(current);
+      if (pre && n >= 0) pre.scrollTop = Math.max(0, lines[n].offsetTop - 10);
     }
-    // The lines as the run printed them, for the clipboard: the times are drawn, not text.
-    var copy = tools && tools.querySelector("[data-run-copy]");
-    if (copy && !(navigator.clipboard && navigator.clipboard.writeText)) copy.hidden = true;
-    if (copy) copy.addEventListener("click", function () {
-      navigator.clipboard.writeText(lines.map(function (line) { return line.textContent; }).join("")).then(function () {
-        copy.textContent = "Copied";
-        setTimeout(function () { copy.textContent = "Copy"; }, 1600);
-      }, function () { copy.hidden = true; });
-    });
+    function tell(n) { // how far the replay is; at rest, how long the run took
+      if (clock) clock.textContent = n && lines.length ? lines[n - 1].getAttribute("data-clock") + " / " + end : end;
+      if (bar) bar.style.transform = "scaleX(" + (lines.length ? n / lines.length : 0) + ")";
+    }
     function cursor(n) { // the line after which the next one will come, while the run is replayed
       lines.forEach(function (line, i) { line.classList.toggle("is-last", i === n); });
-    }
-
-    function tell(n) {
-      if (clock) clock.textContent = n && lines.length ? lines[n - 1].getAttribute("data-clock") + " of " + end : "";
     }
     function show(step, follow) {
       current = Math.max(0, Math.min(panels.length - 1, step));
       tabs.forEach(function (tab, n) {
         if (n === current) tab.setAttribute("aria-current", "step"); else tab.removeAttribute("aria-current");
+        tab.classList.toggle("is-ahead", n > current); // drawn only while the run is replayed
       });
       panels.forEach(function (panel, n) {
         panel.classList.toggle("is-shown", n === current);
         panel.setAttribute("aria-hidden", n === current ? "false" : "true");
       });
       lines.forEach(function (line, n) { line.classList.toggle("is-on", stepOf[n] === current); });
-      prev.disabled = current === 0;
-      next.disabled = current === panels.length - 1;
       if (strip && strip.scrollWidth > strip.clientWidth) {
         var tab = tabs[current].parentNode;
         strip.scrollLeft = tab.offsetLeft - (strip.clientWidth - tab.offsetWidth) / 2;
       }
-      if (follow !== false && pre) {
-        var first = stepOf.indexOf(current);
-        if (first >= 0) pre.scrollTop = Math.max(0, lines[first].offsetTop - 10);
-      }
+      if (follow !== false) toStep();
     }
-    function rest(label) {
+    function rest() { // the replay is over or was ended: every line is on the page again
       clearTimeout(timer);
       timer = null;
       run.classList.remove("is-playing");
-      play.textContent = label;
-    }
-    function whole() { // every line on the page again, as before a replay
+      if (label) label.textContent = "Replay";
       lines.forEach(function (line) { line.hidden = false; });
       cursor(-1);
       at = 0;
@@ -87,10 +62,9 @@
     }
     function tick() {
       if (at >= lines.length) {
-        rest("Play again");
-        whole();
+        rest();
         show(panels.length - 1, false);
-        pre.scrollTop = pre.scrollHeight;
+        if (pre) pre.scrollTop = pre.scrollHeight;
         return;
       }
       if (stepOf[at] !== current) show(stepOf[at], false);
@@ -98,36 +72,31 @@
       cursor(at);
       pre.scrollTop = pre.scrollHeight;
       tell(at + 1);
-      var wait = FLOOR;
+      var wait = DWELL;
       if (at + 1 < lines.length) {
         wait = stepOf[at + 1] !== stepOf[at] ? DWELL : Math.max(FLOOR, Math.min(CAP, (time[at + 1] - time[at]) * 1000));
-      } else {
-        wait = DWELL;
       }
       at += 1;
       timer = setTimeout(tick, wait);
     }
     function start() {
-      if (at === 0 || at >= lines.length) {
-        lines.forEach(function (line) { line.hidden = true; });
-        at = 0;
-        show(lines.length ? stepOf[0] : 0, false);
-      }
+      lines.forEach(function (line) { line.hidden = true; });
+      at = 0;
+      show(lines.length ? stepOf[0] : 0, false);
       run.classList.add("is-playing");
-      play.textContent = "Pause";
+      if (label) label.textContent = "Skip";
       tick();
     }
     function choose(step) { // the reader takes over: the replay ends, everything is there
-      rest("Play the run");
-      whole();
+      rest();
       show(step);
     }
 
-    play.addEventListener("click", function () {
-      if (timer) rest("Continue"); else start();
+    // One button: replay the run; while it plays, go straight to its end. There is nothing to
+    // pause for: the end is the page as it is, with every step and every line.
+    if (play) play.addEventListener("click", function () {
+      if (run.classList.contains("is-playing")) choose(panels.length - 1); else start();
     });
-    prev.addEventListener("click", function () { choose(current - 1); });
-    next.addEventListener("click", function () { choose(current + 1); });
     tabs.forEach(function (tab, n) {
       tab.addEventListener("click", function (event) {
         event.preventDefault();
@@ -147,9 +116,47 @@
         if (!(n >= 0 && n < panels.length)) return;
         event.preventDefault();
         choose(n);
-        run.querySelector(".run-stage").scrollIntoView({ block: "nearest" });
+        if (stage) stage.scrollIntoView({ block: "nearest" });
       });
     });
+
+    // How the lines are laid out is the reader's choice: wrapped or each on one line, in the
+    // page or over the whole window. And the lines as the run printed them, for the clipboard:
+    // the times are drawn and are no text.
+    if (tools) {
+      tools.hidden = false;
+      var wrap = tools.querySelector("[data-run-wrap]"), full = tools.querySelector("[data-run-full]");
+      var copy = tools.querySelector("[data-run-copy]");
+      if (wrap) wrap.addEventListener("click", function () {
+        var on = wrap.getAttribute("aria-pressed") !== "true";
+        wrap.setAttribute("aria-pressed", on ? "true" : "false");
+        run.classList.toggle("no-wrap", !on);
+        if (!timer) toStep();
+      });
+      function whole(on) {
+        run.classList.toggle("is-full", on);
+        document.documentElement.classList.toggle("run-has-full", on);
+        full.setAttribute("aria-pressed", on ? "true" : "false");
+        full.setAttribute("aria-label", on ? "Leave full screen" : "Full screen");
+        full.title = on ? "Leave full screen (Esc)" : "Full screen";
+        if (!on && stage) stage.scrollIntoView({ block: "nearest" });
+        if (timer) pre.scrollTop = pre.scrollHeight; else toStep();
+      }
+      if (full) {
+        full.addEventListener("click", function () { whole(!run.classList.contains("is-full")); });
+        document.addEventListener("keydown", function (event) {
+          if (event.key === "Escape" && run.classList.contains("is-full")) whole(false);
+        });
+      }
+      if (copy && !(navigator.clipboard && navigator.clipboard.writeText)) copy.hidden = true;
+      if (copy) copy.addEventListener("click", function () {
+        navigator.clipboard.writeText(lines.map(function (line) { return line.textContent; }).join("")).then(function () {
+          copy.classList.add("is-done");
+          copy.title = "Copied";
+          setTimeout(function () { copy.classList.remove("is-done"); copy.title = copy.getAttribute("aria-label"); }, 1600);
+        }, function () { copy.hidden = true; });
+      });
+    }
 
     // A line can be pointed at: its time is its link. The page opens on the step the line is in.
     function point(n, keep) {
@@ -170,7 +177,6 @@
     function pointed() { // a link to a line was followed: the stage in view, the line in its window
       var found = /^#run-line-(\d+)$/.exec(location.hash), n = found ? +found[1] - 1 : -1;
       if (!point(n, false)) return false;
-      var stage = run.querySelector(".run-stage");
       function settle() {
         if (stage) stage.scrollIntoView({ block: "start" });
         pre.scrollTop = Math.max(0, lines[n].offsetTop - pre.clientHeight / 3);
@@ -182,7 +188,11 @@
     window.addEventListener("hashchange", pointed);
 
     var asked = /^#run-step-(\d+)$/.exec(location.hash);
+    tell(0);
     if (!pointed()) show(asked ? +asked[1] - 1 : 0);
+    // What moves on this page moves from here on: setting the page up is not shown as a change.
+    var frame = window.requestAnimationFrame || function (f) { setTimeout(f, 30); };
+    frame(function () { frame(function () { run.classList.add("is-ready"); }); });
     // The run plays once by itself when the page opens on it. Not for a reader who asked for
     // less motion, who followed a link to another part of the page, or who has left the tab.
     if (!still && !location.hash && lines.length && !document.hidden) {

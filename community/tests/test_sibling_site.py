@@ -263,7 +263,7 @@ class SiblingSite(unittest.TestCase):
             self.assertNotIn("replay.js", text, name)
         self.assertFalse((self.out / "api/v1/last-run.json").exists())
         self.assertNotIn("last-run.json", self.pages["about/data.html"])
-        self.assertNotIn("Patch and release", self.pages["index.html"])
+        self.assertNotIn("Patch and build", self.pages["index.html"])
 
     def test_the_data_page_names_a_finding_the_site_has_and_none_on_a_site_without_one(self):
         data = self.pages["about/data.html"]
