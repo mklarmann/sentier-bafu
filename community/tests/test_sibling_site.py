@@ -60,8 +60,9 @@ class Quiet:
         sys.stdout = self.real
 
 
-def sibling(target, **changes):
-    """A repository about another dataset: the shared files, and everything else its own."""
+def sibling(target, findings=(2, 4, 12, 16), **changes):
+    """A repository about another dataset: the shared files, and everything else its own.
+    Its findings follow their issues, so there is no F1; `findings=()` is a site that has none yet."""
     root = Path(target)
     for name in SHARED:
         source, copy = ROOT / name, root / name
@@ -93,6 +94,8 @@ def sibling(target, **changes):
               "about/data.html": "data-files"}
     for doc in documents:
         asked = f"\n\n<!-- generated: {blocks[doc['page']]} -->" if doc["page"] in blocks else ""
+        if doc["page"] == "about/data.html":
+            asked += "\n\n<!-- generated: status-vocabulary -->"
         (root / doc["source"]).write_text(f"# {doc['title']}\n\nWhat users of AGRIBALYSE find in the data.{asked}\n")
     # Its own checks, under its own names: it has no patch tool to lint.
     (root / ".github/workflows").mkdir(parents=True)
@@ -104,7 +107,7 @@ def sibling(target, **changes):
     for name in ("community/findings/0", "community/contributions", "community/recommendations"):
         (root / name).mkdir(parents=True)
     (root / "community/recommendations/tracker.json").write_text("[]\n")
-    for n in (1, 2, 4, 12):
+    for n in findings:
         record = synthetic_finding(n)
         record.update(datasets=[], scope="The process Wheat grain, conventional, at farm gate (FR).", releases=["3.2"])
         text = json.dumps(record).replace("https://github.com/sentier-dev/sentier-bafu", REPO)
@@ -149,6 +152,7 @@ class SiblingSite(unittest.TestCase):
         checked = run("scripts/community.py", "check")
         self.assertEqual(checked.returncode, 0, checked.stdout + checked.stderr)
         self.assertIn("Validated 4 findings", checked.stdout)
+        self.assertFalse((self.root / "community/findings/0/F1.json").exists())
         out = Path(self.temp.name) / "its-own-build"
         built = run("scripts/build_site.py", "--offline", "--out", str(out))
         self.assertEqual(built.returncode, 0, built.stdout + built.stderr)
@@ -164,19 +168,19 @@ class SiblingSite(unittest.TestCase):
                          ".github/ISSUE_TEMPLATE/agribalyse-data-finding.yml")
 
     def test_a_release_id_is_a_name_of_the_configured_list_whatever_its_shape(self):
-        record = json.loads((self.root / "community/findings/0/F1.json").read_text())
+        record = json.loads((self.root / "community/findings/0/F2.json").read_text())
         self.assertEqual(record["releases"], ["3.2"])
         self.assertIn("releases/3.2.html", self.pages)
         self.assertIn("AGRIBALYSE 3.2 is built on ecoinvent 3.9.1.", self.pages["releases/3.2.html"])
         # an id the list does not have is refused, as in this repository
         record["releases"] = ["4.0"]
-        (self.root / "community/findings/0/F1.json").write_text(json.dumps(record))
+        (self.root / "community/findings/0/F2.json").write_text(json.dumps(record))
         try:
             errors, _, _ = community.problems(self.root)
             self.assertTrue(any("4.0" in error for error in errors), errors)
         finally:
             record["releases"] = ["3.2"]
-            (self.root / "community/findings/0/F1.json").write_text(json.dumps(record) + "\n")
+            (self.root / "community/findings/0/F2.json").write_text(json.dumps(record) + "\n")
         # and an id that could not be the name of a page is refused by the schema
         for bad in ("../x", "3.2 beta", ""):
             self.assertTrue(community.schema_errors(bad, community.load_schema("finding")["$defs"]["release_id"]), bad)
@@ -189,6 +193,38 @@ class SiblingSite(unittest.TestCase):
         self.assertFalse((self.out / "api/v1/last-run.json").exists())
         self.assertNotIn("last-run.json", self.pages["about/data.html"])
         self.assertNotIn("Patch and release", self.pages["index.html"])
+
+    def test_the_data_page_names_a_finding_the_site_has_and_none_on_a_site_without_one(self):
+        data = self.pages["about/data.html"]
+        self.assertIn('href="../api/v1/findings/F2.json"', data)
+        self.assertIn("Replace F2 by any finding", data)
+        self.assertNotIn("F1.json", data)
+        self.assertTrue((self.out / "api/v1/findings/F2.json").is_file())
+        with tempfile.TemporaryDirectory() as tmp:
+            root, out = sibling(Path(tmp) / "repository", findings=()), Path(tmp) / "site"
+            with Quiet():
+                build_site.build(out, offline=True, root=root)
+                self.assertEqual(check_site.check(out), 0, "a site without a finding yet builds and passes")
+            text = (out / "about/data.html").read_text()
+            self.assertNotIn("api/v1/findings/F", text)
+            self.assertIn("api/v1/findings.json", text)
+
+    def test_a_providers_name_takes_the_article_it_needs(self):
+        self.assertEqual((community.with_article("BAFU"), community.with_article("ADEME")), ("A BAFU", "An ADEME"))
+        self.assertIn("An ADEME release covers the point.", self.pages["index.html"])
+        self.assertIn("An ADEME release covers this point", self.pages["about/data.html"])
+        for name, text in self.pages.items():
+            self.assertNotIn("A ADEME", text, name)
+
+    def test_a_site_without_community_patches_says_nothing_about_them(self):
+        self.assertFalse((self.root / "community/patches.json").exists())
+        listing, housekeeping = self.pages["findings.html"], self.pages["housekeeping.html"]
+        self.assertNotIn('id="patch"', listing)
+        self.assertNotIn("Has a patch", listing)
+        self.assertIn('id="kind"', listing)  # the other filters are there
+        self.assertNotIn("ommunity patch", housekeeping)
+        self.assertIn("what in the records and the issues needs a hand", housekeeping)
+        self.assertIn('id="check"', housekeeping)
 
     def test_datasets_without_a_number_are_not_looked_up_by_one(self):
         listing = self.pages["findings.html"]
