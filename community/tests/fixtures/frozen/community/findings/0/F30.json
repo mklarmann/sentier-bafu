@@ -1,0 +1,33 @@
+{
+  "schema": 2,
+  "id": "F30",
+  "issue": 44,
+  "title": "Nitrogen to water carries the CAS number of dinitrogen: what does the flow measure?",
+  "kind": "question",
+  "datasets": [],
+  "scope": "`Nitrogen` to water (647 exchanges on 506 datasets) and `Nitrogen, organic bound` to water (413)",
+  "releases": [
+    "2026-v1"
+  ],
+  "observation": "Both carry CAS 7727-37-9, molecular nitrogen (N₂). The flow list (`SetupDatabase_file.CSV` of the BAFU:2025 SimaPro import guide; the 2026 download has no such file) writes `Formula: N` under Waterborne and `Formula: N2` under Airborne with that number, and the release's openLCA package gives `Nitrogen` to water the formula N2; probably an inherited convention. A question, not a value defect: what does `Nitrogen` to water measure (202 exchanges call it a sum parameter), and where it is total N, do nitrate and ammonium on the same dataset count twice? Of the 104 unit processes that report it next to those species, it is smaller than their nitrogen in 70, so there it cannot be their sum; a double count could occur in the other 34, and none has been shown.",
+  "exposure": "",
+  "method": "CAS counted on all elementary exchanges of the 2026 v1 ecoSpold XML and on the 2025 flow list (SetupDatabase_file.CSV of the BAFU:2025 SimaPro import guide; the 2026 download has no such file); formula N2 on the three `Nitrogen` to water flows read from the release's openLCA package on 6 November; species nitrogen compared on the 104 unit processes. Filed 31 October 2026. A question to BAFU; no double count has been shown.",
+  "reported": {
+    "by": "mklarmann",
+    "date": "2026-10-31",
+    "url": "https://github.com/sentier-dev/sentier-bafu/issues/44"
+  },
+  "repeated": null,
+  "sent": null,
+  "answer": null,
+  "fixed_in": null,
+  "closed": null,
+  "related": [],
+  "threads": [],
+  "next": {
+    "action": "A second person repeats the measurement on BAFU's release files. Then the question is put to BAFU.",
+    "role": "reviewer"
+  },
+  "retained": [],
+  "notes": ""
+}

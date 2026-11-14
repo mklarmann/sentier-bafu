@@ -1,0 +1,33 @@
+name: Patch run
+description: >-
+  Run the import fixes and every patch on BAFU's full release, strictly, and check
+  the files that were written. `latest` downloads the release if it isn't there and
+  checks its SHA-256; `--strict` checks against the EcoSpold 1 schema after the
+  import and after every patch. Any step that fails stops the run.
+
+inputs:
+  out:
+    description: Folder for the patched copy (stays on the runner)
+    required: true
+  summary:
+    description: Where to write the run summary (counts and checksums, no inventory)
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Run the import fixes and patches, strictly
+      shell: bash
+      env:
+        PATCHED: ${{ inputs.out }}
+        SUMMARY: ${{ inputs.summary }}
+      run: |
+        mkdir -p "$(dirname "$SUMMARY")"
+        uv run --no-sync bafu-fixes run latest "$PATCHED" --strict --summary "$SUMMARY"
+    - name: Check the files that were written
+      shell: bash
+      env:
+        PATCHED: ${{ inputs.out }}
+        SUMMARY: ${{ inputs.summary }}
+      run: |
+        uv run --no-sync python scripts/check_patched_release.py "$PATCHED" --summary "$SUMMARY"

@@ -1,0 +1,476 @@
+"""Comparing two builds: which rows changed, which step explains them, which scores moved.
+
+Synthetic tables only. The tests that need pandas are skipped where it isn't installed.
+"""
+
+import importlib.util
+import sys
+import unittest
+from collections import namedtuple
+from pathlib import Path
+
+REPOSITORY = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPOSITORY / "scripts"))
+
+from release_build import compare_builds as compare  # noqa: E402
+
+HAS_PANDAS = importlib.util.find_spec("pandas") is not None
+AMOUNT = "0001-strawberry-polyethylene-disposal"
+LOCATION = "0002-supplier-locations"
+NAMES = "0007-flow-names"
+COMPARTMENTS = "0008-flow-compartments"
+
+
+class Explain(unittest.TestCase):
+    def test_a_recorded_step_that_changes_the_field_explains_the_row(self):
+        self.assertEqual(compare.explain({"amount"}, [AMOUNT, "0010-links"], "exchange"), [AMOUNT])
+        self.assertEqual(compare.explain({"location"}, [LOCATION], "exchange"), [LOCATION])
+
+    def test_a_step_on_another_dataset_or_another_field_does_not(self):
+        self.assertEqual(compare.explain({"amount"}, [], "exchange"), [])
+        self.assertEqual(compare.explain({"amount"}, [LOCATION], "exchange"), [])
+        self.assertEqual(compare.explain({"unit"}, [AMOUNT, NAMES], "exchange"), [])
+        self.assertEqual(compare.explain({"amount"}, ["not-in-the-table"], "exchange"), [])
+
+    def test_rename_and_compartment_move_are_told_apart(self):
+        both = [NAMES, COMPARTMENTS]
+        self.assertEqual(compare.explain({"flow", "name"}, both, "exchange"), [NAMES])
+        self.assertEqual(compare.explain({"flow"}, both, "exchange"), [COMPARTMENTS])
+        self.assertEqual(compare.explain({"flow"}, [NAMES], "exchange"), [NAMES])
+
+    def test_two_steps_together_can_explain_one_row(self):
+        self.assertEqual(
+            compare.explain({"amount", "location"}, [AMOUNT, LOCATION], "exchange"),
+            sorted([AMOUNT, LOCATION]),
+        )
+
+    def test_dataset_fields_have_their_own_table(self):
+        self.assertEqual(
+            compare.explain({"location"}, ["location-codes"], "process"), ["location-codes"]
+        )
+        self.assertEqual(compare.explain({"location"}, [LOCATION], "process"), [])
+
+
+class Graph(unittest.TestCase):
+    consumers = {"a": {"b"}, "b": {"c", "d"}, "x": {"y"}, "d": {"b"}}
+
+    def test_downstream_follows_consumers_and_includes_the_seed(self):
+        self.assertEqual(compare.downstream({"a"}, self.consumers), {"a", "b", "c", "d"})
+        self.assertEqual(compare.downstream({"c"}, self.consumers), {"c"})
+        self.assertEqual(compare.downstream(set(), self.consumers), set())
+
+    def test_attribute_names_the_steps_upstream_of_each_moved_dataset(self):
+        reach = {"one": {"a", "b"}, "two": {"b", "c"}}
+        self.assertEqual(
+            compare.attribute({"a", "b", "z"}, reach), {"a": ["one"], "b": ["one", "two"], "z": []}
+        )
+
+
+class StepFields(unittest.TestCase):
+    """What a step that the table does not list can explain: what the run says it changed."""
+
+    def summary(self, **fields):
+        return {"steps": [{"id": id, "fields": changed} for id, changed in fields.items()]}
+
+    def test_a_new_patch_explains_the_fields_the_run_summary_says_it_changed(self):
+        fields = compare.step_fields(
+            self.summary(
+                **{
+                    "0012-unit": {
+                        "flowData/exchange/@unit": 2,
+                        "metaInformation/processInformation/referenceFunction/@unit": 2,
+                    },
+                    "0013-amount": {"flowData/exchange/@meanValue": 1},
+                    "0014-supplier": {"flowData/exchange/@number": 1},
+                    "0015-direction": {"flowData/exchange/inputGroup": 1},
+                }
+            )
+        )
+        self.assertEqual(
+            fields["0012-unit"], {"exchange": {"flow", "unit"}, "process": {"reference_unit"}}
+        )
+        self.assertEqual(fields["0013-amount"], {"exchange": {"amount"}, "process": set()})
+        self.assertEqual(fields["0014-supplier"]["exchange"], {"flow"})
+        self.assertEqual(fields["0015-direction"]["exchange"], {"kind"})
+        self.assertEqual(
+            compare.explain({"unit"}, ["0012-unit"], "exchange", fields), ["0012-unit"]
+        )
+        self.assertEqual(
+            compare.explain({"reference_unit"}, ["0012-unit"], "process", fields), ["0012-unit"]
+        )
+        self.assertEqual(compare.explain({"amount"}, ["0012-unit"], "exchange", fields), [])
+
+    def test_a_step_in_the_table_keeps_what_the_table_says(self):
+        # even if a run says it changed more: that is then an unexplained row, on purpose
+        fields = compare.step_fields(
+            self.summary(
+                **{AMOUNT: {"flowData/exchange/@meanValue": 3, "flowData/exchange/@unit": 3}}
+            )
+        )
+        self.assertEqual(fields[AMOUNT], compare.STEP_FIELDS[AMOUNT])
+        self.assertEqual(compare.explain({"unit"}, [AMOUNT], "exchange", fields), [])
+
+    def test_steps_the_importer_can_not_see_explain_nothing(self):
+        fields = compare.step_fields(
+            self.summary(
+                **{
+                    "0004-flow-cas-numbers-added": {"flowData/exchange/@CASNumber": 9},
+                    "0010-brightway-flows-links": {
+                        "flowData/exchange/extensions/@brightwayFlow": 9
+                    },
+                    "0003-flag-not-maintained": {"extensions/@maintenance": 9},
+                    # the adapter gives every exchange its original number back
+                    "renumber-exchanges": {"flowData/exchange/@number": 9},
+                }
+            )
+        )
+        self.assertEqual(set(fields), set(compare.STEP_FIELDS))
+
+    def test_a_layer_explains_a_substituted_supplier(self):
+        fields = compare.step_fields(None, {"step": "C900-other"})
+        self.assertEqual(
+            compare.explain({"flow", "name", "location"}, ["C900-other"], "exchange", fields),
+            ["C900-other"],
+        )
+        self.assertEqual(compare.explain({"amount"}, ["C900-other"], "exchange", fields), [])
+
+    def test_the_steps_of_a_dataset_include_the_layer_that_changed_it(self):
+        import json
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as folder:
+            build = Path(folder)
+            (build / "adapter-receipt.json").write_text(
+                json.dumps(
+                    {"steps_by_dataset": {"crop": {"import_fixes": ["a"], "patches": ["b"]}}}
+                )
+            )
+            self.assertEqual(compare.read_steps(build), {"crop": ["a", "b"]})
+            (build / "layer-receipt.json").write_text(
+                json.dumps({"step": "C900-other", "datasets_changed": ["crop", "farm"]})
+            )
+            self.assertEqual(
+                compare.read_steps(build),
+                {"crop": ["a", "b", "C900-other"], "farm": ["C900-other"]},
+            )
+
+    def test_a_step_both_builds_share_explains_no_difference_between_them(self):
+        # the patched copy and a contribution: the patch is in both, the layer in one
+        candidate = {"crop": ["0007-flow-names", "C900-other"], "farm": ["C900-other"]}
+        patched = {"crop": ["0007-flow-names"], "mill": ["location-codes"]}
+        alone = compare.steps_of_the_candidate_alone(candidate, patched)
+        self.assertEqual(alone, {"crop": ["C900-other"], "farm": ["C900-other"]})
+        fields = compare.step_fields(None, {"step": "C900-other"})
+        # a supplier of the same location: only the flow and its name change
+        changed = {"flow", "name"}
+        self.assertEqual(
+            compare.explain(changed, candidate["crop"], "exchange", fields), ["0007-flow-names"]
+        )
+        self.assertEqual(
+            compare.explain(changed, alone["crop"], "exchange", fields), ["C900-other"]
+        )
+        # the provider release has no step recorded: nothing is taken away
+        self.assertEqual(compare.steps_of_the_candidate_alone(candidate, {}), candidate)
+
+
+Entry = namedtuple("Entry", "target_code conversion_factor")
+Method = namedtuple("Method", "method_id cfs")
+
+
+@unittest.skipUnless(HAS_PANDAS, "pandas is not installed here")
+class Tables(unittest.TestCase):
+    def inventory(self, **changes):
+        import pandas as pd
+
+        processes = pd.DataFrame(
+            {
+                "process_id": ["farm", "gas", "mix"],
+                "name": ["Fruit", "Gas, at production", "Mix"],
+                "location": ["CH", "NO", changes.get("mix_location", "Europe without Switzerland")],
+            }
+        )
+        rows = [
+            ("farm", "farm", "Fruit", "production", 1.0, None),
+            ("farm", "waste", "Disposal", "technosphere", changes.get("disposal", 100.0), "CH"),
+            ("farm", "co2-old", "Carbon dioxide", "biosphere", 1.0, None),
+            ("gas", "gas", "Gas, at production", "production", 1.0, None),
+            (
+                "gas",
+                changes.get("gas_flow", "gas-old"),
+                changes.get("gas_name", "Gas, natural/m3"),
+                "biosphere",
+                1.0,
+                None,
+            ),
+            ("mix", "mix", "Mix", "production", 1.0, None),
+            (
+                "mix",
+                "gas",
+                "Gas, at production",
+                "technosphere",
+                2.0,
+                changes.get("declared", "XX"),
+            ),
+            ("mix", "farm", "Fruit", "technosphere", 0.0, "CH"),
+        ]
+        columns = ["process_id", "flow", "flow_name", "flow_type", "amount", "location"]
+        exchanges = pd.DataFrame(rows, columns=columns)
+        exchanges["position"] = exchanges.groupby("process_id").cumcount()
+        return processes, exchanges
+
+    def setUp(self):
+        self.base = self.inventory()
+        self.cand = self.inventory(
+            disposal=0.01,
+            gas_flow="gas-new",
+            gas_name="Gas, natural",
+            declared="NO",
+            mix_location="EURwoCH",
+        )
+        self.steps = {
+            "farm": ["renumber-exchanges", AMOUNT],
+            "gas": [NAMES, "0010-links"],
+            "mix": ["location-codes", LOCATION],
+        }
+        self.bridge = {"gas-old": Entry("ef-gas", 35.98), "co2-old": Entry("ef-co2", 1.0)}
+        self.methods = [
+            Method("climate", (("ef-co2", 1.0),)),
+            Method("fossils", (("ef-gas", 1.0),)),
+        ]
+        self.effective = compare.effective_factors(self.bridge, self.methods)
+
+    def test_every_changed_row_is_attributed(self):
+        result = compare.compare_rows(self.base, self.cand, self.steps)
+        summary = result["summary"]
+        self.assertEqual(summary["exchange_rows_compared"], 8)
+        self.assertEqual(summary["exchange_rows_changed"], 3)
+        self.assertEqual(summary["unexplained_count"], 0)
+        self.assertEqual(summary["by_step"][AMOUNT], {"amount": 1, "rows": 1, "datasets": 1})
+        self.assertEqual(
+            summary["by_step"][NAMES], {"flow": 1, "name": 1, "rows": 1, "datasets": 1}
+        )
+        # Two steps recorded on "mix" can both change an exchange location: both are named
+        self.assertEqual(
+            summary["by_step"][f"location-codes + {LOCATION}"],
+            {"location": 1, "rows": 1, "datasets": 1},
+        )
+        self.assertEqual(
+            summary["dataset_rows_changed_by_step"], {"location-codes": {"location": 1}}
+        )
+
+    def test_a_change_no_recorded_step_explains_is_reported(self):
+        result = compare.compare_rows(self.base, self.cand, {"gas": [NAMES], "mix": [LOCATION]})
+        summary = result["summary"]
+        self.assertEqual(summary["unexplained_count"], 2)  # the amount, and the dataset location
+        self.assertIn("unexplained", summary["by_step"])
+        self.assertEqual(
+            {(item["dataset"], *item["fields"]) for item in summary["unexplained"]},
+            {("farm", "amount"), ("mix", "location")},
+        )
+
+    def layered(self, **planted):
+        """The base and a candidate in which a layer repoints the mix's gas input to the
+        farm; `planted` changes the candidate beyond what the layer's receipt lists."""
+        base = self.inventory()
+        processes, exchanges = self.inventory()
+        mix_gas = (exchanges["process_id"] == "mix") & (exchanges["flow"] == "gas")
+        exchanges.loc[mix_gas, ["flow", "flow_name", "location"]] = ["farm", "Fruit", "CH"]
+        for (process, position), values in planted.get("rows", {}).items():
+            row = (exchanges["process_id"] == process) & (exchanges["position"] == position)
+            exchanges.loc[row, list(values)] = list(values.values())
+        receipt = {
+            "step": "C900-other",
+            "datasets_changed": ["mix"],
+            "exchanges": [
+                {"dataset": "mix", "position": 1}
+                | {"before": {"flow": "gas"}, "after": {"flow": "farm"}}
+            ],
+        }
+        steps = {"mix": ["C900-other"], "farm": ["C900-other"]}
+        fields = compare.step_fields(None, receipt)
+        return compare.compare_rows(base, (processes, exchanges), steps, fields, receipt)["summary"]
+
+    def test_a_layer_explains_the_input_its_receipt_lists(self):
+        summary = self.layered()
+        self.assertEqual(summary["exchange_rows_changed"], 1)
+        self.assertEqual(summary["unexplained_count"], 0)
+        self.assertEqual(summary["by_step"]["C900-other"]["rows"], 1)
+
+    def test_an_undeclared_repointing_in_a_dataset_the_layer_touches_is_unexplained(self):
+        # the mix's second input, which the receipt does not list, is repointed too
+        planted = {("mix", 2): {"flow": "gas", "flow_name": "Gas, at production"}}
+        summary = self.layered(rows=planted)
+        self.assertEqual(summary["exchange_rows_changed"], 2)
+        self.assertEqual(summary["by_step"]["C900-other"]["rows"], 1)
+        self.assertEqual(summary["unexplained_count"], 1)
+        self.assertEqual(summary["unexplained"], [{"dataset": "mix", "fields": ["flow", "name"]}])
+
+    def test_a_declared_input_that_took_another_supplier_is_unexplained(self):
+        planted = {("mix", 1): {"flow": "mix", "flow_name": "Mix"}}
+        summary = self.layered(rows=planted)
+        self.assertEqual(summary["unexplained_count"], 1)
+        self.assertNotIn("C900-other", summary["by_step"])
+
+    def test_identical_builds_have_no_changes(self):
+        summary = compare.compare_rows(self.base, self.base, {})["summary"]
+        self.assertEqual(summary["exchange_rows_changed"], 0)
+        self.assertEqual(summary["unexplained_count"], 0)
+
+    def test_a_renamed_flow_that_the_mapping_does_not_know_loses_its_ef_flow(self):
+        rows = compare.compare_rows(self.base, self.cand, self.steps)["rows"]
+        flows = compare.compare_flows(rows, self.bridge, self.effective, {"ef-gas": "Natural Gas"})
+        self.assertEqual(flows["exchanges_that_lost_their_ef_3_1_flow"], 1)
+        self.assertEqual(flows["flows_that_lost_their_ef_3_1_flow"], 1)
+        (flow,) = flows["flows_that_changed_identity"]
+        self.assertEqual(
+            (flow["name_before"], flow["name_after"]), ("Gas, natural/m3", "Gas, natural")
+        )
+        self.assertEqual(flow["ef_3_1_flow_before"], "Natural Gas")
+        self.assertIsNone(flow["ef_3_1_flow_after"])
+        self.assertEqual(flow["methods_whose_factor_changes"], ["fossils"])
+        self.assertEqual(flow["steps"], [NAMES])
+
+    def test_a_renamed_flow_that_the_mapping_knows_stays_linked(self):
+        bridge = {**self.bridge, "gas-new": Entry("ef-gas", 35.98)}
+        effective = compare.effective_factors(bridge, self.methods)
+        rows = compare.compare_rows(self.base, self.cand, self.steps)["rows"]
+        flows = compare.compare_flows(rows, bridge, effective, {})
+        self.assertEqual(flows["exchanges_that_lost_their_ef_3_1_flow"], 0)
+        (flow,) = flows["flows_that_changed_identity"]
+        self.assertEqual(flow["methods_whose_factor_changes"], [])
+        self.assertEqual(flow["ef_3_1_flow_after"], "EF 3.1 flow ef-gas")
+
+    def test_seeds_are_the_datasets_whose_change_can_move_a_method(self):
+        rows = compare.compare_rows(self.base, self.cand, self.steps)["rows"]
+        seeds = compare.relevant_seeds(rows, self.effective, ["climate", "fossils"])
+        self.assertEqual(dict(seeds["climate"]), {AMOUNT: {"farm"}})
+        self.assertEqual(dict(seeds["fossils"]), {AMOUNT: {"farm"}, NAMES: {"gas"}})
+
+    def test_zero_amount_inputs_are_not_supply_chain_links(self):
+        graph = compare.consumer_graph(self.base[1], self.cand[1])
+        self.assertEqual(dict(graph), {"waste": {"farm"}, "gas": {"mix"}})  # not farm -> mix
+
+    def test_moved_scores_are_attributed_or_reported(self):
+        import pandas as pd
+
+        rows = compare.compare_rows(self.base, self.cand, self.steps)["rows"]
+        seeds = compare.relevant_seeds(rows, self.effective, ["climate", "fossils"])
+        graph = compare.consumer_graph(self.base[1], self.cand[1])
+        index = pd.Index(["farm", "gas", "mix"], name="code")
+        before = pd.DataFrame(
+            {"climate": [300.0, 0.0, 0.0], "fossils": [5.0, 36.0, 72.0]}, index=index
+        )
+        after = pd.DataFrame(
+            {"climate": [1.0, 0.0, 0.0], "fossils": [0.1, 0.0, 72.0 * (1 + 1e-9)]}, index=index
+        )
+        names = {"farm": {"name": "Fruit", "location": "CH"}}
+        result = compare.compare_scores(before, after, seeds, graph, names)
+        climate, fossils = result["methods"]
+        self.assertEqual(climate["datasets_moved"], 1)
+        self.assertEqual(climate["moved_by_step"], {AMOUNT: 1})
+        self.assertEqual(climate["moved"][0]["name"], "Fruit")
+        self.assertAlmostEqual(climate["moved"][0]["change_percent"], -99.6666667, places=5)
+        self.assertEqual(fossils["moved_by_step"], {AMOUNT: 1, NAMES: 1})
+        self.assertEqual(fossils["datasets_that_could_move"], {AMOUNT: 1, NAMES: 2})
+        self.assertEqual(fossils["differences_below_tolerance"], 1)  # the solver noise on "mix"
+        self.assertEqual(result["unexplained_moves"], 0)
+
+        after.loc["mix", "climate"] = 9.0  # nothing upstream of "mix" changed for climate
+        result = compare.compare_scores(before, after, seeds, graph, names)
+        self.assertEqual(result["unexplained_moves"], 1)
+        self.assertEqual(result["methods"][0]["moved_by_step"], {AMOUNT: 1, "unexplained": 1})
+
+    def test_corrected_flows_are_listed_with_the_ef_flow_they_stay_on(self):
+        receipt = {
+            "source_observations": [
+                {
+                    "dataset": "gas",
+                    "position": 1,
+                    "declared": {"name": "Gas, natural/m3", "category": "resources"},
+                    "patched": {"name": "Gas, natural", "category": "resources"},
+                },
+                {
+                    "dataset": "farm",
+                    "position": 2,
+                    "declared": {"name": "Carbon dioxide", "category": "biotic"},
+                    "patched": {"name": "Carbon dioxide", "category": "in air"},
+                },
+            ]
+        }
+        steps = {"gas": [NAMES], "farm": [COMPARTMENTS, AMOUNT]}
+        result = compare.declared_flows(
+            receipt, self.base[1], steps, self.bridge, {"ef-gas": "Natural Gas"}
+        )
+        self.assertEqual(
+            (result["exchanges"], result["datasets"], result["unexplained"]), (2, 2, 0)
+        )
+        by_step = {flow["steps"][0]: flow for flow in result["flows"]}
+        self.assertEqual(by_step[NAMES]["ef_3_1_flow"], ["Natural Gas"])
+        self.assertTrue(by_step[NAMES]["linked_to_ef_3_1"])
+        self.assertEqual(by_step[COMPARTMENTS]["ef_3_1_flow"], ["EF 3.1 flow ef-co2"])
+
+        result = compare.declared_flows(receipt, self.base[1], {}, self.bridge, {})
+        self.assertEqual(result["unexplained"], 2)
+        self.assertEqual(
+            compare.declared_flows({}, self.base[1], {}, self.bridge, {})["exchanges"], 0
+        )
+
+    def test_the_name_of_the_release_is_not_a_changed_row(self):
+        processes = self.base[0].assign(source="bafu-2026", source_version="v1")
+        patched = self.base[0].assign(source="bafu-2026-v1-patched", source_version="tree-1")
+        summary = compare.compare_rows((processes, self.base[1]), (patched, self.base[1]), {})[
+            "summary"
+        ]
+        self.assertEqual(summary["dataset_rows_changed_by_step"], {})
+        self.assertEqual(summary["unexplained_count"], 0)
+
+    def test_declared_supplier_location_is_compared_with_the_linked_dataset(self):
+        before = compare.declared_against_linked(*self.base)
+        after = compare.declared_against_linked(*self.cand)
+        self.assertEqual(before["technosphere_inputs"], 3)
+        self.assertEqual(before["without_a_linked_dataset"], 1)  # "waste" is not a dataset here
+        self.assertEqual(before["no_declared_location"], 0)
+        self.assertNotIn("declared_unit_differs", before)  # these tables carry no units
+        self.assertEqual(
+            before["declared_location_differs"] - after["declared_location_differs"], 1
+        )
+
+    def test_declared_units_are_compared_with_the_linked_datasets_unit(self):
+        processes, exchanges = self.base
+        processes = processes.assign(reference_unit=["kg", "MJ", "kWh"])
+        exchanges = exchanges.assign(unit=["kg", "kg", "kg", "MJ", "Nm3", "kWh", "kWh", "p"])
+        result = compare.declared_against_linked(processes, exchanges)
+        # "mix" takes gas in kWh from a dataset in MJ, and fruit in p from a dataset in kg;
+        # the input without a linked dataset is not counted
+        self.assertEqual(result["declared_unit_differs"], 2)
+        self.assertEqual(
+            result["declared_and_linked_units"],
+            {"kWh for a dataset in MJ": 1, "p for a dataset in kg": 1},
+        )
+
+
+class Published(unittest.TestCase):
+    def test_two_builds_are_put_side_by_side_only_when_both_were_compared(self):
+        import json
+        import tempfile
+
+        def summary(share):
+            categories = {"energy": {"compared": 9, "within_1_percent": share}}
+            return {"joined": 9, "not_joined": 1, "categories": categories}
+
+        with tempfile.TemporaryDirectory() as temp:
+            base, cand = Path(temp) / "base", Path(temp) / "cand"
+            base.mkdir()
+            cand.mkdir()
+            (base / "published-results.json").write_text(json.dumps(summary(97.75)))
+            self.assertIsNone(compare.published_results(base, cand))
+            (cand / "published-results.json").write_text(json.dumps(summary(11.56)))
+            result = compare.published_results(base, cand)
+        self.assertEqual(
+            result["within_1_percent"]["energy"], {"baseline": 97.75, "candidate": 11.56}
+        )
+        self.assertEqual(result["not_joined"], {"baseline": 1, "candidate": 1})
+
+
+if __name__ == "__main__":
+    unittest.main()

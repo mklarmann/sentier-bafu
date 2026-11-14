@@ -1,70 +1,93 @@
-<p><img src="site/assets/sentier.svg" alt="sentier.dev" width="160"></p>
+<p><a href="https://www.d-d-s.ch/"><img src="site/assets/dds-logo.svg" alt="Départ de Sentier" width="200"></a></p>
 
-# BAFU / UVEK · a shared dataset workspace
+# BAFU/UVEK inventory database: community findings
 
-**Reproduce the import. Bring contributions into application and testing. Build reviewed consensus and return actionable recommendations to BAFU.**
+This workspace collects measured findings on the BAFU/UVEK life-cycle inventory database as feedback to BAFU, the Swiss Federal Office for the Environment (FOEN), which decides what it changes. People who work with the database record here what they measure in BAFU's data, and a second person is asked to repeat each measurement.
 
-This public Sentier project connects partner evidence, Brightcon hackathon work, candidate improvements and the discussion around BAFU/UVEK. It spans releases and preserves the provider's canonical source alongside traceable, separately identified candidate layers.
+Beside the findings, this workspace holds contributions (mappings, models and variants, which keep their own name) and community patches for users who need a change now.
 
-[Import & use](site/import.md) · [Findings ledger](community/findings.md) · [Evidence & testing](community/build-validation.md) · [Contribute](community/README.md) · [Consensus](community/workflow.md)
+**The site: <https://sentier-dev.github.io/sentier-bafu/>.** It lists every finding with its status and its discussion, and it shows what was reported to BAFU and what BAFU answered. It is built from the records in this repository.
 
-## Consolidating the community work
+## Report a finding
 
-The [migration and UX plan](docs/plans/bafu-community/README.md) brings the
-working [community-fixes pipeline](https://github.com/sentier-dev/bafu-community-fixes)
-and this evidence workspace together. Community-fixes is authoritative where
-they conflict. Its package and commands stay stable; migration parity and the
-new review experience are tracked as separate tasks. The pipeline has not yet
-been merged into this repository. See the [consolidation issues](https://github.com/sentier-dev/sentier-bafu/issues/18)
-and the [architecture decisions](docs/adr/).
+You measured something in BAFU's data that looks wrong, or that you cannot explain. [Open a finding](https://github.com/sentier-dev/sentier-bafu/issues/new?template=bafu-data-finding.yml) with the dataset code, the release, what you measured and how, and why it looks wrong. You need a free GitHub account.
 
-## Start with the import
+A maintainer adds a record to [`community/findings/`](community/findings/README.md). The finding gets the number of its issue and the status "Needs a second measurement".
 
-[Sentier importers](https://github.com/sentier-dev/sentier-importers) parses the provider release. [Inventory](https://github.com/sentier-dev/sentier-inventory), [methods](https://github.com/sentier-dev/sentier-methods) and [mappings](https://github.com/sentier-dev/sentier-mappings) hold the derived artifacts; [sentier-brightway](https://github.com/sentier-dev/sentier-brightway) builds the pinned application baseline.
+## Repeat a measurement
+
+This is the most useful help. Choose a finding with the status "Needs a second measurement" on the [findings page](https://sentier-dev.github.io/sentier-bafu/findings.html). Repeat the measurement on BAFU's release files, and write what you got in the finding's issue. A different result is as useful as the same one.
+
+## Propose a contribution
+
+A contribution is a mapping, a model, a rebuilt inventory or a method variant, with its evidence and the checks it must pass. A contribution never replaces BAFU's numbers. [Open a contribution](https://github.com/sentier-dev/sentier-bafu/issues/new?template=community-contribution.yml), and read [the contribution workflow](community/workflow.md).
+
+## The patched copy
+
+The patched copy is BAFU's release with import fixes and community patches applied. It is a convenience for users who need a change now. A community patch is not BAFU's correction.
+
+The patch tool is in this repository. You need [git](https://git-scm.com/) and [uv](https://docs.astral.sh/uv/), a tool that installs Python programs. BAFU's Terms of Use apply to the files that a run downloads and to everything built from them: read [docs/terms-of-use.md](docs/terms-of-use.md) first.
 
 ```sh
-git clone https://github.com/sentier-dev/sentier-brightway.git
-cd sentier-brightway
+git clone https://github.com/sentier-dev/sentier-bafu.git
+cd sentier-bafu
 uv sync
-uv run sentier-brightway coverage
-uv run sentier-brightway files --out ../bafu-baseline
+uv run bafu-fixes list
+uv run bafu-fixes run latest output/ --strict --report output/report.html
 ```
 
-Record the release, input hashes, manifest pins and residual coverage. The build includes its pinned mappings and transformations; treat it as a derived build. Obtain raw exports under the provider's terms for regeneration. The redistribution basis for the full published inventory remains [open in issue #1](https://github.com/sentier-dev/sentier-bafu/issues/1); read [data and attribution](docs/terms-of-use.md) before sharing builds.
+- `list` shows the import fixes and the community patches, with the findings each patch answers and the person who authorised it.
+- `run latest output/` downloads the files of BAFU:2026 v1 (about 37 MB, once), checks the download against a known checksum, applies the import fixes and the patches, and writes the patched files to the folder `output/`. A folder with BAFU's files works in place of `latest`.
+- `--strict` checks the files against the EcoSpold 1 schema after the import fixes and after each patch.
+- `--report` writes a report that opens in a web browser. It lists each step with its author and the person who authorised it, and it shows what the step changed.
+- `--only` and `--skip` choose the patches. `uv run bafu-fixes-tui` offers the same run as a menu in the terminal.
 
-## Bring evidence, then test the claim
-
-| Step | What belongs here |
-|---|---|
-| Canonical import | Source release, identifiers, hashes and reproducible import path |
-| Partner contributions | Findings, proposed mappings, models and scenarios with evidence |
-| Application & testing | Separate candidates, named exchange changes, coverage and score comparisons |
-| Reviewed consensus | Actual reviewer decisions, objections and their disposition |
-| Recommendations to BAFU | Agreed findings, delivery evidence and provider responses |
-
-A **finding** starts with the source release, dataset code, what you measured and how. Read [the ledger](community/findings.md), then [open an issue](https://github.com/sentier-dev/sentier-bafu/issues/new/choose). Reproduce observations against the provider's source files before concluding that BAFU's data is wrong. An importer defect belongs to the component that introduced it.
-
-A **contribution layer** gets a [record](community/templates/contribution.json), isolated candidate build and [validation plan](community/build-validation.md). A reconstruction of an aggregated inventory is a new inventory claim; representation parity, inventory correction and forecasting require different tests.
-
-## Current work
-
-- The [hackathon copied-process contribution](community/contributions/C001.json) remains proposed. Its [round-trip run](community/runs/hackathon-roundtrip.json) passed across 766 families; units/mass balance, score parity and held-out forecasting validation remain open.
-- The [lci-bafu-catalog findings](community/findings.md) connect source observations with their discussion threads. [Importer parity](https://github.com/sentier-dev/sentier-bafu/issues/2), [aggregation](https://github.com/sentier-dev/sentier-bafu/issues/3), [maintenance](https://github.com/sentier-dev/sentier-bafu/issues/4) and [method/build identity](https://github.com/sentier-dev/sentier-bafu/issues/5) have separate evidence and follow-up requirements.
-- The [measured BAFU export audit](community/runs/bafu-export-audit.json) passes identity/count checks and core-gas characterization coverage on the pinned 420,063-row registry; it does not claim raw-source or score parity.
-- Shared tooling checks named row-count deltas, required characterization, exact artifact-hash metadata and portable summary identity. Passing a supplied audit does not establish source parity or partner agreement.
+One more command builds what follows from the patched files:
 
 ```sh
-python3 scripts/community.py check
-python3 -m unittest discover -s community/tests
-python3 scripts/build_checks.py path/to/build-audit.json
+uv run --no-project --python 3.12 python scripts/build_release.py release latest output/release-run
 ```
 
-The [synthetic audit example](community/templates/build-audit.json) is a format demonstration, not a measured BAFU build.
+It builds a Brightway database of BAFU's release and one of the patched copy, both with the EF 3.1 impact methods. It checks both and compares them. Then it writes the patched copy as files for Brightway, openLCA, ILCD and SimaPro, and reads each file back. The files carry BAFU's credit, the label *Modified Data* and the list of changes.
 
-## Documentation site
+Its state:
 
-**[Open the BAFU / UVEK site](https://sentier-dev.github.io/sentier-bafu/).** The responsive site shares Sentier's visual identity with [the AGRIBALYSE review preview](https://mklarmann.github.io/sentier-agribalyse/). Its public pages cover import, findings, application tests and consensus. The [Documentation workflow](.github/workflows/pages.yml) checks pull requests and publishes updates from `main` to GitHub Pages. Build locally with `uv run --no-project --with markdown==3.7 scripts/build_site.py`; see [site maintenance](site/README.md). Generated pages contain coordination material only, with no inventory downloads.
+- [`community/patches.json`](community/patches.json) lists the community patches with the findings they answer. A script writes it from the patches in `src/bafu_community_fixes/patches/`.
+- The files for Brightway, openLCA, ILCD and SimaPro are written and read back on your own machine and in the checks of this repository. They are not offered for download: no download exists yet that asks for acceptance of BAFU's Terms of Use. This repository and the site hold no inventory files.
+- No file has been opened in openLCA or in SimaPro yet. The checks read the files with separate programs.
+- Of the build that a maintainer gave a tag, one file is kept: a manifest with checksums and counts. A local build can be compared with it.
 
-## Data, credit and participation
+Where to read on:
 
-Original code and documentation are MIT. Source datasets retain their own terms, attribution and modification requirements. Keep restricted exports and confidential partner evidence local. No new reviewer consensus, sent recommendation or provider endorsement is implied by the workspace. See [the workflow](community/workflow.md), [recommendation tracker](community/recommendations/tracker.json) and [terms](docs/terms-of-use.md).
+- [docs/patch-tool.md](docs/patch-tool.md): every option of the patch tool, how it works, what it writes and how to write a patch.
+- [docs/release-build.md](docs/release-build.md): each step of the build, what stops it and what is kept of a tagged build.
+- [docs/exports.md](docs/exports.md): what each file holds and what was checked.
+- The site's [Patched copy](https://sentier-dev.github.io/sentier-bafu/patch-and-build.html) page lists the patches.
+
+## Work on this repository
+
+- [CONTRIBUTING.md](CONTRIBUTING.md): the commands that check a change, how to write a community patch, the house style for records, and the rules for work done with an AI agent.
+- [community/README.md](community/README.md): the records and the documents that say how they are handled.
+- [site/README.md](site/README.md): how the site is built from the records.
+- [docs/automation.md](docs/automation.md): every workflow, and the path of a finding from the issue form to BAFU's answer and to a patched copy.
+- [AGENTS.md](AGENTS.md): what an AI agent reads before it changes this repository.
+
+## Documents
+
+- [CONTEXT.md](CONTEXT.md): the glossary. It defines finding, contribution, community patch, patched copy and the other terms used here.
+- [docs/adr/](docs/adr/): the architecture decisions, each with its status.
+- [docs/terms-of-use.md](docs/terms-of-use.md): a short reading of BAFU's Terms of Use for people who work with the data. It is not legal advice.
+- [docs/plans/bafu-community/](docs/plans/bafu-community/README.md): the plan for bringing the patch tool and this workspace together.
+
+## Data, credit and licence
+
+The code and the documentation in this repository are under the MIT licence ([LICENSE](LICENSE)). BAFU's data is under BAFU's Terms of Use. Findings quote dataset codes, names and single values. Text from BAFU's LCI reports is not reproduced.
+
+Some files that come with the code keep their own terms:
+
+- The EcoSpold 1 schema files in `src/bafu_community_fixes/schemas/ecospold1/` are under the EcoSpold Public License 1.0 (see [their README](src/bafu_community_fixes/schemas/ecospold1/README.md)).
+- The Brightway Flows data in `src/bafu_community_fixes/data/` is under the Open Database License 1.0 (see [its README](src/bafu_community_fixes/data/README.md)).
+- The Rubik font in the patch tool's reports ([Rubik-OFL.txt](src/bafu_community_fixes/report_assets/Rubik-OFL.txt)) and the site's Nunito font ([OFL.txt](site/assets/OFL.txt)) are under the SIL Open Font License 1.1.
+- The Départ de Sentier logo (`site/assets/dds-logo.svg`) is by Sylvain Prevost, under CC BY 4.0 (see [site/README.md](site/README.md)).
+
+This workspace is not run by BAFU. Nothing in it implies BAFU's endorsement.

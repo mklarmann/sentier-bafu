@@ -1,20 +1,18 @@
-# Community contributions and consensus
+# Community records
 
-This public project is the central working space for BAFU/UVEK, spanning dataset releases. Its purpose is to make the canonical import easy to reproduce, collect contributions and discussions from partners and hackathon participants, apply proposed improvements as traceable layers, and test them against the canonical baseline.
+This folder holds the records behind the [site](https://sentier-dev.github.io/sentier-bafu/): one file per finding, one file per contribution, and the documents that say how they are handled. To report a finding or repeat a measurement, start on the site's [Take part](https://sentier-dev.github.io/sentier-bafu/take-part.html) page.
 
-The resulting evidence supports an explicit review and consensus process. Agreed findings become actionable recommendations to BAFU for improving the source dataset, with delivery and provider responses recorded here. Sentier provides the collaboration and testing infrastructure; the recommendations concern BAFU/UVEK.
+| Here | What it is | On the site |
+|---|---|---|
+| [`findings/`](findings/README.md) | One JSON record per finding: what was observed, and dated evidence of what happened to it | [Findings](https://sentier-dev.github.io/sentier-bafu/findings.html), [Feedback to BAFU](https://sentier-dev.github.io/sentier-bafu/feedback.html) |
+| [`contributions/`](contributions/) | One JSON record per contribution: what it is based on, its checks and its reviewers | [Contributions](https://sentier-dev.github.io/sentier-bafu/contributions.html) |
+| [`patches.json`](patches.json) | The community patches, with the findings they answer | [Patched copy](https://sentier-dev.github.io/sentier-bafu/patch-and-build.html) |
+| [`workflow.md`](workflow.md) | How a contribution is proposed, tested, reviewed and decided | |
+| [`build-validation.md`](build-validation.md) | How a build is checked, and what was measured so far | |
+| [`runs/`](runs/) | Records of the measured runs that the checks cite | |
+| [`templates/`](templates/) | Empty records to start from | |
+| [`recommendations/`](recommendations/README.md) | Recommendations to BAFU that follow from accepted contributions | |
 
-The working sequence is: canonical import → contributor layers → application and testing → reviewed consensus → recommendations to BAFU.
+These files are working notes: [application-and-testing.md](application-and-testing.md) on how a contribution is applied and tested, with C001 as the example, [hackathon-assessment.md](hackathon-assessment.md) on C001, and [mutel-mapping-review.md](mutel-mapping-review.md) on C002. [reconciliation.md](reconciliation.md) is a dated receipt of how findings and community patches were brought into agreement in October and November 2026.
 
-Keep the canonical source and its import reproducible. Store each proposed correction, mapping, parameter scenario or process model as a separate contribution with a source release, pinned implementation revision, evidence and validation plan. Apply it in an isolated candidate build; retain the baseline and comparison outputs. A local experiment does not change the provider's official dataset.
-
-Start with [the contribution template](templates/contribution.json), [the intake template](templates/intake.md), [application and testing](application-and-testing.md), [build validation](build-validation.md), and [the workflow](workflow.md). Evidence, proposals, runs and provider responses belong here together; this is more than a collection of feedback notes.
-
-```sh
-python3 scripts/community.py check
-python3 scripts/community.py compare baseline-summary.json candidate-summary.json --out .local/comparisons/example.json
-```
-
-Comparisons require the same baseline identity and scope, matching metrics and finite values. They report deltas; they do not decide whether a change is scientifically correct. Acceptance requires actual validation evidence and named reviewer approvals.
-
-No dataset-provider endorsement or new partner consensus is assumed. No packet is automatically sent. Public collaboration records must not expose confidential discussions or restricted source exports.
+The commands for checking a change to the records are in [CONTRIBUTING.md](../CONTRIBUTING.md).

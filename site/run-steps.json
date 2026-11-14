@@ -1,0 +1,60 @@
+{
+  "about": "What each step of a build does, in plain words, for the page 'Patch and build'. The key is the name the run gives the step. The numbers beside a text come from the run; none is typed here. 'short' is the name on the step's button. 'endings' names the step whose words stand for every step whose name ends alike (a contribution's steps carry its number).",
+  "endings": {
+    " build": "contribution build",
+    " comparison": "contribution comparison",
+    " exports": "contribution exports"
+  },
+  "steps": {
+    "provider build": {
+      "short": "BAFU's release",
+      "title": "BAFU's release, as it is",
+      "text": "BAFU's files are downloaded and checked against a known checksum. Nothing in them is changed. A Brightway database is built from them and checked. Every later step is measured against it."
+    },
+    "patched build": {
+      "short": "Changes applied",
+      "title": "Import fixes and community patches",
+      "text": "First the import fixes: preparations that every reader of the files needs. Then the community patches change the data, one after the other. A second database is built from the result and labelled Modified Data."
+    },
+    "written files": {
+      "short": "Files checked",
+      "title": "The files that were written",
+      "text": "Every patched file is read again. It must be valid ecoSpold, and it must be the file the run says it wrote."
+    },
+    "patch run": {
+      "short": "Patches checked",
+      "title": "What each patch found",
+      "text": "Each patch must still find the data it was written for. A patch that changes nothing stops the run. One that changes less than in the tagged build before is marked for a person to look at."
+    },
+    "comparison": {
+      "short": "Compared",
+      "title": "The two databases, compared",
+      "text": "Every exchange of BAFU's release is compared with the patched one, and every score under each impact method. Each difference must be explained by an import fix or a patch. A difference that nothing explains stops the run."
+    },
+    "exports": {
+      "short": "Files for LCA tools",
+      "title": "Files for LCA tools",
+      "text": "The patched copy is written as files for Brightway, openLCA, ILCD and SimaPro. Each carries BAFU's credit, the label Modified Data and the list of changes. Each is read back and compared with the database."
+    },
+    "contribution build": {
+      "short": "Contribution",
+      "title": "A contribution, built beside the patched copy",
+      "text": "A contribution that changes the inventory is built as a database of its own, beside the patched copy, and checked in the same way. It keeps its own name."
+    },
+    "contribution comparison": {
+      "short": "Contribution compared",
+      "title": "The contribution, compared",
+      "text": "The contribution's database is compared with the patched copy. Each difference must be one the contribution declares."
+    },
+    "contribution exports": {
+      "short": "Contribution files",
+      "title": "Files of the contribution",
+      "text": "The contribution's database is written as files for LCA tools, and each file is read back."
+    },
+    "other": {
+      "short": "Step",
+      "title": "A step of the run",
+      "text": "The run recorded this step. This page has no description of it yet."
+    }
+  }
+}

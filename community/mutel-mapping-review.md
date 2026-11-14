@@ -1,6 +1,6 @@
 # BAFU mapping import: implementation and tracked work
 
-Chris’s BAFU mapping work is feeding into the shared Sentier import routines.
+The BAFU mapping work behind C002 is feeding into the shared Sentier import routines.
 Concrete fixes and discussion belong in repository issues and pull requests.
 This page is a maintained entry point to those changes and the import contract.
 
@@ -40,14 +40,14 @@ BAFU→openLCA 2.8.2 mapping. That integration remains
 [C002](contributions/C002.json). Its next inputs are the pinned LCIA package
 and executable scoring path, plus an explicit method/category policy for
 ordered CF fallbacks, zero factors, units, directions and regions. Work on
-that policy with Chris in [#15](https://github.com/sentier-dev/sentier-bafu/issues/15).
+that policy in [#15](https://github.com/sentier-dev/sentier-bafu/issues/15).
 A candidate method still needs its own application and reproduction checks.
 Source-code fixes to our importer can proceed independently of a provider’s
 decision about an official distribution.
 
 ## Aggregated dataset list
 
-The [F8 source list and counting criteria](findings.md#f8-the-list-behind-the-37-unflagged-candidates)
+The [F8 source list and counting criteria](findings/0/F8.json)
 identify the 37 unflagged structural candidates, including their UUIDs. The
 hackathon separately reports 22 of those candidates rebuilt. These counts
 describe different stages; a comparison with another search should use the
@@ -57,7 +57,7 @@ dataset identifiers.
 
 The existing `mapping-review.html` URL stays useful for links already shared.
 It now points to implementation and issue status rather than a standalone
-assessment of Chris’s reports. The earlier file-consistency receipt remains
+assessment of the mapping reports. The earlier file-consistency receipt remains
 in C002’s history; it does not establish score reproduction, adoption or team
-consensus. [Import & use](../site/import.md) and
+consensus. [The patched copy](../site/patch-and-build.md) and
 [application tests](application-and-testing.md) describe the general workflow.

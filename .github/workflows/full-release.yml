@@ -1,0 +1,149 @@
+name: Proposed patches
+
+# For patches that are proposed (pull requests): every change to the patch tool or the
+# build is run on BAFU's full release, for this revision and for the revision the pull
+# request starts from, and the job summary says what the pull request changes and what
+# each patch matched now and before. A second job runs the whole path (builds, audit,
+# comparison, exports, a made-up contribution, manifest) on a made-up release.
+#
+# For patches that are accepted (main) and for tagged builds (tags), see release-build.yml,
+# which runs the same patch run as the first step of the full build.
+#
+# Nothing from the inventory leaves the runner. The job summary and the uploaded files
+# hold counts, checksums and file names; the release, the patched copy and the HTML
+# report (which quotes the data) are never uploaded.
+
+on:
+  pull_request:
+    paths:
+      - "src/bafu_community_fixes/**"
+      - "scripts/full_release_table.py"
+      - "scripts/check_patched_release.py"
+      - "scripts/build_release.py"
+      - "scripts/export_release.py"
+      - "scripts/release_build/**"
+      - "release-build-tests/**"
+      - "export-tests/**"
+      - "community/layers/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".python-version"
+      - ".github/actions/**"
+      - ".github/workflows/full-release.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: full-release-${{ github.ref }}
+  # A newer push to a pull request replaces its run.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  run:
+    name: Patches on BAFU's full release
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          # A pull request also runs the revision it starts from.
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install the patch tool and get BAFU's release
+        uses: ./.github/actions/bafu-release
+      - name: Run the import fixes and patches, strictly, and check the written files
+        uses: ./.github/actions/patch-run
+        with:
+          out: ${{ runner.temp }}/head
+          summary: ${{ runner.temp }}/summaries/head.json
+      - name: Run the revision this pull request starts from
+        if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          git worktree add --detach "$RUNNER_TEMP/base-source" "$BASE_SHA"
+          cd "$RUNNER_TEMP/base-source"
+          if [ ! -f uv.lock ] || ! uv sync --locked; then
+            echo "The base revision has no patch tool to run."
+          elif ! uv run --no-sync bafu-fixes run --help | grep -q -e --summary; then
+            echo "The base revision's patch tool can't write a summary yet."
+          else
+            uv run --no-sync bafu-fixes run latest "$RUNNER_TEMP/base" --strict \
+              --summary "$RUNNER_TEMP/summaries/base.json" \
+              || echo "The base revision's run failed. Its summary says where."
+          fi
+      - name: Say what the run did, what this pull request changes, and what each patch matched
+        # Fails if a step stopped, if the release is not a known one, or if a patch that
+        # changed something in the base revision changes nothing now.
+        if: ${{ !cancelled() }}
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -- "$RUNNER_TEMP/summaries/head.json" --head-revision "$HEAD_SHA" \
+            --out "$GITHUB_STEP_SUMMARY" --check
+          if [ -n "$BASE_SHA" ]; then
+            set -- "$@" --base "$RUNNER_TEMP/summaries/base.json" --base-revision "$BASE_SHA" \
+              --head-output "$RUNNER_TEMP/head" --base-output "$RUNNER_TEMP/base"
+          fi
+          uv run --no-sync python scripts/full_release_table.py "$@"
+      - name: Write the summaries in their public form
+        # A summary names who confirmed a problem for BAFU. What is uploaded names the
+        # organisation and the date, and no person but a patch's author and authoriser.
+        id: public
+        if: ${{ !cancelled() }}
+        run: |
+          uv run --no-sync python scripts/release_build/public_summary.py \
+            "$RUNNER_TEMP/summaries" --out "$RUNNER_TEMP/public-summaries"
+      - name: Keep the summaries (counts, checksums and dataset numbers, no inventory)
+        if: ${{ !cancelled() && steps.public.outcome == 'success' }}
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: full-release-summary
+          # This folder only ever holds the public form of the summary files written above.
+          path: ${{ runner.temp }}/public-summaries/
+          if-no-files-found: warn
+          retention-days: 90
+
+  made-up-release:
+    name: Whole path on a made-up release
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          enable-cache: false
+      - name: Install the patch tool
+        run: uv sync --locked
+      - name: Build, audit, compare, export and write the manifest for eight made-up datasets
+        # One command, as for the real release: provider and patched build, the checks of
+        # the patch run, the comparison, the exports with their read-back, a made-up
+        # contribution built beside the patched copy, the manifest. Clones
+        # sentier-importers and sentier-brightway at the commits in
+        # scripts/release_build/pins.toml and downloads the pinned flow terms, methods
+        # and mapping (37 MB, checked by SHA-256). No BAFU data.
+        env:
+          RELEASE_BUILD_WHOLE_PATH: "1"
+          RELEASE_BUILD_TOOLS: ${{ runner.temp }}/tools
+          RELEASE_BUILD_PINNED_DATA: ${{ runner.temp }}/pinned-data
+        run: |
+          uv run --no-project --python 3.12 python -m unittest discover \
+            -s release-build-tests -p test_whole_path.py
+      - name: Run the build's tests that need pandas, SciPy and bw2data
+        if: ${{ !cancelled() }}
+        run: |
+          uv run --frozen --project "$RUNNER_TEMP/tools/sentier-brightway" --python 3.12 \
+            --extra testing python -m unittest discover -s release-build-tests
+      - name: Run the export step's tests on a made-up database
+        if: ${{ !cancelled() }}
+        run: |
+          uv run --no-project --python 3.12 --with-requirements export-tests/requirements.txt \
+            pytest export-tests
+      - name: Check the adapter against what the patch tool writes
+        if: ${{ !cancelled() }}
+        run: uv run --no-sync python -m unittest discover -s release-build-tests -p test_adapter.py

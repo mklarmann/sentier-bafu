@@ -1,0 +1,383 @@
+[
+  {
+    "number": 3,
+    "title": "[Finding] 102 flagged + 37 unflagged aggregated datasets, and one flagged dataset with no flows (F8, F10)",
+    "state": "open",
+    "state_reason": null,
+    "created_at": "2026-10-07T10:17:22Z",
+    "html_url": "https://github.com/sentier-dev/sentier-bafu/issues/3",
+    "user": {
+      "login": "mklarmann",
+      "type": "User"
+    },
+    "author_association": "MEMBER",
+    "labels": [
+      {
+        "name": "bafu-finding"
+      },
+      {
+        "name": "handled-in-layer"
+      }
+    ],
+    "comments": 1
+  },
+  {
+    "number": 4,
+    "title": "[Finding] 1,289 datasets retired by xx/xxx prefix and category words; the importer's obsolete flag reaches the inventory only as comment text (F11)",
+    "state": "open",
+    "state_reason": null,
+    "created_at": "2026-10-07T10:17:24Z",
+    "html_url": "https://github.com/sentier-dev/sentier-bafu/issues/4",
+    "user": {
+      "login": "mklarmann",
+      "type": "User"
+    },
+    "author_association": "MEMBER",
+    "labels": [
+      {
+        "name": "bafu-finding"
+      },
+      {
+        "name": "upstream-reported"
+      }
+    ],
+    "comments": 1
+  },
+  {
+    "number": 6,
+    "title": "[Finding] Strawberries in plastic tunnel: 126 / 18 / 18 kg polyethylene disposal per kg fruit (F1)",
+    "state": "open",
+    "state_reason": null,
+    "created_at": "2026-10-07T10:17:27Z",
+    "html_url": "https://github.com/sentier-dev/sentier-bafu/issues/6",
+    "user": {
+      "login": "mklarmann",
+      "type": "User"
+    },
+    "author_association": "MEMBER",
+    "labels": [
+      {
+        "name": "bafu-finding"
+      },
+      {
+        "name": "upstream-reported"
+      }
+    ],
+    "comments": 1
+  },
+  {
+    "number": 7,
+    "title": "[Finding] Refrigerant R134a 191385: HFC/HCFC/CFC emissions exactly 10× the ecoinvent process; GWP100 108.6 (F2)",
+    "state": "open",
+    "state_reason": null,
+    "created_at": "2026-10-07T10:17:29Z",
+    "html_url": "https://github.com/sentier-dev/sentier-bafu/issues/7",
+    "user": {
+      "login": "mklarmann",
+      "type": "User"
+    },
+    "author_association": "MEMBER",
+    "labels": [
+      {
+        "name": "bafu-finding"
+      }
+    ],
+    "comments": 0
+  },
+  {
+    "number": 8,
+    "title": "[Finding] 23 supplier links declared with location ENTSO (registered as ENTSO-E) and two CH links to GLO/RER-only datasets (F3)",
+    "state": "open",
+    "state_reason": null,
+    "created_at": "2026-10-07T10:17:31Z",
+    "html_url": "https://github.com/sentier-dev/sentier-bafu/issues/8",
+    "user": {
+      "login": "mklarmann",
+      "type": "User"
+    },
+    "author_association": "MEMBER",
+    "labels": [
+      {
+        "name": "bafu-finding"
+      },
+      {
+        "name": "upstream-reported"
+      }
+    ],
+    "comments": 1
+  },
+  {
+    "number": 9,
+    "title": "[Finding] CEM II B-LL cement 286952: lorry transport 4.3E-4 tkm/kg vs 2.0E-2 in the cited report (F9)",
+    "state": "open",
+    "state_reason": null,
+    "created_at": "2026-10-07T10:17:33Z",
+    "html_url": "https://github.com/sentier-dev/sentier-bafu/issues/9",
+    "user": {
+      "login": "mklarmann",
+      "type": "User"
+    },
+    "author_association": "MEMBER",
+    "labels": [
+      {
+        "name": "bafu-finding"
+      }
+    ],
+    "comments": 0
+  },
+  {
+    "number": 28,
+    "title": "[Finding] Electricity, natural gas, at power plant (FI) declared in MJ; all sibling regions and FI consumers use kWh",
+    "state": "open",
+    "state_reason": null,
+    "created_at": "2026-10-14T18:44:42Z",
+    "html_url": "https://github.com/sentier-dev/sentier-bafu/issues/28",
+    "user": {
+      "login": "tngTUDOR",
+      "type": "User"
+    },
+    "author_association": "MEMBER",
+    "labels": [
+      {
+        "name": "bafu-finding"
+      }
+    ],
+    "comments": 3
+  },
+  {
+    "number": 29,
+    "title": "[Finding] Wind farm electricity declared OCE (only RER exists)",
+    "state": "open",
+    "state_reason": null,
+    "created_at": "2026-10-14T20:01:28Z",
+    "html_url": "https://github.com/sentier-dev/sentier-bafu/issues/29",
+    "user": {
+      "login": "tngTUDOR",
+      "type": "User"
+    },
+    "author_association": "MEMBER",
+    "labels": [
+      {
+        "name": "bafu-finding"
+      }
+    ],
+    "comments": 1
+  },
+  {
+    "number": 30,
+    "title": "[Finding] natural-gas technosphere exchanges use unit m3 while every volume provider is Nm3",
+    "state": "open",
+    "state_reason": null,
+    "created_at": "2026-10-14T20:06:04Z",
+    "html_url": "https://github.com/sentier-dev/sentier-bafu/issues/30",
+    "user": {
+      "login": "tngTUDOR",
+      "type": "User"
+    },
+    "author_association": "MEMBER",
+    "labels": [
+      {
+        "name": "bafu-finding"
+      }
+    ],
+    "comments": 1
+  },
+  {
+    "number": 31,
+    "title": "[Finding] 10 Electricity, production mix inputs omit location (e.g.: SE copper secondary 0.017907 kWh)",
+    "state": "open",
+    "state_reason": null,
+    "created_at": "2026-10-14T20:12:17Z",
+    "html_url": "https://github.com/sentier-dev/sentier-bafu/issues/31",
+    "user": {
+      "login": "tngTUDOR",
+      "type": "User"
+    },
+    "author_association": "MEMBER",
+    "labels": [
+      {
+        "name": "bafu-finding"
+      }
+    ],
+    "comments": 1
+  },
+  {
+    "number": 32,
+    "title": "F12 — the same elementary flow is declared in two units across datasets (Bq/kBq, m/km, kWh/MJ, Nm3/m3); importers must convert",
+    "state": "open",
+    "state_reason": null,
+    "created_at": "2026-10-15T02:08:18Z",
+    "html_url": "https://github.com/sentier-dev/sentier-bafu/issues/32",
+    "user": {
+      "login": "mklarmann",
+      "type": "User"
+    },
+    "author_association": "MEMBER",
+    "labels": [
+      {
+        "name": "bafu-finding"
+      },
+      {
+        "name": "informational"
+      },
+      {
+        "name": "handled-in-layer"
+      }
+    ],
+    "comments": 1
+  },
+  {
+    "number": 35,
+    "title": "[Finding] LCIA results workbook: ecotoxicity freshwater inorganics and organics columns are swapped (primary copper: 0.60 vs 170 CTUe)",
+    "state": "open",
+    "state_reason": null,
+    "created_at": "2026-10-21T10:27:22Z",
+    "html_url": "https://github.com/sentier-dev/sentier-bafu/issues/35",
+    "user": {
+      "login": "mklarmann",
+      "type": "User"
+    },
+    "author_association": "MEMBER",
+    "labels": [
+      {
+        "name": "bafu-finding"
+      },
+      {
+        "name": "needs-triage"
+      }
+    ],
+    "comments": 1
+  },
+  {
+    "number": 41,
+    "title": "[Finding] Asparagus seedling 491975: 14 of 20 input amounts sit on the wrong row, including 0.04 kg pesticide per seedling (report: 3.35E-06 kg)",
+    "state": "open",
+    "state_reason": null,
+    "created_at": "2026-10-31T18:35:09Z",
+    "html_url": "https://github.com/sentier-dev/sentier-bafu/issues/41",
+    "user": {
+      "login": "mklarmann",
+      "type": "User"
+    },
+    "author_association": "MEMBER",
+    "labels": [
+      {
+        "name": "bafu-finding"
+      },
+      {
+        "name": "needs-triage"
+      }
+    ],
+    "comments": 0
+  },
+  {
+    "number": 42,
+    "title": "[Finding] Four gas-combustion datasets take 0.5 MJ of gas per MJ burned but emit the CO2 of 1 MJ (LU, LT, RME, KR)",
+    "state": "open",
+    "state_reason": null,
+    "created_at": "2026-10-31T18:35:10Z",
+    "html_url": "https://github.com/sentier-dev/sentier-bafu/issues/42",
+    "user": {
+      "login": "mklarmann",
+      "type": "User"
+    },
+    "author_association": "MEMBER",
+    "labels": [
+      {
+        "name": "bafu-finding"
+      },
+      {
+        "name": "needs-triage"
+      }
+    ],
+    "comments": 0
+  },
+  {
+    "number": 43,
+    "title": "[Finding] Ecological Scarcity 2021: sulfur dioxide scored at 12,000 UBP/kg; the FOEN report gives 8.3 UBP/g, and the other acids follow 8.3",
+    "state": "open",
+    "state_reason": null,
+    "created_at": "2026-10-31T18:35:11Z",
+    "html_url": "https://github.com/sentier-dev/sentier-bafu/issues/43",
+    "user": {
+      "login": "mklarmann",
+      "type": "User"
+    },
+    "author_association": "MEMBER",
+    "labels": [
+      {
+        "name": "bafu-finding"
+      },
+      {
+        "name": "needs-triage"
+      }
+    ],
+    "comments": 0
+  },
+  {
+    "number": 44,
+    "title": "[Finding] `Nitrogen` to water carries CAS 7727-37-9 (dinitrogen): what does the flow measure, and does it overlap nitrate and ammonium?",
+    "state": "open",
+    "state_reason": null,
+    "created_at": "2026-10-31T18:35:12Z",
+    "html_url": "https://github.com/sentier-dev/sentier-bafu/issues/44",
+    "user": {
+      "login": "mklarmann",
+      "type": "User"
+    },
+    "author_association": "MEMBER",
+    "labels": [
+      {
+        "name": "bafu-finding"
+      },
+      {
+        "name": "needs-triage"
+      }
+    ],
+    "comments": 0
+  },
+  {
+    "number": 45,
+    "title": "[Finding] Two flow and compartment pairs in the raw files have no flow-list row: `Nitrogen dioxide, RAF` and `Uranium` to water (refines F4)",
+    "state": "open",
+    "state_reason": null,
+    "created_at": "2026-10-31T18:35:14Z",
+    "html_url": "https://github.com/sentier-dev/sentier-bafu/issues/45",
+    "user": {
+      "login": "mklarmann",
+      "type": "User"
+    },
+    "author_association": "MEMBER",
+    "labels": [
+      {
+        "name": "bafu-finding"
+      },
+      {
+        "name": "needs-triage"
+      }
+    ],
+    "comments": 0
+  },
+  {
+    "number": 47,
+    "title": "[Finding] 389238 Production, washing machine, V-ZUG (CH): the 2026 year-to-hour relabel leaves an annual inventory unscaled (×8,760 per unit)",
+    "state": "open",
+    "state_reason": null,
+    "created_at": "2026-11-12T22:28:03Z",
+    "html_url": "https://github.com/sentier-dev/sentier-bafu/issues/47",
+    "user": {
+      "login": "mklarmann",
+      "type": "User"
+    },
+    "author_association": "MEMBER",
+    "labels": [
+      {
+        "name": "bafu-finding"
+      },
+      {
+        "name": "needs-triage"
+      }
+    ],
+    "comments": 0
+  }
+]

@@ -1,0 +1,51 @@
+{
+  "schema": 2,
+  "id": "F13",
+  "issue": 28,
+  "title": "Electricity from natural gas (FI) labelled MJ but modelled per kWh",
+  "kind": "defect",
+  "datasets": [
+    {
+      "code": 401085,
+      "name": "Electricity, natural gas, at power plant",
+      "location": "FI"
+    },
+    {
+      "code": 316743,
+      "name": "Electricity, hard coal, at power plant, merged",
+      "location": "IN"
+    }
+  ],
+  "scope": "",
+  "releases": [
+    "2026-v1"
+  ],
+  "observation": "Reference unit MJ; its 29 sibling regions and its only consumer (`Electricity, from natural gas`, FI, 0.0156738 kWh) use kWh. The dataset is modelled per kWh (14.07 MJ gas per unit against a sibling median of 7.17 MJ/kWh; 3.6 / 14.07 = its stated 25.6 % efficiency): a label error, no rescale. BAFU's `LCIA-Results.xlsx` applies ×3.6 on that edge, overstating FI gas electricity by about 9 % and the FI production mix by about 2 %. The same error affects 316743 `Electricity, hard coal, at power plant, merged` (IN, labelled MJ, about 0.76 kg coal per unit, no consumer).",
+  "exposure": "",
+  "method": "Re-measured on the release files on 2026-10-21; the dataset is modelled per kWh. BAFU's published LCIA-Results.xlsx reproduces to six digits with the edge multiplied by 3.6 (sentier-brightway backtest, 2026-10-21). 316743 (IN coal, no consumer) has the same label error.",
+  "reported": {
+    "by": "tngTUDOR",
+    "date": "2026-10-14",
+    "url": "https://github.com/sentier-dev/sentier-bafu/issues/28"
+  },
+  "repeated": {
+    "by": "mklarmann",
+    "date": "2026-10-21",
+    "url": "https://github.com/sentier-dev/sentier-bafu/issues/28#issuecomment-6308091830",
+    "result": "reproduced"
+  },
+  "sent": null,
+  "answer": null,
+  "fixed_in": null,
+  "closed": null,
+  "related": [],
+  "threads": [
+    "https://gitlab.com/eos-lci/lci-bafu-catalog/-/issues/34"
+  ],
+  "next": {
+    "action": "Send to BAFU with the next batch: relabel the reference unit of 401085 and 316743 as kWh, no rescale; note that the published scores of FI gas electricity and the FI mix are overstated by about 9 % and 2 %.",
+    "role": "maintainer"
+  },
+  "retained": [],
+  "notes": ""
+}

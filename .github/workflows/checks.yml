@@ -1,0 +1,141 @@
+name: Checks
+
+# Every check that needs none of BAFU's data, on every pull request and on every push to
+# main: the records, the unit tests, a build of the site from the records alone with its link
+# check, the unit tests again after each step of a finding's life, and the patch tool's own
+# lint and tests. Nothing is written and nothing is deployed.
+#
+# The records, the site and their tests need Python 3.12 and run outside the package project
+# (`uv run --no-project --python 3.12`). The patch tool needs Python 3.14 and its locked
+# environment (`uv sync --locked`). CONTRIBUTING.md lists these commands for a run on your own
+# machine, and community/tests/test_workflows.py compares the two lists.
+#
+# What needs BAFU's release (the patch run on a pull request, the build) is in
+# full-release.yml and release-build.yml.
+#
+# intake.yml calls this workflow for the pull requests it opens, because a pull request opened
+# by a workflow starts no workflow of its own. The job names below are the names under which
+# intake.yml reports the result (CHECK_CONTEXTS in scripts/intake.py; a test compares them).
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_call:
+    inputs:
+      ref:
+        description: The commit to check. Empty stands for the commit that started the workflow.
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  records:
+    name: Records and unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: checks-records-${{ inputs.ref || github.ref }}
+      # A newer push to a pull request replaces its run; runs on main all finish.
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          python-version: "3.12"
+          enable-cache: false
+      - name: Check the records
+        run: uv run --no-project --python 3.12 python scripts/community.py check
+      - name: Run the unit tests
+        run: uv run --no-project --python 3.12 --with markdown==3.7 --with pyyaml==6.0.2 python -m unittest discover -s community/tests
+      - name: Check the build audit template
+        run: uv run --no-project --python 3.12 python scripts/build_checks.py community/templates/build-audit.json
+      - name: Run the tests of the export audit
+        run: uv run --no-project --python 3.12 --with pandas==2.2.3 --with pyarrow==19.0.1 python -m unittest discover -s registry-tests
+
+  site:
+    name: Site build and links
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: checks-site-${{ inputs.ref || github.ref }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          python-version: "3.12"
+          enable-cache: false
+      - name: Build the site from the records alone
+        run: uv run --no-project --python 3.12 --with markdown==3.7 python scripts/build_site.py --offline --out _site
+      - name: Check links, assets and published file types
+        run: uv run --no-project --python 3.12 python scripts/check_site.py _site
+
+  lifecycle:
+    # A new record, a second measurement, an answer, a correction, a new patch: each is one
+    # review or one command, and none may break a test. This job takes each such step on a
+    # copy of the repository and runs the unit tests on the copy.
+    name: Tests hold through a finding's life
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: checks-lifecycle-${{ inputs.ref || github.ref }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          python-version: "3.12"
+          enable-cache: false
+      - name: Take each step on a copy and run the unit tests
+        run: uv run --no-project --python 3.12 --with markdown==3.7 --with pyyaml==6.0.2 python community/tests/lifecycle_steps.py
+
+  package:
+    # The patch tool's own lint and tests, on its small fixture. What a patch does to BAFU's
+    # full release is shown by full-release.yml.
+    name: Patch tool lint and tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: checks-package-${{ inputs.ref || github.ref }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          ref: ${{ inputs.ref }}
+          # The whole history: the receipt of the patch tool's integration reads both of the
+          # histories that were joined.
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          enable-cache: false
+      - name: Install the patch tool
+        run: uv sync --locked
+      - name: Lint
+        run: uv run ruff check
+      - name: Check the formatting
+        run: uv run ruff format --check
+      - name: Run the patch tool's tests
+        run: uv run pytest
+      - name: Check the records with the patch registry as the tool itself lists it
+        # The job above reads the registry from the source of the patch modules, because the
+        # tool is not installed there. Here it is.
+        run: uv run python scripts/community.py check
+      - name: Check the receipt of the patch tool's integration
+        # Checks the tree of the commit that last wrote the receipt, so the check stays
+        # meaningful after later changes.
+        run: |
+          rev="$(git log -1 --format=%H -- docs/plans/bafu-community/integration-receipt.json)"
+          uv run --no-project --python 3.12 python scripts/check_integration_receipt.py --rev "$rev"

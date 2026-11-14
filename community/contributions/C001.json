@@ -1,6 +1,8 @@
 {
   "id": "C001",
+  "issue": null,
   "title": "Validate the hackathon copied-process layer before representation or forecasting recommendations",
+  "class": "model",
   "status": "proposed",
   "baseline": {
     "dataset": "BAFU/UVEK",
@@ -73,5 +75,16 @@
   "required_reviewers": [],
   "approvals": [],
   "objections": [],
-  "upstream_project": "BAFU / FOEN"
+  "upstream_project": "BAFU / FOEN",
+  "validation_scope": "Content round trip and exchange locations passed (and an exact, zero-tolerance round trip on 2026-10-21). Forecast held-out validation and units/mass balance were run on 2026-10-21 and both failed (sentier-bafu PR #37). Score parity not run.",
+  "next_action": "Contributor: pin pulp<4 and the inventory revision, then fix the forecast scoring (undefined F1, aggregates as members) and the scope of the sum-to-one constraint; then run score parity. This remains a separate scenario.",
+  "review_role": "reviewer",
+  "evidence_url": "https://github.com/sentier-dev/sentier-bafu/blob/main/community/runs/hackathon-roundtrip.json",
+  "retained": [
+    {
+      "kind": "objection",
+      "text": "Under corrected scoring a simple baseline (technologies used by at least half the other members) beats the MILP: F1 0.80 / MAE 0.050 against 0.65 / 0.061.",
+      "evidence_url": "https://github.com/sentier-dev/sentier-bafu/pull/37"
+    }
+  ]
 }

@@ -1,0 +1,302 @@
+# Labels the export step gives to units and compartments, and the technosphere inputs whose
+# declared unit is not the supplying dataset's unit.
+#
+# A row changes a LABEL only. No amount is multiplied, divided or dropped because of this
+# file: `per_reference` is written here so that two labels can be compared (is `kWh` the
+# same amount as `MJ`? no), never to convert. The export step (scripts/export_release.py)
+# and the audit (scripts/release_build/audit_brightway.py) both read this file, and a test
+# exports one dataset per unit and reads the label back from every format.
+#
+# Columns of [[unit]]:
+#   bafu           what BAFU's EcoSpold 1 files write (BAFU:2026 v1 uses these 20 strings on
+#                  11,947 reference functions and 420,063 exchanges)
+#   brightway      what the Brightway build writes on nodes and exchanges
+#                  (sentier-brightway, src/sentier_brightway/units.py at the pinned commit)
+#   openlca        the unit name given to the openLCA JSON-LD and ILCD writer. That writer
+#                  accepts the unit names of its own table (bw-ilcd-bridge, bw_ilcd/units.py,
+#                  which follows openLCA's reference data, GreenDelta/data refdata/units.csv)
+#                  and refuses every other string
+#   simapro        the unit symbol written to the SimaPro CSV. SimaPro reads a unit only if
+#                  the file's own Units block declares it; the writer declares every symbol
+#                  it writes
+#   quantity, per_reference
+#                  the quantity the label measures and how many reference units one unit is,
+#                  as openLCA's reference data states them. For comparing labels only
+#   source         why the label differs from the Brightway spelling, where it does
+
+[[unit]]
+bafu = ["kg"]
+brightway = "kilogram"
+openlca = "kilogram"
+simapro = "kg"
+quantity = "Mass"
+per_reference = 1.0
+
+[[unit]]
+bafu = ["kWh"]
+brightway = "kilowatt hour"
+openlca = "kilowatt hour"
+simapro = "kWh"
+quantity = "Energy"
+per_reference = 3.6
+
+[[unit]]
+bafu = ["MJ"]
+brightway = "megajoule"
+openlca = "megajoule"
+simapro = "MJ"
+quantity = "Energy"
+per_reference = 1.0
+
+[[unit]]
+bafu = ["kBq"]
+brightway = "kilo Becquerel"
+openlca = "kilo Becquerel"
+simapro = "kBq"
+quantity = "Radioactivity"
+per_reference = 1.0
+
+[[unit]]
+bafu = ["Bq"]
+brightway = "Becquerel"
+openlca = "Becquerel"
+simapro = "Bq"
+quantity = "Radioactivity"
+per_reference = 0.001
+
+[[unit]]
+bafu = ["m3"]
+brightway = "cubic meter"
+openlca = "cubic meter"
+simapro = "m3"
+quantity = "Volume"
+per_reference = 1.0
+
+[[unit]]
+bafu = ["Nm3"]
+brightway = "normal cubic meter"
+openlca = "cubic meter"
+simapro = "Nm3"
+quantity = "Volume"
+per_reference = 1.0
+source = """\
+The JSON-LD and ILCD writer has no unit named `normal cubic meter` or `Nm3` and refuses \
+both. openLCA's reference data lists `Nm3` as a synonym of its unit `m3` (GreenDelta/data, \
+refdata/units.csv, read on 13 November 2026), so the openLCA and ILCD files write `cubic \
+meter` and each such dataset's description names BAFU's unit. The SimaPro CSV keeps BAFU's \
+own symbol `Nm3`, declared in the file as a volume unit equal to 1 m3. The amounts are \
+BAFU's: 1 Nm3 is written as 1."""
+
+[[unit]]
+bafu = ["tkm"]
+brightway = "ton kilometer"
+openlca = "ton kilometer"
+simapro = "tkm"
+quantity = "Goods transport"
+per_reference = 1.0
+
+[[unit]]
+bafu = ["personkm"]
+brightway = "person kilometer"
+openlca = "person kilometer"
+simapro = "personkm"
+quantity = "Person transport"
+per_reference = 1.0
+source = """\
+The SimaPro CSV writer does not know the spelling `person kilometer` and would declare it \
+as a unit of its own; it is given BAFU's symbol `personkm`, which it declares as a \
+transport unit."""
+
+[[unit]]
+bafu = ["p", "unit"]
+brightway = "unit"
+openlca = "unit"
+simapro = "p"
+quantity = "Number of items"
+per_reference = 1.0
+source = """\
+BAFU's files write `p` on 12,261 rows and `unit` on 643 for the same thing, a number of \
+items; the Brightway build writes `unit` for both."""
+
+[[unit]]
+bafu = ["m2"]
+brightway = "square meter"
+openlca = "square meter"
+simapro = "m2"
+quantity = "Area"
+per_reference = 1.0
+
+[[unit]]
+bafu = ["ha"]
+brightway = "hectare"
+openlca = "hectare"
+simapro = "ha"
+quantity = "Area"
+per_reference = 10000.0
+
+[[unit]]
+bafu = ["m2a"]
+brightway = "square meter-year"
+openlca = "square meter-year"
+simapro = "m2a"
+quantity = "Area*time"
+per_reference = 1.0
+
+[[unit]]
+bafu = ["m"]
+brightway = "meter"
+openlca = "meter"
+simapro = "m"
+quantity = "Length"
+per_reference = 1.0
+
+[[unit]]
+bafu = ["km"]
+brightway = "kilometer"
+openlca = "kilometer"
+simapro = "km"
+quantity = "Length"
+per_reference = 1000.0
+
+[[unit]]
+bafu = ["my"]
+brightway = "meter-year"
+openlca = "meter-year"
+simapro = "my"
+quantity = "Length*time"
+per_reference = 1.0
+
+[[unit]]
+bafu = ["kmy"]
+brightway = "kilometer-year"
+openlca = "kilometer-year"
+simapro = "kmy"
+quantity = "Length*time"
+per_reference = 1000.0
+
+[[unit]]
+bafu = ["m3y"]
+brightway = "cubic meter-year"
+openlca = "cubic meter-year"
+simapro = "m3y"
+quantity = "Volume*time"
+per_reference = 1.0
+
+[[unit]]
+bafu = ["hr"]
+brightway = "hour"
+openlca = "hour"
+simapro = "hr"
+quantity = "Duration"
+per_reference = 1.0
+
+# Compartments. The SimaPro CSV has one section per compartment, and a flow's row goes into
+# the section its compartment belongs to. The CSV writer knows the section of Brightway's
+# usual compartment names (`air`, `water`, `soil`, `natural resource`) and writes a flow
+# with any other first-level name into "Emissions to air". The Brightway build has three
+# kinds of compartment names, so each first part is declared here with its section:
+#   categories   the first levels of a flow's `categories` in the Brightway database
+#   simapro      the section of the SimaPro CSV
+# The subcompartment written is the rest of the flow's categories, as it is in the database.
+# A flow in use whose compartment is not listed stops the export.
+
+# EF 3.1 flow list (sentier-vocab), as sentier-brightway writes it
+[[compartment]]
+categories = ["Emissions", "Emissions to air"]
+simapro = "Emissions to air"
+
+[[compartment]]
+categories = ["Emissions", "Emissions to water"]
+simapro = "Emissions to water"
+
+[[compartment]]
+categories = ["Emissions", "Emissions to soil"]
+simapro = "Emissions to soil"
+
+[[compartment]]
+categories = ["Resources", "Resources from air"]
+simapro = "Resources"
+
+[[compartment]]
+categories = ["Resources", "Resources from ground"]
+simapro = "Resources"
+
+[[compartment]]
+categories = ["Resources", "Resources from water"]
+simapro = "Resources"
+
+[[compartment]]
+categories = ["Land use", "Land occupation"]
+simapro = "Resources"
+
+[[compartment]]
+categories = ["Land use", "Land transformation"]
+simapro = "Resources"
+
+# EF 3.1 flows that the build holds with one level only
+[[compartment]]
+categories = ["air"]
+simapro = "Emissions to air"
+
+[[compartment]]
+categories = ["water"]
+simapro = "Emissions to water"
+
+[[compartment]]
+categories = ["soil"]
+simapro = "Emissions to soil"
+
+[[compartment]]
+categories = ["natural resource"]
+simapro = "Resources"
+
+[[compartment]]
+categories = ["land use"]
+simapro = "Resources"
+
+# BAFU's own compartments, on flows that have no EF 3.1 flow (the `-residual` database)
+[[compartment]]
+categories = ["emissions to air"]
+simapro = "Emissions to air"
+
+[[compartment]]
+categories = ["emissions to water"]
+simapro = "Emissions to water"
+
+[[compartment]]
+categories = ["emissions to soil"]
+simapro = "Emissions to soil"
+
+[[compartment]]
+categories = ["resources"]
+simapro = "Resources"
+
+[[compartment]]
+categories = ["non material emissions"]
+simapro = "Non material emissions"
+
+[[compartment]]
+categories = ["economic issues"]
+simapro = "Economic issues"
+
+# Technosphere inputs whose declared unit is another quantity or magnitude than the unit of
+# the dataset that supplies them. The Brightway build links an input to its supplier by the
+# supplier's number and uses the amount as written, whatever the two unit labels say. The
+# audit lists every such input and the export writes it as built, with the declared unit
+# beside it. Each one belongs to a finding; one without a row here is a finding of the audit.
+#   supplier        the supplying dataset: its number in BAFU's release and its code (the
+#                   part of its file name after `process_`)
+#   declared        the unit the input declares, in the Brightway spelling
+#   supplier_unit   the supplier's reference unit, in the Brightway spelling
+#   finding         the finding it belongs to
+
+[[declared_unit_difference]]
+finding = "F13"
+supplier_number = 401085
+supplier = "c1f04203-96ec-320c-85f5-e56aaa86729b"
+declared = "kilowatt hour"
+supplier_unit = "megajoule"
+note = """\
+`Electricity, natural gas, at power plant` (FI) has the reference unit MJ; its one consumer \
+takes it in kWh. Finding F13: the dataset is modelled per kWh, so the label MJ is the \
+error and the amount needs no conversion."""

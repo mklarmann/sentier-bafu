@@ -1,0 +1,42 @@
+{
+  "schema": 2,
+  "id": "F2",
+  "issue": 7,
+  "title": "Refrigerant R134a: HFC, HCFC and CFC emissions exactly 10× the ecoinvent process",
+  "kind": "question",
+  "datasets": [
+    {
+      "code": 191385,
+      "name": "Refrigerant R134a, at plant",
+      "location": "RER"
+    }
+  ],
+  "scope": "",
+  "releases": [
+    "2025-v2",
+    "2026-v1"
+  ],
+  "observation": "HFC-134a 0.019, HCFC-124 0.010, CFC-113 0.010 kg per kg — each exactly 10× the corresponding ecoinvent 3.6 dataset (0.0019 / 0.001 / 0.001); GWP100 108.6 against roughly 19. A documented process difference or a unit slip?",
+  "exposure": "",
+  "method": "Compared on the release files with the corresponding ecoinvent 3.6 dataset; whether it is a documented process difference is the open question.",
+  "reported": {
+    "by": "mklarmann",
+    "date": "2026-10-07",
+    "url": "https://github.com/sentier-dev/sentier-bafu/issues/7"
+  },
+  "repeated": null,
+  "sent": null,
+  "answer": null,
+  "fixed_in": null,
+  "closed": null,
+  "related": [],
+  "threads": [
+    "https://gitlab.com/eos-lci/lci-bafu-catalog/-/issues/2"
+  ],
+  "next": {
+    "action": "Ask BAFU whether the factor of 10 is a documented process difference or a unit slip.",
+    "role": "maintainer"
+  },
+  "retained": [],
+  "notes": ""
+}

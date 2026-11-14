@@ -1,0 +1,107 @@
+[
+  {
+    "name": "bafu-finding",
+    "color": "d73a4a",
+    "description": "A measured observation about a BAFU/UVEK dataset or release (not a contribution layer)"
+  },
+  {
+    "name": "bug",
+    "color": "d73a4a",
+    "description": "Something isn't working"
+  },
+  {
+    "name": "discussion",
+    "color": "0075ca",
+    "description": "A question or decision about the data, a method difference, or how a finding goes upstream"
+  },
+  {
+    "name": "documentation",
+    "color": "0075ca",
+    "description": "Improvements or additions to documentation"
+  },
+  {
+    "name": "duplicate",
+    "color": "cfd3d7",
+    "description": "This issue or pull request already exists"
+  },
+  {
+    "name": "enhancement",
+    "color": "a2eeef",
+    "description": "New feature or request"
+  },
+  {
+    "name": "good first issue",
+    "color": "7057ff",
+    "description": "Good for newcomers"
+  },
+  {
+    "name": "handled-in-layer",
+    "color": "bfd4f2",
+    "description": "A contribution layer applies it in a candidate build; the upstream question stays open"
+  },
+  {
+    "name": "help wanted",
+    "color": "008672",
+    "description": "Extra attention is needed"
+  },
+  {
+    "name": "informational",
+    "color": "c5def5",
+    "description": "A method or scope difference, not a defect"
+  },
+  {
+    "name": "invalid",
+    "color": "e4e669",
+    "description": "This doesn't seem right"
+  },
+  {
+    "name": "licence",
+    "color": "5319e7",
+    "description": "Terms of Use, redistribution, attribution"
+  },
+  {
+    "name": "needs-info",
+    "color": "d876e3",
+    "description": "Missing evidence or clarification prevents implementation"
+  },
+  {
+    "name": "needs-triage",
+    "color": "ededed",
+    "description": "Not yet re-measured by a second person"
+  },
+  {
+    "name": "question",
+    "color": "d876e3",
+    "description": "Further information is requested"
+  },
+  {
+    "name": "ready-for-agent",
+    "color": "0e8a16",
+    "description": "Bounded implementation task with no remaining declared blockers"
+  },
+  {
+    "name": "ready-for-human",
+    "color": "5319e7",
+    "description": "Human work or decision is required"
+  },
+  {
+    "name": "upstream-fixed",
+    "color": "0e8a16",
+    "description": "BAFU corrected it in a named release"
+  },
+  {
+    "name": "upstream-reported",
+    "color": "fbca04",
+    "description": "Sent to lca@bafu.admin.ch (date on the issue)"
+  },
+  {
+    "name": "withdrawn",
+    "color": "e4e669",
+    "description": "Did not survive re-measurement against BAFU's own files; kept so nobody re-finds it"
+  },
+  {
+    "name": "wontfix",
+    "color": "ffffff",
+    "description": "This will not be worked on"
+  }
+]

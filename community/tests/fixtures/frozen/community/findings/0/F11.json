@@ -1,0 +1,48 @@
+{
+  "schema": 2,
+  "id": "F11",
+  "issue": 4,
+  "title": "1,289 datasets retired by an xx/xxx name prefix; the convention is undocumented",
+  "kind": "question",
+  "datasets": [],
+  "scope": "1,289 datasets named `xx …` / `xxx …`",
+  "releases": [
+    "2026-v1"
+  ],
+  "observation": "Retired by name prefix and/or category words (`obsolete`: 803, `notMaintained`: 441, current category: 45; 57 `obsolete` datasets carry no prefix). The convention is undocumented; consumers that match by name anchor on retired datasets unknowingly.",
+  "exposure": "",
+  "method": "Patch 0003 adds a maintenance extension attribute to the 1,289 datasets; names and categories unchanged. The 57 obsolete datasets without a prefix are not flagged.",
+  "reported": {
+    "by": "mklarmann",
+    "date": "2026-10-07",
+    "url": "https://github.com/sentier-dev/sentier-bafu/issues/4"
+  },
+  "repeated": null,
+  "sent": null,
+  "answer": {
+    "date": "2026-10-12",
+    "outcome": "explained",
+    "summary": "BAFU said that these datasets should be avoided and that they will move to a 'not maintained' category in its next release.",
+    "url": "https://github.com/sentier-dev/sentier-bafu/issues/4#issuecomment-6312245113"
+  },
+  "fixed_in": null,
+  "closed": null,
+  "related": [
+    "F16"
+  ],
+  "threads": [
+    "https://gitlab.com/eos-lci/lci-bafu-catalog/-/issues/15"
+  ],
+  "next": {
+    "action": "Verify the 'not maintained' category in the next BAFU release; ask whether the 57 unprefixed obsolete datasets belong to it (sentier-importers' obsolete test already includes the category; patch 0003 does not).",
+    "role": "maintainer"
+  },
+  "retained": [
+    {
+      "kind": "ask",
+      "text": "A `maintenance` column (obsolete / not_maintained / current) and a `retired_prefix` boolean in sentier-inventory, keeping both raw signals.",
+      "evidence_url": "https://github.com/sentier-dev/sentier-bafu/issues/4"
+    }
+  ],
+  "notes": ""
+}

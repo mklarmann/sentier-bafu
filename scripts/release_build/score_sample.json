@@ -1,0 +1,302 @@
+{
+  "about": "Fixed sample of BAFU:2026 v1 datasets scored by the build audit under EF 3.1 climate change (kg CO2 eq per unit). Dataset codes are the identifiers in BAFU's file names. The ranges are broad plausibility bounds from general LCA knowledge, set to catch a wrong method or a broken build. They are not BAFU's results and not reference values; a score outside its range is reported, and is a reason to look, not proof of an error.",
+  "method": "ef-3.1:climate-change",
+  "datasets": [
+    {
+      "code": "c4a92617-9f99-3d7b-95c0-15fb110b80ad",
+      "name": "Electricity, low voltage, at grid",
+      "location": "CH",
+      "unit": "kWh",
+      "plausible_range": [
+        0.01,
+        0.2
+      ],
+      "why": "control: grid electricity"
+    },
+    {
+      "code": "19346bf2-f651-324a-904c-9b4f835d3d48",
+      "name": "Electricity, low voltage, production CH, at grid",
+      "location": "CH",
+      "unit": "kWh",
+      "plausible_range": [
+        0.005,
+        0.15
+      ],
+      "documented_score": {
+        "value": 0.0320835,
+        "source": "sentier-brightway README (CH low-voltage electricity, provider release)"
+      },
+      "why": "control: the one score sentier-brightway documents"
+    },
+    {
+      "code": "ee0f9f93-524a-380a-963a-5eb4a78b8d92",
+      "name": "Electricity, hard coal, at power plant",
+      "location": "DE",
+      "unit": "kWh",
+      "plausible_range": [
+        0.7,
+        1.4
+      ],
+      "why": "control: coal power"
+    },
+    {
+      "code": "f7654254-5dba-3302-af6d-e7a74b01bebf",
+      "name": "Electricity, nuclear, at power plant",
+      "location": "CH",
+      "unit": "kWh",
+      "plausible_range": [
+        0.002,
+        0.05
+      ],
+      "why": "control: nuclear power"
+    },
+    {
+      "code": "50d4ab1d-354a-302a-9de7-9e1410783092",
+      "name": "Electricity, production mix CH",
+      "location": "CH",
+      "unit": "kWh",
+      "plausible_range": [
+        0.003,
+        0.15
+      ],
+      "why": "control: production mix"
+    },
+    {
+      "code": "e2a9cc3d-4c2a-3a78-9718-c155941a1f61",
+      "name": "Natural gas, burned in boiler condensing modulating 15kW",
+      "location": "CH",
+      "unit": "MJ",
+      "plausible_range": [
+        0.05,
+        0.09
+      ],
+      "why": "control: gas combustion"
+    },
+    {
+      "code": "33be9445-a5b8-3ba1-80c3-1aaec8e076eb",
+      "name": "Light fuel oil, burned in boiler 10kW, average",
+      "location": "CH",
+      "unit": "MJ",
+      "plausible_range": [
+        0.07,
+        0.11
+      ],
+      "why": "control: oil combustion"
+    },
+    {
+      "code": "e4e7ddc0-f7d1-3fad-bd12-9d6981142800",
+      "name": "Diesel, burned in building machine, average",
+      "location": "CH",
+      "unit": "MJ",
+      "plausible_range": [
+        0.07,
+        0.12
+      ],
+      "why": "control: diesel combustion"
+    },
+    {
+      "code": "b9430f24-d0b9-3422-a5ad-f874acbbef18",
+      "name": "Steel, low-alloyed, at plant",
+      "location": "RER",
+      "unit": "kg",
+      "plausible_range": [
+        0.8,
+        4.0
+      ],
+      "why": "control: metal"
+    },
+    {
+      "code": "5cac9857-21f7-305d-b705-c83a02a94e6e",
+      "name": "Aluminium, primary, at plant",
+      "location": "RER",
+      "unit": "kg",
+      "plausible_range": [
+        5.0,
+        25.0
+      ],
+      "why": "control: metal"
+    },
+    {
+      "code": "6738f024-eb64-3ef8-837e-05b84c6e43da",
+      "name": "Polyethylene, HDPE, granulate, at plant",
+      "location": "RER",
+      "unit": "kg",
+      "plausible_range": [
+        1.0,
+        3.5
+      ],
+      "why": "changed by patches 0008 and 0011"
+    },
+    {
+      "code": "9dc7ef6a-1dcc-3968-b7ac-675141e0f5fa",
+      "name": "Concrete, normal, at plant",
+      "location": "CH",
+      "unit": "m3",
+      "plausible_range": [
+        100.0,
+        450.0
+      ],
+      "why": "control: construction"
+    },
+    {
+      "code": "4ed576d3-ad06-3422-aa4d-00c86455ed41",
+      "name": "Wheat grains IP, at farm",
+      "location": "CH",
+      "unit": "kg",
+      "plausible_range": [
+        0.2,
+        1.0
+      ],
+      "why": "control: agriculture"
+    },
+    {
+      "code": "418f911c-33e1-4fe6-a3d4-6c4b7974f139",
+      "name": "Disposal, polyethylene, 0.4% water, to municipal incineration",
+      "location": "CH",
+      "unit": "kg",
+      "plausible_range": [
+        2.0,
+        3.6
+      ],
+      "why": "supplier of the exchange patch 0001 corrects"
+    },
+    {
+      "code": "c2d0c99c-d28a-3b78-aad3-f4790f49c412",
+      "name": "Strawberries, conventional, unheated plastic tunnel",
+      "location": "ES",
+      "unit": "kg",
+      "plausible_range": [
+        0.1,
+        3.0
+      ],
+      "why": "changed by patch 0001"
+    },
+    {
+      "code": "82b2cf7c-b0b3-387c-b26f-781a572e7467",
+      "name": "Strawberries, conventional, unheated plastic tunnel",
+      "location": "CH",
+      "unit": "kg",
+      "plausible_range": [
+        0.1,
+        3.0
+      ],
+      "why": "changed by patch 0001"
+    },
+    {
+      "code": "f9a7fbd2-f755-3292-b3d0-b6e486e9f677",
+      "name": "Strawberries, organic, unheated plastic tunnel",
+      "location": "CH",
+      "unit": "kg",
+      "plausible_range": [
+        0.1,
+        3.0
+      ],
+      "why": "changed by patch 0001"
+    },
+    {
+      "code": "4f15b98e-686a-3374-8122-90be33388c40",
+      "name": "Hard coal supply mix",
+      "location": "DE",
+      "unit": "kg",
+      "plausible_range": [
+        0.05,
+        0.8
+      ],
+      "why": "changed by patch 0002"
+    },
+    {
+      "code": "18a520da-7695-3a17-a667-0171824c6ccb",
+      "name": "Hard coal mix, at regional storage",
+      "location": "UCTE",
+      "unit": "kg",
+      "plausible_range": [
+        0.05,
+        0.8
+      ],
+      "why": "changed by patch 0002"
+    },
+    {
+      "code": "24449d7c-b4f6-388f-854f-ad3aa20e26e3",
+      "name": "Lignite, at mine",
+      "location": "RER",
+      "unit": "kg",
+      "plausible_range": [
+        0.002,
+        0.1
+      ],
+      "why": "changed by patch 0002"
+    },
+    {
+      "code": "adb3bfb7-7eb5-31ca-b34d-fad5194d0c92",
+      "name": "Platform, crude oil, offshore",
+      "location": "OCE",
+      "unit": "p",
+      "why": "changed by patch 0002 (CH to GLO)"
+    },
+    {
+      "code": "bf3edfd6-d2bc-3885-8acb-5c718d43ae2d",
+      "name": "Carbon dioxide, captured from atmosphere, with adsorbent-based direct air capture system, operated with HP, 100kt CO2",
+      "location": "CH",
+      "unit": "kg",
+      "why": "changed by patch 0002 (CH to RER)"
+    },
+    {
+      "code": "a608d9bd-392e-33bc-855b-487c5f9222f5",
+      "name": "Natural gas, at long-distance pipeline",
+      "location": "FI",
+      "unit": "m3",
+      "plausible_range": [
+        0.05,
+        1.0
+      ],
+      "why": "supply chain with flows renamed by patch 0007"
+    },
+    {
+      "code": "ccf251da-b0ba-3978-a393-ff59629e8732",
+      "name": "Flax culture, flax straw",
+      "location": "FR",
+      "unit": "kg",
+      "why": "changed by patch 0008"
+    },
+    {
+      "code": "909c9c24-8c69-3736-be51-699a03743352",
+      "name": "Gypsum plaster board, at plant",
+      "location": "DE",
+      "unit": "m2",
+      "plausible_range": [
+        0.5,
+        8.0
+      ],
+      "why": "changed by patch 0008"
+    },
+    {
+      "code": "d2930a11-5d8e-3105-a325-4f977a96c7d0",
+      "name": "Transport, passenger car, diesel, Medium, 2008, EURO-4",
+      "location": "CH",
+      "unit": "km",
+      "plausible_range": [
+        0.12,
+        0.45
+      ],
+      "why": "control: transport"
+    },
+    {
+      "code": "6a85f915-67cc-3a79-b931-9965e46f9118",
+      "name": "Tap water, unspecified natural origin CH, at user",
+      "location": "CH",
+      "unit": "kg",
+      "plausible_range": [
+        5e-05,
+        0.002
+      ],
+      "why": "control: water supply"
+    },
+    {
+      "code": "0004e814-c18d-42e2-a3f7-ce1fa51a3c2c",
+      "name": "Radioactive waste, in final repository for nuclear waste LLW",
+      "location": "CH",
+      "unit": "m3",
+      "why": "control: waste"
+    }
+  ]
+}
