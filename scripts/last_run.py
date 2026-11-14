@@ -27,7 +27,9 @@ the reason; a run that kept nothing is shown with what GitHub recorded about it.
 `tagged` is for a workflow that also runs for a tag and then keeps its result under that
 tag: `job` is how the name of the job that keeps it begins, `tags` how such a tag begins.
 What is kept under such tags is then read as well, with its files, and the page says where
-this run stands as to that.
+this run stands as to that. The last run that was made for such a tag is read beside the
+last run (`of_tag`), when it is another run: a page can then show both, the work as it
+stands and the build that others should use.
 
 `--local` makes the record of a run that did not happen on GitHub, from the two files the
 run wrote: a run on a machine that holds what a public runner may not hold. GitHub has no
@@ -244,6 +246,30 @@ def kept_by(github, run_id, artifact_name, fetch=fetch_address):
     return "read", "; ".join(problems) or None, found["summary"], found["transcript"]
 
 
+def one_run(github, run, artifact_name, fetch=fetch_address):
+    """One run as a record holds it: GitHub's record of it, and what the run kept."""
+    jobs = github.get(f"/actions/runs/{int(run['id'])}/jobs?per_page=100") or {}
+    kept, note, account, lines = kept_by(github, run["id"], artifact_name, fetch)
+    return {
+        "run": run_facts(run),
+        "jobs": [job_facts(job) for job in jobs.get("jobs") or ()],
+        "kept": kept,
+        "kept_note": note,
+        "summary": account,
+        "transcript": lines,
+    }
+
+
+def last_for_tag(github, workflow, tags):
+    """GitHub's record of the last ended run of `workflow` that was made for a tag that
+    begins with `tags`, or None. GitHub names the tag where it names the branch of a run."""
+    listing = github.get(f"/actions/workflows/{workflow}/runs?event=push&per_page=50") or {}
+    for run in listing.get("workflow_runs") or ():
+        if run.get("status") == "completed" and str(run.get("head_branch") or "").startswith(tags):
+            return run
+    return None
+
+
 def fetch(repository, run, token=None, transport=None, fetch=fetch_address):
     """The record of the last ended run of the workflow `run` names, in `repository`."""
     github = github_api.GitHub(repository, token, transport=transport)
@@ -257,25 +283,27 @@ def fetch(repository, run, token=None, transport=None, fetch=fetch_address):
         return empty("no run", repository, run, None, now())
     last = ended[0]
     newer = runs[0] if runs[0] is not last else None
-    jobs = github.get(f"/actions/runs/{int(last['id'])}/jobs?per_page=100") or {}
-    kept, note, account, lines = kept_by(github, last["id"], run["artifact"], fetch)
     tagged = run.get("tagged")
-    return empty("read", repository, run, read=now()) | {
-        "run": run_facts(last),
-        "newer": None
-        if newer is None
-        else {
-            "url": text(newer.get("html_url")),
-            "status": text(newer.get("status"), 40),
-        },
-        "jobs": [job_facts(job) for job in jobs.get("jobs") or ()],
-        "kept": kept,
-        "kept_note": note,
-        "summary": account,
-        "transcript": lines,
-        "tagged": tagged,
-        "releases": releases_of(github, tagged["tags"]) if tagged else [],
-    }
+    of_tag = None
+    if tagged:
+        made = last_for_tag(github, run["workflow"], tagged["tags"])
+        if made is not None and int(made["id"]) != int(last["id"]):
+            of_tag = one_run(github, made, run["artifact"], fetch)
+    return (
+        empty("read", repository, run, read=now())
+        | one_run(github, last, run["artifact"], fetch)
+        | {
+            "newer": None
+            if newer is None
+            else {
+                "url": text(newer.get("html_url")),
+                "status": text(newer.get("status"), 40),
+            },
+            "tagged": tagged,
+            "releases": releases_of(github, tagged["tags"]) if tagged else [],
+            "of_tag": of_tag,
+        }
+    )
 
 
 def local(account, lines, run=None, commit=None):
@@ -302,6 +330,7 @@ def local(account, lines, run=None, commit=None):
         "transcript": lines,
         "tagged": None,
         "releases": [],
+        "of_tag": None,
     }
 
 
@@ -322,10 +351,36 @@ def said(record):
         started = record["local"].get("started")
         return f"Last {name}: a run of {started} that was not on GitHub ({' and '.join(have)})"
     run = record["run"]
-    return (
+    line = (
         f"Last {name}: run {run['id']} of {run.get('started')}, {run.get('conclusion')}; "
         f"its record: {record['kept']}" + (f" ({' and '.join(have)})" if have else "")
     )
+    of_tag = record.get("of_tag")
+    if of_tag:
+        made = of_tag["run"]
+        line += (
+            f"\nLast {name} made for a tag: run {made['id']} for {made.get('branch')}, "
+            f"{made.get('conclusion')}; its record: {of_tag['kept']}"
+        )
+    return line
+
+
+def run_errors(part):
+    """What is wrong with one run of a record (GitHub's record of it, what it kept)."""
+    found = []
+    run = part.get("run")
+    if not isinstance(run, dict) or not isinstance(run.get("id"), int):
+        return ["`run` is not GitHub's record of a run"]
+    if not str(run.get("url") or "").startswith("https://github.com/"):
+        found.append("`run.url` is not an address on GitHub")
+    if part.get("kept") not in KEPT:
+        found.append("`kept` is not one of " + ", ".join(KEPT))
+    if not isinstance(part.get("jobs"), list):
+        found.append("`jobs` is not a list")
+    for key, (name, check) in FILES.items():
+        if part.get(key) is not None:
+            found += [f"{name}: {error}" for error in check(part[key])]
+    return found
 
 
 def shape_errors(record):
@@ -336,19 +391,17 @@ def shape_errors(record):
         return ["`state` is not one of " + ", ".join(STATES)]
     if record["state"] != "read":
         return []
-    found = []
-    run = record.get("run")
-    if run is None:
+    if record.get("run") is None:  # a run that was not on GitHub: the run's own two files
         if not isinstance(record.get("local"), dict) or record.get("summary") is None:
             return ["a record without GitHub's record of a run holds the run's own account"]
-    elif not isinstance(run, dict) or not isinstance(run.get("id"), int):
-        return ["`run` is not GitHub's record of a run"]
-    elif not str(run.get("url") or "").startswith("https://github.com/"):
-        found.append("`run.url` is not an address on GitHub")
-    if record.get("kept") not in KEPT:
-        found.append("`kept` is not one of " + ", ".join(KEPT))
-    if not isinstance(record.get("jobs"), list):
-        found.append("`jobs` is not a list")
+        found = []
+        for key, (name, check) in FILES.items():
+            if record.get(key) is not None:
+                found += [f"{name}: {error}" for error in check(record[key])]
+    else:
+        found = run_errors(record)
+        if found and found[0].startswith("`run` is not"):
+            return found
     releases = record.get("releases", [])
     if not isinstance(releases, list):
         found.append("`releases` is not a list")
@@ -373,9 +426,12 @@ def shape_errors(record):
         )
     except ValueError:
         found.append("`tagged` is not {job, tags}")
-    for key, (name, check) in FILES.items():
-        if record.get(key) is not None:
-            found += [f"{name}: {error}" for error in check(record[key])]
+    of_tag = record.get("of_tag")
+    if of_tag is not None:
+        if not isinstance(of_tag, dict):
+            found.append("`of_tag` is not a run")
+        else:
+            found += [f"the run made for a tag: {error}" for error in run_errors(of_tag)]
     return found
 
 

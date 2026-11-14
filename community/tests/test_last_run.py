@@ -89,10 +89,10 @@ def an_account(manifest=None, **changes):
     return run_summary.from_manifest(a_manifest() if manifest is None else manifest, NAMES) | changes
 
 
-def a_run(number, status="completed", conclusion="success", event="push"):
+def a_run(number, status="completed", conclusion="success", event="push", branch="main"):
     return {
         "id": 1000 + number, "run_number": number, "run_attempt": 1, "html_url": f"{RUN_URL}{1000 + number}",
-        "event": event, "head_branch": "main", "head_sha": "526d712f96b53aeb0392491bcc9d928c5848a6cb",
+        "event": event, "head_branch": branch, "head_sha": "526d712f96b53aeb0392491bcc9d928c5848a6cb",
         "status": status, "conclusion": conclusion if status == "completed" else None,
         "run_started_at": "2026-11-13T20:11:20Z", "updated_at": "2026-11-13T20:25:13Z",
         "actor": {"login": "somebody"}, "triggering_actor": {"login": "somebody"},
@@ -496,7 +496,7 @@ class PageTests(unittest.TestCase):
             self.assertNotIn(f'id="run-line-{len(LINES) + 1}"', markup)
         self.assertIn("data-run-copy", shown(a_record())[0])
         script = (ROOT / "site" / "assets" / "replay.js").read_text(encoding="utf-8")
-        self.assertIn("#run-line-", script)
+        self.assertIn('"run-line-(', script)
         # what is copied is the text of the lines, which holds no time and no mark
         self.assertIn('lines.map(function (line) { return line.textContent; }).join("")', script)
 
@@ -866,7 +866,7 @@ class AnyRunTests(unittest.TestCase):
         ):
             with self.subTest(wrong=wrong), self.assertRaises(ValueError):
                 last_run.settings({"run": wrong})
-        self.assertEqual(shown(last_run.empty("no run", REPOSITORY, OTHER_RUN))[2], "The last runNo linking run has run yet.")
+        self.assertEqual(shown(last_run.empty("no run", REPOSITORY, OTHER_RUN))[2], "The last linking runNo linking run has run yet.")
 
     def test_a_text_of_a_run_is_plain_and_only_two_things_in_it_are_read(self):
         site = a_site(a_record(), findings=("F3",))
@@ -913,6 +913,128 @@ class AnyRunTests(unittest.TestCase):
                 self.assertTrue(summary.shape_errors(changed(path, value)))
         with self.assertRaises(ValueError):
             summary.account("completed", [summary.step("a", "done")])
+
+
+TAG_LINES = [
+    [0.0, "[provider build] python scripts/build_release.py build ..."],
+    [150.0, "[provider build] completed in 150.0 s"],
+    [700.0, "Build completed: /tmp/release-run/manifest.json"],
+]
+
+
+class EachRunItsOwn(GitHubAnswers):
+    """Recorded answers in which every run kept an archive of its own."""
+
+    def __call__(self, method, url, headers, body):
+        path = url.split(f"/repos/{REPOSITORY}", 1)[1]
+        kept = __import__("re").fullmatch(r"/actions/runs/(\d+)/artifacts\?per_page=100", path)
+        if kept:
+            self.requests.append((method, url, dict(headers)))
+            one = {"id": int(kept.group(1)), "name": "release-build-results", "expired": False, "size_in_bytes": 4000}
+            return 200, {}, json.dumps({"artifacts": [one]}).encode()
+        archive = __import__("re").fullmatch(r"/actions/artifacts/(\d+)/zip", path)
+        if archive:
+            self.requests.append((method, url, dict(headers)))
+            return 302, {"location": f"{STORAGE}&run={archive.group(1)}"}, b""
+        return super().__call__(method, url, headers, body)
+
+
+def two_runs(runs=None, publish="success"):
+    """The record of a repository whose last run was made on main, after one made for a tag."""
+    tagged = an_account(a_manifest(tag="patched-2026-v1.1"))
+    archives = {
+        1009: an_archive(**{"run.json": an_account(), "transcript.json": a_transcript(LINES)}),
+        1006: an_archive(**{"run.json": tagged, "transcript.json": a_transcript(TAG_LINES, exit_code=0)}),
+    }
+    runs = runs or [a_run(9), a_run(8, branch="feature"), a_run(6, branch="patched-2026-v1.1"), a_run(5, branch="patched-2026-v1.0")]
+    answers = EachRunItsOwn(runs, jobs=some_jobs(publish=publish))
+    record = last_run.fetch(REPOSITORY, RUN, "a-token", transport=answers,
+                            fetch=lambda url: archives[int(url.rsplit("=", 1)[1])])
+    return record, answers
+
+
+class TwoRunsTests(unittest.TestCase):
+    """The work as it stands, and the build that others should use: where a run was made for
+    a tag, the record holds it beside the last run, and the page shows either."""
+
+    def test_the_last_run_made_for_a_tag_is_read_beside_the_last_run(self):
+        record, answers = two_runs()
+        self.assertEqual(last_run.shape_errors(record), [])
+        self.assertEqual((record["run"]["number"], record["run"]["branch"]), (9, "main"))
+        made = record["of_tag"]
+        self.assertEqual((made["run"]["number"], made["run"]["branch"]), (6, "patched-2026-v1.1"), "the newest tag, not an older one")
+        self.assertEqual(made["summary"]["tag"], "patched-2026-v1.1")
+        self.assertEqual(made["transcript"]["lines"], TAG_LINES)
+        self.assertEqual(record["transcript"]["lines"], LINES, "each run with the lines it printed itself")
+        self.assertEqual(set(made), {"run", "jobs", "kept", "kept_note", "summary", "transcript"})
+        self.assertIn("\nLast build made for a tag: run 1006 for patched-2026-v1.1, success; its record: read", last_run.said(record))
+        self.assertNotIn("somebody", json.dumps(record))
+        for _, url, headers in answers.requests:
+            self.assertTrue(url.startswith("https://api.github.com/repos/"), url)
+
+    def test_there_is_no_second_run_where_none_was_made_for_a_tag_or_the_last_one_was(self):
+        none, _ = two_runs([a_run(9), a_run(8, branch="feature"), a_run(7, branch="v1.0")])
+        self.assertIsNone(none["of_tag"])
+        same, _ = two_runs([a_run(6, branch="patched-2026-v1.1"), a_run(5)])
+        self.assertIsNone(same["of_tag"], "the last run is the one made for a tag: it is on the page once")
+        self.assertEqual(same["summary"]["tag"], "patched-2026-v1.1")
+        unfinished, _ = two_runs([a_run(9), a_run(8, status="in_progress", branch="patched-2026-v1.2"), a_run(6, branch="patched-2026-v1.1")])
+        self.assertEqual(unfinished["of_tag"]["run"]["number"], 6, "a run that has not ended is not the last one")
+        # a workflow that keeps nothing under a tag is asked for no second run
+        plain = last_run.fetch(REPOSITORY, RUN | {"tagged": None}, "a-token", transport=GitHubAnswers([a_run(9), a_run(6, branch="patched-2026-v1.1")]),
+                               fetch=lambda url: an_archive(**{"run.json": an_account()}))
+        self.assertIsNone(plain["of_tag"])
+
+    def test_the_second_run_of_a_record_is_checked_as_the_first_is(self):
+        record, _ = two_runs()
+        for change in (
+            lambda r: r["of_tag"]["run"].update(url="https://example.org/run"),
+            lambda r: r["of_tag"]["transcript"]["lines"][0].__setitem__(1, "another first line"),
+            lambda r: r["of_tag"]["summary"]["steps"][0].update(confirmed_by="A. Person"),
+            lambda r: r["of_tag"].update(run=None),
+            lambda r: r.update(of_tag="patched-2026-v1.1"),
+        ):
+            changed = copy.deepcopy(record)
+            change(changed)
+            self.assertTrue(last_run.shape_errors(changed))
+
+    def test_the_page_holds_both_runs_and_a_switch_between_them(self):
+        record, _ = two_runs()
+        markup, page, text = shown(record)
+        self.assertEqual(markup.count("data-run-view-of="), 2)
+        self.assertEqual(markup.count('<script src="assets/replay.js" defer></script>'), 1)
+        switch = markup.split('<div class="run-switch"')[1].split("</div>")[0]
+        self.assertTrue(switch.startswith(" data-run-switch hidden "), "the switch needs the script, which shows it")
+        self.assertIn('data-run-view="" aria-pressed="true"><strong>Latest build</strong><span><time datetime="2026-11-13">13 November 2026</time></span>', switch)
+        self.assertIn('data-run-view="tag-" aria-pressed="false"><strong>Latest tagged build</strong><span>patched-2026-v1.1 · <time datetime="2026-11-13">13 November 2026</time></span>', switch)
+        self.assertIn("The last build", text)
+        self.assertIn("The last tagged build", text)
+        # each run with its own lines, and no id twice on the page
+        first, second = markup.split('data-run-view-of="tag-"')
+        lines_of = lambda part: [html.unescape(__import__("re").sub(r"<[^>]+>", "", m)) for m in  # noqa: E731
+                                 __import__("re").findall(r'<span class="tl[^"]*" id="[a-z-]*run-line-\d+"[^>]*>(.*?)\n</span>', part, __import__("re").S)]
+        self.assertEqual(lines_of(first), [text for _, text in LINES])
+        self.assertEqual(lines_of(second), [text for _, text in TAG_LINES])
+        ids = __import__("re").findall(r' id="([^"]+)"', markup)
+        self.assertEqual(len(ids), len(set(ids)), sorted(i for i in set(ids) if ids.count(i) > 1))
+        self.assertIn('id="tag-run-step-1"', second)
+        self.assertIn('href="#tag-run-line-2"', second)
+        self.assertIn('data-run="tag-"', second)
+        self.assertIn('data-run=""', first)
+        # the second run says of itself that it is kept under its tag; the first that it has none
+        self.assertIn("It is kept under the tag <code>patched-2026-v1.1</code>", second)
+        self.assertNotIn("It is kept under the tag", first)
+        self.assertIn("It has no tag.", first)
+        self.assertIn("for the tag <code>patched-2026-v1.1</code>", second)
+        script = (ROOT / "site" / "assets" / "replay.js").read_text(encoding="utf-8")
+        for name in ("data-run-switch", "data-run-view-of", "run:shown", "run:hidden"):
+            self.assertIn(name, script)
+
+    def test_one_run_has_no_switch(self):
+        markup, _, _ = shown(a_record())
+        self.assertNotIn("run-switch", markup)
+        self.assertNotIn("data-run-view", markup)
+        self.assertEqual(markup.count("data-run="), 1)
 
 
 @unittest.skipIf(build_site is None, "the site build needs the markdown package")

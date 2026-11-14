@@ -67,6 +67,7 @@ NO_FAILURE = ("completed", "skipped", "not run here")
 DRAWN = {"not run here": "open"}               # a step this place can't run is open, not left undone
 FINDING = re.compile(r"\b[A-Z]{1,4}[0-9]{1,6}\b")
 SHA256 = re.compile(r"[0-9a-f]{64}")
+TAG_IDS = "tag-"                               # what the ids of the second run on a page begin with
 MARKER = re.compile(r"\[(.+?)\] ")
 
 
@@ -148,14 +149,14 @@ def line_class(text):
     return "tl" + (" tl-step" if text.startswith("[") else " tl-cmd" if text.lstrip(" ").startswith("$ ") else "")
 
 
-def line(number, t, text, place=0):
+def line(number, t, text, place=0, ids=""):
     """One line of the transcript. Its time is drawn by the stylesheet and is no text of the
     page, so that what a reader copies is what the run printed. The time is also the link to
     the line, as a line number is in a log on GitHub: a line can be pointed at."""
     at = clock(t)
     return (
-        f'<span class="{line_class(text)}" id="run-line-{number}" data-step="{place}" data-t="{float(t):.1f}" '
-        f'data-clock="{at}"><a class="tl-at" href="#run-line-{number}" tabindex="-1" aria-hidden="true" '
+        f'<span class="{line_class(text)}" id="{ids}run-line-{number}" data-step="{place}" data-t="{float(t):.1f}" '
+        f'data-clock="{at}"><a class="tl-at" href="#{ids}run-line-{number}" tabindex="-1" aria-hidden="true" '
         f'data-clock="{at}"></a>{marked(text)}\n</span>'
     )
 
@@ -393,7 +394,7 @@ def figure(value):
     return thousands(value) if isinstance(value, int) and not isinstance(value, bool) else str(value)
 
 
-def showcase(site, record, up):
+def showcase(site, record, up, title="The last run", ids=""):
     """The run as a walk through its steps. Without the script it is a page to read: the
     answers, every step with what it does and its numbers, and the whole transcript. The
     script (assets/replay.js) shows one step at a time beside the transcript and replays it."""
@@ -415,7 +416,7 @@ def showcase(site, record, up):
     # The stage comes first: one line says which run it is and how it ended, and the three
     # answers stand right below the stage.
     head = (
-        '<div class="run-top"><h2 class="run-title" id="the-last-run">The last run</h2>'
+        f'<div class="run-top"><h2 class="run-title" id="{ids}the-last-run">{esc(title)}</h2>'
         f'<p class="run-verdict run-{kind}">{VERDICT[kind]}</p>'
         f'<p class="run-when">{run_line(site, record)}</p></div>'
     )
@@ -432,7 +433,7 @@ def showcase(site, record, up):
                "</span></span>") if seconds is not None else ""
         result = esc(step["status"]) + (f" · {time}" if time else "")
         tabs += (
-            f'<li><a class="run-tab is-{esc(state)}" href="#run-step-{n}" data-step="{n - 1}">'
+            f'<li><a class="run-tab is-{esc(state)}" href="#{ids}run-step-{n}" data-step="{n - 1}">'
             f'<span class="run-tab-n">{n}</span><span class="run-tab-name">{esc(words["short"])}</span>'
             f'<span class="run-tab-time">{esc(time or step["status"])}</span>{bar}</a></li>'
         )
@@ -443,7 +444,7 @@ def showcase(site, record, up):
         more = "".join(f"<li>{inline(site, note, up)}</li>" for note in step.get("notes") or ())
         about = f'<p>{esc(words["text"])}</p>' if words.get("text") else ""
         panels += (
-            f'<article class="run-panel" id="run-step-{n}" data-step="{n - 1}">'
+            f'<article class="run-panel" id="{ids}run-step-{n}" data-step="{n - 1}">'
             f'<p class="run-step">Step {n} of {total} · <span class="run-result is-{esc(state)}">{result}</span></p>'
             f'<h3>{esc(words["title"])}</h3>{about}{reason}'
             + (f'<dl class="run-figures">{shown}</dl>' if shown else "")
@@ -457,7 +458,7 @@ def showcase(site, record, up):
         lines = data["lines"]
         places = steps_of(lines, [step["name"] for step in account["steps"]], account.get("closing"))
         body = "".join(
-            line(number, t, text, place) for number, ((t, text), place) in enumerate(zip(lines, places), 1)
+            line(number, t, text, place, ids) for number, ((t, text), place) in enumerate(zip(lines, places), 1)
         )
         commit = (run or record.get("local") or {}).get("commit")
         which = (f" · run{number_of(run)}" if number_of(run) else "") + (f" · {esc(str(commit)[:7])}" if commit else "")
@@ -497,8 +498,7 @@ def showcase(site, record, up):
             f'The same record as a file: <a href="{up}api/v1/last-run.json"><code>api/v1/last-run.json</code></a>.</p>'
         )
     return (
-        f'<section class="run" data-run aria-labelledby="the-last-run">{head}{stage}{below}{note}</section>'
-        f'<script src="{up}assets/replay.js" defer></script>'
+        f'<section class="run" data-run="{ids}" aria-labelledby="{ids}the-last-run">{head}{stage}{below}{note}</section>'
     )
 
 
@@ -532,7 +532,7 @@ def steps_table(record):
     )
 
 
-def plain(site, record, up):
+def plain(site, record, up, title="The last run", ids=""):
     """A run that kept no account of its own: what GitHub recorded, and the transcript if
     there is one."""
     kind, said = worked(record)
@@ -546,37 +546,76 @@ def plain(site, record, up):
     table = steps_table(record)
     data, printed = record.get("transcript"), ""
     if data is not None:
-        body = "".join(line(number, t, text) for number, (t, text) in enumerate(data["lines"], 1))
+        body = "".join(line(number, t, text, 0, ids) for number, (t, text) in enumerate(data["lines"], 1))
         printed = (
-            '<h3 id="what-the-run-printed">What the run printed</h3>'
+            f'<h3 id="{ids}what-the-run-printed">What the run printed</h3>'
             f'<p>{plural(len(data["lines"]), "line")}, exactly as the run printed them. SHA-256 of the lines: <code>{esc(data["sha256"])}</code>.</p>'
             f'<div class="run-term"><pre class="transcript" tabindex="0" role="region" aria-label="What the run printed">{body}</pre></div>'
         )
     return (
-        '<section class="run run-plain" aria-labelledby="the-last-run"><h2 class="run-title" id="the-last-run">The last run</h2>'
-        + panel + (f'<h3 id="steps-of-the-run">Step by step</h3>{table}' if table else "") + printed + "</section>"
+        f'<section class="run run-plain" aria-labelledby="{ids}the-last-run"><h2 class="run-title" id="{ids}the-last-run">{esc(title)}</h2>'
+        + panel + (f'<h3 id="{ids}steps-of-the-run">Step by step</h3>{table}' if table else "") + printed + "</section>"
     )
 
 
 def not_shown(record):
     """Why a page shows no run."""
-    name = named(record)
     if record["state"] == "no run":
-        return f"No {esc(name[:1].lower() + name[1:])} has run yet."
+        return f"No {esc(lower(named(record)))} has run yet."
     return NOT_SHOWN[record["state"]]
 
 
+def lower(name):
+    return name[:1].lower() + name[1:]
+
+
+def view(site, record, up, title, ids=""):
+    """One run as a part of the page: the walk through it, or what GitHub recorded of it."""
+    if record.get("summary") is None:
+        return plain(site, record, up, title, ids)
+    return showcase(site, record, up, title, ids)
+
+
+def started(record):
+    """The day a run began, in words, as markup."""
+    at = (record.get("run") or record.get("local") or {}).get("started")
+    return day(str(at)[:10], long=True) if moment(at) else ""
+
+
 def last_run(site, up=""):
-    """The block a prose page asks for with <!-- generated: last-run -->."""
+    """The block a prose page asks for with <!-- generated: last-run -->. Where the record
+    also holds the last run that was made for a tag, the page holds both: the work as it
+    stands, and the one that others should use. A switch, which the script shows, chooses
+    between them; without the script the two stand one after the other."""
     record = site.last_run
+    name = lower(named(record))
     if record["state"] != "read":
         return (
-            '<section class="run run-plain" aria-labelledby="the-last-run"><h2 class="run-title" id="the-last-run">The last run</h2>'
+            '<section class="run run-plain" aria-labelledby="the-last-run">'
+            f'<h2 class="run-title" id="the-last-run">The last {esc(name)}</h2>'
             f'<p class="list-none">{not_shown(record)}</p></section>'
         )
-    if record.get("summary") is None:
-        return plain(site, record, up)
-    return showcase(site, record, up)
+    script = f'<script src="{up}assets/replay.js" defer></script>' if record.get("summary") or (record.get("of_tag") or {}).get("summary") else ""
+    of_tag = record.get("of_tag")
+    if not of_tag:
+        return view(site, record, up, f"The last {name}") + script
+    made = record | of_tag | {"newer": None, "of_tag": None}
+    tag = (made.get("summary") or {}).get("tag") or made["run"].get("branch") or ""
+    buttons = (
+        ("", f"Latest {name}", started(record)),
+        (TAG_IDS, f"Latest tagged {name}", " · ".join(part for part in (esc(tag), started(made)) if part)),
+    )
+    switch = '<div class="run-switch" data-run-switch hidden role="group" aria-label="Which run is shown">' + "".join(
+        f'<button type="button" class="run-switch-btn" data-run-view="{ids}" aria-pressed="{"true" if not ids else "false"}">'
+        f"<strong>{esc(label)}</strong><span>{about}</span></button>"
+        for ids, label, about in buttons
+    ) + "</div>"
+    return (
+        switch
+        + f'<div class="run-view" data-run-view-of="">{view(site, record, up, f"The last {name}")}</div>'
+        + f'<div class="run-view" data-run-view-of="{TAG_IDS}">{view(site, made, up, f"The last tagged {name}", TAG_IDS)}</div>'
+        + script
+    )
 
 
 # ------------------------------------------------- what was published, and the files of a run

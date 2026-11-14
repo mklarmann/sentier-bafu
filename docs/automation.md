@@ -123,7 +123,8 @@ than this one builds says on every page that it is a preview and not the publish
 
 The build also reads the last run of the workflow that `site/config.json` names under `run`
 (`scripts/last_run.py`): GitHub's record of the last run that has ended, the run's own account
-and the transcript that run kept, and the builds that have a tag. That is what `actions: read`
+and the transcript that run kept, the builds that have a tag, and the last run that was made
+for a tag, which the page shows beside the last run. That is what `actions: read`
 is for. The page *Patch and build* opens with the run as it was
 recorded, also when it failed. A site is built without the run rather than not built: when the
 record cannot be read the page says so. A build that ends after the site was built is

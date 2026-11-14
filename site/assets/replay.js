@@ -6,7 +6,36 @@
   var CAP = 650, FLOOR = 38, DWELL = 1900; // waits of the run, shortened; the pause after a step
   var still = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+  // Two runs on one page (the last one, and the last one made for a tag): a switch chooses
+  // which is shown. Without this script both stand on the page, one after the other.
+  [].forEach.call(document.querySelectorAll("[data-run-switch]"), function (choice) {
+    var buttons = [].slice.call(choice.querySelectorAll("[data-run-view]"));
+    var views = [].slice.call(choice.parentNode.querySelectorAll("[data-run-view-of]"));
+    if (buttons.length < 2 || buttons.length !== views.length) return;
+    function choose(ids) {
+      buttons.forEach(function (button) {
+        button.setAttribute("aria-pressed", button.getAttribute("data-run-view") === ids ? "true" : "false");
+      });
+      views.forEach(function (view) {
+        var on = view.getAttribute("data-run-view-of") === ids, run = view.querySelector("[data-run]");
+        view.hidden = !on;
+        if (run) run.dispatchEvent(new CustomEvent(on ? "run:shown" : "run:hidden"));
+      });
+    }
+    buttons.forEach(function (button) {
+      button.addEventListener("click", function () { choose(button.getAttribute("data-run-view")); });
+    });
+    choice.hidden = false;
+    // a link to a step or a line of the second run opens the page on that run
+    var second = buttons[1].getAttribute("data-run-view");
+    choose(second && location.hash.indexOf("#" + second) === 0 ? second : buttons[0].getAttribute("data-run-view"));
+    window.addEventListener("hashchange", function () {
+      if (second && location.hash.indexOf("#" + second + "run-") === 0) choose(second);
+    });
+  });
+
   [].forEach.call(document.querySelectorAll("[data-run]"), function (run) {
+    var ids = run.getAttribute("data-run") || ""; // what the ids of this run's steps and lines begin with
     var tabs = [].slice.call(run.querySelectorAll(".run-tab")), panels = [].slice.call(run.querySelectorAll(".run-panel"));
     var lines = [].slice.call(run.querySelectorAll(".tl")), pre = run.querySelector("pre.transcript");
     var play = run.querySelector("[data-run-play]"), label = run.querySelector("[data-run-play-label]");
@@ -110,9 +139,10 @@
         tabs[to].focus();
       });
     });
-    [].forEach.call(run.querySelectorAll('a[href^="#run-step-"]:not(.run-tab)'), function (link) {
+    var stepLink = "#" + ids + "run-step-";
+    [].forEach.call(run.querySelectorAll('a[href^="' + stepLink + '"]:not(.run-tab)'), function (link) {
       link.addEventListener("click", function (event) {
-        var n = +link.getAttribute("href").slice(10) - 1;
+        var n = +link.getAttribute("href").slice(stepLink.length) - 1;
         if (!(n >= 0 && n < panels.length)) return;
         event.preventDefault();
         choose(n);
@@ -175,7 +205,7 @@
       });
     });
     function pointed() { // a link to a line was followed: the stage in view, the line in its window
-      var found = /^#run-line-(\d+)$/.exec(location.hash), n = found ? +found[1] - 1 : -1;
+      var found = new RegExp("^#" + ids + "run-line-(\\d+)$").exec(location.hash), n = found ? +found[1] - 1 : -1;
       if (!point(n, false)) return false;
       function settle() {
         if (stage) stage.scrollIntoView({ block: "start" });
@@ -187,7 +217,10 @@
     }
     window.addEventListener("hashchange", pointed);
 
-    var asked = /^#run-step-(\d+)$/.exec(location.hash);
+    var asked = new RegExp("^#" + ids + "run-step-(\\d+)$").exec(location.hash);
+    // shown again after the other run was: its lines where they belong; put away: no replay goes on unseen
+    run.addEventListener("run:shown", function () { toStep(); });
+    run.addEventListener("run:hidden", function () { if (timer) choose(current); });
     tell(0);
     if (!pointed()) show(asked ? +asked[1] - 1 : 0);
     // What moves on this page moves from here on: setting the page up is not shown as a change.
@@ -195,7 +228,7 @@
     frame(function () { frame(function () { run.classList.add("is-ready"); }); });
     // The run plays once by itself when the page opens on it. Not for a reader who asked for
     // less motion, who followed a link to another part of the page, or who has left the tab.
-    if (!still && !location.hash && lines.length && !document.hidden) {
+    if (!still && !location.hash && lines.length && !document.hidden && !(run.closest && run.closest("[hidden]"))) {
       var top = run.getBoundingClientRect().top;
       if (top < window.innerHeight * 0.7) timer = setTimeout(function () { timer = null; start(); }, 900);
     }
