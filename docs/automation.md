@@ -44,7 +44,7 @@ record changed.
 | 12 | `sync.yml`: `status: reported to BAFU`, one comment. | workflow | labels, one comment |
 | 13 | **Someone records BAFU's answer** in our own words. | **maintainer** | `answer` in the record |
 | 14 | `sync.yml`: `status: answered by BAFU`, one comment that quotes the summary. | workflow | labels, one comment |
-| 15 | **A maintainer pushes a tag** `patched-…`. `release-build.yml` builds the patched copy from BAFU's full release, with its Brightway database, its checks and its exports, and publishes `manifest.json` and nothing else. | **maintainer** | a GitHub Release with one file |
+| 15 | **A maintainer pushes a tag** `patched-…`. `release-build.yml` builds the patched copy from BAFU's full release, with its Brightway database, its checks and its exports, and keeps `manifest.json` under the tag and nothing else. | **maintainer** | one file under the tag (what GitHub calls a Release) |
 | 16 | BAFU publishes a release. **A maintainer registers it** (section 6). The run on the new release says per patch whether it is still needed. | **maintainer** | one entry in `site/config.json` |
 | 17 | **A maintainer confirms the correction** with `community.py fixed`. | **maintainer** | `fixed_in` in the record |
 | 18 | `sync.yml`: `status: resolved`, one comment, and the issue is closed. | workflow | labels, one comment, the issue's state |
@@ -55,8 +55,8 @@ BAFU decides what it changes. Nothing above promises that it adopts anything: a 
 ## 2. The workflows
 
 The repository has six workflows and two composite actions. Each thing is defined once: a check
-that runs on every pull request is in `checks.yml` and nowhere else, and one workflow builds and
-publishes a release.
+that runs on every pull request is in `checks.yml` and nowhere else, and one workflow makes a
+build and keeps it under a tag.
 
 | Workflow | Starts on | Token | Writes |
 |---|---|---|---|

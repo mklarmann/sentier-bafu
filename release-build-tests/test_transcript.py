@@ -262,7 +262,7 @@ class StepLines(unittest.TestCase):
                 for line in exported
             )
         )
-        self.assertIn("not published", exported[-1])
+        self.assertIn("not offered for download", exported[-1])
         self.assertTrue(step_lines.lines("C900-other build", self.out))
 
     def test_a_line_is_one_line_and_holds_no_path_of_this_machine(self):

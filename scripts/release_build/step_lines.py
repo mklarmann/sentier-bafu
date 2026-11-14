@@ -111,7 +111,8 @@ def exports(folder: Path) -> list[str]:
         line = f"  {file['name']:<38} {file['bytes']:>12,} bytes  sha256 {file['sha256'][:12]}"
         lines.append(f"{line}  {read}".rstrip())
     lines.append(
-        f"  label {section['label']}; the files stay on this machine and are not published"
+        f"  label {section['label']}; "
+        "the files stay on this machine and are not offered for download"
     )
     return lines
 

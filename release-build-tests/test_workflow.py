@@ -59,7 +59,7 @@ class Summary(unittest.TestCase):
         manifest["not_releasable"] = ["patch 0001-x changed data and names nobody"]
         release_manifest.write(manifest, self.run_folder / "manifest.json")
         text = job_summary.summarise(self.run_folder)
-        self.assertIn("> [!CAUTION]\n> This run can't be published as a release:", text)
+        self.assertIn("> [!CAUTION]\n> This run can't be kept under a tag:", text)
         self.assertIn("> - patch 0001-x changed data and names nobody", text)
 
     def test_a_run_that_did_not_start_is_said_so(self):

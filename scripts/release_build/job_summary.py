@@ -127,7 +127,7 @@ def step_lines(manifest: dict | None) -> list[str]:
     ]
     lines += ["", *(f"- {problem}" for problem in manifest["problems"])]
     if manifest["tag"] and manifest["not_releasable"]:
-        lines += ["", "> [!CAUTION]", "> This run can't be published as a release:"]
+        lines += ["", "> [!CAUTION]", "> This run can't be kept under a tag:"]
         lines += [f"> - {reason}" for reason in manifest["not_releasable"]]
     lines += ["", "| step | result | seconds | peak memory, MB | |", "|---|---|---:|---:|---|"]
     for step in manifest["steps"]:

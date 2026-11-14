@@ -28,9 +28,9 @@ A manifest names the author and the authoriser of a patch, and of a contribution
 and nobody else: who reported a finding and who answered for the provider are in the run
 summary and are left out here.
 
-`--verify` checks that a file has exactly this shape, so that the job that publishes can
-refuse anything else. Standard library only, and it runs on the Python a runner has: the job
-that publishes installs nothing.
+`--verify` checks that a file has exactly this shape, so that the job that keeps the manifest
+under a tag can refuse anything else. Standard library only, and it runs on the Python a
+runner has: that job installs nothing.
 """
 
 from __future__ import annotations
@@ -914,7 +914,7 @@ def shape_errors(data) -> list[str]:
 
 
 def release_errors(data: dict) -> list[str]:
-    """Why a manifest that has the right shape may still not be published as a release."""
+    """Why a manifest that has the right shape may still not be kept under a tag."""
     found = list(data["not_releasable"])
     if data["status"] != "completed":
         found.append(f"the run {data['status']}")

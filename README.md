@@ -53,9 +53,9 @@ It builds a Brightway database of BAFU's release and one of the patched copy, bo
 Its state:
 
 - [`community/patches.json`](community/patches.json) lists the community patches with the findings they answer. A script writes it from the patches in `src/bafu_community_fixes/patches/`.
-- The files for Brightway, openLCA, ILCD and SimaPro are written and read back on your own machine and in the checks of this repository. They are not published: no download exists yet that asks for acceptance of BAFU's Terms of Use. This repository and the site hold no inventory files.
+- The files for Brightway, openLCA, ILCD and SimaPro are written and read back on your own machine and in the checks of this repository. They are not offered for download: no download exists yet that asks for acceptance of BAFU's Terms of Use. This repository and the site hold no inventory files.
 - No file has been opened in openLCA or in SimaPro yet. The checks read the files with separate programs.
-- A release of the patched copy publishes one file, a manifest with checksums and counts. A local build can be compared with it.
+- Of the build that a maintainer gave a tag, one file is kept: a manifest with checksums and counts. A local build can be compared with it.
 
 Where to read on:
 
