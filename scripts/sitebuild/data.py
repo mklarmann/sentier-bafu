@@ -97,7 +97,7 @@ def write_data(site):
         "revision": site.revision,
         "built": site.built,
         "issues": site.issues_source,
-        "preview": bool(site.preview_url),
+        "preview": bool(site.preview_url) or bool(getattr(site, "elsewhere", False)),
     }
     site.write_json("api/v1/status.json", {
         "schema": "sentier-bafu/status/1",

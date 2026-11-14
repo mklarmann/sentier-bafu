@@ -485,6 +485,27 @@ class SiteTests(unittest.TestCase):
             self.assertNotIn("&lt;", json.dumps(kept), "the file holds the lines as they are, not as HTML")
             self.assertEqual(html.unescape("&lt;b&gt;"), "<b>")
 
+    def test_a_copy_built_by_another_repository_says_on_every_page_that_it_is_a_preview(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with contextlib_silence():
+                build_site.build(Path(tmp) / "fork", offline=True, root=DATA, built_by="someone/sentier-bafu")
+                build_site.build(Path(tmp) / "own", offline=True, root=DATA, built_by=REPOSITORY)
+                build_site.build(Path(tmp) / "plain", offline=True, root=DATA)
+            pages = sorted((Path(tmp) / "fork").rglob("*.html"))
+            shown = [p for p in pages if 'class="preview-notice"' in p.read_text()]
+            redirects = [p for p in pages if 'http-equiv="refresh"' in p.read_text()]
+            self.assertEqual(len(shown), len(pages) - len(redirects))
+            text = (Path(tmp) / "fork" / "index.html").read_text()
+            self.assertIn("This copy of the site is built from <code>someone/sentier-bafu</code>. It is not the published site.", text)
+            self.assertIn('href="https://github.com/someone/sentier-bafu"', text)
+            self.assertTrue(json.loads((Path(tmp) / "fork/api/v1/status.json").read_text())["preview"])
+            self.assertEqual(json.loads((Path(tmp) / "fork/api/v1/last-run.json").read_text())["repository"], "someone/sentier-bafu")
+            for name in ("own", "plain"):
+                self.assertNotIn("preview-notice", (Path(tmp) / name / "index.html").read_text())
+                self.assertEqual(json.loads((Path(tmp) / name / "api/v1/last-run.json").read_text())["repository"], REPOSITORY)
+            with self.assertRaises(ValueError), contextlib_silence():
+                build_site.build(Path(tmp) / "bad", offline=True, root=DATA, built_by="not a repository")
+
     def test_a_site_built_without_github_says_that_the_run_is_not_shown(self):
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp) / "site"

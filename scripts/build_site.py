@@ -61,7 +61,7 @@ def build_date():
 class Site:
     def __init__(self, out, source_repository=None, source_ref=None, preview_url=None,
                  issues_snapshot=None, offline=False, require_issues=False, root=ROOT,
-                 last_run_snapshot=None, runs_repository=None):
+                 last_run_snapshot=None, built_by=None):
         self.out = Path(out)
         self.root = Path(root)
         # A record that `community.py check` refuses must not be built into a page either.
@@ -75,6 +75,13 @@ class Site:
         if preview_url and not preview_url.startswith("https://github.com/"):
             raise ValueError("Preview notice must link to a GitHub pull request")
         self.preview_url = preview_url
+        # `built_by` is the repository whose workflow builds this copy ("owner/name"). When it is
+        # not the repository the site belongs to, every page says that it is a copy built elsewhere.
+        own = github_api.repository_slug(self.repo)
+        if built_by and not github_api.REPOSITORY.fullmatch(built_by):
+            raise ValueError("--built-by names a repository as owner/name")
+        self.built_by = built_by or own
+        self.elsewhere = self.built_by != own
         self.dataset = self.config["dataset"]
         self.provider = self.config["provider"]
         self.root_path = urlsplit(self.config["site_url"]).path.rstrip("/") + "/"
@@ -96,8 +103,7 @@ class Site:
         )
         self.triage = triage.assemble(self.findings, self.repo, issues, self.patches)
         # The last release build, read from the runs of the repository that builds this site.
-        runs = runs_repository or os.environ.get("GITHUB_REPOSITORY") or github_api.repository_slug(self.repo)
-        self.last_run = last_run.load(runs, last_run_snapshot, offline)
+        self.last_run = last_run.load(self.built_by, last_run_snapshot, offline)
         self.built = build_date()
         self.revision = revision(self.root)
         self.written = set()
@@ -380,9 +386,9 @@ class Site:
 
 
 def build(out, source_repository=None, source_ref=None, preview_url=None, issues_snapshot=None,
-          offline=False, require_issues=False, root=ROOT, last_run_snapshot=None, runs_repository=None):
+          offline=False, require_issues=False, root=ROOT, last_run_snapshot=None, built_by=None):
     Site(out, source_repository, source_ref, preview_url, issues_snapshot, offline, require_issues, root,
-         last_run_snapshot, runs_repository).build()
+         last_run_snapshot, built_by).build()
 
 
 if __name__ == "__main__":
@@ -395,7 +401,9 @@ if __name__ == "__main__":
     parser.add_argument("--offline", action="store_true", help="Do not read issues from GitHub")
     parser.add_argument("--require-issues", action="store_true", help="Fail when GitHub cannot be read")
     parser.add_argument("--last-run", type=Path, help="Record of the last release build (JSON) instead of reading GitHub")
-    parser.add_argument("--runs-repository", help="owner/name whose release builds are shown (default: this repository)")
+    parser.add_argument("--built-by", metavar="OWNER/NAME",
+                        help="The repository whose workflow builds this copy: its release builds are shown, "
+                             "and a copy built by another repository than the site's own says so on every page")
     args = parser.parse_args()
     build(args.out, args.source_repository, args.source_ref, args.preview_url, args.issues,
-          args.offline, args.require_issues, last_run_snapshot=args.last_run, runs_repository=args.runs_repository)
+          args.offline, args.require_issues, last_run_snapshot=args.last_run, built_by=args.built_by)

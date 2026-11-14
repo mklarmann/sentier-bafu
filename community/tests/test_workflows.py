@@ -177,6 +177,15 @@ class WorkflowTests(unittest.TestCase):
     def test_a_deploy_needs_the_issues_and_a_checked_site(self):
         build = jobs(FILES["pages.yml"])["build"]
         self.assertIn("--require-issues", build)
+        # The build says which repository builds it: a fork's copy then says that it is a preview.
+        self.assertIn('--built-by "$GITHUB_REPOSITORY"', build)
+        # Only a run on the default branch deploys, in this repository and in a fork of it.
+        text = FILES["pages.yml"]
+        on_default = ("if: github.event_name == 'schedule' || "
+                      "github.ref == format('refs/heads/{0}', github.event.repository.default_branch)")
+        self.assertEqual(text.count(on_default), 2, "the hand-over and the deploy job")
+        self.assertEqual(len(re.findall(r"(?m)^\s+if: ", text)), 2)
+        self.assertNotIn("refs/heads/main", text)
         self.assertLess(build.index("scripts/check_site.py"), build.index("upload-pages-artifact"))
 
     def test_the_release_build_keeps_what_it_printed_and_the_site_may_read_it(self):

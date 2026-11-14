@@ -116,6 +116,11 @@ have no record yet) and deploys it. If the issues cannot be read the build fails
 published site stays. It runs daily so that "waiting since" and the counts stay current. It does
 not run on label changes: labels follow records, and a change of a record arrives as a push.
 
+Only a run on the default branch deploys. In this repository that is `main`. In a fork whose
+default branch is another one, the same workflow deploys the fork's own copy, started on request;
+the build is told which repository builds it (`--built-by`), and a copy that another repository
+than this one builds says on every page that it is a preview and not the published site.
+
 The build also reads the last release build of its own repository (`scripts/last_run.py`):
 GitHub's record of the last run that has ended, and the manifest and the transcript that run
 kept. That is what `actions: read` is for. The page *Patched release* shows the run as it was

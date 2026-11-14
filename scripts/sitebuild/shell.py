@@ -29,6 +29,13 @@ def shell(site, title, body, current, up="", page=None, description=None, head="
         f'{ext(site.preview_url, "See the pull request")}</div></aside>'
         if site.preview_url else ""
     )
+    if not notice and getattr(site, "elsewhere", False):
+        # A copy that another repository builds (a fork) is not the site of this workspace.
+        notice = (
+            '<aside class="preview-notice" aria-label="Preview"><div class="wrap"><strong>Preview.</strong> '
+            f"This copy of the site is built from <code>{esc(site.built_by)}</code>. It is not the published site. "
+            f'{ext("https://github.com/" + site.built_by, "See where it is built")}</div></aside>'
+        )
     built = f"Built on {day(site.built, long=True)}" + (f" from revision {esc(site.revision)}" if site.revision else "") + "."
     if site.issues_source:
         built += " Comment counts were read from GitHub at that time."
