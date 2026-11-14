@@ -1,5 +1,5 @@
 {
-  "about": "What each step of a build does, in plain words, for the page 'Patch and build'. The key is the name the run gives the step. The numbers beside a text come from the run; none is typed here. 'short' is the name on the step's button. 'endings' names the step whose words stand for every step whose name ends alike (a contribution's steps carry its number). 'tagged' is the step the page adds to a run that was made for a tag.",
+  "about": "What each step of a build does, in plain words, for the page 'Patch and build'. The key is the name the run gives the step. The numbers beside a text come from the run; none is typed here. 'short' is the name on the step's button. 'endings' names the step whose words stand for every step whose name ends alike (a contribution's steps carry its number).",
   "endings": {
     " build": "contribution build",
     " comparison": "contribution comparison",
@@ -35,11 +35,6 @@
       "short": "Files for LCA tools",
       "title": "Files for LCA tools",
       "text": "The patched copy is written as files for Brightway, openLCA, ILCD and SimaPro. Each carries BAFU's credit, the label Modified Data and the list of changes. Each is read back and compared with the database."
-    },
-    "tagged": {
-      "short": "Tag",
-      "title": "Kept under its tag",
-      "text": "A maintainer gives a tag to the build that others should use. The run is then made again for that tag, and its manifest is kept under the tag, and no file of the data."
     },
     "contribution build": {
       "short": "Contribution",

@@ -526,12 +526,19 @@ class PageTests(unittest.TestCase):
         for said in ("not a release", "not asked for", "Publication", "Step 7"):
             self.assertNotIn(said, text)
         self.assertIn(f"Step {len(own)} of {len(own)} · completed", text)
+        # what the run prints after its last step is on the page, in its place after the last step's lines
+        places = [int(n) for n in __import__("re").findall(r'<span class="tl[^"]*" id="run-line-\d+" data-step="(\d+)"', markup)]
+        self.assertEqual(places[-1], len(own), "the script shows these lines with the last step")
+        self.assertIn("Release run failed: /tmp/release-run/manifest.json", text)
         # what stands in the way is said in full, where the answers are, and links to no step
         self.assertNotIn("All of it", markup)
         self.assertIn("A maintainer gives a tag to the build that others should use.", text)
         # the page's own words for this hold neither of the two words that claim more
-        said = " ".join(lastrun.TAG.values()) + json.dumps(json.loads((ROOT / "site/run-steps.json").read_text())["steps"]["tagged"])
+        said = " ".join(lastrun.TAG.values())
         self.assertNotRegex(said, r"(?i)\b(release|releases|released|publication|published|publish)\b")
+        words = json.loads((ROOT / "site/run-steps.json").read_text())["steps"]
+        self.assertEqual(sorted(set(own) - set(words)), [], "every step of the run has its words")
+        self.assertNotIn("tagged", words, "no words for a step that is none")
 
     def test_a_run_that_failed_is_shown_as_failed_with_the_step_and_the_reason(self):
         record = a_record(a_manifest(failed="patched build"), conclusion="failure", failed_step="Run the whole path")
@@ -582,23 +589,15 @@ class PageTests(unittest.TestCase):
         markup, _, text = shown(a_record(tagged, publish="success"))
         self.assertIn("for the tag patched-2026-v1.1", text)
         self.assertIn("It is kept under the tag patched-2026-v1.1: its manifest, and no file of the data.", text)
-        self.assertIn("Nothing. It is kept under the tag patched-2026-v1.1.", text)
-        # such a run has one step more than its own: whether it was kept
-        self.assertEqual(markup.count('class="run-tab '), 7)
-        last = markup.split('<li><a class="run-tab ')[-1].split("</li>")[0]
-        self.assertTrue(last.startswith('is-completed"'), last[:40])
-        self.assertIn('<span class="run-tab-name">Tag</span><span class="run-tab-time">kept</span>', last)
-        self.assertIn('href="#run-step-7">All of it</a>', markup)
-        markup, _, text = shown(a_record(tagged, publish="skipped"))
+        # the steps are the run's own also here: where it stands as to its tag is said with the answers
+        self.assertEqual(markup.count('class="run-tab '), 6)
+        self.assertNotIn("is-not-run", markup)
+        _, _, text = shown(a_record(tagged, publish="skipped"))
         self.assertIn("It was made for the tag patched-2026-v1.1, and it was not kept.", text)
         self.assertNotIn("It is kept", text)
-        self.assertIn('class="run-tab is-not-run"', markup)
-        self.assertIn('<span class="run-tab-time">not kept</span>', markup)
-        # on a site whose workflow keeps nothing under a tag, a tag is a fact of the run and no step
+        # on a site whose workflow keeps nothing under a tag, a tag is a fact of the run and no more
         plain = a_record(tagged, publish="success") | {"tagged": None}
-        markup, _, text = shown(plain)
-        self.assertEqual(markup.count('class="run-tab '), 6)
-        self.assertNotIn("kept under", text)
+        self.assertNotIn("kept under", shown(plain)[2])
 
     def test_what_was_in_it_comes_from_the_manifest(self):
         manifest = a_manifest()

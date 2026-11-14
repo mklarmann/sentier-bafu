@@ -15,8 +15,8 @@ hold the page to the run:
   transcript line by line.
 
 Nothing here knows a dataset or a tool: a step is what the run names, with the words the
-site's own file has for it. A step the run says it could not run in this place ("not run
-here") is drawn as open, with the run's reason, and is no failure. A run that did not happen
+site's own file has for it. The page adds no step of its own. A step the run says it could not run
+in this place ("not run here") is drawn as open, with the run's reason, and is no failure. A run that did not happen
 on GitHub is shown marked as such.
 """
 
@@ -48,18 +48,15 @@ KEPT = {
 VERDICT = {"yes": "It worked", "no": "It did not work", "unknown": "No record of its own"}
 STOPPED = ("failure", "cancelled", "timed_out", "startup_failure")
 SHOWN_STEPS = ("Set up job", "Complete job")  # GitHub's own two; the rest are the workflow's
-TAGGED = "tagged"                              # the step the page adds to a run that was made for a tag
 # A run that was made for a tag is kept under that tag. Every sentence about that stands here,
 # in one place. The words are plain: a build, its tag, its files. None of them claims what
-# only a provider can do with its own data.
+# only a provider can do with its own data. The page adds no step for this: the steps on the
+# page are the run's own, and where a run stands as to its tag is said with the answers.
 TAG = {
-    "kept": "kept", "not kept": "not kept",
     "nothing blocks": "Nothing in this run.",
     "is kept": "It is kept under the tag <code>{tag}</code>: its manifest, and no file of the data.",
     "was not kept": "It was made for the tag <code>{tag}</code>, and it was not kept.",
     "no tag": "It has no tag. A maintainer gives a tag to the build that others should use.",
-    "short kept": "Nothing. It is kept under the tag <code>{tag}</code>.",
-    "short not kept": "Nothing in the run. It was made for the tag <code>{tag}</code>, and it was not kept.",
     "none yet": "No build has a tag yet.",
     "not read": "The tagged builds were not read from GitHub for this copy of the site.",
     "on GitHub": "the tag on GitHub",
@@ -336,15 +333,6 @@ def blocking(site, record, up=""):
     return items
 
 
-def blocking_in_short(site, record, up=""):
-    """One line for the top of the page, for a run made for a tag; its last step holds all of it."""
-    said, tag = record["summary"]["blocking"], for_tag(record)
-    if said:
-        more = f" And {plural(len(said) - 1, 'more thing')}." if len(said) > 1 else ""
-        return sentence(site, said[0], up) + more
-    return TAG["short kept" if kept_under_tag(record) else "short not kept"].format(tag=esc(tag))
-
-
 def contents(site, record, up=""):
     account = record.get("summary")
     return [inline(site, text, up) for text in account["contents"]] if account else []
@@ -400,11 +388,6 @@ def steps_of(lines, names, closing=None):
     return found
 
 
-def tag_word(record):
-    """Whether a run made for a tag was kept under it: (the word, how the step is drawn)."""
-    return (TAG["kept"], "completed") if kept_under_tag(record) else (TAG["not kept"], "not-run")
-
-
 def figure(value):
     """A figure as the run states it: a count with its thousands apart, a text as it is."""
     return thousands(value) if isinstance(value, int) and not isinstance(value, bool) else str(value)
@@ -417,21 +400,13 @@ def showcase(site, record, up):
     account, run = record["summary"], record.get("run")
     texts, endings = step_texts(site)
     steps = [dict(step) for step in account["steps"]]
-    # A run made for a tag has one step more, which is not the run's own: whether it was
-    # kept under that tag. A run without a tag ends with its own last step, and nothing is
-    # added that would look as if something had been left undone.
-    last_is_tagged = bool(for_tag(record))
-    if last_is_tagged:
-        word, drawn = tag_word(record)
-        steps.append({"name": TAGGED, "status": word, "seconds": None, "reason": None, "state": drawn})
+    # The steps are the run's own and the page adds none: a step the run did not have would
+    # look as if something had been left undone.
     total = len(steps)
     longest = max([s["seconds"] for s in steps if isinstance(s.get("seconds"), (int, float))] or [0]) or 1
 
     kind, said = worked(record)
-    if last_is_tagged:
-        blocks = f'{blocking_in_short(site, record, up)} <a class="run-more" href="#run-step-{total}">All of it</a>'
-    else:
-        blocks = listed(blocking(site, record, up))
+    blocks = listed(blocking(site, record, up))
     answers = (
         ("Did it work", f'<span class="run-{kind}">{said}</span>'),
         ("What is blocking", blocks),
@@ -449,7 +424,7 @@ def showcase(site, record, up):
     tabs, panels = "", ""
     for n, step in enumerate(steps, start=1):
         name, words = step["name"], text_for(texts, endings, step["name"])
-        state = step.get("state") or DRAWN.get(step["status"], step["status"].replace(" ", "-"))
+        state = DRAWN.get(step["status"], step["status"].replace(" ", "-"))
         seconds = step["seconds"] if isinstance(step.get("seconds"), (int, float)) else None
         time = duration(seconds) if seconds is not None else ""
         # The bar is the step's share of the longest step's time; a step without a time has none.
@@ -465,11 +440,7 @@ def showcase(site, record, up):
             f'<div><dt>{esc(one["label"])}</dt><dd>{esc(figure(one["value"]))}</dd></div>' for one in step.get("figures") or ()
         )
         reason = f'<p class="run-reason">{sentence(site, step["reason"], up)}</p>' if step.get("reason") else ""
-        if name == TAGGED and last_is_tagged and n == total:
-            noted = blocking(site, record, up)
-        else:
-            noted = [inline(site, note, up) for note in step.get("notes") or ()]
-        more = "".join(f"<li>{item}</li>" for item in noted)
+        more = "".join(f"<li>{inline(site, note, up)}</li>" for note in step.get("notes") or ())
         about = f'<p>{esc(words["text"])}</p>' if words.get("text") else ""
         panels += (
             f'<article class="run-panel" id="run-step-{n}" data-step="{n - 1}">'
