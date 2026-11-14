@@ -82,7 +82,7 @@ def check(root):
     index = pages.get((root / "index.html").resolve())
     if not index:
         errors.append("Site lacks index.html or pages")
-    # Where the site lives on its host ("/sentier-bafu/"): the page for missing addresses links from there.
+    # Where the site lives on its host (the path of its address): the page for missing addresses links from there.
     base = (index.canonical or "").rsplit("/", 1)[0] + "/" if index and index.canonical else None
     root_path = urlsplit(base).path if base else None
 

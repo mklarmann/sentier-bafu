@@ -2,6 +2,7 @@
 
 import json
 
+from . import theme
 from .text import day, esc, ext
 
 NAV_SCRIPT = ("<script>(function(){var a=document.querySelector('.nav [aria-current]');"
@@ -41,8 +42,14 @@ def shell(site, title, body, current, up="", page=None, description=None, head="
         built += " Comment counts were read from GitHub at that time."
     p = esc(site.provider)
     canonical = f'<link rel="canonical" href="{esc(c["site_url"] + page)}"><meta property="og:url" content="{esc(c["site_url"] + page)}">' if page else ""
+    # A site with an index colour of its own says so on every page: the stylesheet is the same
+    # file on every dataset site, and this one rule sets its tokens.
+    colours = getattr(site, "theme", None)
+    marked = ' class="has-index"' if colours else ""
+    tokens = f"<style>{theme.rule(colours)}</style>" if colours else ""
+    tint = colours["index"] if colours else "#3c5343"
     return f'''<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{esc(full)}</title><meta name="description" content="{esc(described)}"><meta name="theme-color" content="#3c5343">{canonical}<meta property="og:title" content="{esc(title if not home else full)}"><meta property="og:description" content="{esc(described)}"><meta property="og:type" content="website"><link rel="icon" href="{up}assets/favicon-32x32.png" type="image/png"><link rel="preload" href="{up}assets/nunito-latin.woff2" as="font" type="font/woff2" crossorigin><link rel="stylesheet" href="{up}style.css"><link rel="alternate" type="application/atom+xml" title="Changes to the findings" href="{up}feed.xml">{head}</head><body>
+<html lang="en"{marked}><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{esc(full)}</title><meta name="description" content="{esc(described)}"><meta name="theme-color" content="{tint}">{canonical}<meta property="og:title" content="{esc(title if not home else full)}"><meta property="og:description" content="{esc(described)}"><meta property="og:type" content="website"><link rel="icon" href="{up}assets/favicon-32x32.png" type="image/png"><link rel="preload" href="{up}assets/nunito-latin.woff2" as="font" type="font/woff2" crossorigin><link rel="stylesheet" href="{up}style.css">{tokens}<link rel="alternate" type="application/atom+xml" title="Changes to the findings" href="{up}feed.xml">{head}</head><body>
 <a class="skip" href="#main">Skip to content</a>
 <header class="masthead"><div class="wrap masthead-in"><a class="logo" href="https://www.d-d-s.ch/"><img src="{up}assets/dds-logo.svg" alt="Départ de Sentier" width="120" height="56"></a><a class="site-name" href="{up}index.html"><strong>{esc(site.dataset)}</strong><span>Community workspace</span></a><nav class="nav" aria-label="Main navigation">{nav}</nav>{ext(site.repo, "GitHub", "repo ext")}</div></header>
 {notice}<main id="main">{body}</main>
@@ -86,11 +93,13 @@ def generated_page(site, title, body, page, current=None, up="", description=Non
 
 
 def lookup(site, up="", field="lookup"):
-    """The lookup field: a dataset code, a finding number or a word, answered by the findings list."""
+    """The lookup field: a dataset code (where the datasets have one), a finding number or a
+    word, answered by the findings list."""
+    what = "a dataset code, a finding number or a word" if site.code_pattern else "a finding number or a word"
     return (
         f'<form class="lookup" action="{up}findings.html" method="get" role="search">'
-        f'<label for="{field}">Look up a dataset code, a finding number or a word</label>'
-        f'<div class="lookup-row"><input id="{field}" name="q" type="search" placeholder="For example 188725 or F3" '
+        f'<label for="{field}">Look up {what}</label>'
+        f'<div class="lookup-row"><input id="{field}" name="q" type="search" placeholder="For example {esc(site.lookup_example)}" '
         'autocomplete="off" spellcheck="false"><button class="button" type="submit">Look up</button></div></form>'
     )
 

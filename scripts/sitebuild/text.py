@@ -64,7 +64,7 @@ def shorten(text, limit=84):
 
 
 def link_label(url, repository):
-    """What a link leads to, in a few words: "issue #12" here, "lci-bafu-catalog #3" elsewhere,
+    """What a link leads to, in a few words: "issue #12" here, "another-repository #3" elsewhere,
     the file name for a file, the host for the rest."""
     hit = re.search(r"/([^/]+)/(?:-/)?(issues|pull|merge_requests)/(\d+)(#[A-Za-z0-9_-]+)?$", url)
     if hit:

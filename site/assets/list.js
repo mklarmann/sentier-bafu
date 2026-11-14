@@ -10,6 +10,8 @@
   var q = document.getElementById("q"), count = document.getElementById("count");
   if (!list || !controls || !q || !count) return;
   var noun = list.dataset.noun || "record", page = +list.dataset.page || 50, base = list.dataset.base || "";
+  // What a dataset code looks like on this site (data-code); a site whose datasets have none sets none.
+  var CODE = list.dataset.code ? new RegExp(list.dataset.code) : null;
   var more = document.getElementById("more"), none = document.getElementById("none"), clear = document.getElementById("clear");
   var dataset = document.getElementById("dataset"), extra = document.getElementById("more-filters");
   var chips = [].slice.call(document.querySelectorAll("[data-filter]"));
@@ -98,12 +100,12 @@
   // ---------------------------------------------------------------- matching
   function tokens() { return fold(state.q).split(/\s+/).filter(Boolean); }
   function matcher(words) {
-    // A finding number and a six-digit dataset code match exactly; any other word anywhere in the row.
+    // A finding number and a dataset code match exactly; any other word anywhere in the row.
     return function (r) {
       return words.every(function (w) {
         var id = /^f(\d+)$/.exec(w);
         if (id) return r[0] === +id[1];
-        if (/^\d{6}$/.test(w)) return r[4].indexOf(+w) >= 0;
+        if (CODE && CODE.test(w)) return r[4].indexOf(+w) >= 0;
         return r.hay.indexOf(w) >= 0;
       });
     };
@@ -164,7 +166,7 @@
     timer = setTimeout(function () {
       count.textContent = (shown === total ? plural(total) : fmt(shown) + " of " + plural(total)) + note;
     }, 250);
-    var asked = /^\d{6}$/.test(state.q.trim()) ? state.q.trim() : "";
+    var asked = CODE && CODE.test(state.q.trim()) ? state.q.trim() : "";
     var code = asked && !state.status.length && !state.release && !state.kind && !state.patch;
     if (dataset) { // a code that a finding names has a page of its own
       dataset.hidden = !(asked && shown > 0 && index);

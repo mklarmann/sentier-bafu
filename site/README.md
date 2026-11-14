@@ -50,6 +50,40 @@ uv run --no-project --python 3.12 --with fonttools==4.55.0 --with brotli==1.1.0 
 
 Nunito has no arrows: the stylesheet draws them. Do not type "→" or "↗" into generated text.
 
+## A sibling site
+
+The scripts in `scripts/`, the stylesheet and the two scripts of the pages are the same files in every dataset's repository. What differs from one dataset to another is said in `site/config.json`, and a test builds a made-up sibling from these files (`community/tests/test_sibling_site.py`). A key that is left out has the value in the last column.
+
+| Key | What it says | Left out |
+|---|---|---|
+| `provider`, `dataset`, `repository`, `site_url`, `releases` | whose data it is, what the database is called, where the repository and the site are, and the provider's releases. A release has an `id` (any name that can be the name of a page: `2026-v1`, `3.2`), a `name`, and may name its `background` (what the release is built on) | required, except `dataset` |
+| `index` | the index colour of this dataset's site: one colour as `"#rrggbb"`, or `{"color", "dark", "tint", "soft"}`. The build works out what is not given and refuses a colour that can't be read (below) | the brand's green |
+| `dataset_code_pattern` | what a dataset number looks like, as a pattern (`^[0-9]{6}$`): the findings list then looks a number up exactly and leads to the dataset's page | datasets have no number to look up |
+| `lookup_example` | the example in the lookup field | `F1` |
+| `finding_label`, `finding_form` | the label of an issue that is a finding, and the file name of its form in `.github/ISSUE_TEMPLATE/`. The form's field for the release is headed "*provider* release it was observed in" | `finding`, `data-finding.yml` |
+| `older_numbering_until`, `older_numbering_note` | the last finding number of an older numbering, and a sentence about it for the table of findings | this repository's number; a sibling sets `0` |
+| `ledger_notes` | sentences for the head of the table of findings (`ledger.md`) | none |
+| `nav`, `footer`, `documents`, `redirects` | the pages of the site | required |
+
+A site has a page for the patched release only if `documents` lists `patched-release.html`. Without it no page links there, the build reads no release build, and `api/v1/last-run.json` is not written.
+
+A finding names its datasets by number (`code`, a whole number). Where the datasets of a provider have no number, a finding lists none and says in `scope` what it is about.
+
+### The index colour
+
+Every Sentier dataset site has the same frame: the logo, the paper, the type. The index colour marks which dataset a reader is on: a band over the masthead, the current item of the navigation, headings, links, buttons, the focus ring, and the dark stage on "Patch and release". Three signals stay the same on every site and are never the index colour: amber for waiting, red-brown for failed, green for good.
+
+The stylesheet reads the colour from four tokens (`--index`, `--index-dark`, `--index-soft`, `--index-tint`). A site that sets `index` gets one rule on every page that sets them, and `scripts/sitebuild/theme.py` checks the colour before anything is written:
+
+| Pair | Least contrast |
+|---|---|
+| the colour on the paper and on a card; white on the colour | 4.5 to 1 |
+| the stage's text on the dark colour | 7 to 1 |
+| the dark colour on the tint | 4.5 to 1 |
+| the soft colour on the dark colour (marks, never text) | 3 to 1 |
+
+The hue of the colour may not lie between 345 and 60 degrees, where amber and red-brown are: a reader would take the site's colour for a status. A grey passes, whatever its hue.
+
 ## Prose pages
 
 A prose page is a Markdown file named under `documents` in `site/config.json`:

@@ -155,7 +155,7 @@ def findings_list(site, up=""):
     controls = (
         '<form class="filter-row" id="controls" role="search" hidden>'
         '<label class="field grow"><span>Search</span><input id="q" name="q" type="search" '
-        'placeholder="Dataset code, name or word" autocomplete="off" spellcheck="false"></label>'
+        f'placeholder="{"Dataset code, name or word" if site.code_pattern else "Dataset name or word"}" autocomplete="off" spellcheck="false"></label>'
         + select("status", "Status", statuses, "field for-status")
         # On a narrow screen the four fields below open with this button; on a wide one they are always there.
         + '<button type="button" class="button more-filters" id="more-filters" aria-expanded="false">More filters</button>'
@@ -186,7 +186,7 @@ def findings_list(site, up=""):
         + '<div class="listing"><div class="records-head" aria-hidden="true"><span>No.</span><span>Finding</span>'
         "<span>Status</span><span>Discussion</span></div>"
         f'<ul class="records" id="list" data-index="{up}findings/index.json" data-total="{total}" data-page="{PAGE}" '
-        f'data-base="{up}" data-noun="finding">'
+        f'data-base="{up}" data-noun="finding"' + (f' data-code="{esc(site.code_pattern)}"' if site.code_pattern else "") + ">"
         + "".join(finding_row(site, f, up) for f in ordered[:PAGE])
         + "</ul></div>"
         '<p class="list-none" id="none" hidden>No finding matches. '
@@ -295,8 +295,9 @@ def panel(site, f, up):
         )
         rows_ += (
             f'<div><dt>Community patch</dt><dd>{ext(x["url"], "Patch " + esc(x["id"]))}: {text(x["description"])}'
-            f'<p class="note">Applied in the <a href="{up}patched-release.html">patched release</a>, for those who need '
-            f"the change now. {who} A community patch is not {esc(p)}'s correction and does not change the status.</p></dd></div>"
+            + (f'<p class="note">Applied in the <a href="{up}{site.patched_page}">patched release</a>, for those who need '
+               f"the change now. {who} " if site.patched_page else f'<p class="note">{who} ')
+            + f"A community patch is not {esc(p)}'s correction and does not change the status.</p></dd></div>"
         )
     if f["next"]:
         rows_ += (

@@ -130,7 +130,7 @@ def tracker(site, c):
 
 
 def release_words(site, baseline):
-    """"BAFU-2026-v1" in a record is the release the site calls "BAFU:2026 v1"."""
+    """A record names a release with the provider before its id; the site calls it by its name."""
     release = str(baseline.get("release", ""))
     prefix = site.provider + "-"
     return site.release_name(release[len(prefix):] if release.startswith(prefix) else release)

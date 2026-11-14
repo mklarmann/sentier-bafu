@@ -6,7 +6,7 @@
 The record decides. A finding's status is computed from the dated evidence in its record, and
 this job projects it onto the finding's issue:
 
-- labels: `bafu-finding`, exactly one `status: …` label in the words the site shows, and
+- labels: the finding label (`finding_label` in site/config.json), exactly one `status: …` label in the words the site shows, and
   `help wanted` while the finding needs a second measurement. An issue filed as a finding
   that has no merged record carries `needs-triage` instead. A label set by hand is put right
   at the next run;
@@ -36,7 +36,7 @@ import community  # noqa: E402
 from github_api import ApiError, GitHub, NotFound, RateLimited, plain, quoted, repository_slug  # noqa: E402
 
 ROOT = community.ROOT
-FINDING_LABEL = "bafu-finding"
+FINDING_LABEL = community.load_config()["finding_label"]  # this repository's label for a finding
 HELP_LABEL = "help wanted"
 TRIAGE_LABEL = "needs-triage"
 CONTRIBUTION_LABEL = "contribution"

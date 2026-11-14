@@ -22,7 +22,7 @@ Everything an issue or a comment says is untrusted:
 
 The headings of the form are a contract with the issues already filed. To rename a heading,
 move the old one to EARLIER_FORM; `community/tests/test_intake.py` compares FORM with
-`.github/ISSUE_TEMPLATE/bafu-data-finding.yml`.
+the issue form that `finding_form` in site/config.json names.
 """
 
 import argparse
@@ -39,15 +39,18 @@ import community  # noqa: E402
 from github_api import ApiError, GitHub, NotFound, plain, repository_slug  # noqa: E402
 
 ROOT = community.ROOT
-FORM_FILE = ".github/ISSUE_TEMPLATE/bafu-data-finding.yml"
-FINDING_LABEL = "bafu-finding"
+# What this repository calls its form and its label, and whose data it is about: site/config.json.
+NAMES = community.load_config()
+PROVIDER = NAMES["provider"]
+FORM_FILE = f".github/ISSUE_TEMPLATE/{NAMES['finding_form']}"
+FINDING_LABEL = NAMES["finding_label"]
 NEEDS_INFO = "needs-info"
 TITLE_PREFIX = re.compile(r"\A\s*\[finding\]\s*", re.I)
 
 # The form: (field id, the heading GitHub writes for it, required).
 FORM = (
     ("kind", "What kind of finding is it?", True),
-    ("releases", "BAFU release it was observed in", True),
+    ("releases", f"{PROVIDER} release it was observed in", True),
     ("datasets", "Datasets, one per line", False),
     ("scope", "What else it concerns", False),
     ("observation", "What the data says", True),
@@ -57,7 +60,7 @@ FORM = (
 )
 # The form as it was until November 2026. Issues filed with it stay readable.
 EARLIER_FORM = (
-    ("dataset", "BAFU activity code(s), name, geography, unit", True),
+    ("dataset", f"{PROVIDER} activity code(s), name, geography, unit", True),
     ("release", "Release observed in", True),
     ("where", "Where you looked", True),
     ("measured", "What you measured, and how", True),
@@ -150,7 +153,7 @@ def parse_form(body):
 
 
 def release_ids(text, config, strict):
-    """The registered releases a form value names: by id, or by name ("BAFU:2026 v1")."""
+    """The registered releases a form value names: by id, or by name."""
     known = {}
     for release in config["releases"]:
         known[release["id"].lower()] = release["id"]
@@ -420,10 +423,10 @@ def second_measurement(record, comment, issue_number, repository, result):
 
 # ------------------------------------------------------------------------------------ plan
 
-FORM_URL = "{repository}/issues/new?template=bafu-data-finding.yml"
+FORM_URL = "{repository}/issues/new?template=" + NAMES["finding_form"]
 REPLIES = {
     "not-form": (
-        "This issue carries the label `bafu-finding`, but it was not filed with the finding form, so "
+        f"This issue carries the label `{FINDING_LABEL}`, but it was not filed with the finding form, so "
         "no record can be made from it automatically. Please [file it with the form]({form}); a "
         "maintainer can also write the record by hand."
     ),
@@ -443,7 +446,7 @@ REPLIES = {
         "repository can ask for that."
     ),
     "not-finding": (
-        "This issue does not carry the label `bafu-finding`. A maintainer adds the label and "
+        f"This issue does not carry the label `{FINDING_LABEL}`. A maintainer adds the label and "
         "comments `/record` again."
     ),
     "usage": (

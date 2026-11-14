@@ -28,7 +28,7 @@ import community  # noqa: E402
 import github_api  # noqa: E402
 import last_run  # noqa: E402
 import triage  # noqa: E402
-from sitebuild import contributions, data, findings, lastrun, overview, pages, prose, shell, status  # noqa: E402
+from sitebuild import contributions, data, findings, lastrun, overview, pages, prose, shell, status, theme  # noqa: E402
 from sitebuild.text import esc, plural  # noqa: E402,F401
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -40,6 +40,9 @@ COUNT = re.compile(r"<!--\s*(?:generated:\s*)?count:([a-z:-]+)\s*-->")
 # A block that opens its page: what precedes it and the block itself stand above the page's two
 # columns, over the full width; "On this page" begins below it.
 OPENING = {"last-run"}
+PATCHED_PAGE = "patched-release.html"
+# The blocks that show a release build. A site none of whose pages asks for one reads no run.
+RUN_BLOCKS = re.compile(r"<!--\s*(?:generated:\s*)?(?:last-run|release-packages)\s*-->")
 OPENING_END = "<!-- end of the opening -->"
 SAFE_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 
@@ -73,6 +76,8 @@ class Site:
         if errors:
             raise SystemExit("The records are not valid; nothing was built.\n" + "\n".join(errors))
         self.config = json.loads((self.root / "site/config.json").read_text())
+        # The index colour of this dataset's site, checked; None while the site sets none.
+        self.theme = theme.read(self.config)
         self.repo = self.config["repository"]
         self.source_repo = source_repository or self.repo
         self.ref = source_ref or self.config["source_ref"]
@@ -91,6 +96,12 @@ class Site:
         self.root_path = urlsplit(self.config["site_url"]).path.rstrip("/") + "/"
         self.records_config = community.load_config(self.root)
         self.docs = self.config["documents"]
+        # What differs from one dataset's site to another's (see site/README.md, "A sibling site").
+        self.code_pattern = self.records_config["dataset_code_pattern"]
+        self.lookup_example = self.records_config["lookup_example"]
+        self.finding_form = self.records_config["finding_form"]
+        # The page of the patched release, where this site has one: other pages lead to it.
+        self.patched_page = next((doc["page"] for doc in self.docs if doc["page"] == PATCHED_PAGE), None)
         # Where a link to a source file leads on the site: the page built from it.
         self.routes = {"community/findings/README.md": "findings.html"}
         for doc in self.docs:
@@ -106,8 +117,14 @@ class Site:
             self.repo, issues_snapshot, offline, require_issues
         )
         self.triage = triage.assemble(self.findings, self.repo, issues, self.patches)
-        # The last release build, read from the runs of the repository that builds this site.
-        self.last_run = last_run.load(self.built_by, last_run_snapshot, offline)
+        # The last release build, read from the runs of the repository that builds this site:
+        # only for a site that has a page for it. A dataset without a release build has none.
+        shows_run = any(
+            RUN_BLOCKS.search((self.root / source).read_text())
+            for doc in self.docs for source in [doc["source"], *doc.get("also", [])]
+            if (self.root / source).is_file()
+        )
+        self.last_run = last_run.load(self.built_by, last_run_snapshot, offline) if shows_run else None
         self.built = build_date()
         self.revision = revision(self.root)
         self.written = set()
@@ -367,7 +384,8 @@ class Site:
         # GitHub Pages serves 404.html for any missing address, so its links start at the root.
         self.write("404.html", shell.not_found(self))
         data.write_data(self)
-        self.write_json("api/v1/last-run.json", lastrun.public_record(self.last_run))
+        if self.last_run is not None:
+            self.write_json("api/v1/last-run.json", lastrun.public_record(self.last_run))
         self.write("sitemap.xml", pages.sitemap(self))
 
         for page, source in self.site_links.items():
@@ -381,7 +399,8 @@ class Site:
                 if not any(folder.iterdir()):
                     folder.rmdir()
         print(f"Built {self.dataset}: {len(self.pages)} pages in {out}")
-        print(last_run.said(self.last_run))
+        if self.last_run is not None:
+            print(last_run.said(self.last_run))
         # For maintainers, in the build log only: a public page does not name labels.
         differences = self.triage["label_differences"]
         if differences:

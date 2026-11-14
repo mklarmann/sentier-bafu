@@ -96,7 +96,7 @@ def feed(site):
     return (
         '<?xml version="1.0" encoding="utf-8"?>\n<feed xmlns="http://www.w3.org/2005/Atom">'
         f'<id>{xml(base)}feed.xml</id><title>{xml(site.dataset)} findings: what changed</title>'
-        f'<updated>{xml(newest)}T00:00:00Z</updated><author><name>sentier-bafu</name></author>'
+        f'<updated>{xml(newest)}T00:00:00Z</updated><author><name>{xml(site.repo.rstrip("/").rsplit("/", 1)[-1])}</name></author>'
         f'<link rel="self" href="{xml(base)}feed.xml"/><link href="{xml(base)}changes.html"/>\n{entries}</feed>\n'
     )
 
@@ -225,8 +225,11 @@ def release_page(site, rid, entry):
         f"<h1>Known in {name}</h1>"
         f"<p>{plural(len(observed), 'finding was', 'findings were')} observed in {name}"
         + (f"; {thousands(len(here))} of the findings {'is' if len(here) == 1 else 'are'} resolved in it" if here else "")
-        + f". Only what someone has reported is listed here. {p} decides what it changes; a community patch in the "
-        f'<a href="{up}patched-release.html">patched release</a> is not {p}\'s correction.</p>'
+        + f". Only what someone has reported is listed here. {p} decides what it changes"
+        + (f'; a community patch in the <a href="{up}{site.patched_page}">patched release</a> is not {p}\'s correction'
+           if site.patched_page else "")
+        + ".</p>"
+        + (f"<p>{name} is built on {esc(entry['background'])}.</p>" if entry.get("background") else "")
         + (summary + sections if groups else '<p class="list-none">No finding names this release.</p>')
     )
     return shell.generated_page(
@@ -255,9 +258,10 @@ def dataset_page(site, code, entry):
     )
     if patches:
         sections += (f'<h2>Community patches</h2><ul class="plain">{patches}</ul>'
-                     f'<p>They are applied in the <a href="{up}patched-release.html">patched release</a>. '
-                     f"A patch is not {p}'s correction.</p>")
-    report = f"{site.repo}/issues/new?template=bafu-data-finding.yml&dataset={quote(title)}"
+                     + (f'<p>They are applied in the <a href="{up}{site.patched_page}">patched release</a>. '
+                        if site.patched_page else "<p>")
+                     + f"A patch is not {p}'s correction.</p>")
+    report = f"{site.repo}/issues/new?template={site.finding_form}&dataset={quote(title)}"
     body = (
         f'<nav class="crumb" aria-label="Breadcrumb"><a href="{up}findings.html">Findings</a> '
         f'<span aria-hidden="true">/</span> <span aria-current="page">Dataset {code}</span></nav>'
@@ -393,6 +397,8 @@ def data_files(site, up=""):
         f'<tr role="row"><td role="cell" data-label="File"><a href="{up}{esc(path)}"><code>{esc(path)}</code></a></td>'
         f'<td role="cell" data-label="What it holds">{esc(text)}</td></tr>'
         for path, text in DATA_FILES
+        # the record of the last release build is a file of a site that shows one
+        if path != "api/v1/last-run.json" or site.last_run is not None
     )
     return (
         '<div class="table-wrap"><table role="table" class="cols-2"><thead role="rowgroup"><tr role="row">'

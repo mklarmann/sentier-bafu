@@ -87,13 +87,40 @@ def load_config(root=ROOT):
     until = config.get("older_numbering_until", LAST_LEGACY_NUMBER)
     if isinstance(until, bool) or not isinstance(until, int) or until < 0:
         raise ValueError("site/config.json: older_numbering_until is a whole number, 0 or more")
+    # What differs from one dataset's repository to another's is said here and nowhere in the
+    # code, so that the scripts are the same files in each. site/README.md lists these keys.
+    pattern = config.get("dataset_code_pattern")
+    if pattern is not None:
+        if not isinstance(pattern, str):
+            raise ValueError("site/config.json: dataset_code_pattern is a pattern, or it is left out")
+        try:
+            re.compile(pattern)
+        except re.error as error:
+            raise ValueError(f"site/config.json: dataset_code_pattern is not a pattern ({error})") from None
+    label, form = config.get("finding_label", "finding"), config.get("finding_form", "data-finding.yml")
+    if not isinstance(label, str) or not re.fullmatch(r"[a-z0-9][a-z0-9 :-]*", label):
+        raise ValueError("site/config.json: finding_label is the name of a label, in small letters")
+    if not isinstance(form, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*\.yml", form):
+        raise ValueError("site/config.json: finding_form is the file name of an issue form, ending in .yml")
+    notes, older = config.get("ledger_notes", []), config.get("older_numbering_note", "")
+    if not isinstance(notes, list) or not all(isinstance(note, str) and not RAW_HTML.search(note) for note in notes):
+        raise ValueError("site/config.json: ledger_notes is a list of sentences, without HTML")
+    if not isinstance(older, str) or RAW_HTML.search(older):
+        raise ValueError("site/config.json: older_numbering_note is a sentence, without HTML")
     return {
         "provider": config["provider"],
+        "dataset": config.get("dataset", config["provider"]),
         "repository": config["repository"],
         "site_url": config["site_url"],
         "releases": config.get("releases", []),
         "stale_after_days": config.get("stale_after_days", {}),
         "older_numbering_until": until,
+        "dataset_code_pattern": pattern,
+        "lookup_example": str(config.get("lookup_example", "F1")),
+        "finding_label": label,
+        "finding_form": form,
+        "ledger_notes": notes,
+        "older_numbering_note": older,
     }
 
 
@@ -786,7 +813,9 @@ def dataset_index(findings, patches=None):
 
 def release_index(findings, config):
     """{release id: {name, findings: observed in it, corrected: corrected in it}}."""
-    index = {r["id"]: {"name": r["name"], "findings": [], "corrected": []} for r in config["releases"]}
+    # `background`: what a release is built on, where a provider's release names one.
+    index = {r["id"]: {"name": r["name"], "background": r.get("background"), "findings": [], "corrected": []}
+             for r in config["releases"]}
     for record in findings:
         for release in record["releases"]:
             if release in index:
@@ -797,12 +826,12 @@ def release_index(findings, config):
     return index
 
 
-def link_label(url):
-    """#12 for an issue here, "lci-bafu-catalog #3" for one elsewhere, the host for the rest."""
+def link_label(url, repository=None):
+    """#12 for an issue here, "another-repository #3" for one elsewhere, the host for the rest."""
     issue = re.search(r"/([^/]+)/(?:-/)?issues/(\d+)(?:#.*)?$", url)
     if not issue:
         return url.split("/")[2]
-    here = "github.com/sentier-dev/sentier-bafu/" in url
+    here = url.startswith((repository or load_config()["repository"]).rstrip("/") + "/")
     return f"#{issue.group(2)}" if here else f"{issue.group(1)} #{issue.group(2)}"
 
 
@@ -833,18 +862,16 @@ def release_names(record, config):
     return ", ".join(names.get(release, release) for release in record["releases"]) or "—"
 
 
-INDEX_HEAD = """# Findings about the BAFU/UVEK data
+INDEX_HEAD = """# Findings about the {dataset} data
 
 <!-- Generated from community/findings/ when the site is built (`python3 scripts/community.py index --out FILE`). Not kept in the repository. -->
 
 One line per finding. The full record of a finding is its file in
 [community/findings/]({repository}/tree/main/community/findings); the
 [site]({site_url}findings.html) shows every record with its discussion, and
-[api/v1/findings.json]({site_url}api/v1/findings.json) holds the same list for tools. Dataset
-values and names are quoted; text from the LCI reports is never pasted (Terms of Use clause 4).
+[api/v1/findings.json]({site_url}api/v1/findings.json) holds the same list for tools.
 
-From F48 on, the number of a finding is the number of its issue. F1 to F32 follow an older
-numbering shared with the [lci-bafu-catalog ledger](https://gitlab.com/eos-lci/lci-bafu-catalog/-/blob/main/docs/bafu_findings.md).
+{notes}
 
 ## Status
 
@@ -869,11 +896,20 @@ def index_text(findings, config=None):
     rows = "".join(
         f"| {r['id']} | {concerns(r)} | {r['title']} | {release_names(r, config)} | "
         f"{status_label(stage(r), provider)} | "
-        + " · ".join(f"[{link_label(u)}]({u})" for u in discussion_links(r, config["repository"]))
+        + " · ".join(f"[{link_label(u, config['repository'])}]({u})" for u in discussion_links(r, config["repository"]))
         + " |\n"
         for r in findings
     )
-    head = INDEX_HEAD.format(repository=config["repository"], site_url=config["site_url"])
+    # What is particular to this dataset's findings is said in site/config.json (`ledger_notes`);
+    # how the findings are numbered follows from `older_numbering_until`.
+    until = config.get("older_numbering_until", 0)
+    numbering = (f"From F{until + 1} on, the number of a finding is the number of its issue." if until
+                 else "The number of a finding is the number of its issue.")
+    if until and config.get("older_numbering_note"):
+        numbering += " " + config["older_numbering_note"]
+    notes = "\n\n".join([*config.get("ledger_notes", []), numbering])
+    head = INDEX_HEAD.format(repository=config["repository"], site_url=config["site_url"],
+                             dataset=config.get("dataset", provider), notes=notes)
     return head + vocabulary + INDEX_TABLE + rows
 
 

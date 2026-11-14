@@ -13,6 +13,14 @@
     }
   ],
   "older_numbering_until": 47,
+  "older_numbering_note": "F1 to F32 follow an older numbering shared with the [lci-bafu-catalog ledger](https://gitlab.com/eos-lci/lci-bafu-catalog/-/blob/main/docs/bafu_findings.md).",
+  "dataset_code_pattern": "^[0-9]{6}$",
+  "lookup_example": "188725 or F3",
+  "finding_label": "bafu-finding",
+  "finding_form": "bafu-data-finding.yml",
+  "ledger_notes": [
+    "Dataset values and names are quoted; text from the LCI reports is never pasted (Terms of Use clause 4)."
+  ],
   "repository": "https://github.com/sentier-dev/sentier-bafu",
   "site_url": "https://sentier-dev.github.io/sentier-bafu/",
   "source_ref": "main",

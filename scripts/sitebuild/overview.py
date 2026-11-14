@@ -21,7 +21,7 @@ def second_measurement_list(site, up="", limit=5):
 def ways(site, up=""):
     """The three ways to take part."""
     p = esc(site.provider)
-    report = f"{site.repo}/issues/new?template=bafu-data-finding.yml"
+    report = f"{site.repo}/issues/new?template={site.finding_form}"
     return (
         '<div class="ways">'
         f'<div class="card"><h3>Repeat a measurement</h3><p>Take a finding that needs a second measurement, repeat it on '
@@ -64,7 +64,9 @@ def overview(site):
     part = (
         '<section class="wrap section" aria-labelledby="part"><div class="section-head"><h2 id="part">Take part</h2></div>'
         + ways(site)
-        + f'<p class="aside">For those who need a change now, the <a href="patched-release.html">patched release</a> '
-        f"applies community patches to a copy of {p}'s files. A community patch is not {p}'s correction.</p></section>"
+        + (f'<p class="aside">For those who need a change now, the <a href="{site.patched_page}">patched release</a> '
+           f"applies community patches to a copy of {p}'s files. A community patch is not {p}'s correction.</p>"
+           if site.patched_page else "")
+        + "</section>"
     )
     return shell.shell(site, "Overview", opening + steps + wanted + recent + part, "index.html", page="index.html")
