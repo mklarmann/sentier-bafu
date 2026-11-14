@@ -107,7 +107,7 @@ def run_summary():
 
 
 def marker(**changes):
-    """What the build writes into the metadata of a database of a patched release."""
+    """What the build writes into the metadata of a database of a patched copy."""
     record = {
         "label": "Modified Data",
         "modified_data": True,

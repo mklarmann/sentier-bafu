@@ -7,7 +7,7 @@ description: >-
 
 inputs:
   out:
-    description: Folder for the patched release (stays on the runner)
+    description: Folder for the patched copy (stays on the runner)
     required: true
   summary:
     description: Where to write the run summary (counts and checksums, no inventory)

@@ -32,10 +32,11 @@
     "workflow": "release-build.yml",
     "artifact": "release-build-results",
     "tagged": {
-      "job": "Publish",
+      "job": "Keep",
       "tags": "patched-"
     }
   },
+  "patched_page": "patch-and-build.html",
   "repository": "https://github.com/sentier-dev/sentier-bafu",
   "site_url": "https://sentier-dev.github.io/sentier-bafu/",
   "source_ref": "main",
@@ -62,7 +63,7 @@
       "Contributions"
     ],
     [
-      "patched-release.html",
+      "patch-and-build.html",
       "Patch and build"
     ],
     [
@@ -109,8 +110,8 @@
     },
     {
       "title": "Patch and build",
-      "source": "site/patched-release.md",
-      "page": "patched-release.html",
+      "source": "site/patch-and-build.md",
+      "page": "patch-and-build.html",
       "also": [
         "site/import.md"
       ],
@@ -151,7 +152,8 @@
     ]
   },
   "redirects": {
-    "import.html": "patched-release.html",
+    "import.html": "patch-and-build.html",
+    "patched-release.html": "patch-and-build.html",
     "contribute.html": "take-part.html",
     "testing.html": "about/checks.html",
     "terms.html": "about/terms.html",

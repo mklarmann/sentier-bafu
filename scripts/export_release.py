@@ -9,10 +9,10 @@
 #     "olca-schema==2.6.2",
 # ]
 # ///
-"""Export a Brightway build of the patched release for openLCA, SimaPro and Brightway.
+"""Export a Brightway build of the patched copy for openLCA, SimaPro and Brightway.
 
-A contribution's database (the patched release plus one contribution's layer) is exported
-too, and never as the patched release: its statement, its record of modifications, the note
+A contribution's database (the patched copy plus one contribution's layer) is exported
+too, and never as the patched copy: its statement, its record of modifications, the note
 of every dataset and the SimaPro project name it as that contribution's database, with the
 contribution's id and whether somebody authorised it ("proposed, not authorised" if nobody
 has), and each dataset the layer changed names the contribution among its steps.
@@ -26,7 +26,7 @@ Reads one or more databases from a Brightway project and writes, into one folder
 * `manifest.json` and `SHA256SUMS`: provider, release, credit, label, tool versions,
   checksums and the result of reading every file back.
 
-The patched release is Modified Data under BAFU's Terms of Use: each file carries the
+The patched copy is Modified Data under BAFU's Terms of Use: each file carries the
 credit, the label and the ids of the modifications inside it, and the full record
 travels beside it. The list of modifications comes from `bafu-fixes run --summary`.
 The step exports only a database that the build marked as Modified Data and that was
@@ -185,8 +185,8 @@ NOT_AUTHORISED = "proposed, not authorised"
 def contribution_of(databases):
     """The contribution a database was built with, as its marker names it, or None.
 
-    A contribution's database is the patched release plus one contribution's changes. It
-    is not the patched release, and every file written from it has to say so: which
+    A contribution's database is the patched copy plus one contribution's changes. It
+    is not the patched copy, and every file written from it has to say so: which
     contribution, and whether somebody authorised it.
     """
     found = {}
@@ -485,8 +485,8 @@ def modifications_markdown(record):
             "",
             f"**{LABEL}.** This is the database `{contribution['database']}` of contribution "
             f"{contribution['id']}, {contribution['standing']}. It is built from the patched "
-            "release and holds that contribution's changes on top: it is not the patched "
-            f"release, and it is not BAFU's original data. Source: {record['credit']}.",
+            "copy and holds that contribution's changes on top: it is not the patched "
+            f"copy, and it is not BAFU's original data. Source: {record['credit']}.",
             "",
             f"{record['datasets_changed']} of {record['datasets_in_release']} datasets were "
             f"changed, {contribution['datasets_changed']} of them by the contribution. "
@@ -496,7 +496,7 @@ def modifications_markdown(record):
         ]
     else:
         lines = [
-            f"# Record of modifications: {record['release']}, patched release",
+            f"# Record of modifications: {record['release']}, patched copy",
             "",
             f"**{LABEL}.** This is not BAFU's original data. Source: {record['credit']}.",
             "",
@@ -541,13 +541,13 @@ def attribution(record, terms_url=None):
         by_kind.setdefault(step["kind"], []).append(step["id"])
     changes = ". ".join(f"{kind}: {', '.join(ids)}" for kind, ids in by_kind.items())
     terms = f" ({terms_url})" if terms_url else ""
-    what = f"This is a patched release of {record['release']}, not BAFU's original data."
+    what = f"This is a patched copy of {record['release']}, not BAFU's original data."
     if contribution := record.get("contribution"):
         what = (
             f"This is the database {contribution['database']} of contribution "
             f"{contribution['id']} ({contribution['name']}), {contribution['standing']}. It "
-            f"is built from the patched release of {record['release']} and holds that "
-            "contribution's changes on top. It is not the patched release and not BAFU's "
+            f"is built from the patched copy of {record['release']} and holds that "
+            "contribution's changes on top. It is not the patched copy and not BAFU's "
             "original data."
         )
     return (
@@ -563,12 +563,12 @@ def dataset_notes(nodes, record):
     The record names a changed dataset by its code, which is the node's code.
     """
     by_code = {dataset["code"]: dataset for dataset in record["datasets"]}
-    part = f"{LABEL}: part of a patched release of {record['release']}, not BAFU's original."
+    part = f"{LABEL}: part of a patched copy of {record['release']}, not BAFU's original."
     if contribution := record.get("contribution"):
         part = (
             f"{LABEL}: part of the database of contribution {contribution['id']} "
             f"({contribution['name']}), {contribution['standing']}, built from a patched "
-            f"release of {record['release']}. Not the patched release and not BAFU's original."
+            f"copy of {record['release']}. Not the patched copy and not BAFU's original."
         )
     notes, matched = {}, 0
     for key, node in nodes.items():
@@ -1162,7 +1162,7 @@ def export_release(
         "modifications": out / "MODIFICATIONS.json",
         "modifications_readable": out / "MODIFICATIONS.md",
     }
-    project = f"{release} patched release, {LABEL}"
+    project = f"{release} patched copy, {LABEL}"
     if contribution:
         project = (
             f"{release} contribution {contribution['id']} {contribution['name']}, "

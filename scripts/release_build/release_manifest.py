@@ -1,11 +1,11 @@
-"""The manifest of a release build: the one file a patched release publishes.
+"""The manifest of a build: the one file that is kept of a build made for a tag.
 
     python3 scripts/release_build/release_manifest.py --verify manifest.json [--notes notes.md]
 
 `build_release.py release` writes the manifest from what the run left behind. It holds
 checksums, counts, dataset numbers and codes, names of people, and the names and single
 values that an audit finding quotes. It holds no inventory: no table of amounts, no
-exchange list, no text of a dataset. A GitHub Release of a patched release holds this file
+exchange list, no text of a dataset. A GitHub Release of a patched copy holds this file
 and nothing else, because BAFU's terms ask that whoever receives the data accepts them
 first, and a release page can't ask for that.
 
@@ -17,12 +17,12 @@ with the same names, kinds and meaning. This format, `…/2`, adds what the buil
 - `status`, `problems`, `not_releasable`: whether every step ran, and what keeps a tag from
   being published (a patch that changed data without an authoriser, a failed audit);
 - `steps`: each step of the run with its result, seconds and peak memory;
-- `check_against_previous`: per patch, how much it changed now and in the previous release;
+- `check_against_previous`: per patch, how much it changed now and in the previous tagged build;
 - `brightway`: the two databases, their audits, the tools and data they were built with;
 - `comparison`: the patched database against the provider release's;
 - `declared_units`: inputs whose declared unit is not their supplier's, with their finding;
 - `exports`: the name, size and SHA-256 of every export file and whether it read back;
-- `contributions`: each contribution built beside the patched release, under its own name.
+- `contributions`: each contribution built beside the patched copy, under its own name.
 
 A manifest names the author and the authoriser of a patch, and of a contribution's layer,
 and nobody else: who reported a finding and who answered for the provider are in the run
@@ -73,7 +73,7 @@ OPTION_KEYS = ("XSD schema check", "extensions in output", "only patches", "skip
 RESULTS = ("applied", "not needed", "failed")
 MAX_BYTES = 8_000_000
 NOT_PUBLISHED = (
-    "The export files are produced and read back in CI but are not published until a download "
+    "The export files are produced and read back in CI but are not offered until a download "
     "exists that asks for acceptance of BAFU's terms."
 )
 
@@ -124,7 +124,7 @@ def release_id(release: dict, config: dict | None) -> str | None:
 
 
 def core(summary: dict, tag: str | None, revision: str | None, config: dict | None = None) -> dict:
-    """The ten fields of a patched release's manifest, from the run summary alone.
+    """The ten fields of a patched copy's manifest, from the run summary alone.
 
     The dataset numbers of each patch come from the summary's list of changed datasets.
     """
@@ -364,7 +364,7 @@ def exports_section(folder: Path) -> dict | None:
 
 
 def contribution_section(folder: Path) -> dict:
-    """One contribution built beside the patched release: `folder` holds its build."""
+    """One contribution built beside the patched copy: `folder` holds its build."""
     receipt = load(folder / "build" / "layer-receipt.json") or {}
     record = load(folder / "build" / "build.json") or {}
     layer = record.get("contribution") or {}
@@ -394,7 +394,7 @@ def manifest(
     config: dict | None = None,
     findings: set[str] | None = None,
 ) -> dict:
-    """The manifest of the release run in `out` (as `build_release.py release` lays it out).
+    """The manifest of the build in `out` (as `build_release.py release` lays it out).
 
     `config` is `site/config.json` (it names the provider release); `findings` are the ids
     of the finding records, which a patch of a release must name correctly.
@@ -924,20 +924,20 @@ def release_errors(data: dict) -> list[str]:
 
 
 def notes(data: dict) -> str:
-    """The text of the release: what the manifest says, in words. No inventory."""
+    """The text that goes with the tag: what the manifest says, in words. No inventory."""
     release, output = data["provider_release"], data["output"]
     lines = [
-        f"Patched release `{data['tag']}`." if data["tag"] else "Patched release.",
+        f"Patched copy `{data['tag']}`." if data["tag"] else "Patched copy.",
         "",
-        "This release publishes `manifest.json` only. It holds no inventory: build the patched "
-        "release yourself with the patch tool at the revision below, and compare the "
+        "Under this tag only `manifest.json` is kept. It holds no inventory: build the patched "
+        "copy yourself with the patch tool at the revision below, and compare the "
         "fingerprint of what you built.",
         "",
         f"- Provider release: {release['url']} (archive SHA-256 `{release['archive_sha256']}`), "
         f"{release['datasets']:,} datasets",
         f"- Tool: {data['tool']['name']} {data['tool']['version'] or ''} at revision "
         f"`{data['tool']['revision']}`",
-        f"- Patched release: {output['files']:,} files, fingerprint `{output['fingerprint']}`",
+        f"- Patched copy: {output['files']:,} files, fingerprint `{output['fingerprint']}`",
         f"- Import fixes: {len(data['import_fixes'])}; community patches: {len(data['patches'])}",
     ]
     for name, build in data["brightway"].items():
@@ -980,8 +980,8 @@ def notes(data: dict) -> str:
         lines += [
             "",
             f"Contribution {entry['id']} ({entry['name']}) was built beside the patched "
-            f"release as its own database, `{entry['database']}`. It is not part of the "
-            "patched release.",
+            f"copy as its own database, `{entry['database']}`. It is not part of the "
+            "patched copy.",
         ]
     lines += [
         "",
@@ -999,11 +999,13 @@ def write(data: dict, path: Path) -> None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.strip().splitlines()[0])
     parser.add_argument("--verify", type=Path, metavar="MANIFEST", required=True)
-    parser.add_argument("--notes", type=Path, help="Also write the text of the release here")
+    parser.add_argument(
+        "--notes", type=Path, help="Also write the text that goes with the tag here"
+    )
     parser.add_argument(
         "--release",
         action="store_true",
-        help="Also require what a published release needs: a tag, a completed run, every "
+        help="Also require what a build kept under a tag needs: a tag, a completed run, every "
         "patch that changed data authorised, audits and exports without a failure",
     )
     args = parser.parse_args(argv)

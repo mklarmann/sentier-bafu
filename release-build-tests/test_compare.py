@@ -155,7 +155,7 @@ class StepFields(unittest.TestCase):
             )
 
     def test_a_step_both_builds_share_explains_no_difference_between_them(self):
-        # the patched release and a contribution: the patch is in both, the layer in one
+        # the patched copy and a contribution: the patch is in both, the layer in one
         candidate = {"crop": ["0007-flow-names", "C900-other"], "farm": ["C900-other"]}
         patched = {"crop": ["0007-flow-names"], "mill": ["location-codes"]}
         alone = compare.steps_of_the_candidate_alone(candidate, patched)

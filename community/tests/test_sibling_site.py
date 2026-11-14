@@ -2,10 +2,10 @@
 differs from one dataset to another is said in site/config.json and nowhere in the code.
 
 These tests build a made-up sibling of this repository: another provider and dataset, release
-ids of another shape, datasets without a number, no patched release and no release build, a
+ids of another shape, datasets without a number, no patched copy and no build, a
 form and a label of its own, and an index colour of its own. It holds the shared files (SHARED,
 the list site/README.md gives) and nothing else of this repository: not the patch tool, not
-the release build, not their scripts. It must pass the check of the records, build and pass
+the build, not their scripts. It must pass the check of the records, build and pass
 the check of the site, and it must do so with its own copy of the scripts, started as a
 sibling would start them. Then the tests hold the colour to its rules: whether a colour can be
 read is computed, not judged by eye.
@@ -86,7 +86,7 @@ def sibling(target, findings=(2, 4, 12, 16), **changes):
         finding_label="agribalyse-finding", finding_form="agribalyse-data-finding.yml",
         home_title="AGRIBALYSE: community findings", title_suffix="AGRIBALYSE findings",
         description="Users of the AGRIBALYSE database record measured findings here.",
-        # No patched release and no release build: no page for them is part of this site.
+        # No patched copy and no build: no page for them is part of this site.
         nav=[list(page) for page in pages], footer=[["about/data.html", "Data (JSON)"]], documents=documents,
     )
     config.update(changes)
@@ -145,7 +145,7 @@ class SiblingSite(unittest.TestCase):
         present = sorted(p.relative_to(self.root).as_posix() for p in (self.root / "scripts").iterdir())
         self.assertEqual(present, sorted(name for name in SHARED if name.startswith("scripts/")))
         for gone in ("scripts/release_build", "scripts/build_release.py", "scripts/export_release.py",
-                     "scripts/patches_snapshot.py", "src", "site/patched-release.md", "site/run-steps.json"):
+                     "scripts/patches_snapshot.py", "src", "site/patch-and-build.md", "site/run-steps.json"):
             self.assertFalse((self.root / gone).exists(), gone)
 
         def run(*arguments):
@@ -238,6 +238,14 @@ class SiblingSite(unittest.TestCase):
         self.assertNotEqual(refused.returncode, 0)
         self.assertIn('has no "run"', refused.stderr)
 
+    def test_the_page_about_a_patched_copy_is_named_in_the_configuration_and_must_exist(self):
+        root = sibling(Path(self.temp.name) / "names-a-page", patched_page="run.html")
+        with self.assertRaisesRegex(ValueError, "patched_page"), Quiet():
+            build_site.build(Path(self.temp.name) / "names-a-page-site", offline=True, root=root)
+        own = json.loads((ROOT / "site/config.json").read_text())
+        self.assertIn(own["patched_page"], {doc["page"] for doc in own["documents"]})
+        self.assertEqual(own["redirects"]["patched-release.html"], own["patched_page"])
+
     def test_a_release_id_is_a_name_of_the_configured_list_whatever_its_shape(self):
         record = json.loads((self.root / "community/findings/0/F2.json").read_text())
         self.assertEqual(record["releases"], ["3.2"])
@@ -256,10 +264,11 @@ class SiblingSite(unittest.TestCase):
         for bad in ("../x", "3.2 beta", ""):
             self.assertTrue(community.schema_errors(bad, community.load_schema("finding")["$defs"]["release_id"]), bad)
 
-    def test_a_site_without_a_patched_release_has_no_page_no_link_and_no_run(self):
-        self.assertNotIn("patched-release.html", self.pages)
+    def test_a_site_without_a_patched_copy_has_no_page_no_link_and_no_run(self):
+        self.assertNotIn("patch-and-build.html", self.pages)
+        self.assertIsNone(json.loads((self.root / "site/config.json").read_text()).get("patched_page"))
         for name, text in self.pages.items():
-            self.assertNotIn("patched-release.html", text, name)
+            self.assertNotIn("patch-and-build.html", text, name)
             self.assertNotIn("replay.js", text, name)
         self.assertFalse((self.out / "api/v1/last-run.json").exists())
         self.assertNotIn("last-run.json", self.pages["about/data.html"])

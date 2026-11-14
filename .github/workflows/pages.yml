@@ -33,7 +33,7 @@ jobs:
     permissions:
       contents: read
       issues: read
-      actions: read # the record of the last release build: its manifest and what it printed
+      actions: read # the record of the last build: its manifest and what it printed
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
@@ -46,9 +46,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         # The build refuses invalid records. A deploy needs the issues: when they cannot be
-        # read the build fails, and the last published site stays. The last release build is
+        # read the build fails, and the last published site stays. The last build is
         # read from this repository's own runs; without it the page says that none is recorded.
-        # --built-by names this repository: its release builds are the ones shown, and a copy
+        # --built-by names this repository: its builds are the ones shown, and a copy
         # that a fork builds says on every page that it is not the published site.
         run: uv run --no-project --python 3.12 --with markdown==3.7 python scripts/build_site.py --require-issues --built-by "$GITHUB_REPOSITORY"
       - name: Check links, assets and published file types

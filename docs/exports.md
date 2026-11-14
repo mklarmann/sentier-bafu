@@ -1,6 +1,6 @@
-# Exports of the patched release
+# Exports of the patched copy
 
-`scripts/export_release.py` turns a Brightway build of the patched release into files for
+`scripts/export_release.py` turns a Brightway build of the patched copy into files for
 openLCA, SimaPro and Brightway, each with its provenance. It is the last step of a build and
 runs outside the package project, on its own pinned requirements.
 
@@ -11,7 +11,7 @@ label and the record of modifications.
 
 ## Run it
 
-As the last steps of the whole path, for the patched release and for every contribution
+As the last steps of the whole path, for the patched copy and for every contribution
 built beside it (see [The whole path](release-build.md)):
 
 ```sh
@@ -45,7 +45,7 @@ anything:
 - a record that names a changed dataset the database does not have;
 - exchanges that point at a database you did not name (the writers would drop the rows).
 
-The export files are produced and read back in CI but are not published until a download
+The export files are produced and read back in CI but are not offered until a download
 exists that asks for acceptance of BAFU's terms.
 
 ## What it writes

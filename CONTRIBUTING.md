@@ -73,7 +73,7 @@ uv run --no-project --python 3.12 python scripts/build_release.py release latest
 ```
 
 - The first three lines apply the import fixes and every community patch, check the files that were written, and print what each patch changed. A pull request that touches the patch tool runs them for its own version and for the version it starts from.
-- The last line runs everything: a Brightway database of BAFU's release and one of the patched release, their checks and their comparison, the exports with a read-back of each file, and a manifest. It starts in an empty folder. [docs/release-build.md](docs/release-build.md) describes each step.
+- The last line runs everything: a Brightway database of BAFU's release and one of the patched copy, their checks and their comparison, the exports with a read-back of each file, and a manifest. It starts in an empty folder. [docs/release-build.md](docs/release-build.md) describes each step.
 
 ## Build the site
 

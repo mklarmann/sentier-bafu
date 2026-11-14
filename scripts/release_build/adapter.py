@@ -2,7 +2,7 @@
 
 sentier-importers reads BAFU's release as BAFU ships it: elements without a namespace, and
 technosphere inputs linked by the exchange `number`, which is the supplying dataset's number.
-The patched release written by `bafu-fixes` differs in two ways that stop that reader:
+The patched copy written by `bafu-fixes` differs in two ways that stop that reader:
 
 - elements are in the EcoSpold namespace, so the reader finds no `<dataset>`;
 - exchanges that shared a number within a dataset carry a dummy number (the
@@ -11,7 +11,7 @@ The patched release written by `bafu-fixes` differs in two ways that stop that r
 
 This module writes a copy without the namespace, with the original numbers restored, and
 without the `bcf:extensions` block. No amount, unit or location is touched. The copy is an
-intermediate input for the importer. It is not a release: the patched release stays as
+intermediate input for the importer. It is not a release: the patched copy stays as
 `bafu-fixes` wrote it. A provider release (no namespace, no extensions) passes through
 unchanged apart from XML serialisation.
 
@@ -19,7 +19,7 @@ unchanged apart from XML serialisation.
 elementary flow's identifier from its name, compartment, subcompartment and unit, and the
 mapping to EF 3.1 is keyed by that identifier. A patch that corrects one of the four (a name
 without its unit suffix, a compartment) would give the exchange an identifier the mapping
-does not hold, and the exchange would lose its EF 3.1 flow. The patched release does not
+does not hold, and the exchange would lose its EF 3.1 flow. The patched copy does not
 carry the declared values of an exchange it corrected: per exchange its extensions hold
 `originalNumber`, `brightwayFlow` and `brightwayMatch` only. So, given the provider release
 the patched one was made from (`declared`), the adapter compares each elementary exchange

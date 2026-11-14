@@ -41,7 +41,7 @@ ID = "{id}"
     ID,
     findings={findings},
     authored_by={author},
-    # authorised_by: added by whoever approves the patch for the community release
+    # authorised_by: added by whoever approves the patch for the patched copy
     references={references},
 )
 def {function}(db: Database) -> None:
@@ -177,7 +177,7 @@ def main(argv: list[str] | None = None) -> int:
         "Open a pull request with the two files and community/patches.json, which the first\n"
         "command writes from the registry. The full release run in its checks shows what\n"
         "the patch changes. Leave `authorised_by` out; the person who approves the patch\n"
-        "for the community release adds it."
+        "for the patched copy adds it."
     )
     return 0
 

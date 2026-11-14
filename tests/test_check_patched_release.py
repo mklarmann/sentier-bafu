@@ -39,7 +39,7 @@ def test_file_that_breaks_the_schema(checker, release, capsys):
     assert checker.main([str(release / "out")]) == 1
     out = capsys.readouterr().out
     assert "raw_bafu.xml: line " in out and "unit" in out
-    assert "1 files checked: not a valid patched release" in out
+    assert "1 files checked: not a valid patched copy" in out
 
 
 def test_files_that_are_not_the_ones_in_the_summary(checker, release, capsys):

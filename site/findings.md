@@ -19,7 +19,7 @@ A status says how far a finding has come on its way to BAFU. Each finding's page
 <!-- generated: status-vocabulary -->
 
 - **"Answered by BAFU" is not "Resolved".** An answer says what BAFU said. A finding is resolved once a BAFU release or file that the record names covers the point.
-- **A community patch is not a status.** It can change a copy of BAFU's release for users who need the change now. It is not BAFU's correction, and it does not change the status of a finding. The [patched release](patched-release.md) page lists the patches.
+- **A community patch is not a status.** It can change a copy of BAFU's release for users who need the change now. It is not BAFU's correction, and it does not change the status of a finding. The [patched copy](patch-and-build.md) page lists the patches.
 
 ## About this list
 

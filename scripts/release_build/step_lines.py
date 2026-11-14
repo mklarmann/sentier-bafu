@@ -1,4 +1,4 @@
-"""What a step of a release run produced, as lines for the terminal.
+"""What a step of a build produced, as lines for the terminal.
 
 `build_release.py release` prints these when a step ends, so that the log of a run says
 what was in it and not only that it ran. A transcript of the run then holds them too
@@ -117,7 +117,7 @@ def exports(folder: Path) -> list[str]:
 
 
 def lines(name: str, out: Path) -> list[str]:
-    """The lines of one step of a release run that wrote into `out`. Never raises."""
+    """The lines of one step of a build that wrote into `out`. Never raises."""
     try:
         if name == "provider build":
             return build(out / "provider")

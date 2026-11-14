@@ -1,4 +1,4 @@
-"""The manifest of a release build: its ten core fields, what the build adds, its shape.
+"""The manifest of a build: its ten core fields, what the build adds, its shape.
 
 A made-up run folder, written as `build_release.py release` lays one out. The manifest
 of a real run on the made-up release is checked in `test_whole_path.py`.
@@ -18,7 +18,7 @@ sys.path.insert(0, str(REPOSITORY / "scripts"))
 
 from release_build import release_manifest as rm  # noqa: E402
 
-# The fields of a patched release's manifest as the records side of the repository defines
+# The fields of a patched copy's manifest as the records side of the repository defines
 # them (format sentier-bafu/patched-release/1, read on 13 November 2026). This manifest
 # keeps every one of them, under the same name.
 RECORDS_SIDE = {
@@ -220,7 +220,7 @@ def write_run(out, contribution=False, **summary_changes):
     write(out / "patched" / "release-summary.json", summary(**summary_changes))
     for name, database, label in (
         ("provider", "bafu-2026", "provider release"),
-        ("patched", "bafu-2026-v1-patched", "patched release"),
+        ("patched", "bafu-2026-v1-patched", "patched copy"),
     ):
         record, audit = build(database, label)
         write(out / name / "build.json", record)
@@ -247,7 +247,7 @@ def write_run(out, contribution=False, **summary_changes):
     if contribution:
         name = "bafu-2026-v1-c900-other"
         folder = out / "contributions" / "c900-other"
-        record, audit = build(name, "patched release with contribution C900 (other)")
+        record, audit = build(name, "patched copy with contribution C900 (other)")
         record["contribution"] = {
             "id": "C900",
             "name": "other",
@@ -489,7 +489,7 @@ class WholeManifest(Folder):
         self.assertEqual(compared["baseline"], "bafu-2026-v1-patched")
         self.assertEqual(compared["rows_changed_by_step"], {"C900-other": 2})
         self.assertEqual(entry["exports"]["files"][0]["name"], "bafu-2026-v1-c900-other.bw2package")
-        # the patched release's own sections are untouched by it
+        # the patched copy's own sections are untouched by it
         self.assertEqual(data["brightway"]["patched"]["database"], "bafu-2026-v1-patched")
         self.assertEqual([p["id"] for p in data["patches"]], ["0001-amount", "0002-nothing-here"])
 
@@ -649,11 +649,11 @@ class Command(Folder):
         self.assertEqual(code, 0, said)
         self.assertIn("a manifest of 2 patches, and nothing else", said)
         text = notes.read_text()
-        self.assertIn("This release publishes `manifest.json` only.", text)
+        self.assertIn("Under this tag only `manifest.json` is kept.", text)
         self.assertIn(rm.NOT_PUBLISHED, text)
         self.assertIn("| bafu-2026-v1-patched-simapro.csv | 20 | `" + B + "` |", text)
         self.assertIn("| 0001-amount | F1 | Ann Author | Rita Reviewer | applied | 2 |", text)
-        self.assertIn("`bafu-2026-v1-c900-other`. It is not part of the patched release.", text)
+        self.assertIn("`bafu-2026-v1-c900-other`. It is not part of the patched copy.", text)
         self.assertIn("The provider decides what it changes.", text)
 
     def test_verify_refuses_what_is_not_a_manifest_or_not_a_release(self):

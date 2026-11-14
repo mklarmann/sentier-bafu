@@ -7,7 +7,7 @@
 Prints Markdown: the release that was read, each step with who is behind it and how
 much it changed, and a line for every step that needs a second look. With `--base`
 (the summary of the revision a pull request starts from), it also says what the pull
-request changes. With both output folders, it counts the files of the patched release
+request changes. With both output folders, it counts the files of the patched copy
 that differ.
 
 `--check` makes the exit status 1 if the run isn't acceptable: it didn't complete, it
@@ -16,7 +16,7 @@ didn't read a known release, or a patch changed nothing (its target wasn't there
 No patch says how many targets it expects, and most don't notice that a target is gone.
 So this script compares, for every patch, what it changed (datasets, exchanges, values)
 with what it changed in an earlier run: the base revision of a pull request (`--base`),
-or the previous release (`--previous`, the manifest of a release or a run summary). A
+or the previous tagged build (`--previous`, the manifest of a tagged build or a run summary). A
 patch that changed something before and nothing now fails the check; one that changed
 less, or more, is a warning. `--matches-out` writes the comparison as JSON.
 
@@ -97,7 +97,7 @@ def earlier_counts(earlier: dict | None) -> tuple[dict[str, dict], str | None]:
         }
         tag = earlier.get("tag")
         fingerprint = (earlier["provider_release"] or {}).get("fingerprint")
-        what = f"release {tag}" if tag else "the previous release build"
+        what = f"the build tagged {tag}" if tag else "the previous build"
     else:
         counts = {step["id"]: counts_of(step) for step in patches(earlier)}
         revision = earlier.get("software", {}).get("git commit")
@@ -315,12 +315,12 @@ def _checksums(folder: Path) -> dict[str, str]:
 
 
 def output_changes(base: Path, head: Path) -> list[str]:
-    """How many files of the patched release differ between two output folders."""
+    """How many files of the patched copy differ between two output folders."""
     old, new = _checksums(base), _checksums(head)
     differ = sorted(name for name in old.keys() & new.keys() if old[name] != new[name])
     added, removed = sorted(new.keys() - old.keys()), sorted(old.keys() - new.keys())
     lines = [
-        f"- Files of the patched release that differ: **{number(len(differ))}** of "
+        f"- Files of the patched copy that differ: **{number(len(differ))}** of "
         f"{number(len(new))}; new: {number(len(added))}; no longer written: "
         f"{number(len(removed))}."
     ]
@@ -367,10 +367,10 @@ def comparison(
     if base["output"] and head["output"]:
         same = base["output"]["fingerprint"] == head["output"]["fingerprint"]
         lines.append(
-            "- The patched release is **byte for byte the same** as before "
+            "- The patched copy is **byte for byte the same** as before "
             f"({short(head['output']['fingerprint'])})."
             if same
-            else "- The patched release **changes**: fingerprint "
+            else "- The patched copy **changes**: fingerprint "
             f"{short(base['output']['fingerprint'])} → {short(head['output']['fingerprint'])}."
         )
         if not same and base_output and head_output:
@@ -413,14 +413,14 @@ def render(
     if head["output"]:
         output = head["output"]
         lines.append(
-            f"- Patched release: {number(output['files'])} files, {megabytes(output['bytes'])}, "
+            f"- Patched copy: {number(output['files'])} files, {megabytes(output['bytes'])}, "
             f"fingerprint {short(output['fingerprint'])}; "
             f"{number(head['totals']['datasets_changed'])} datasets and "
             f"{number(head['totals']['values_changed'])} values changed by "
             f"{number(head['totals']['steps'])} steps"
         )
     else:
-        lines.append("- Patched release: nothing written")
+        lines.append("- Patched copy: nothing written")
     notes = (
         ("CAUTION", problems(head, earlier, partial)),
         ("WARNING", warnings(head, earlier, partial)),
@@ -453,13 +453,13 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--head-revision", help="Commit of the revision, for the heading")
     parser.add_argument("--base-revision", help="Commit of the base revision")
-    parser.add_argument("--head-output", type=Path, help="Folder with the patched release")
+    parser.add_argument("--head-output", type=Path, help="Folder with the patched copy")
     parser.add_argument("--base-output", type=Path, help="The same, of the base revision")
     parser.add_argument("--out", type=Path, help="Append the Markdown to this file")
     parser.add_argument(
         "--previous",
         type=Path,
-        help="The manifest of the previous release, or an earlier run summary: what each "
+        help="The manifest of the previous tagged build, or an earlier run summary: what each "
         "patch changed is compared with it; if the file doesn't exist, say so",
     )
     parser.add_argument(

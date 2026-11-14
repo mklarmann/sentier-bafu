@@ -128,7 +128,7 @@ def test_patch_whose_target_is_not_as_expected_fails_the_check(table, summarise,
         "invalid data: Dataset 100: expected 1.5 kg, found 2.5"
     ) in out
     assert "| `0001-stops` | patch | F7 | Ann Author | Olga Owner | stopped |" in out
-    assert "Patched release: nothing written" in out
+    assert "Patched copy: nothing written" in out
     assert "0002-x" not in out  # the run never got there
 
 
@@ -151,8 +151,8 @@ def test_pull_request_that_adds_a_patch(table, summarise, tmp_path, capsys):
     assert table.main(arguments + outputs) == 0
     out = capsys.readouterr().out
     assert "Compared with a run of the base revision (`bbbbbbbbbbbb`)" in out
-    assert "- The patched release **changes**: fingerprint `" in out
-    assert "- Files of the patched release that differ: **1** of 1; new: 0;" in out
+    assert "- The patched copy **changes**: fingerprint `" in out
+    assert "- Files of the patched copy that differ: **1** of 1; new: 0;" in out
     assert "  - Differ: `raw_bafu.xml`" in out
     assert "| `0002-two` | new | +1 | +1 | +1 |" in out
     assert "0001-one` | changed" not in out
@@ -185,7 +185,7 @@ def test_pull_request_that_changes_nothing_in_the_release(table, summarise, caps
     head = summarise("head", {"0001-one": (_lognormal, "Olga Owner")})
     assert table.main([str(head), "--base", str(base)]) == 0
     out = capsys.readouterr().out
-    assert "- The patched release is **byte for byte the same** as before" in out
+    assert "- The patched copy is **byte for byte the same** as before" in out
     assert "No step is new or removed, and every step changes as much as before." in out
 
 
@@ -290,10 +290,10 @@ def test_counts_are_compared_with_the_manifest_of_the_previous_release(
     arguments = [str(head), "--previous", str(previous), "--matches-out", str(matches), "--check"]
     assert table.main(arguments) == 0
     out = capsys.readouterr().out
-    assert "beside its counts in release patched-2026-v1.1 on the provider release" in out
+    assert "beside its counts in the build tagged patched-2026-v1.1 on the provider release" in out
     assert "| `0001-one` | 1 | 1 | 1 | 1 | 1 | 1 | as before |" in out
     assert "| `0003-new` | 1 | 1 | 1 | – | – | – | new |" in out
-    assert "`0002-gone` ran in release patched-2026-v1.1" in out
+    assert "`0002-gone` ran in the build tagged patched-2026-v1.1" in out
     check = json.loads(matches.read_text())
     assert check["failures"] == []
     assert [row["result"] for row in check["patches"]] == ["as before", "new"]

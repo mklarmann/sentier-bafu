@@ -137,7 +137,7 @@ def test_openlca_archive_names_credit_label_and_changes_in_every_process(base):
         assert restrictions == manifest["statement"]
         assert CREDIT in restrictions and "Modified Data" in restrictions
         assert "unit-names" in restrictions and "0001-flour-share" in restrictions
-        assert process.description.startswith("Modified Data: part of a patched release")
+        assert process.description.startswith("Modified Data: part of a patched copy")
         assert process.last_change == run_summary()["finished"]
     bread = processes[process_id((INVENTORY, "bread-ch"))]
     assert bread.description.endswith("Changed by: 0001-flour-share.")
@@ -149,17 +149,17 @@ def test_openlca_archive_names_credit_label_and_changes_in_every_process(base):
 def test_simapro_file_names_credit_label_and_changes(base):
     manifest, out, _ = base
     csv = step.read_simapro(path(out, manifest, "simapro"))
-    assert f"{{Project: {RELEASE} patched release, Modified Data}}" in csv["header"]
+    assert f"{{Project: {RELEASE} patched copy, Modified Data}}" in csv["header"]
     assert f"{{{manifest['statement']}}}" in csv["header"]
     (reference,) = csv["literature"]
     assert reference["Name"] == "Source database attribution"
     assert reference["Description"] == manifest["statement"]
     comments = {i: p["metadata"]["Comment"] for i, p in csv["processes"].items()}
-    assert all(c.startswith("Modified Data: part of a patched release") for c in comments.values())
+    assert all(c.startswith("Modified Data: part of a patched copy") for c in comments.values())
     assert comments[f"{INVENTORY}|bread-ch"].endswith("Changed by: 0001-flour-share.")
 
 
-# --- A contribution's database names itself, and never as the patched release ---------
+# --- A contribution's database names itself, and never as the patched copy ---------
 
 
 def contribution_export(tmp_path, authorised_by=None, changes=("bread-ch", "heat")):
@@ -203,8 +203,8 @@ def test_a_contributions_export_says_whose_database_it_is(contribution):
         "This is the database synthetic-v1-c900-other-flour of contribution C900 "
         "(other-flour), proposed, not authorised." in statement
     )
-    assert "It is not the patched release and not BAFU's original data." in statement
-    assert "This is a patched release" not in statement
+    assert "It is not the patched copy and not BAFU's original data." in statement
+    assert "This is a patched copy" not in statement
     assert CREDIT in statement and "Modified Data" in statement
     assert manifest["contribution"]["id"] == "C900"
     assert manifest["contribution"]["standing"] == "proposed, not authorised"
@@ -216,9 +216,9 @@ def test_a_contributions_record_of_modifications_names_it(contribution):
     readable = (out / "MODIFICATIONS.md").read_text()
     first = readable.splitlines()[0]
     assert first == f"# Record of modifications: {RELEASE}, contribution C900 (other-flour)"
-    assert "patched release" not in first
+    assert "patched copy" not in first
     assert "This is the database `synthetic-v1-c900-other-flour` of contribution C900" in readable
-    assert "proposed, not authorised" in readable and "it is not the patched release" in readable
+    assert "proposed, not authorised" in readable and "it is not the patched copy" in readable
     assert "3 of 9 datasets were changed, 2 of them by the contribution." in readable
     record = json.loads((out / "MODIFICATIONS.json").read_text())
     assert record["datasets_changed"] == 3
@@ -240,7 +240,7 @@ def test_every_dataset_of_a_contributions_export_names_the_contribution(contribu
     start = "Modified Data: part of the database of contribution C900 (other-flour), proposed, not"
     for process in processes.values():
         assert process.description.startswith(start)
-        assert "part of a patched release" not in process.description
+        assert "part of a patched copy" not in process.description
         assert process.process_documentation.restrictions_description == manifest["statement"]
     bread = processes[process_id((INVENTORY, "bread-ch"))]
     assert bread.description.endswith("Changed by: 0001-flour-share, C900-other-flour.")
@@ -254,7 +254,7 @@ def test_every_dataset_of_a_contributions_export_names_the_contribution(contribu
         "Modified Data}"
     )
     assert project_line in csv["header"]
-    assert "patched release, Modified Data}" not in "".join(csv["header"])
+    assert "patched copy, Modified Data}" not in "".join(csv["header"])
     comments = {i: p["metadata"]["Comment"] for i, p in csv["processes"].items()}
     assert all(comment.startswith(start) for comment in comments.values())
 
@@ -274,7 +274,7 @@ def test_a_contribution_that_names_a_dataset_the_database_lacks_is_refused(tmp_p
 def test_an_export_of_the_patched_release_names_no_contribution(base):
     manifest, out, _ = base
     assert manifest["contribution"] is None
-    assert "This is a patched release of" in manifest["statement"]
+    assert "This is a patched copy of" in manifest["statement"]
     record = json.loads((out / "MODIFICATIONS.json").read_text())
     assert record["contribution"] is None
     assert all("contribution" not in dataset for dataset in record["datasets"])

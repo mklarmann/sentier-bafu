@@ -2,7 +2,7 @@
 
 This page maps the path from BAFU's release to a Brightway database with the EF 3.1 methods,
 says where each tool reads and writes, and records what full runs measured on 13 November
-2026. It covers the provider release (BAFU:2026 v1 as BAFU ships it) and the patched release
+2026. It covers the provider release (BAFU:2026 v1 as BAFU ships it) and the patched copy
 (the same release with the import fixes and community patches of this repository).
 
 The path uses three tools that were written separately. It runs end to end, with one adapter
@@ -11,7 +11,7 @@ the scores of three datasets differ from the provider build, in every method: th
 datasets that patch 0001 corrects.
 
 **The two databases cannot be taken for one another.** The provider release is installed as
-`bafu-2026`, BAFU's name. A patched release is installed as `bafu-2026-v1-patched`, and its
+`bafu-2026`, BAFU's name. A patched copy is installed as `bafu-2026-v1-patched`, and its
 metadata carries the label "Modified Data", the patch ids and the import fix ids.
 
 **Which flow links the scores use.** Scores come through sentier-mappings, the route
@@ -54,7 +54,7 @@ folder. Options:
   mapping.
 - `--fail-on-findings` turns the audit's findings into a failed build.
 - `--sample FILE` names other datasets for the audit to score.
-- `--contribution LAYER` builds the patched release plus one contribution, as a database of
+- `--contribution LAYER` builds the patched copy plus one contribution, as a database of
   the contribution's own name ([Building a contribution](contribution-builds.md)).
 - `--labels FILE` gives the audit and the export another table of unit labels and of known
   differences of declared units (default: `scripts/release_build/export_labels.toml`).
@@ -80,7 +80,7 @@ the one that checks the adapter against the patch tool's output.
 The whole path runs on a made-up release of eight datasets (`synthetic_release.py`), from
 the one command to the manifest: both builds with scores checked against hand-worked values,
 the checks of the patch run, the comparison, the exports with their read-back, and a made-up
-contribution built beside the patched release. It needs `uv`, `git` and, the first time,
+contribution built beside the patched copy. It needs `uv`, `git` and, the first time,
 the network, so it runs only when asked:
 
 ```sh
@@ -101,9 +101,9 @@ comparisons, and nothing that holds the inventory. See [The whole path](release-
 | Step | Tool | Reads | Writes |
 |---|---|---|---|
 | 1. patch | `bafu-fixes run` (this repository) | folder of EcoSpold 1 files | folder of EcoSpold 1 files with extensions, HTML report |
-| 2. adapt | `scripts/release_build/adapter.py` | that folder, and for a patched release the provider release | zip the importer can read, receipt |
+| 2. adapt | `scripts/release_build/adapter.py` | that folder, and for a patched copy the provider release | zip the importer can read, receipt |
 | 3. import | `sentier-importers run bafu-processes`, `run bafu-exchanges` | zip at a fixed path below its data root | `processes.parquet`, `exchanges.parquet` |
-| 4. label | `scripts/release_build/label_release.py` (patched release only) | the two tables, the receipt | the tables under the patched release's name, `source-observations.json` |
+| 4. label | `scripts/release_build/label_release.py` (patched copy only) | the two tables, the receipt | the tables under the patched copy's name, `source-observations.json` |
 | 5. data | `scripts/release_build/data_root.py` | sentier-brightway's pins | flow terms, methods and mapping, checked by SHA-256 |
 | 6. install | `sentier-brightway db` | a data root with four folders | three Brightway databases, 25 methods |
 | 7. mark | `scripts/release_build/mark_database.py` | the build's record | what the database was built from, in its metadata |
@@ -140,7 +140,7 @@ File and line references below are to sentier-importers at `28b28ed`, sentier-br
 sentier-importers reads BAFU's files as BAFU ships them:
 
 - it looks for `<dataset>` without a namespace
-  (`app/sentier_importers/sources/bafu/ecospold.py:196-199`). On the patched release as
+  (`app/sentier_importers/sources/bafu/ecospold.py:196-199`). On the patched copy as
   written it stops with `error: no <dataset> element in ecospold/process_….xml`;
 - a dataset's identifier is the part of its file name after `process_` (`ecospold.py:205-213`);
 - a technosphere input is linked by its exchange `number`, which is the supplying dataset's
@@ -157,7 +157,7 @@ recorded on it.
 identifier from its name, compartment, subcompartment and unit, and the mapping to EF 3.1 is
 keyed by that identifier. A patch that corrects one of the four gives the exchange an
 identifier the mapping does not hold. The glossary calls an exchange as originally declared a
-source observation, kept even when corrected attributes differ. The patched release does not
+source observation, kept even when corrected attributes differ. The patched copy does not
 carry it: per exchange its extensions hold `originalNumber`, `brightwayFlow` and
 `brightwayMatch`. So the adapter reads the provider release beside the patched one, pairs
 the exchanges of each dataset by position (and checks number and kind), and where the four
@@ -172,7 +172,7 @@ go into the receipt with the dataset and the position.
   below its own data root.
 - `SOURCE_ID = "bafu-2026"`, `SOURCE_VERSION = "v1"` and the folder name `bafu-2026-v1` are
   constants (`ecospold.py:29-36`). Every dataset row gets them, whatever was read. For a
-  patched release `label_release.py` writes `bafu-2026-v1-patched` and a version that names
+  patched copy `label_release.py` writes `bafu-2026-v1-patched` and a version that names
   the patched files (`tree-` and the first eight digits of their fingerprint) on every
   dataset, gives the exchanges the adapter recorded their corrected name as the label, and
   writes `source-observations.json` beside the tables.
@@ -185,7 +185,7 @@ go into the receipt with the dataset and the position.
   every `bafu*` source, including mapping sources whose inputs are not public
   (`scripts/run_bafu_local.py:130-137`). The build therefore calls the two inventory sources
   through the command line and writes `metadata.json` itself
-  (`scripts/release_build/inventory_metadata.py`), with the same keys. For a patched release
+  (`scripts/release_build/inventory_metadata.py`), with the same keys. For a patched copy
   it adds the label "Modified Data", `modified: true` and the patch run; the schema allows
   further keys.
 
@@ -206,7 +206,7 @@ Where BAFU is hard-coded in sentier-brightway: the default source `bafu-2026`
 (`constants.py:9`), the mapping folder `bafu-2026-v1__ef-3.1` (`:18`), the methods folder
 `01-ef-3.1` (`:20`) and the citation (`:23-27`). `--source` selects the inventory folder and
 names the databases (`constants.py:36-43`); the flow terms must carry the same source name
-(`flows.py:85-88`). For a patched release the build therefore writes the provider's 2,679
+(`flows.py:85-88`). For a patched copy the build therefore writes the provider's 2,679
 elementary flow terms again under the patched name. They are the same flows, because the
 exchanges are linked on the declared ones.
 
@@ -241,7 +241,7 @@ exchanges are linked on the declared ones.
 with one transposed solve per category (`backtest/scorer.py:145-175`) and compares with BAFU's
 LCIA results workbook, sheet `BAFU_2026 v1` (`backtest/reference.py:62-120`). Rows are joined
 by dataset name and location (`backtest/compare.py:23`, `:191`); the workbook's
-`RER without CH` is read as `Europe without Switzerland` (`:72`). The patched release writes
+`RER without CH` is read as `Europe without Switzerland` (`:72`). The patched copy writes
 `EURwoCH`, so 26 of its datasets are not joined. With `--published-results` the build runs
 it and `published_results.py` writes, per category, how many datasets were compared, the
 share within 1 % and within 5 %, and the median difference. Matching BAFU's published
@@ -288,7 +288,7 @@ exchanges; no unlinked exchange; audit passed. The provider release's inventory 
 the ones sentier-inventory publishes at the commit sentier-brightway pins, row for row, so the
 adapter changes nothing the importer reads.
 
-| | Provider release | Patched release |
+| | Provider release | Patched copy |
 |---|---|---|
 | database | `bafu-2026` | `bafu-2026-v1-patched` |
 | label in its metadata | Provider release | Modified Data, 11 patches, 14 import fixes |
@@ -316,7 +316,7 @@ identifier, and the importer writes every dataset as a unit process.
 Patch 0002 does not change a link on this path, because the importer links by number: all
 114,369 technosphere inputs are linked in both builds. What it changes is how many inputs
 declare a location that differs from the linked dataset's: 37 in the provider release, 12 in
-the patched release. A further 1,399 inputs declare no location in either.
+the patched copy. A further 1,399 inputs declare no location in either.
 
 In both builds 660 technosphere inputs declare a unit that is not the linked dataset's: 619
 are two spellings of one unit (`p` and `unit`), 40 declare `m3` for a dataset in `Nm3`, and
@@ -359,7 +359,7 @@ datasets in the total, 20 in the inorganics part and 1,120 in the organics part.
 
 Both builds were compared with BAFU's corrected LCIA results workbook (July 2026).
 
-| | Provider release | Patched release |
+| | Provider release | Patched copy |
 |---|---|---|
 | datasets joined by name and location | 11,947 | 11,921 (26 are now `EURwoCH`) |
 | climate change within 1 % | 99.98 % | 99.96 % |
@@ -374,7 +374,7 @@ hold: 129 exchanges lost their EF 3.1 flow, 127 of them natural gas and mine gas
 in Resource use, fossils. That method's score moved for 11,659 of 11,947 datasets
 (`Natural gas, at production`, NO: 37.14 to 0.28 MJ), and the share within 1 % of BAFU's
 published results fell from 97.75 % to 11.56 %. The audit of the patched build reported the
-four flows as a finding. Regenerating the mapping's matched package on the patched release
+four flows as a finding. Regenerating the mapping's matched package on the patched copy
 did not repair it: its energy contents and one alias are keyed by BAFU's original names
 (`sources/bafu/ef_units.py:160-163`, `matching/aliases.yaml:100` in sentier-importers), so
 the five entries for the old names were dropped and none was added.
@@ -385,7 +385,7 @@ Measured on one machine (Apple silicon, macOS) while other jobs were running, so
 are upper bounds for that machine. Peak memory is the largest resident size of the step's
 process tree, in MB of 1,048,576 bytes, as `build.json` records it. Last run.
 
-| Step | Provider release | Patched release |
+| Step | Provider release | Patched copy |
 |---|---|---|
 | patch (`--xsd-check every-step`) | not run | 157 s, 1,572 MB |
 | adapt | 9 s | 15 s |
@@ -405,12 +405,12 @@ release took 126 s and 1,005 MB, most of it the install of the EF 3.1 flows and 
 ## What is missing
 
 1. **The mapping does not know the corrected flow names.** The build does not need it to,
-   because it links on the declared flow. A consumer that reads the patched release without
-   the provider release beside it does: the patched release does not carry the declared name,
+   because it links on the declared flow. A consumer that reads the patched copy without
+   the provider release beside it does: the patched copy does not carry the declared name,
    compartment and unit of an exchange it corrects. Two ways to close this: the patch tool
    keeps them as it keeps `originalNumber`; or sentier-importers and sentier-mappings learn
    the corrected names (energy contents and alias as above), with entries for both spellings.
-2. **The importer cannot read the patch tool's output, nor name a patched release.** The
+2. **The importer cannot read the patch tool's output, nor name a patched copy.** The
    adapter and the label step bridge this. A change to the importer's `ecospold.py` that
    ignores the namespace and reads `originalNumber` gave tables identical to the adapter's
    when tried.
@@ -427,7 +427,7 @@ release took 126 s and 1,005 MB, most of it the install of the EF 3.1 flows and 
 6. **sentier-brightway's export manifest names its own pins** even when `--data-root` supplies
    other data, so the files export behind the comparison with BAFU's results misstates the
    inventory and the mapping commit. `build.json` holds the pins that were used.
-7. **26 datasets of a patched release are not joined to BAFU's published results**, because
+7. **26 datasets of a patched copy are not joined to BAFU's published results**, because
    the comparison does not know `EURwoCH`.
 8. **Only global factors are installed**, and only EF 3.1. Uncertainty is carried into the
    Brightway database but not into the files export.

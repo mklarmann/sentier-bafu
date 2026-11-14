@@ -1,4 +1,4 @@
-"""The job summary of a release run, written by `scripts/release_build/job_summary.py`.
+"""The job summary of a build, written by `scripts/release_build/job_summary.py`.
 
 The rules the workflows keep are in `tests/test_full_release_workflow.py`.
 """
@@ -43,11 +43,11 @@ class Summary(unittest.TestCase):
         self.assertIn("### Inputs whose declared unit is not their supplier's", text)
         self.assertIn("declared in kilowatt hour, the supplier's unit is megajoule", text)
         self.assertIn("finding F13", text)
-        self.assertIn("### Exports of the patched release", text)
+        self.assertIn("### Exports of the patched copy", text)
         self.assertIn("| brightway | yes | matches |  |", text)
         self.assertIn("| bafu-2026-v1-patched-simapro.csv | 20 | `", text)
-        self.assertIn("### Contribution C900-OTHER, beside the patched release", text)
-        self.assertIn("### C900-OTHER against the patched release", text)
+        self.assertIn("### Contribution C900-OTHER, beside the patched copy", text)
+        self.assertIn("### C900-OTHER against the patched copy", text)
         self.assertIn("Kept from this run: manifest.json, patch-run.md", text)
         self.assertIn(release_manifest.NOT_PUBLISHED, text)
         self.assertEqual(job_summary.NOT_PUBLISHED, release_manifest.NOT_PUBLISHED)
@@ -75,7 +75,7 @@ class Summary(unittest.TestCase):
         out = self.run_folder / "summary.md"
         out.write_text("before\n")
         self.assertEqual(job_summary.main([str(self.run_folder), "--out", str(out)]), 0)
-        self.assertTrue(out.read_text().startswith("before\n## Release build"))
+        self.assertTrue(out.read_text().startswith("before\n## Build"))
 
 
 if __name__ == "__main__":

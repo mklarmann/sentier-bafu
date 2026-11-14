@@ -1,7 +1,7 @@
 """Build a Brightway database from a BAFU release folder, audit it, and export it.
 
     python3 scripts/build_release.py release RELEASE OUT          # the whole path, one command
-    python3 scripts/build_release.py build RELEASE OUT            # the patched release
+    python3 scripts/build_release.py build RELEASE OUT            # the patched copy
     python3 scripts/build_release.py build RELEASE OUT --no-patches   # the provider release
     python3 scripts/build_release.py build RELEASE OUT --contribution LAYER.json
     python3 scripts/build_release.py build latest OUT             # download the release first
@@ -17,13 +17,13 @@ steps that can still run do, and the command ends with status 1.
 
 `build` runs these steps and records each one's time and peak memory in `OUT/build.json`:
 
-1. patch      `bafu-fixes run` writes the patched release and its run summary (skipped
+1. patch      `bafu-fixes run` writes the patched copy and its run summary (skipped
               with `--no-patches`)
 2. adapt      the release becomes the zip sentier-importers reads (`release_build/adapter.py`);
               elementary exchanges keep the flow BAFU declared
 3. import     sentier-importers writes the inventory tables
 4. layer      with `--contribution`: the layer's changes are applied to the tables
-5. label      a patched release gets its own source name on every dataset
+5. label      a patched copy gets its own source name on every dataset
 6. data       the pinned flow terms, methods and mapping are fetched and checked
 7. install    sentier-brightway writes the Brightway database and the EF 3.1 methods
 8. mark       the database's metadata says what it was built from ("Modified Data", patch ids)
@@ -32,8 +32,8 @@ steps that can still run do, and the command ends with status 1.
               results (the workbook is not in this repository; without it the step is skipped)
 
 The database of the provider release is called `bafu-2026`, BAFU's name. The database of a
-patched release is called `bafu-2026-v1-patched`, so that nobody takes it for BAFU's release.
-A contribution is never built into either: `--contribution` builds the patched release plus
+patched copy is called `bafu-2026-v1-patched`, so that nobody takes it for BAFU's release.
+A contribution is never built into either: `--contribution` builds the patched copy plus
 that one layer as a database under the contribution's own name.
 
 sentier-importers and sentier-brightway are used at the commits in `release_build/pins.toml`,
@@ -76,7 +76,7 @@ LABELS = HELPERS / "export_labels.toml"
 EXPORT = REPOSITORY / "scripts" / "export_release.py"
 LAYERS = REPOSITORY / "community" / "layers"
 # The source name sentier-importers writes on every dataset, which sentier-brightway uses as
-# the database name: BAFU's release. A patched release gets another.
+# the database name: BAFU's release. A patched copy gets another.
 PROVIDER_SOURCE = "bafu-2026"
 PATCHED_SOURCE = "bafu-2026-v1-patched"
 BIOSPHERE_DB = "ef-3.1-biosphere"
@@ -97,7 +97,7 @@ def standing(contribution: dict) -> str:
 
 
 def layers_of_a_release_run(named: list, found: list) -> tuple[list, list]:
-    """The layers a release run builds, and the ones it leaves, each as `(path, layer)`.
+    """The layers a build takes, and the ones it leaves, each as `(path, layer)`.
 
     `named` were asked for with `--contribution` and are built whoever authorised them.
     `found` are the layers of the layers folder: one that names nobody who authorised it
@@ -206,7 +206,7 @@ def plan(args: argparse.Namespace) -> dict:
     contribution = None
     if getattr(args, "contribution", None):
         if not patched:
-            raise BuildError("A contribution is built on the patched release, not on BAFU's")
+            raise BuildError("A contribution is built on the patched copy, not on BAFU's")
         try:
             contribution = layer_file.load(args.contribution)
         except layer_file.LayerError as error:
@@ -225,10 +225,10 @@ def plan(args: argparse.Namespace) -> dict:
         )
     if not patched and database != PROVIDER_SOURCE:
         raise BuildError(f"The provider release keeps BAFU's name, {PROVIDER_SOURCE}")
-    default_label = "patched release (community patches applied)" if patched else "provider release"
+    default_label = "patched copy (community patches applied)" if patched else "provider release"
     if contribution:
         default_label = (
-            f"patched release with contribution {contribution['contribution']} "
+            f"patched copy with contribution {contribution['contribution']} "
             f"({contribution['name']}), {standing(contribution)}"
         )
     return {
@@ -373,7 +373,7 @@ def build(args: argparse.Namespace) -> int:
             )
             source = paths["patched_release"]
 
-        # 2. adapt (in this process: standard library only). A patched release is read
+        # 2. adapt (in this process: standard library only). A patched copy is read
         # beside the provider release, so that elementary exchanges keep the declared flow.
         started = time.perf_counter()
         print(f"[adapt] {source} -> {paths['importer_zip']}", flush=True)
@@ -413,8 +413,8 @@ def build(args: argparse.Namespace) -> int:
             raise BuildError(f"Expected one inventory folder from the importer, found {folders}")
         tables, folder_name = folders[0], folders[0].name
 
-        # 4. layer: a contribution's changes, applied to the tables of the patched release.
-        # They never reach a database that carries the patched release's name.
+        # 4. layer: a contribution's changes, applied to the tables of the patched copy.
+        # They never reach a database that carries the patched copy's name.
         contribution = paths["contribution"]
         if contribution:
             made_for = contribution["release"]["fingerprint"]
@@ -450,7 +450,7 @@ def build(args: argparse.Namespace) -> int:
                 "changes": applied["changes"],
             }
 
-        # 5. label: a patched release gets its own source name; its version names the
+        # 5. label: a patched copy gets its own source name; its version names the
         # patched files, so two different sets of patches are never taken for one another
         metadata = ["python", str(HELPERS / "inventory_metadata.py"), str(tables)]
         if paths["patched"]:
@@ -683,7 +683,7 @@ def _build_steps(record: dict, receipt: adapter.Receipt, inventory: Path) -> lis
                 f"{contribution['exchanges_changed']} input(s) of "
                 f"{contribution['datasets_changed']} dataset(s) take another supplier, as "
                 f"the layer {contribution['layer_file']} declares. This database is the "
-                "patched release plus that contribution; it is not the patched release. "
+                "patched copy plus that contribution; it is not the patched copy. "
                 f"The contribution is {contribution['standing']}.",
                 "datasets": contribution["datasets_changed"],
                 "authored_by": contribution["authored_by"],
@@ -716,7 +716,7 @@ def _marker(record: dict, build_steps: list[dict]) -> dict:
 
 
 def _finding_ids() -> set[str]:
-    """The ids of the finding records: a release holds no patch that names another."""
+    """The ids of the finding records: a tagged build holds no patch that names another."""
     folder = REPOSITORY / "community" / "findings"
     return {path.stem for path in folder.rglob("F*.json")}
 
@@ -767,8 +767,8 @@ STEP_SAYS = {
     "exports": "files for Brightway, openLCA, ILCD and SimaPro, each read back",
 }
 CONTRIBUTION_SAYS = {
-    " build": "a contribution, built beside the patched release",
-    " comparison": "the contribution's database, compared with the patched release",
+    " build": "a contribution, built beside the patched copy",
+    " comparison": "the contribution's database, compared with the patched copy",
     " exports": "files of the contribution's database, each read back",
 }
 
@@ -878,7 +878,7 @@ def release(args: argparse.Namespace) -> int:
             raise BuildError(f"`{program}` is not on the PATH")
     out = args.out.resolve()
     if out.exists() and any(out.iterdir()):
-        raise BuildError(f"{out} is not empty; a release run starts in an empty folder")
+        raise BuildError(f"{out} is not empty; a build starts in an empty folder")
     venvs = args.venvs.resolve() if args.venvs else None
     if str(args.release) == "latest":
         args.release = latest_release(venvs)
@@ -972,7 +972,7 @@ def release(args: argparse.Namespace) -> int:
         + [str(patched / "release"), "--summary", str(summary)],
         env=patch_env,
         ready=summary.is_file() and (patched / "release").is_dir(),
-        why="the patch tool wrote no patched release",
+        why="the patch tool wrote no patched copy",
     )
     table = [sys.executable, str(REPOSITORY / "scripts" / "full_release_table.py"), str(summary)]
     table += ["--check", "--out", str(results / "patch-run.md")]
@@ -1025,7 +1025,7 @@ def release(args: argparse.Namespace) -> int:
     for path, contribution in not_authorised:
         name = layer_file.step_id(contribution)
         reason = (
-            f"nobody has authorised the layer {path.name}; a release run builds a layer that "
+            f"nobody has authorised the layer {path.name}; a build takes a layer that "
             "names who authorised it, or one that is named with --contribution"
         )
         steps.append(
@@ -1069,7 +1069,7 @@ def release(args: argparse.Namespace) -> int:
         json.dumps({"status": data["status"], "steps": steps}, indent=2) + "\n"
     )
 
-    print(f"Release run {data['status']}: {out / 'manifest.json'}")
+    print(f"Build {data['status']}: {out / 'manifest.json'}")
     for entry_ in steps:
         seconds, memory = entry_["seconds"], entry_["peak_memory_mb"]
         print(
@@ -1129,7 +1129,7 @@ def main(argv: list[str] | None = None) -> int:
     b.add_argument("--project", help="Brightway project name")
     b.add_argument(
         "--database",
-        help=f"Name of a patched release's database (default: {PATCHED_SOURCE}); the "
+        help=f"Name of a patched copy's database (default: {PATCHED_SOURCE}); the "
         f"provider release is always {PROVIDER_SOURCE}",
     )
     b.add_argument(
@@ -1167,7 +1167,7 @@ def main(argv: list[str] | None = None) -> int:
         "--contribution",
         type=Path,
         metavar="LAYER",
-        help="Build the patched release plus this one contribution layer, as a database "
+        help="Build the patched copy plus this one contribution layer, as a database "
         "under the contribution's own name (see docs/contribution-builds.md)",
     )
     b.add_argument(
@@ -1187,7 +1187,7 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument(
         "--previous",
         type=Path,
-        help="The manifest of the previous release, or a run summary: what each patch "
+        help="The manifest of the previous tagged build, or a run summary: what each patch "
         "matched is compared with it",
     )
     r.add_argument(
@@ -1195,7 +1195,7 @@ def main(argv: list[str] | None = None) -> int:
         type=Path,
         default=LAYERS,
         help="Folder with contribution layers; each one that names who authorised it is "
-        "built beside the patched release (default: community/layers)",
+        "built beside the patched copy (default: community/layers)",
     )
     r.add_argument("--no-layers", action="store_true", help="Build no contribution")
     r.add_argument(
@@ -1222,7 +1222,7 @@ def main(argv: list[str] | None = None) -> int:
 
     c = sub.add_parser("compare", help="Compare a patched build with the provider release's")
     c.add_argument("baseline", type=Path, help="Build folder of the provider release")
-    c.add_argument("candidate", type=Path, help="Build folder of the patched release")
+    c.add_argument("candidate", type=Path, help="Build folder of the patched copy")
     c.add_argument("--out", type=Path, required=True, help="JSON file to write")
     common(c)
     c.set_defaults(run=compare)

@@ -1349,7 +1349,7 @@ class LayerTests(WorkspaceCase):
             "the file is not there": (lambda: self.name_it(), "C001: layer.file names community/layers/C001-other-supplier.json, which is not there"),
             "the file is not JSON": (lambda: (self.layer(), self.name_it(), unreadable()), "C001: community/layers/C001-other-supplier.json: "),
             "the file breaks a rule of the build": (lambda: (self.layer(database="bafu-2026-v1-patched"), self.name_it()),
-                                                    "is the name of BAFU's release or of the patched release"),
+                                                    "is the name of BAFU's release or of the patched copy"),
             "the file has no change": (lambda: (self.layer(changes=[]), self.name_it()), "`changes` must list at least one change"),
             "the file is another contribution's": (lambda: (self.layer(contribution="C002", database="bafu-2026-v1-c002-x"), self.name_it()),
                                                    "is the layer of C002, not of C001"),

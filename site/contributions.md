@@ -2,7 +2,7 @@
 
 A contribution is a proposal that goes beyond a single finding: a mapping, a model, a rebuilt inventory, or a method variant such as residual electricity mixes. It comes with its evidence and with the checks it must pass.
 
-A contribution never replaces BAFU's numbers. Some kinds can enter the [patched release](patched-release.md). The others stand beside BAFU's release under their own name.
+A contribution never replaces BAFU's numbers. Some kinds can enter the [patched copy](patch-and-build.md). The others stand beside BAFU's release under their own name.
 
 <!-- contributions-list -->
 
@@ -10,7 +10,7 @@ A contribution never replaces BAFU's numbers. Some kinds can enter the [patched 
 
 What a change does to BAFU's release decides where it can go.
 
-**Can enter the patched release**
+**Can enter the patched copy**
 
 - **Import fix.** A preparation that every reader of the release files needs, such as schema repairs, unique exchange numbers and valid location codes. The patch tool records each import fix on the datasets it changes.
 - **Linking repair.** An input names a supplier that cannot be found. The input is linked to the dataset that exists. Example: in [F3](../community/findings/0/F3.json), inputs name the location `ENTSO`, and the suppliers are registered as `ENTSO-E`.
@@ -24,7 +24,7 @@ What a change does to BAFU's release decides where it can go.
 
 A contribution of the second group keeps its own name, so that users choose it knowingly. It can be excellent and still not be BAFU's number.
 
-An amount that BAFU has not confirmed does not enter the patched release. The three amounts that patch 0001 changes are the ones that BAFU gave in its answer to [F1](../community/findings/0/F1.json). A workaround in one user's own inventory does not belong in this workspace.
+An amount that BAFU has not confirmed does not enter the patched copy. The three amounts that patch 0001 changes are the ones that BAFU gave in its answer to [F1](../community/findings/0/F1.json). A workaround in one user's own inventory does not belong in this workspace.
 
 ## How a contribution moves
 

@@ -1,4 +1,4 @@
-"""The transcript of a release run: the shared wrapper, and the check of its lines.
+"""The transcript of a build: the shared wrapper, and the check of its lines.
 
     python3 scripts/release_build/transcript.py --out FILE -- COMMAND [ARGUMENT ...]
     python3 scripts/release_build/transcript.py --keep FILE --into FOLDER [--summary FILE]

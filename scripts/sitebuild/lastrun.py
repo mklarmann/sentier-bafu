@@ -603,12 +603,12 @@ def package_rows(record):
 
 
 def packages(site, up=""):
-    """The block <!-- generated: release-packages -->: the builds that have a tag, with the
+    """The block <!-- generated: build-files -->: the builds that have a tag, with the
     files each holds, and the files of the last run with their size, their checksum and
     whether they can be downloaded. Nothing is offered that no tagged build holds."""
     record = site.last_run
     if record["state"] != "read":
-        return ('<div class="packages" id="release-packages" data-packages><p class="list-none">'
+        return ('<div class="packages" id="build-files" data-packages><p class="list-none">'
                 f"{TAG['not read']}</p></div>")
     releases = record.get("releases") or []
     if releases:
@@ -644,7 +644,7 @@ def packages(site, up=""):
             + "".join(f'<th role="columnheader" scope="col">{label}</th>' for label in head)
             + f'</tr></thead><tbody role="rowgroup">{lines}</tbody></table></div>'
         )
-    return f'<div class="packages" id="release-packages" data-packages>{listed_}{table}</div>'
+    return f'<div class="packages" id="build-files" data-packages>{listed_}{table}</div>'
 
 
 def rail_box(site, up=""):
@@ -663,9 +663,9 @@ def rail_box(site, up=""):
         for row in rows
     )
     return (
-        '<div class="downloads" data-show-after="release-packages">'
+        '<div class="downloads" data-show-after="build-files">'
         f'<p class="card-label">{title}</p><ul>{items}</ul>'
-        f'<a class="arrow" href="#release-packages">{TAG["about"]}</a></div>'
+        f'<a class="arrow" href="#build-files">{TAG["about"]}</a></div>'
     )
 
 

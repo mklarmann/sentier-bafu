@@ -5,7 +5,7 @@ it schema-compliant, applies the community patches, and writes EcoSpold 1 XML ag
 with additional fields. Its package is `src/bafu_community_fixes/`; its commands are `bafu-fixes`
 and `bafu-fixes-tui`.
 
-The [README](../README.md#the-patched-release) has the short version for someone who wants to run
+The [README](../README.md#the-patched-copy) has the short version for someone who wants to run
 it. This page has the rest: every option, how the tool works, what it writes, and how to write a
 patch. [The whole path](release-build.md) describes what is built from the tool's output: a
 Brightway database, the exports and the manifest of a release.

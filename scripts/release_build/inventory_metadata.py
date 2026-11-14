@@ -56,7 +56,7 @@ def build_metadata(
     texts: dict[str, str],
     modifications: dict | None = None,
 ) -> dict:
-    """The folder's metadata. `modifications` marks a patched release as modified data."""
+    """The folder's metadata. `modifications` marks a patched copy as modified data."""
     for column in ("source", "source_version"):
         if len(distinct[column]) != 1:
             raise ValueError(f"processes.{column} must hold one value, found {distinct[column]}")
@@ -90,7 +90,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--modifications",
         type=Path,
-        help="JSON file describing the changes made to the provider release (a patched release)",
+        help="JSON file describing the changes made to the provider release (a patched copy)",
     )
     args = parser.parse_args(argv)
     modifications = json.loads(args.modifications.read_text()) if args.modifications else None

@@ -3,11 +3,11 @@
 One command runs everything that is built from BAFU's release in this repository, and CI
 runs that command: for patches that are proposed (pull requests, on a made-up release and,
 for the patch run, on the full release), for patches that are accepted (`main`), and for a
-release (a tag). This page says what the command does, what stops it, what a release
-publishes, and what is still done by hand. The steps themselves are described in
+tagged build (a tag). This page says what the command does, what stops it, what is kept of
+a tagged build, and what is still done by hand. The steps themselves are described in
 [From a release to a Brightway database](brightway-build.md),
-[Exports of the patched release](exports.md) and
-[Building a contribution beside the patched release](contribution-builds.md).
+[Exports of the patched copy](exports.md) and
+[Building a contribution beside the patched copy](contribution-builds.md).
 
 ## The command
 
@@ -24,10 +24,10 @@ folder, which holds BAFU's inventory and stays local.
 | provider build | BAFU's release as it is: adapter, importer, Brightway database `bafu-2026` with the EF 3.1 methods, audit | a step of the build stops, or the audit has an error. Findings on BAFU's own release are reported and do not fail |
 | patched build | import fixes and community patches, then the same; database `bafu-2026-v1-patched`, marked Modified Data | a patch stops, the result is not valid EcoSpold 1, the audit has an error or a finding |
 | written files | every written file against the EcoSpold 1 schema, and the file set against the run summary | a file is invalid, or the files are not the ones the summary describes |
-| patch run | the table of the patch run, and what each patch matched now and in the previous release | the release is not a known one, a step stopped, or a patch changes nothing |
+| patch run | the table of the patch run, and what each patch matched now and in the previous tagged build | the release is not a known one, a step stopped, or a patch changes nothing |
 | comparison | patched against provider: every changed row and every moved score attributed to a step | a changed row or a moved score has no explanation |
 | exports | Brightway package, openLCA JSON-LD, ILCD and SimaPro CSV of the patched database, each read back | a format can't be written, or reads back differently. The other formats are still written and checked |
-| per contribution | build beside the patched release, comparison with it, exports | as above, for the contribution's own database |
+| per contribution | build beside the patched copy, comparison with it, exports | as above, for the contribution's own database |
 | manifest | `manifest.json` from what the steps left behind | never; a failed step is recorded in it |
 
 Every step runs in its own process. Its result, time and peak memory go into the manifest
@@ -37,9 +37,9 @@ command ends with status 1. The folder `results/` holds the only files that may 
 machine: the manifest, the run summary, the audits, the comparisons, the export step's own
 manifest and the table of the patch run.
 
-`--tag NAME` names the release in the manifest and makes the command fail if the run can't
-be published. `--previous FILE` gives the manifest of the previous release (or an earlier
-run summary) for the patch run check. `--contribution LAYER` and `--layers FOLDER` choose
+`--tag NAME` names the tag in the manifest and makes the command fail if the run can't
+be kept under it. `--previous FILE` gives the manifest of the previous tagged build (or an
+earlier run summary) for the patch run check. `--contribution LAYER` and `--layers FOLDER` choose
 the contributions; without either, every layer in `community/layers/` that names who
 authorised it is built. A layer that nobody has authorised is listed as skipped; it is built
 only when it is named with `--contribution`.
@@ -93,7 +93,7 @@ what each patch changed:
 
 - the run summary counts, per patch, the datasets, exchanges and values it changed;
 - the patch run check compares these with an earlier run: on a pull request the run of the
-  base revision, on `main` and for a tag the manifest of the previous release;
+  base revision, on `main` and for a tag the manifest of the previous tagged build;
 - a patch that changes nothing fails the check, and the message says what it changed
   before; a patch that changes less or more than before is a warning for the reviewer;
 - the manifest carries the comparison (`check_against_previous`).
@@ -134,19 +134,20 @@ Nothing converts that amount silently and nothing drops it:
 When a patch corrects such an input or its supplier, the recorded difference no longer
 matches anything; the audit says so and the row in the table can go.
 
-## A release
+## A tagged build
 
-A person pushes a tag `patched-…` on a commit of `main`. The workflow runs the command
-with `--tag`, and a second job, the only one with a token that can write, receives one
-file, checks that it has exactly the shape of a manifest and that the run can be released,
-and creates a GitHub Release that holds `manifest.json` and nothing else.
+A maintainer gives a tag to the build that others should use: a person pushes a tag
+`patched-…` on a commit of `main`. The workflow runs the command with `--tag`, and a second
+job, the only one with a token that can write, receives one file, checks that it has exactly
+the shape of a manifest and that the run can be kept, and keeps `manifest.json` under the
+tag and nothing else (as what GitHub calls a Release of that tag).
 
-The export files are produced and read back in CI but are not published until a download
+The export files are produced and read back in CI but are not offered until a download
 exists that asks for acceptance of BAFU's terms.
 
 The manifest (`scripts/release_build/release_manifest.py`, format
 `sentier-bafu/patched-release/2`). Its first ten fields are the manifest of a patched
-release in format 1, unchanged:
+copy in format 1, unchanged:
 
 | Field | Content |
 |---|---|
@@ -157,16 +158,16 @@ release in format 1, unchanged:
 | `import_fixes` | per import fix: id, description, result, datasets and values changed |
 | `patches` | per community patch: id, description, findings, author, authoriser, result (`applied`, `not needed`, `failed`), counts, and the numbers of the datasets it changed |
 | `totals`, `output` | steps, datasets and values changed; number, size and fingerprint of the patched files |
-| `status`, `problems`, `not_releasable` | whether every step ran; what keeps the run from being published |
+| `status`, `problems`, `not_releasable` | whether every step ran; what keeps the run from being kept under a tag |
 | `steps` | each step with its result, seconds and peak memory |
-| `check_against_previous` | per patch, what it changed now and in the previous release |
+| `check_against_previous` | per patch, what it changed now and in the previous tagged build |
 | `brightway` | both databases: name, label, audit result with errors and findings, counts, checksums of the audit and of the scores, tool commits and data pins |
 | `comparison` | rows changed by step, scores moved by method and step, what has no explanation |
 | `declared_units` | inputs whose declared unit is not their supplier's, with the amount used and the finding |
 | `exports` | per export file its name, size and SHA-256; per format whether it was written and read back; `published: false` |
-| `contributions` | each contribution built beside the patched release: id, name, database, layer checksum, what it changed, its audit, comparison and export files |
+| `contributions` | each contribution built beside the patched copy: id, name, database, layer checksum, what it changed, its audit, comparison and export files |
 
-A run can't be released when: the patch tool did not complete or read an unknown release;
+A run can't be kept under a tag when: the patch tool did not complete or read an unknown release;
 a step failed; a patch changed data and names nobody who authorised it; a patch names a
 finding that has no record in `community/findings/`; an audit has an error, or the patched
 build's audit a finding; the comparison did not pass; an export was not written or read
@@ -179,7 +180,7 @@ and never reach the manifest.
 The run summary itself leaves the machine in a public form. A patch may say which person
 confirmed a problem for BAFU; what a workflow uploads or writes to its job summary says
 `BAFU` and the date instead. One function does that
-(`scripts/release_build/public_summary.py`): the release run writes `results/run-summary.json`
+(`scripts/release_build/public_summary.py`): the build writes `results/run-summary.json`
 through it and holds back a kept file that still names who confirmed otherwise, the pull
 request workflow uploads the public form of its two summaries, and both job summaries read
 their input through it.
@@ -192,7 +193,7 @@ build:
 | Workflow | When | What |
 |---|---|---|
 | `full-release.yml` (Proposed patches) | a pull request that touches the patch tool, the build, the export or a layer; on request | the patch run on BAFU's full release for this revision and the base revision, with what the pull request changes and what each patch matched; and the whole path on a made-up release, with the build, export and adapter tests |
-| `release-build.yml` (Release build) | a push to `main` that touches the same; once a month; on request; a tag `patched-*` | the command above on BAFU's full release, the job summary, the files of `results/` as an artifact, among them what the run printed; for a tag, the release with the manifest |
+| `release-build.yml` (Build) | a push to `main` that touches the same; once a month; on request; a tag `patched-*` | the command above on BAFU's full release, the job summary, the files of `results/` as an artifact, among them what the run printed; for a tag, the manifest kept under the tag |
 
 Two composite actions hold what both need: `.github/actions/bafu-release` installs the
 patch tool and makes BAFU's release available (the tool's own download folder from the
@@ -223,7 +224,7 @@ the one any run can write (`scripts/runrecord/summary.py`), and a number in it i
 the manifest. The site shows the two files at the top of the page *Patch and build*, step by
 step and line for line, and types no number of its own.
 
-## What a release still needs from a person
+## What a tagged build still needs from a person
 
 1. Authorise each patch (`authorised_by` in the patch) and each contribution layer. After
    a change to a patch, `python3 scripts/patches_snapshot.py` writes the list of patches

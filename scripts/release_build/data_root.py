@@ -74,7 +74,7 @@ def write_flow_terms(terms: Path, target: Path, provider: str, source: str) -> i
     """Write the provider's elementary flow terms again under another source name.
 
     sentier-brightway names the database after the inventory's source and looks up the
-    flow terms of that same source. A patched release has its own source name and, because
+    flow terms of that same source. A patched copy has its own source name and, because
     its elementary exchanges are linked on the flows BAFU declared, exactly the provider's
     flows. Returns the number of terms written.
     """

@@ -1,18 +1,18 @@
-name: Release build
+name: Build
 
-# For patches that are accepted (main), on request, and for releases (a tag `patched-…`
-# pushed by a person): one command runs the whole path on BAFU's full release.
+# For patches that are accepted (main), on request, and for tagged builds (a tag
+# `patched-…` pushed by a person): one command runs the whole path on BAFU's full release.
 #
 #   provider build -> patched build -> written files and patch run checked ->
 #   comparison -> exports, each read back -> every contribution layer in
-#   community/layers, built beside the patched release -> manifest
+#   community/layers, built beside the patched copy -> manifest
 #
-# A tag then publishes a GitHub Release that holds ONE file, manifest.json: the provider
-# release and its checksum, the tool revision, each patch with its findings, author,
+# For a tag, ONE file is then kept under the tag, manifest.json (as what GitHub calls a
+# Release of the tag): the provider release and its checksum, the tool revision, each patch with its findings, author,
 # authoriser, result and the numbers of the datasets it changed, the name and checksum
 # of every export file, and the audit results. Never an inventory file and never an
 # export file: BAFU's terms ask that whoever receives the data accepts them first, and a
-# release page can't ask for that. The export files are produced and read back here and
+# page of a tag on GitHub can't ask for that. The export files are produced and read back here and
 # stay on the runner.
 #
 # Nothing from the inventory leaves the runner. The job summary and the uploaded files
@@ -55,7 +55,7 @@ concurrency:
 
 jobs:
   build:
-    name: Provider release, patched release, exports and manifest
+    name: Provider release, patched copy, exports and manifest
     runs-on: ubuntu-latest
     timeout-minutes: 90
     permissions:
@@ -63,16 +63,16 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
-          # The whole history: a release is built from a commit of main, and this is checked.
+          # The whole history: a tagged build is made from a commit of main, and this is checked.
           fetch-depth: 0
           persist-credentials: false
-      - name: Build releases from main only
+      - name: Build tags from main only
         if: ${{ github.ref_type == 'tag' }}
         run: git merge-base --is-ancestor "$GITHUB_SHA" origin/main
       - name: Install the patch tool and get BAFU's release
         uses: ./.github/actions/bafu-release
-      - name: Get the manifest of the previous release, to compare what each patch matched
-        # Read-only, and never fatal: without a previous release the run says so.
+      - name: Get the manifest of the previous tagged build, to compare what each patch matched
+        # Read-only, and never fatal: without a previous tagged build the run says so.
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -86,7 +86,7 @@ jobs:
               --pattern manifest.json --dir "$RUNNER_TEMP/previous" \
               || echo "The manifest of $previous could not be read."
           else
-            echo "No previous release to compare with."
+            echo "No previous tagged build to compare with."
           fi
       - name: Run the whole path
         # `latest` lets the patch tool download the release if it isn't there, and check
@@ -136,7 +136,7 @@ jobs:
           path: ${{ runner.temp }}/release-run/results/
           if-no-files-found: warn
           retention-days: 90
-      - name: Hand the manifest to the job that publishes
+      - name: Hand the manifest to the job that keeps it
         if: ${{ github.ref_type == 'tag' }}
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
@@ -146,7 +146,7 @@ jobs:
           retention-days: 90
 
   publish:
-    name: Publish the manifest, and nothing else
+    name: Keep the manifest under the tag, and nothing else
     if: ${{ github.ref_type == 'tag' }}
     needs: build
     runs-on: ubuntu-latest
@@ -161,7 +161,7 @@ jobs:
         with:
           name: patched-release-manifest
           path: ${{ runner.temp }}/release
-      - name: Check that the one file is a manifest, of a release, and nothing else
+      - name: Check that the one file is a manifest, of a build that may be kept, and nothing else
         # Refuses a file with any other field, a run that failed, a patch that changed
         # data without an authoriser, an audit with findings, an export that did not
         # read back.
@@ -170,10 +170,10 @@ jobs:
           python3 -I scripts/release_build/release_manifest.py \
             --verify "$RUNNER_TEMP/release/manifest.json" --release \
             --notes "$RUNNER_TEMP/notes.md"
-      - name: Publish the release with the manifest only
+      - name: Keep the manifest under the tag, and only the manifest
         env:
           GH_TOKEN: ${{ github.token }}
-        # A tag is released once: this fails when the release exists already.
+        # A tag is used once: this fails when it holds a manifest already.
         run: |
           gh release create "$GITHUB_REF_NAME" "$RUNNER_TEMP/release/manifest.json" \
             --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" \

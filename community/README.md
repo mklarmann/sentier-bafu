@@ -6,7 +6,7 @@ This folder holds the records behind the [site](https://sentier-dev.github.io/se
 |---|---|---|
 | [`findings/`](findings/README.md) | One JSON record per finding: what was observed, and dated evidence of what happened to it | [Findings](https://sentier-dev.github.io/sentier-bafu/findings.html), [Feedback to BAFU](https://sentier-dev.github.io/sentier-bafu/feedback.html) |
 | [`contributions/`](contributions/) | One JSON record per contribution: what it is based on, its checks and its reviewers | [Contributions](https://sentier-dev.github.io/sentier-bafu/contributions.html) |
-| [`patches.json`](patches.json) | The community patches, with the findings they answer | [Patched release](https://sentier-dev.github.io/sentier-bafu/patched-release.html) |
+| [`patches.json`](patches.json) | The community patches, with the findings they answer | [Patched copy](https://sentier-dev.github.io/sentier-bafu/patch-and-build.html) |
 | [`workflow.md`](workflow.md) | How a contribution is proposed, tested, reviewed and decided | |
 | [`build-validation.md`](build-validation.md) | How a build is checked, and what was measured so far | |
 | [`runs/`](runs/) | Records of the measured runs that the checks cite | |

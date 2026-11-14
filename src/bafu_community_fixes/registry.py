@@ -7,7 +7,7 @@ The pipeline records which datasets each patch changed, and how; patches
 don't do that themselves.
 
 Every patch names who wrote it, and who authorised it to be applied to the
-community release. Unauthorised patches still run, but the run report flags
+patched copy. Unauthorised patches still run, but the run report flags
 them. Every patch also names the findings it answers, so that a finding and its
 patch are linked in one place, here.
 """

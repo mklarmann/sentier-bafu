@@ -90,7 +90,7 @@ class Plan(unittest.TestCase):
         for name in ("bafu-2026-v1-patched", "bafu-2026"):
             with self.assertRaisesRegex(build_release.BuildError, "built under its own name"):
                 build_release.plan(options(contribution=self.layer(database=name)))
-        with self.assertRaisesRegex(build_release.BuildError, "on the patched release"):
+        with self.assertRaisesRegex(build_release.BuildError, "on the patched copy"):
             build_release.plan(options(contribution=self.layer(), no_patches=True))
         with self.assertRaisesRegex(build_release.BuildError, "layer can't be used"):
             build_release.plan(options(contribution=self.layer(changes=[])))
@@ -103,7 +103,7 @@ class Plan(unittest.TestCase):
         for name in ("bafu-2026-v1-patched", "bafu-2026-v1-patched-residual"):
             with self.assertRaisesRegex(mark_database.MarkError, "a database of its own name"):
                 mark_database.check_name(name, record, "bafu-2026")
-        # without a contribution, the patched release keeps its name
+        # without a contribution, the patched copy keeps its name
         mark_database.check_name("bafu-2026-v1-patched", {"modified_data": True}, "bafu-2026")
 
     def test_the_importer_finds_its_input_below_its_data_root(self):
@@ -268,9 +268,7 @@ class WholePathRecord(unittest.TestCase):
         self.assertEqual(steps["patched build"]["reason"], "the build wrote no record")
         # steps whose input is missing are not run, and say why
         self.assertEqual(steps["written files"]["status"], "not run")
-        self.assertEqual(
-            steps["written files"]["reason"], "the patch tool wrote no patched release"
-        )
+        self.assertEqual(steps["written files"]["reason"], "the patch tool wrote no patched copy")
         self.assertEqual(
             steps["comparison"]["reason"], "a build has no audited database to compare"
         )

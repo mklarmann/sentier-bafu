@@ -14,7 +14,7 @@ GitHub makes a build when a change to the patch tool or to the build is accepted
 
 Most builds are only looked at. A maintainer gives a tag to the build that others should use. The build is then made again for that tag, and its manifest is kept under the tag: checksums, counts and the list of changes, and no file of the data.
 
-<!-- generated: release-packages -->
+<!-- generated: build-files -->
 
 **Not offered yet:** the files themselves. They are written and read back in every build, and they stay on the machine that made it. BAFU's Terms of Use ask that whoever receives the data accepts them first, and no download exists yet that asks for that.
 

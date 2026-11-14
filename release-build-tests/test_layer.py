@@ -155,7 +155,7 @@ class Reading(unittest.TestCase):
 
 
 class LayersOfTheRepository(unittest.TestCase):
-    """Every layer in `community/layers/` is found and built by the release run."""
+    """Every layer in `community/layers/` is found and built by the build."""
 
     FOLDER = REPOSITORY / "community" / "layers"
 
@@ -196,9 +196,9 @@ class Names(unittest.TestCase):
 
     def test_a_name_that_could_be_taken_for_a_release_is_refused(self):
         for name in (
-            "bafu-2026-v1-patched-c900",  # the patched release's name, then the id
+            "bafu-2026-v1-patched-c900",  # the patched copy's name, then the id
             "bafu-2026-c900",  # BAFU's name, then the id
-            "c900-bafu-2026-v1-patched",  # ends with the patched release's name
+            "c900-bafu-2026-v1-patched",  # ends with the patched copy's name
             "bafu-2026-c900-own-plant",  # starts with BAFU's name
             "bafu-2026-v1-patched-c900-own-plant",
             "bafu-2026-v1-c900-own-bafu-2026",  # ends with BAFU's name

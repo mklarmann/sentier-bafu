@@ -63,6 +63,7 @@ The scripts in `scripts/`, the stylesheet and the two scripts of the pages are t
 | `finding_label`, `finding_form` | the label of an issue that is a finding, and the file name of its form in `.github/ISSUE_TEMPLATE/`. The form's field for the release is headed "*provider* release it was observed in" | `finding`, `data-finding.yml` |
 | `older_numbering_until`, `older_numbering_note` | the last finding number of an older numbering, and a sentence about it for the table of findings | this repository's number; a sibling sets `0` |
 | `ledger_notes` | sentences for the head of the table of findings (`ledger.md`) | none |
+| `patched_page`, `run` | the page about the patched copy, where a site has one (other pages then lead to it), and the workflow whose last run a page walks through (see "The walk through a run") | no such page; no run |
 | `nav`, `footer`, `documents`, `redirects` | the pages of the site | required |
 
 The shared files, which a sibling copies as they are:
@@ -73,7 +74,7 @@ The shared files, which a sibling copies as they are:
 
 Everything else is a repository's own: its configuration, its pages, its records, its issue forms and its workflows. `scripts/intake.py` reports the checks under the names that the repository's own `.github/workflows/checks.yml` gives its jobs.
 
-What belongs to the patch tool and the release build is not shared, and the shared files run without it: `src/`, `scripts/release_build/`, `scripts/build_release.py`, `scripts/export_release.py`, `scripts/patches_snapshot.py`, `site/patched-release.md`, `site/run-steps.json`, and the workflows `full-release.yml` and `release-build.yml`. The test builds its sibling from the shared files alone and starts the sibling's own copy of the scripts, so a shared file that reaches for one of these fails there.
+What belongs to the patch tool and the build is not shared, and the shared files run without it: `src/`, `scripts/release_build/`, `scripts/build_release.py`, `scripts/export_release.py`, `scripts/patches_snapshot.py`, `site/patch-and-build.md`, `site/run-steps.json`, and the workflows `full-release.yml` and `release-build.yml`. The test builds its sibling from the shared files alone and starts the sibling's own copy of the scripts, so a shared file that reaches for one of these fails there.
 
 ### The walk through a run
 
@@ -130,7 +131,7 @@ A comment on a line of its own is replaced by a generated block. Both forms work
 | `recent-changes` | the five newest dated steps |
 | `patch-table` | every community patch from `community/patches.json`, which `scripts/patches_snapshot.py` writes from the patch registry: what it does, the finding it answers, who wrote it, who authorised it |
 | `last-run` | the last run of the workflow that `"run"` in the configuration names, as the opening of a page: which run it is and whether it worked, then the run step by step (what each step does, the run's figures and notes for it, every line it printed), and the three answers: did it work, what is blocking, what was in it. What precedes the marker and the block itself stand above the page's two columns, over the full width; "On this page" begins below. What a step does is told in `site/run-steps.json`, in plain words and without a number: every figure is one the run states in its own account (`run.json`). The lines are the run's, character for character: they wrap, and a reader can have each on one line, take the whole window for them, copy them, or point at one (the time of a line is its link, `#run-line-N`). The run prints no colour; the name of a step, a command, a word that says how something ended and a checksum are told apart by the page, by the words alone, and no character is added or taken. One button replays the run, and while it plays goes to its end: nothing is paused, because the end is the page as it is. The steps are the run's own and the page adds none: what the run prints after its last step stands with that step, and whether a run made for a tag was kept under it is said with the answers. Read by `scripts/last_run.py` from GitHub when the site is built; `--last-run FILE` gives a saved record instead, and `--offline` builds without one. `--built-by OWNER/NAME` names the repository whose runs are read; a copy built by another repository than the site's own carries a preview notice on every page |
-| `release-packages` | the builds that have a tag, with the files each holds, and the files of the last run with size, checksum and where they can be had. Nothing is offered for download that no tagged build holds. The same files stand, small, beside the text under "On this page" once the reader has scrolled past this block |
+| `build-files` | the builds that have a tag, with the files each holds, and the files of the last run with size, checksum and where they can be had. Nothing is offered for download that no tagged build holds. The same files stand, small, beside the text under "On this page" once the reader has scrolled past this block |
 | `data-files` | the machine-readable files with links |
 | `lookup` | the field that looks up a dataset code, a finding number or a word |
 
@@ -192,7 +193,7 @@ The tracker shows the five steps of the path, in these words wherever it appears
 
 Generated text follows the house style: British spelling; "12 October 2026" in prose and "12 Oct 2026" in lists, always inside `<time datetime>`; no person's name except the author and the authoriser of a community patch, as the registry gives them; never stage, triage, ledger, layer, upstream, provider, candidate or fix (except "import fix") for the site's own things.
 
-Provider releases are a fixed list in `site/config.json` (`releases`: id and name, and `archive_sha256` where the patch tool downloads the release, so that the manifest of a patched release can name it). Records name releases by id; registering a new BAFU release is one entry there.
+Provider releases are a fixed list in `site/config.json` (`releases`: id and name, and `archive_sha256` where the patch tool downloads the release, so that the manifest of a patched copy can name it). Records name releases by id; registering a new BAFU release is one entry there.
 
 `older_numbering_until` in `site/config.json` is the last finding number of an older numbering: above it, the id of a finding is F followed by the number of its issue. It is 47 here, and 47 when the key is absent. A repository whose findings are numbered by their issues from the first one sets it to 0.
 
@@ -221,7 +222,7 @@ Everything a page needs comes from two modules. Neither is specific to a templat
 | `STATUSES`, `statuses(provider)` | the vocabulary in path order: `key`, `label`, `description` (one sentence, true of every finding with that status) |
 | `status_label(key, provider)`, `status_description(key, provider)` | the words for one key |
 | `KINDS`, `OUTCOMES`, `DATASET_ROLES` | kind of a finding, outcome of BAFU's answer, role of a listed dataset, each with its words |
-| `CONTRIBUTION_CLASSES`, `CONTRIBUTION_GROUPS` | class of a contribution; the group says whether it can enter the patched release or stands beside BAFU's numbers |
+| `CONTRIBUTION_CLASSES`, `CONTRIBUTION_GROUPS` | class of a contribution; the group says whether it can enter the patched copy or stands beside BAFU's numbers |
 | `evidence(record)` | the dated evidence of a record, oldest first: `(date, name, block)` |
 | `last_change(record)` | date of the newest evidence: when the finding changed, not when its issue did |
 | `waiting_since(record)` | that date while the finding is still on the path; `None` once it is resolved or closed |

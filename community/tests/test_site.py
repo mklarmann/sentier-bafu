@@ -561,7 +561,7 @@ class SiteTests(unittest.TestCase):
     def test_a_finding_page_leads_on(self):
         page = parse(self.out / "findings/F3.html")
         links = {a.attrs.get("href") for a in page.find("main").find_all("a")}
-        for target in ("F14.html", "F16.html", "../releases/2026-v1.html", "../patched-release.html",
+        for target in ("F14.html", "F16.html", "../releases/2026-v1.html", "../patch-and-build.html",
                        "../findings.html#stage-answered", "../api/v1/findings/F3.json", f"{REPO}/issues/8"):
             self.assertIn(target, links)
         # The discussion is the one primary button of the page.
@@ -729,7 +729,7 @@ class SiteTests(unittest.TestCase):
     def test_links_between_page_sources_and_to_built_files(self):
         site = build_site.Site(self.out, offline=True, root=DATA)
         # A source that became a page under another name still leads to that page.
-        self.assertEqual(site.target("import.md", "site/findings.md"), ("patched-release.html", True))
+        self.assertEqual(site.target("import.md", "site/findings.md"), ("patch-and-build.html", True))
         self.assertEqual(site.target("../docs/terms-of-use.md", "site/findings.md"), ("about/terms.html", True))
         self.assertEqual(site.target("findings.md#stage-filed", "site/take-part.md"), ("findings.html#stage-filed", True))
         # A file of the built site, named from the site folder.
@@ -803,10 +803,10 @@ class SiteTests(unittest.TestCase):
         self.assertEqual(steps[0].find("h3").text(), "Release")
         self.assertNotIn("ok:", steps[3].text())
         self.assertEqual(prose.tone("works on BAFU's release; not yet on the patched one")[0], "part")
-        # The states as the patched-release page words them.
+        # The states as the page of the patched copy words them.
         for state, mark in (("Works", "ok"), ("Two ways exist. They do not agree yet.", "part"),
                             ("Works on your own machine and in the checks of this repository. The files are not published.", "part"),
-                            ("Works for BAFU's release. Not yet for the patched release.", "part"),
+                            ("Works for BAFU's release. Not yet for the patched copy.", "part"),
                             ("Done on a build of BAFU's release only.", "part"), ("Does not exist yet.", "todo")):
             self.assertEqual(prose.tone(state)[0], mark, state)
         self.assertEqual(prose.tone("11 patches, 4 of them for a finding")[0], "ok")

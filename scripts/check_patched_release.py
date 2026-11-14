@@ -1,4 +1,4 @@
-"""Check a patched release as it is on disk: every file against the EcoSpold 1 schema.
+"""Check a patched copy as it is on disk: every file against the EcoSpold 1 schema.
 
     uv run python scripts/check_patched_release.py output/ --summary output/summary.json
 
@@ -39,7 +39,7 @@ def check(folder: Path, summary: Path | None = None) -> tuple[int, list[str]]:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("folder", type=Path, help="Folder with the patched release")
+    parser.add_argument("folder", type=Path, help="Folder with the patched copy")
     parser.add_argument("--summary", type=Path, help="The run's summary, to compare with")
     args = parser.parse_args(argv)
     count, errors = check(args.folder, args.summary)
@@ -48,7 +48,7 @@ def main(argv: list[str] | None = None) -> int:
     if len(errors) > MAX_ERRORS_SHOWN:
         print(f"... and {len(errors) - MAX_ERRORS_SHOWN} more")
     if errors:
-        print(f"{count:,} files checked: not a valid patched release")
+        print(f"{count:,} files checked: not a valid patched copy")
         return 1
     described = " and are the ones the summary describes" if args.summary else ""
     print(f"{count:,} files checked: all are valid EcoSpold 1{described}")

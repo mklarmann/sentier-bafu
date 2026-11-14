@@ -1,4 +1,4 @@
-"""The last release build on the site: what is read from GitHub, and what the page says.
+"""The last build on the site: what is read from GitHub, and what the page says.
 
 The record is GitHub's own record of the last run that ended, with the manifest and the
 transcript that run kept. The tests pass recorded answers; nothing reaches the network.
@@ -53,7 +53,7 @@ LINES = [
     [169.9, "  database bafu-2026 (Provider release): 11,947 datasets, 420,063 exchanges"],
     [170.2, '  a line with <b>markup</b> & "quotes", ünïcode and a tab\there'],
     [594.6, "[patched build] failed: audit failed: 3 findings"],
-    [594.7, "Release run failed: /tmp/release-run/manifest.json"],
+    [594.7, "Build failed: /tmp/release-run/manifest.json"],
 ]
 
 
@@ -68,7 +68,7 @@ def a_transcript(lines=LINES, exit_code=1, **changes):
 
 
 def a_manifest(failed=None, tag=None, **summary_changes):
-    """A manifest as a release run writes it, from the made-up run of the build's tests."""
+    """A manifest as a build writes it, from the made-up run of the build's tests."""
     with tempfile.TemporaryDirectory() as tmp:
         steps = write_run(Path(tmp), **summary_changes)
         for step in steps:
@@ -81,11 +81,11 @@ def a_manifest(failed=None, tag=None, **summary_changes):
 
 NAMES = {"2026-v1": "BAFU:2026 v1", "2025-v2": "BAFU:2025 v2"}
 RUN = {"name": "Build", "workflow": "release-build.yml", "artifact": "release-build-results",
-       "tagged": {"job": "Publish", "tags": "patched-"}}
+       "tagged": {"job": "Keep", "tags": "patched-"}}
 
 
 def an_account(manifest=None, **changes):
-    """A run's own account, as a release run writes it from its manifest."""
+    """A run's own account, as a build writes it from its manifest."""
     return run_summary.from_manifest(a_manifest() if manifest is None else manifest, NAMES) | changes
 
 
@@ -106,12 +106,12 @@ def some_jobs(failed_step=None, publish=None):
                 "started_at": "2026-11-13T20:11:30Z", "completed_at": "2026-11-13T20:25:07Z"}
 
     names = ("Set up job", "Run the whole path", "Say what was built", "Complete job")
-    jobs = [{"name": "Provider release, patched release, exports and manifest",
+    jobs = [{"name": "Provider release, patched copy, exports and manifest",
              "conclusion": "failure" if failed_step else "success",
              "started_at": "2026-11-13T20:11:23Z", "completed_at": "2026-11-13T20:25:12Z",
              "steps": [step(n + 1, name) for n, name in enumerate(names)]}]
     if publish:
-        jobs.append({"name": "Publish the manifest, and nothing else", "conclusion": publish,
+        jobs.append({"name": "Keep the manifest under the tag, and nothing else", "conclusion": publish,
                      "started_at": None, "completed_at": None, "steps": []})
     return {"jobs": jobs}
 
@@ -515,7 +515,8 @@ class PageTests(unittest.TestCase):
         """A reader took a seventh step, "not a release" and then "not asked for", for something
         that failed or was left undone. A run that was not made for a tag has the steps the run
         itself names, and the page adds none."""
-        record = a_record()
+        closing = [594.7, "Build completed: /tmp/release-run/manifest.json"]
+        record = a_record(lines=[*LINES[:-1], closing])
         markup, _, text = shown(record)
         own = [step["name"] for step in record["summary"]["steps"]]
         self.assertEqual(markup.count('class="run-tab '), len(own))
@@ -529,7 +530,9 @@ class PageTests(unittest.TestCase):
         # what the run prints after its last step is on the page, in its place after the last step's lines
         places = [int(n) for n in __import__("re").findall(r'<span class="tl[^"]*" id="run-line-\d+" data-step="(\d+)"', markup)]
         self.assertEqual(places[-1], len(own), "the script shows these lines with the last step")
-        self.assertIn("Release run failed: /tmp/release-run/manifest.json", text)
+        self.assertIn("Build completed: /tmp/release-run/manifest.json", text)
+        # a line that begins otherwise than the run says its closing lines begin stays with its step
+        self.assertEqual(lastrun.steps_of([[0.0, "[exports] x"], [1.0, "Build failed: y"]], ["exports"], "Build completed:"), [0, 0])
         # what stands in the way is said in full, where the answers are, and links to no step
         self.assertNotIn("All of it", markup)
         self.assertIn("A maintainer gives a tag to the build that others should use.", text)
@@ -638,8 +641,8 @@ class PageTests(unittest.TestCase):
         lines = [[0.0, "Downloading something"], [0.1, "[provider build] a database"], [0.2, "  $ python x"],
                  [5.0, "[provider build] completed in 5 s"], [5.0, "[patched build] the patches"],
                  [9.0, "[patched build] failed: [not a step] inside"], [9.1, "[exports] not run: no database"],
-                 [9.2, "Release run failed: /tmp/x/manifest.json"], [9.2, "  provider build   completed"]]
-        self.assertEqual(lastrun.steps_of(lines, names, "Release run "), [0, 0, 0, 0, 1, 1, 2, 3, 3])
+                 [9.2, "Build failed: /tmp/x/manifest.json"], [9.2, "  provider build   completed"]]
+        self.assertEqual(lastrun.steps_of(lines, names, "Build "), [0, 0, 0, 0, 1, 1, 2, 3, 3])
         # a run that says nothing of lines after its last step has none: they stay with the last step
         self.assertEqual(lastrun.steps_of(lines, names), [0, 0, 0, 0, 1, 1, 2, 2, 2])
         record = a_record(a_manifest(), lines=lines)
@@ -687,8 +690,8 @@ class PageTests(unittest.TestCase):
         self.assertIn("Files of the last build", box)
         self.assertNotRegex(html.unescape(__import__("re").sub(r"<[^>]+>", " ", block + box)), r"(?i)\breleases?\b|\bpublish")
         self.assertNotIn("Download", block + box)
-        self.assertIn('data-show-after="release-packages"', box)
-        self.assertIn('id="release-packages"', block)
+        self.assertIn('data-show-after="build-files"', box)
+        self.assertIn('id="build-files"', block)
         # a release that holds one of the files: that one can be downloaded, from GitHub
         base = "https://github.com/sentier-dev/sentier-bafu/releases"
         release = {"tag_name": "patched-2026-v1.1", "draft": False, "published_at": "2026-11-20T10:00:00Z",
@@ -921,7 +924,7 @@ class SiteTests(unittest.TestCase):
             snapshot.write_text(json.dumps(record))
             with contextlib_silence():
                 build_site.build(out, offline=True, root=DATA, last_run_snapshot=snapshot)
-            source = (out / "patched-release.html").read_text()
+            source = (out / "patch-and-build.html").read_text()
             page = Lines()
             page.feed(source)
             self.assertEqual([line.rstrip("\n") for line in page.lines], [text for _, text in LINES])
@@ -936,9 +939,13 @@ class SiteTests(unittest.TestCase):
             self.assertEqual(listed[-1], "bafus-release")
             self.assertNotIn("the-last-run", listed)
             self.assertEqual(source.count("<h1"), 1)
+            # the address the page had before leads on to it, so that a link someone kept still works
+            old = (out / "patched-release.html").read_text()
+            self.assertIn('http-equiv="refresh"', old)
+            self.assertIn("patch-and-build.html", old)
             self.assertIn('aria-current="page">Patch and build</a>', source)
             self.assertIn("<title>Patch and build ·", source)
-            self.assertIn('data-show-after="release-packages"', source.split('aria-label="On this page"')[1])
+            self.assertIn('data-show-after="build-files"', source.split('aria-label="On this page"')[1])
             # the steps are told from the end, and each keeps its own number
             numbers = __import__("re").findall(r'class="step-num" aria-hidden="true">(\d+)<', source)
             self.assertEqual(numbers, sorted(numbers, reverse=True))
@@ -976,7 +983,7 @@ class SiteTests(unittest.TestCase):
             out = Path(tmp) / "site"
             with contextlib_silence():
                 build_site.build(out, offline=True, root=DATA)
-            text = (out / "patched-release.html").read_text()
+            text = (out / "patch-and-build.html").read_text()
             self.assertIn(lastrun.NOT_SHOWN["not read"], html.unescape(text))
             self.assertNotIn("replay.js", text)
             self.assertNotIn("data-show-after", text)

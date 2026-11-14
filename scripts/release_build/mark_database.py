@@ -1,11 +1,11 @@
 """Write what a database was built from into its Brightway metadata.
 
-A database built from a patched release must not be taken for BAFU's release: its name
+A database built from a patched copy must not be taken for BAFU's release: its name
 says so, and its metadata carries the label "Modified Data", the patch ids and the import
 fix ids. A database built from the provider release keeps BAFU's name and says that its
 amounts are BAFU's. Both say what the build itself changed (the relinking to EF 3.1 flows).
 A database built with a contribution's layer says which contribution, and never carries
-BAFU's name or the patched release's.
+BAFU's name or the patched copy's.
 
 The record goes under the key `release_build` of each named database. Run it in the
 sentier-brightway environment, with `BRIGHTWAY2_DIR` set to the folder the build wrote.
@@ -51,7 +51,7 @@ def check_name(
     database: str, record: dict, provider_source: str, patched_source: str = PATCHED_SOURCE
 ) -> None:
     """A patched database must not carry the provider's name, nor a contribution's
-    database the patched release's."""
+    database the patched copy's."""
     names = {provider_source, f"{provider_source}-residual"}
     if record["modified_data"] and database in names:
         raise MarkError(
@@ -60,7 +60,7 @@ def check_name(
     patched = {patched_source, f"{patched_source}-residual"}
     if record.get("contribution") and database in names | patched:
         raise MarkError(
-            f"{database} is the name of the patched release; the changes of contribution "
+            f"{database} is the name of the patched copy; the changes of contribution "
             f"{record['contribution'].get('id')} go into a database of its own name"
         )
 

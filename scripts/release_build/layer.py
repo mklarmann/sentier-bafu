@@ -1,8 +1,8 @@
 """A contribution's layer: the changes it makes to the inventory, as a declared file.
 
 A contribution that changes the inventory (a variant, a rebuilt supply mix) is never put
-into the patched release. It declares a layer, and the build makes a database of its own
-from the patched release plus that one layer, under the contribution's own name.
+into the patched copy. It declares a layer, and the build makes a database of its own
+from the patched copy plus that one layer, under the contribution's own name.
 
 The layer is a JSON file:
 
@@ -44,7 +44,7 @@ entry brings in (a chain).
 
 The database's name is the release's id, the contribution's id and the contribution's own
 name, `bafu-2026-v1-c012-residual-electricity`. A name that is, starts with or ends with the
-name of BAFU's release or of the patched release, or that holds the word `patched`, is
+name of BAFU's release or of the patched copy, or that holds the word `patched`, is
 refused: nobody must take the database for one of those.
 
 Reading and checking a layer needs the standard library only. Applying it to the importer's
@@ -59,7 +59,7 @@ from pathlib import Path
 
 SCHEMA = "sentier-bafu/contribution-layer/1"
 KINDS = ("supplier-substitution",)
-# Names that say "this is BAFU's release" or "this is the patched release"
+# Names that say "this is BAFU's release" or "this is the patched copy"
 RESERVED = ("bafu-2026", "bafu-2026-v1-patched")
 _CONTRIBUTION = re.compile(r"C[0-9]{3,}")
 _NAME = re.compile(r"[a-z0-9]+(-[a-z0-9]+)*")
@@ -86,13 +86,13 @@ def check_database_name(name: str, contribution: str | None = None) -> None:
     """A contribution's database carries the contribution's own name, and no other.
 
     With the contribution's id, the name must read `<release id>-<id>-<own name>`: what
-    stands before the id is not the name of BAFU's release or of the patched release, what
+    stands before the id is not the name of BAFU's release or of the patched copy, what
     follows it is the contribution's own name and holds neither, and the word `patched` is
     nowhere in it.
     """
     if name in RESERVED or name in tuple(f"{r}-residual" for r in RESERVED):
         raise LayerError(
-            f"{name} is the name of BAFU's release or of the patched release; a contribution "
+            f"{name} is the name of BAFU's release or of the patched copy; a contribution "
             "is built under its own name and never into those"
         )
     if not _DATABASE.fullmatch(name) or name.endswith("-residual"):
@@ -113,7 +113,7 @@ def check_database_name(name: str, contribution: str | None = None) -> None:
     if mistakable:
         raise LayerError(
             f"The database name {name!r} could be taken for BAFU's release or the patched "
-            f"release, or has no name of its own after {contribution.lower()}; a "
+            f"copy, or has no name of its own after {contribution.lower()}; a "
             "contribution's database is named `<release id>-<id>-<own name>`, for example "
             f"bafu-2026-v1-{contribution.lower()}-residual-electricity"
         )

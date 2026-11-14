@@ -10,7 +10,7 @@ name: Checks
 # environment (`uv sync --locked`). CONTRIBUTING.md lists these commands for a run on your own
 # machine, and community/tests/test_workflows.py compares the two lists.
 #
-# What needs BAFU's release (the patch run on a pull request, the release build) is in
+# What needs BAFU's release (the patch run on a pull request, the build) is in
 # full-release.yml and release-build.yml.
 #
 # intake.yml calls this workflow for the pull requests it opens, because a pull request opened

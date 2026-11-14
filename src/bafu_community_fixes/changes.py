@@ -97,7 +97,7 @@ class Provenance:
     """Who is behind a change.
 
     * `authored_by`: who wrote the patch or fix.
-    * `authorised_by`: who approved it for this community release (None: not yet).
+    * `authorised_by`: who approved it for the patched copy (None: not yet).
     * `references`: links to the issue, discussion or evidence.
     * `reported_by`: who found the problem, if someone else.
     * `confirmed_by`: who confirmed the problem or the correction for the data owner

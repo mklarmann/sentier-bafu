@@ -1,11 +1,11 @@
-"""A release run's own account for the site: `run.json`, written from the manifest.
+"""A build's own account for the site: `run.json`, written from the manifest.
 
     python3 scripts/release_build/run_summary.py --manifest FILE --out FILE
 
 The site walks through the last run step by step (`scripts/sitebuild/lastrun.py`). What it
 shows about a step it reads from the account the run wrote of itself, in the format any run
 can write (`scripts/runrecord/summary.py`): the page types no number and words no result.
-This is where a release run says, in its own words, what each of its steps did.
+This is where a build says, in its own words, what each of its steps did.
 
 Everything here is read from the manifest of the run (`release_manifest.py`). A number is
 copied, never computed anew, and a text of the run (a problem, the note of a check) is quoted
@@ -23,7 +23,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from runrecord import summary  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
-CLOSING = "Release run "  # how the lines begin that a release run prints after its last step
+CLOSING = "Build {status}:"  # how the line begins that a build prints after its last step
 EXPORT_NAMES = {
     "brightway": "Brightway",
     "openlca": "openLCA",
@@ -157,7 +157,7 @@ def notes(name, manifest, names) -> list:
             found.append(
                 f"Compared with `{quoted(earlier, 100)}`."
                 if earlier
-                else "There is no earlier release to compare with yet."
+                else "There is no earlier tagged build to compare with yet."
             )
     elif name == "comparison":
         comparison = manifest.get("comparison")
@@ -245,7 +245,7 @@ def from_manifest(manifest, names=None) -> dict:
         "completed" if manifest["status"] == "completed" else "failed",
         steps,
         tag=manifest.get("tag"),
-        closing=CLOSING,
+        closing=CLOSING.format(status=manifest["status"]),
         contents=contents(manifest, names),
         blocking=said[: summary.LISTS["blocking"]],
         remarks=remarks,
@@ -259,9 +259,7 @@ def write(manifest, path: Path, names=None) -> Path:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument(
-        "--manifest", type=Path, required=True, help="The manifest of a release run"
-    )
+    parser.add_argument("--manifest", type=Path, required=True, help="The manifest of a build")
     parser.add_argument("--out", type=Path, required=True, help="Where to write run.json")
     args = parser.parse_args(argv)
     try:

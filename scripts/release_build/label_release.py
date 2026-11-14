@@ -1,9 +1,9 @@
-"""Label the importer's tables of a patched release, so nobody takes them for BAFU's.
+"""Label the importer's tables of a patched copy, so nobody takes them for BAFU's.
 
 sentier-importers writes `bafu-2026` and `v1` on every dataset, whatever it reads, and
-sentier-brightway names the database after that source. For a patched release this:
+sentier-brightway names the database after that source. For a patched copy this:
 
-- writes the patched release's own source name and version on every dataset;
+- writes the patched copy's own source name and version on every dataset;
 - gives each elementary exchange that the adapter linked on the declared flow its corrected
   name back as the label (`flow_name`). The flow identifier stays the declared one;
 - writes `source-observations.json` beside the tables: for each such exchange the declared
@@ -96,7 +96,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("folder", type=Path, help="Folder with the importer's two tables")
     parser.add_argument("--receipt", type=Path, required=True, help="The adapter's receipt")
-    parser.add_argument("--source", required=True, help="Source name of the patched release")
+    parser.add_argument("--source", required=True, help="Source name of the patched copy")
     parser.add_argument("--source-version", required=True)
     args = parser.parse_args(argv)
     receipt = json.loads(args.receipt.read_text())

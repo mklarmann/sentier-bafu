@@ -59,5 +59,5 @@ The existing `mapping-review.html` URL stays useful for links already shared.
 It now points to implementation and issue status rather than a standalone
 assessment of the mapping reports. The earlier file-consistency receipt remains
 in C002’s history; it does not establish score reproduction, adoption or team
-consensus. [The patched release](../site/patched-release.md) and
+consensus. [The patched copy](../site/patch-and-build.md) and
 [application tests](application-and-testing.md) describe the general workflow.

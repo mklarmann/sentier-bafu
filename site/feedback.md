@@ -15,7 +15,7 @@ BAFU, the Swiss Federal Office for the Environment (FOEN), publishes the BAFU/UV
 
 ## A community patch is not BAFU's correction
 
-Some findings have a community patch. A community patch changes a copy of BAFU's release for users who need the change now. It is made and authorised within this community, not by BAFU, and it does not change the status of a finding. The [patched release](patched-release.md) page lists the patches.
+Some findings have a community patch. A community patch changes a copy of BAFU's release for users who need the change now. It is made and authorised within this community, not by BAFU, and it does not change the status of a finding. The [patched copy](patch-and-build.md) page lists the patches.
 
 ## Where the evidence is
 

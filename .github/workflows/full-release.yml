@@ -6,11 +6,11 @@ name: Proposed patches
 # each patch matched now and before. A second job runs the whole path (builds, audit,
 # comparison, exports, a made-up contribution, manifest) on a made-up release.
 #
-# For patches that are accepted (main) and for releases (tags), see release-build.yml,
+# For patches that are accepted (main) and for tagged builds (tags), see release-build.yml,
 # which runs the same patch run as the first step of the full build.
 #
 # Nothing from the inventory leaves the runner. The job summary and the uploaded files
-# hold counts, checksums and file names; the release, the patched release and the HTML
+# hold counts, checksums and file names; the release, the patched copy and the HTML
 # report (which quotes the data) are never uploaded.
 
 on:
@@ -123,7 +123,7 @@ jobs:
       - name: Build, audit, compare, export and write the manifest for eight made-up datasets
         # One command, as for the real release: provider and patched build, the checks of
         # the patch run, the comparison, the exports with their read-back, a made-up
-        # contribution built beside the patched release, the manifest. Clones
+        # contribution built beside the patched copy, the manifest. Clones
         # sentier-importers and sentier-brightway at the commits in
         # scripts/release_build/pins.toml and downloads the pinned flow terms, methods
         # and mapping (37 MB, checked by SHA-256). No BAFU data.

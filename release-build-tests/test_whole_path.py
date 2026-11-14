@@ -3,7 +3,7 @@
 It runs `scripts/build_release.py release` as a person or a CI job would: the provider
 build, the patched build, the check of the written files and of what each patch matched,
 the comparison, the exports with their read-back, a made-up contribution built beside the
-patched release with its own comparison and exports, and the manifest. The release is
+patched copy with its own comparison and exports, and the manifest. The release is
 eight invented datasets (`synthetic_release.py`); the flow terms, methods and mapping are
 the pinned ones, so the scores can be worked by hand from EF 3.1 factors.
 
@@ -302,7 +302,7 @@ class WholePath(unittest.TestCase):
         self.assertIn(AMOUNT, steps)
         self.assertEqual(steps[-2:], ["build-ef-3.1-links", "build-declared-flow-identity"])
 
-    # --- A contribution, built beside the patched release ------------------------------------
+    # --- A contribution, built beside the patched copy ------------------------------------
 
     def test_the_contribution_is_a_database_of_its_own_name(self):
         audit = json.loads((self.contribution / "build" / "audit" / "audit.json").read_text())

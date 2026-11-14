@@ -10,16 +10,16 @@ What a change does to BAFU's release decides where it can go. The record names t
 
 | `class` | Kind | Where it can go |
 |---|---|---|
-| `import-fix` | **Import fix.** A preparation that every reader of the release files needs, such as schema repairs, unique exchange numbers and valid location codes. | Can enter the patched release |
-| `linking-repair` | **Linking repair.** An input names a supplier that cannot be found, and is linked to the dataset that exists. | Can enter the patched release |
-| `re-declaration` | **Re-declaration.** A unit or a label that BAFU's own change log corrects. The change log is the evidence. | Can enter the patched release |
+| `import-fix` | **Import fix.** A preparation that every reader of the release files needs, such as schema repairs, unique exchange numbers and valid location codes. | Can enter the patched copy |
+| `linking-repair` | **Linking repair.** An input names a supplier that cannot be found, and is linked to the dataset that exists. | Can enter the patched copy |
+| `re-declaration` | **Re-declaration.** A unit or a label that BAFU's own change log corrects. The change log is the evidence. | Can enter the patched copy |
 | `variant` | **Variant.** A method variant or a data variant, such as a residual electricity mix. | Stands beside BAFU's numbers, under its own name |
 | `model` | **Model.** A model or a rebuilt inventory: a new inventory with its own tests. | Stands beside BAFU's numbers, under its own name |
 | `mapping` | **Mapping.** A correspondence between flows, datasets or methods. | Stands beside BAFU's numbers, under its own name |
 
 A contribution that stands beside BAFU's numbers says what it replaces, how, and how well. It can be excellent and still not be BAFU's number, so it keeps its own name and users choose it knowingly.
 
-An amount that BAFU has not confirmed does not enter the patched release. A workaround in one user's own inventory does not belong in this repository.
+An amount that BAFU has not confirmed does not enter the patched copy. A workaround in one user's own inventory does not belong in this repository.
 
 lci-bafu-catalog, a separate public project that imports the same release, sorts changes into classes A to E. A is an import fix, B a linking repair, C a re-declaration, D a value change or a variant, and E a workaround in a user's own inventory.
 
@@ -32,7 +32,7 @@ The record holds:
 - the number, a title that names the thing proposed, the kind and the status;
 - the BAFU release the work is based on, with the repository and revision of the import and the checksums of its inputs;
 - the changed version: where its code or files are, and their exact revision or checksum;
-- for a contribution that changes the inventory, the file in [`community/layers/`](layers/README.md) that states its changes, so that it can be built as a database of its own beside the patched release;
+- for a contribution that changes the inventory, the file in [`community/layers/`](layers/README.md) that states its changes, so that it can be built as a database of its own beside the patched copy;
 - the checks the contribution must pass, and every run with the result of each check and a public link to the evidence;
 - the reviewers, their approvals of an exact version, and objections with their answers;
 - what the checks cover and what they do not cover, the next step and who takes it.

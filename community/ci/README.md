@@ -17,7 +17,7 @@ fixture; these show what a patch does to the release.
   touches the patch tool, the build, the export or a contribution layer: the import fixes
   and every patch on the full release, for the pull request's revision and for the revision
   it starts from; and the whole path on a made-up release.
-- [Release build](../../.github/workflows/release-build.yml), for each such change on
+- [Build](../../.github/workflows/release-build.yml), for each such change on
   `main` (patches accepted), on request, and for a tag `patched-…`: the whole path on the
   full release, from the provider build to the exports and the manifest. A tag publishes
   the manifest, and nothing else. See [The whole path](../../docs/release-build.md).
@@ -28,11 +28,11 @@ Both get the release as the tool does: `bafu-fixes run latest` downloads it once
 - the files read are not a release the tool knows (`download.FINGERPRINTS`);
 - a patch changes nothing, so its target was not there.
 
-Its job summary (the *Summary* page of the check) lists every step with its author, who authorised it, and the datasets, exchanges and values it changed. A patch that is not yet authorised is marked. On a pull request the job also runs the base revision, and the summary starts with what the pull request changes: new and removed steps, the difference per step, and how many files of the patched release differ.
+Its job summary (the *Summary* page of the check) lists every step with its author, who authorised it, and the datasets, exchanges and values it changed. A patch that is not yet authorised is marked. On a pull request the job also runs the base revision, and the summary starts with what the pull request changes: new and removed steps, the difference per step, and how many files of the patched copy differ.
 
 **What each patch matched.** No patch says how many targets it expects. The summary therefore lists, for every patch, what it changed beside what it changed in an earlier run: the base revision on a pull request, the previous release on `main` and for a tag. A patch that changed something before and nothing now fails the check and says what it changed before; one that changed less, or more, is marked for the reviewer.
 
-Nothing from the inventory is published. The job summaries and the uploaded files hold counts, checksums, dataset numbers and codes, names and single scores. The release, the patched release, the Brightway databases, the export files and the HTML report, which quotes the data, stay on the runner.
+Nothing from the inventory is published. The job summaries and the uploaded files hold counts, checksums, dataset numbers and codes, names and single scores. The release, the patched copy, the Brightway databases, the export files and the HTML report, which quotes the data, stay on the runner.
 
 A new patch needs no change to a workflow: patches are found in `src/bafu_community_fixes/patches/`. Neither does a new contribution layer: layers are found in `community/layers/`.
 

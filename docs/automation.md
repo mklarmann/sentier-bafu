@@ -1,7 +1,7 @@
-# Automation: from a filed issue to a patched release
+# Automation: from a filed issue to a patched copy
 
 This page describes every workflow of the repository, what each may write, and the path of a
-finding from the issue form to BAFU's answer and to a patched release. It also holds the threat
+finding from the issue form to BAFU's answer and to a patched copy. It also holds the threat
 model of the workflows that read what strangers write, and the checklist for the first run.
 
 **The rule.** No step exists only to keep two copies of a fact in agreement. People do the steps
@@ -17,7 +17,7 @@ when the site is built, or done by a workflow.
 | Authorise a community patch | review the pull request; the patch names the authoriser |
 | Report findings to BAFU | send them; then `python3 scripts/community.py send --batch … F48 F51` |
 | Record BAFU's answer | `python3 scripts/community.py answer F48 --outcome … --summary "…"` |
-| Tag a patched release | push a tag `patched-…` on a commit of `main` |
+| Tag a patched copy | push a tag `patched-…` on a commit of `main` |
 | Register a new release of BAFU | one entry in `site/config.json`, then `python3 scripts/intake.py form` |
 | Confirm a correction by BAFU | `python3 scripts/community.py fixed F48 --release …` |
 | Withdraw a finding | `python3 scripts/community.py close F48 --as withdrawn --reason "…"` |
@@ -44,7 +44,7 @@ record changed.
 | 12 | `sync.yml`: `status: reported to BAFU`, one comment. | workflow | labels, one comment |
 | 13 | **Someone records BAFU's answer** in our own words. | **maintainer** | `answer` in the record |
 | 14 | `sync.yml`: `status: answered by BAFU`, one comment that quotes the summary. | workflow | labels, one comment |
-| 15 | **A maintainer pushes a tag** `patched-…`. `release-build.yml` builds the patched release from BAFU's full release, with its Brightway database, its checks and its exports, and publishes `manifest.json` and nothing else. | **maintainer** | a GitHub Release with one file |
+| 15 | **A maintainer pushes a tag** `patched-…`. `release-build.yml` builds the patched copy from BAFU's full release, with its Brightway database, its checks and its exports, and publishes `manifest.json` and nothing else. | **maintainer** | a GitHub Release with one file |
 | 16 | BAFU publishes a release. **A maintainer registers it** (section 6). The run on the new release says per patch whether it is still needed. | **maintainer** | one entry in `site/config.json` |
 | 17 | **A maintainer confirms the correction** with `community.py fixed`. | **maintainer** | `fixed_in` in the record |
 | 18 | `sync.yml`: `status: resolved`, one comment, and the issue is closed. | workflow | labels, one comment, the issue's state |
@@ -65,7 +65,7 @@ publishes a release.
 | `intake.yml` | an issue opened or edited that carries `bafu-finding`; a comment on an issue that begins with `/repeated` or `/record` | record: `contents: write`, `pull-requests: write`, `issues: write`. checks: `contents: read`. status: `contents: read`, `statuses: write` | a branch `intake/F<n>` or `repeat/F<n>` with one file; one pull request; one comment; the label `needs-info`; commit statuses |
 | `sync.yml` | push to `main` that changes a record, `site/config.json` or the script; nightly; on request | `contents: read`, `issues: write` | labels, one comment per change of status, the state of finding issues; label definitions |
 | `full-release.yml` | a pull request that touches the patch tool, the build, the exports or a file in `community/layers/`; on request | `contents: read` | the run summaries as an artifact (counts, checksums, dataset numbers) |
-| `release-build.yml` | a push to `main` that touches the same; once a month; on request; a tag `patched-*` | build: `contents: read`. publish (tags only): `contents: write` | the manifest, what the run printed, the audits and the comparisons as an artifact (codes, names, single scores); for a tag, a GitHub Release that holds `manifest.json` |
+| `release-build.yml` | a push to `main` that touches the same; once a month; on request; a tag `patched-*` | build: `contents: read`. keep (tags only): `contents: write` | the manifest, what the run printed, the audits and the comparisons as an artifact (codes, names, single scores); for a tag, a GitHub Release that holds `manifest.json` |
 | `provider-release.yml` | on request, after a release of BAFU was registered | `contents: write`, `pull-requests: write` | one pull request that sets `fixed_in`. **Specified in section 6, not built** |
 
 The two composite actions hold what both build workflows need: `.github/actions/bafu-release`
@@ -78,7 +78,7 @@ file, so a new workflow is checked from its first commit): each action is pinned
 token that can write is given to the one job that needs it; no `${{ }}` expression is part of a
 shell script; no checkout leaves a token on disk; no workflow uses `pull_request_target` or
 `workflow_run`; a run that writes is never cancelled half way. What is particular to the patch run
-and the release build (what they upload, what a release publishes) is tested beside the patch
+and the build (what they upload, what is kept of a tagged build) is tested beside the patch
 tool, in `tests/test_full_release_workflow.py`.
 
 [CONTRIBUTING.md](../CONTRIBUTING.md#check-a-change) lists the commands of every check for a run
@@ -126,7 +126,7 @@ The build also reads the last run of the workflow that `site/config.json` names 
 and the transcript that run kept, and the builds that have a tag. That is what `actions: read`
 is for. The page *Patch and build* opens with the run as it was
 recorded, also when it failed. A site is built without the run rather than not built: when the
-record cannot be read the page says so. A release build that ends after the site was built is
+record cannot be read the page says so. A build that ends after the site was built is
 shown by the next build, which is at most a day later.
 
 ### intake.yml
@@ -215,7 +215,7 @@ exports runs two jobs:
   request's revision and for the revision it starts from. The job summary says what the pull
   request changes and what each patch matched now and before. A patch that changed something
   before and changes nothing now fails the job.
-- **Whole path on a made-up release**: the release build below on eight made-up datasets, with a
+- **Whole path on a made-up release**: the build below on eight made-up datasets, with a
   made-up contribution, and the tests of the build, the exports and the adapter.
 
 The release, the patched files and the report that quotes the data stay on the runner.
@@ -226,9 +226,9 @@ The release, the patched files and the report that quotes the data stay on the r
 For patches that are accepted, and for a release. A push to `main` that touches the patch tool or
 the build, a run on request, and a tag `patched-…` on a commit of `main` run one command,
 `python3 scripts/build_release.py release`, on BAFU's full release: a Brightway database of
-BAFU's release and one of the patched release, their checks and their comparison, the exports of
-the patched release with a read-back of each file, every contribution in `community/layers/`
-that names who authorised it built beside the patched release, and the manifest. [The whole path](release-build.md) describes
+BAFU's release and one of the patched copy, their checks and their comparison, the exports of
+the patched copy with a read-back of each file, every contribution in `community/layers/`
+that names who authorised it built beside the patched copy, and the manifest. [The whole path](release-build.md) describes
 each step and what stops it.
 
 The command runs inside `scripts/release_build/transcript.py`, which passes every line on and
@@ -239,13 +239,13 @@ problem for BAFU is not kept, and the job fails. The site shows it line for line
 runs once a month, so that the record of the last run is never older than the 90 days GitHub
 keeps it, and so that a change at the address of BAFU's release or in a pinned tool is noticed.
 
-A tag is released by a second job, the only one with a token that can write. The build job
-refuses a tag that is not on `main`. The publish job receives one file, checks that it is a
-manifest and nothing else and that the run may be released
-(`python3 -I scripts/release_build/release_manifest.py --verify … --release`), and creates the
-release with that one file.
+A build made for a tag is kept by a second job, the only one with a token that can write. The
+build job refuses a tag that is not on `main`. The second job receives one file, checks that it
+is a manifest and nothing else and that the run may be kept
+(`python3 -I scripts/release_build/release_manifest.py --verify … --release`), and keeps that
+one file under the tag (as what GitHub calls a Release of the tag).
 
-The export files are produced and read back in CI but are not published until a download exists
+The export files are produced and read back in CI but are not offered until a download exists
 that asks for acceptance of BAFU's terms. No inventory leaves the runner.
 
 The manifest (`scripts/release_build/release_manifest.py`, format
@@ -262,14 +262,14 @@ the fields the build adds.
 | `import_fixes` | per import fix: id, description, result, datasets and values changed |
 | `patches` | per community patch: `id`, `description`, `findings`, `author`, `authorised_by`, `result` (`applied`, `not needed`, `failed`), the counts, and `datasets`: the numbers of the datasets it changed |
 | `totals` | steps, datasets changed, values changed |
-| `output` | the number of files, their size, and the fingerprint of the patched release |
+| `output` | the number of files, their size, and the fingerprint of the patched copy |
 | `status`, `problems`, `not_releasable`, `steps`, `check_against_previous`, `brightway`, `comparison`, `declared_units`, `exports`, `contributions` | what the build adds: see [the whole path](release-build.md#a-release) |
 
 It holds no inventory: no table of amounts, no exchange list, no text of a dataset. It names the
 author and the authoriser of each patch, and of a contribution's file in `community/layers/`, and
 nobody else; who reported a finding and who answered for BAFU are left out.
 
-A run is not released, and `--verify --release` says why, when: the patch run did not complete;
+A run is not kept under a tag, and `--verify --release` says why, when: the patch run did not complete;
 the files that were read are not a release the tool knows; a step failed; the written files are
 not the ones the run summary describes; a patch changed data and names nobody who authorised it;
 a patch names a finding that has no record; the counts of a patch's datasets disagree; a check of
@@ -281,7 +281,7 @@ To prove a local build is the release: check out `tool.revision`, run
 patched files) and `brightway.patched.audit.scores_sha256` (the scores of every dataset) of
 `OUT/manifest.json` with the published manifest.
 
-The site learns from the manifest of the latest release which patches a patched release contains
+The site learns from the manifest of the latest release which patches a patched copy contains
 and which datasets each changed. Reading it at build time, the way the issues are read, is work
 for the site build.
 
@@ -388,7 +388,7 @@ other reported findings again, and records each correction with `community.py fi
 
 Checked on a developer machine: `actionlint` 1.7.12 with `shellcheck` 0.11.0 on every workflow
 and on the scripts of the composite actions; every `run:` step executed as written, against saved
-event files and a stand-in for the GitHub API and for `gh`; the unit tests; the release build on
+event files and a stand-in for the GitHub API and for `gh`; the unit tests; the build on
 BAFU's full release. Not checked, because it needs GitHub:
 
 1. That a pull request opened with the workflow's token starts no workflow (the reason for the
@@ -410,7 +410,7 @@ BAFU's full release. Not checked, because it needs GitHub:
    holds BAFU's release, the path filters, and an artifact passed from the build job to the
    publish job.
 10. The run on Linux: the fingerprints of the files (built from sorted names and bytes), and the
-    time and memory of the release build on a runner. On a developer's machine the largest step
+    time and memory of the build on a runner. On a developer's machine the largest step
     used 3.0 GB.
 
 ## 8. First run

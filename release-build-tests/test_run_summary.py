@@ -1,7 +1,7 @@
-"""A release run's own account for the site (`scripts/release_build/run_summary.py`).
+"""A build's own account for the site (`scripts/release_build/run_summary.py`).
 
 The site shows what a run says about itself, and types no number of its own. So what a
-release run says is read from its manifest and from nothing else, and it is said in the
+build says is read from its manifest and from nothing else, and it is said in the
 format any run can write. These tests hold that: every figure is a number of the manifest,
 a text of the run is quoted as it is, and what can't be shown is refused where it is written.
 """
@@ -50,7 +50,7 @@ class FromManifest(unittest.TestCase):
             [(s["name"], s["status"], s["seconds"]) for s in account["steps"]],
             [(s["name"], s["status"], s["seconds"]) for s in manifest["steps"]],
         )
-        self.assertEqual(account["closing"], "Release run ")
+        self.assertEqual(account["closing"], "Build completed:")
         self.assertIsNone(account["tag"])
         self.assertEqual(
             run_summary.from_manifest(a_manifest(tag="patched-2026-v1.1"), NAMES)["tag"],

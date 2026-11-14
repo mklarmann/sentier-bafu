@@ -1,4 +1,4 @@
-"""Rules the workflows for proposed patches and for release builds have to keep.
+"""Rules the workflows for proposed patches and for builds have to keep.
 
 `.github/workflows/full-release.yml` runs on pull requests, `release-build.yml` on main,
 on request and on a tag; both get BAFU's release through one composite action.
@@ -92,7 +92,7 @@ def test_what_is_uploaded_or_summarised_names_nobody_who_confirmed_for_the_provi
     assert written < upload
     assert '--out "$RUNNER_TEMP/public-summaries"' in PROPOSED
     assert "path: ${{ runner.temp }}/summaries/" not in PROPOSED
-    # Release build: what the run set aside is checked before either upload
+    # Build: what the run set aside is checked before either upload
     check = BUILD.index(f'{public} \\\n            --check "$RUNNER_TEMP/release-run/results"')
     uploads = [match.start() for match in re.finditer("uses: actions/upload-artifact@", BUILD)]
     assert len(uploads) == 2 and all(check < upload for upload in uploads)
@@ -162,7 +162,7 @@ def test_a_release_is_one_file_and_it_is_checked_before_it_is_published():
 
 def test_each_event_runs_what_it_should():
     assert re.search(r"\non:\n  pull_request:\n    paths:\n", PROPOSED)
-    assert "push:" not in PROPOSED  # main and tags are the release build's
+    assert "push:" not in PROPOSED  # main and tags are the build's
     assert "workflow_dispatch:" in PROPOSED and "workflow_dispatch:" in BUILD
     assert "pull_request" not in BUILD.split("\njobs:\n")[0]
     assert "branches: [main]" in BUILD

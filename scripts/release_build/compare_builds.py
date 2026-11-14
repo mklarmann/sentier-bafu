@@ -1,7 +1,7 @@
 """Compare two builds made by `build_release.py`: what changed, and which step changed it.
 
-The baseline is the provider release and the candidate a patched release; or the baseline
-is the patched release and the candidate a contribution built beside it. Reads, for both:
+The baseline is the provider release and the candidate a patched copy; or the baseline
+is the patched copy and the candidate a contribution built beside it. Reads, for both:
 
 - the inventory tables sentier-importers wrote (`processes.parquet`, `exchanges.parquet`),
   compared row by row: an exchange is identified by its dataset and its position in it;
@@ -11,7 +11,7 @@ is the patched release and the candidate a contribution built beside it. Reads, 
   for a contribution, the receipt of its layer.
 
 Two rules keep an explanation honest. A step that both builds have recorded on a dataset
-explains no difference between them: against the patched release only the layer is left.
+explains no difference between them: against the patched copy only the layer is left.
 And a layer explains an input only if its receipt lists that input, by dataset and
 position, with that supplier before and after: another changed input of a dataset the layer
 touches has no explanation, and the comparison fails.
@@ -214,7 +214,7 @@ def steps_of_the_candidate_alone(
     """The steps recorded on a dataset in the candidate and not in the baseline.
 
     A step both builds have on a dataset can't explain a difference between them: when the
-    baseline is the patched release and the candidate a contribution, the patches are in
+    baseline is the patched copy and the candidate a contribution, the patches are in
     both, and only the layer is left to explain a changed row.
     """
     return {
@@ -696,7 +696,7 @@ def compare(baseline: Path, candidate: Path) -> dict:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("baseline", type=Path, help="Build folder of the provider release")
-    parser.add_argument("candidate", type=Path, help="Build folder of the patched release")
+    parser.add_argument("candidate", type=Path, help="Build folder of the patched copy")
     parser.add_argument("--out", type=Path, required=True, help="JSON file to write")
     args = parser.parse_args(argv)
     try:

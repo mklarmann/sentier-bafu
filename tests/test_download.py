@@ -45,7 +45,7 @@ def test_checksum_mismatch(release, monkeypatch):
 
 
 def test_the_sites_list_of_releases_names_the_archive_the_tool_downloads():
-    """`site/config.json` gives a release its id. The manifest of a patched release finds
+    """`site/config.json` gives a release its id. The manifest of a patched copy finds
     that id by the archive's checksum, so exactly one release there names this archive."""
     releases = json.loads((REPO / "site" / "config.json").read_text())["releases"]
     known = download.CHECKSUMS[download.LATEST_RELEASE]

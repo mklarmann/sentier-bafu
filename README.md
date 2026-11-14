@@ -22,9 +22,9 @@ This is the most useful help. Choose a finding with the status "Needs a second m
 
 A contribution is a mapping, a model, a rebuilt inventory or a method variant, with its evidence and the checks it must pass. A contribution never replaces BAFU's numbers. [Open a contribution](https://github.com/sentier-dev/sentier-bafu/issues/new?template=community-contribution.yml), and read [the contribution workflow](community/workflow.md).
 
-## The patched release
+## The patched copy
 
-The patched release is BAFU's release with import fixes and community patches applied. It is a convenience for users who need a change now. A community patch is not BAFU's correction.
+The patched copy is BAFU's release with import fixes and community patches applied. It is a convenience for users who need a change now. A community patch is not BAFU's correction.
 
 The patch tool is in this repository. You need [git](https://git-scm.com/) and [uv](https://docs.astral.sh/uv/), a tool that installs Python programs. BAFU's Terms of Use apply to the files that a run downloads and to everything built from them: read [docs/terms-of-use.md](docs/terms-of-use.md) first.
 
@@ -48,33 +48,33 @@ One more command builds what follows from the patched files:
 uv run --no-project --python 3.12 python scripts/build_release.py release latest output/release-run
 ```
 
-It builds a Brightway database of BAFU's release and one of the patched release, both with the EF 3.1 impact methods. It checks both and compares them. Then it writes the patched release as files for Brightway, openLCA, ILCD and SimaPro, and reads each file back. The files carry BAFU's credit, the label *Modified Data* and the list of changes.
+It builds a Brightway database of BAFU's release and one of the patched copy, both with the EF 3.1 impact methods. It checks both and compares them. Then it writes the patched copy as files for Brightway, openLCA, ILCD and SimaPro, and reads each file back. The files carry BAFU's credit, the label *Modified Data* and the list of changes.
 
 Its state:
 
 - [`community/patches.json`](community/patches.json) lists the community patches with the findings they answer. A script writes it from the patches in `src/bafu_community_fixes/patches/`.
 - The files for Brightway, openLCA, ILCD and SimaPro are written and read back on your own machine and in the checks of this repository. They are not published: no download exists yet that asks for acceptance of BAFU's Terms of Use. This repository and the site hold no inventory files.
 - No file has been opened in openLCA or in SimaPro yet. The checks read the files with separate programs.
-- A release of the patched release publishes one file, a manifest with checksums and counts. A local build can be compared with it.
+- A release of the patched copy publishes one file, a manifest with checksums and counts. A local build can be compared with it.
 
 Where to read on:
 
 - [docs/patch-tool.md](docs/patch-tool.md): every option of the patch tool, how it works, what it writes and how to write a patch.
-- [docs/release-build.md](docs/release-build.md): each step of the build, what stops it and what a release publishes.
+- [docs/release-build.md](docs/release-build.md): each step of the build, what stops it and what is kept of a tagged build.
 - [docs/exports.md](docs/exports.md): what each file holds and what was checked.
-- The site's [Patched release](https://sentier-dev.github.io/sentier-bafu/patched-release.html) page lists the patches.
+- The site's [Patched copy](https://sentier-dev.github.io/sentier-bafu/patch-and-build.html) page lists the patches.
 
 ## Work on this repository
 
 - [CONTRIBUTING.md](CONTRIBUTING.md): the commands that check a change, how to write a community patch, the house style for records, and the rules for work done with an AI agent.
 - [community/README.md](community/README.md): the records and the documents that say how they are handled.
 - [site/README.md](site/README.md): how the site is built from the records.
-- [docs/automation.md](docs/automation.md): every workflow, and the path of a finding from the issue form to BAFU's answer and to a patched release.
+- [docs/automation.md](docs/automation.md): every workflow, and the path of a finding from the issue form to BAFU's answer and to a patched copy.
 - [AGENTS.md](AGENTS.md): what an AI agent reads before it changes this repository.
 
 ## Documents
 
-- [CONTEXT.md](CONTEXT.md): the glossary. It defines finding, contribution, community patch, patched release and the other terms used here.
+- [CONTEXT.md](CONTEXT.md): the glossary. It defines finding, contribution, community patch, patched copy and the other terms used here.
 - [docs/adr/](docs/adr/): the architecture decisions, each with its status.
 - [docs/terms-of-use.md](docs/terms-of-use.md): a short reading of BAFU's Terms of Use for people who work with the data. It is not legal advice.
 - [docs/plans/bafu-community/](docs/plans/bafu-community/README.md): the plan for bringing the patch tool and this workspace together.

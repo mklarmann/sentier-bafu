@@ -1,9 +1,9 @@
-"""Write a CI job summary of a release run (`build_release.py release`).
+"""Write a CI job summary of a build (`build_release.py release`).
 
 Reads the run folder and writes Markdown: every step with its result, time and peak
 memory; the provider build, the patched build and their comparison; the inputs whose
 declared unit is not their supplier's; the export files with their checksums and whether
-each read back; every contribution built beside the patched release; and the table of the
+each read back; every contribution built beside the patched copy; and the table of the
 patch run. Everything it prints is counts, checksums, dataset codes, names and single
 scores. The run folder holds BAFU's inventory and stays on the runner; the files a job may
 keep are the ones the run set aside in its `results` folder.
@@ -22,7 +22,7 @@ except ImportError:  # run as a script, from its own folder
 
 CLIMATE = "ef-3.1:climate-change"
 NOT_PUBLISHED = (
-    "The export files are produced and read back in CI but are not published until a download "
+    "The export files are produced and read back in CI but are not offered until a download "
     "exists that asks for acceptance of BAFU's terms."
 )
 
@@ -191,17 +191,17 @@ def export_lines(title: str, folder: Path) -> list[str]:
 
 def summarise(run: Path) -> str:
     manifest = load(run / "manifest.json")
-    lines = ["## Release build", "", *step_lines(manifest)]
+    lines = ["## Build", "", *step_lines(manifest)]
     lines += build_lines("Provider release", run / "provider")
-    lines += build_lines("Patched release", run / "patched")
+    lines += build_lines("Patched copy", run / "patched")
     lines += comparison_lines(load(run / "comparison.json"))
     lines += declared_unit_lines(manifest)
-    lines += export_lines("Exports of the patched release", run / "exports" / "patched")
+    lines += export_lines("Exports of the patched copy", run / "exports" / "patched")
     for folder in sorted((run / "contributions").glob("*/")):
         name = folder.name.upper()
-        lines += build_lines(f"Contribution {name}, beside the patched release", folder / "build")
+        lines += build_lines(f"Contribution {name}, beside the patched copy", folder / "build")
         lines += comparison_lines(
-            load(folder / "comparison.json"), f"{name} against the patched release"
+            load(folder / "comparison.json"), f"{name} against the patched copy"
         )
         lines += export_lines(f"Exports of {name}", folder / "exports")
     kept = sorted(path.name for path in (run / "results").glob("*")) if run.is_dir() else []
@@ -219,7 +219,7 @@ def summarise(run: Path) -> str:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("run", type=Path, help="Folder of a release run")
+    parser.add_argument("run", type=Path, help="Folder of a build")
     parser.add_argument("--out", type=Path, required=True, help="Markdown file to append to")
     args = parser.parse_args(argv)
     with args.out.open("a", encoding="utf-8") as stream:

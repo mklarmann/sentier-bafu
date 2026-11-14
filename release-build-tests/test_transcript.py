@@ -1,4 +1,4 @@
-"""What a release run printed, kept line for line (`scripts/release_build/transcript.py`),
+"""What a build printed, kept line for line (`scripts/release_build/transcript.py`),
 and the lines a step prints about what it produced (`step_lines.py`).
 
 The transcript is what the site shows of a run. So: every line passes through unchanged,

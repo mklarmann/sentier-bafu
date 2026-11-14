@@ -20,7 +20,7 @@ What it exercises:
   written, the audit lists it, and `LABELS` names the made-up finding it belongs to.
 
 `LAYER` is a made-up contribution: the crop takes its electricity from the plant instead of
-from the mix. It is built beside the patched release, as a database of its own.
+from the mix. It is built beside the patched copy, as a database of its own.
 
 `EXPECTED` holds scores worked by hand from the amounts below and the EF 3.1 factors
 (carbon dioxide 1, fossil methane 29.8, dinitrogen monoxide 273 kg CO2 eq per kg; natural
@@ -169,7 +169,7 @@ LAYER = {
         {
             "kind": "supplier-substitution",
             "dataset": {"code": "syn-crop", "name": "Synthetic crop, at farm", "location": "CH"},
-            # the patched release, which the layer changes, writes this location as EURwoCH
+            # the patched copy, which the layer changes, writes this location as EURwoCH
             "replaced_supplier": {
                 "code": "syn-mix",
                 "name": "Synthetic electricity mix",

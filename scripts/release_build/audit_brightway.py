@@ -53,7 +53,7 @@ except ImportError:  # run as a script, from its own folder
 AUDIT_VERSION = 2
 BIOSPHERE_DB = "ef-3.1-biosphere"
 PROVIDER_DB = "bafu-2026"  # BAFU's name: only a database of the provider release carries it
-PATCHED_DB = "bafu-2026-v1-patched"  # the patched release's name: no contribution carries it
+PATCHED_DB = "bafu-2026-v1-patched"  # the patched copy's name: no contribution carries it
 MARKER = "release_build"  # written into the database metadata by `mark_database.py`
 CLIMATE_METHOD = "ef-3.1:climate-change"
 RESIDUAL_TOLERANCE = 1e-8  # relative residual of a linear solve
@@ -646,7 +646,7 @@ def audit(
         for flag in scores["summary"]["range_flags"]
     ]
     # A documented score is that of BAFU's release. A contribution's database is not held
-    # to it: a variant moves scores, and the comparison with the patched release reports
+    # to it: a variant moves scores, and the comparison with the patched copy reports
     # every one. The sample says whether the score agrees either way.
     if not contribution:
         findings += [
@@ -746,7 +746,7 @@ def main(argv: list[str] | None = None) -> int:
         help="Datasets to score, with plausible ranges",
     )
     parser.add_argument("--out", type=Path, required=True, help="Folder for audit.json")
-    parser.add_argument("--label", default="", help="What this build is, e.g. 'patched release'")
+    parser.add_argument("--label", default="", help="What this build is, e.g. 'patched copy'")
     parser.add_argument(
         "--fail-on-findings",
         action="store_true",

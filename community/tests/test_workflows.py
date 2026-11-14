@@ -14,7 +14,7 @@ import intake  # noqa: E402
 
 WORKFLOWS = ROOT / ".github/workflows"
 # Every workflow of the repository, and the two composite actions the build workflows share.
-# What is particular to the patch run and the release build (what they upload, what a release
+# What is particular to the patch run and the build (what they upload, what a release
 # publishes) is tested beside the patch tool, in tests/test_full_release_workflow.py.
 EXPECTED = ("checks.yml", "full-release.yml", "intake.yml", "pages.yml", "release-build.yml", "sync.yml")
 FILES = {path.name: path.read_text() for path in sorted(WORKFLOWS.glob("*.y*ml"))}
