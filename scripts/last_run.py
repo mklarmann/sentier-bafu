@@ -200,9 +200,15 @@ def unpack(archive):
     return found, problems
 
 
+def digest(asset):
+    """The SHA-256 that GitHub gives a file kept under a tag ("sha256:..."), or None."""
+    found = re.fullmatch(r"sha256:([0-9a-f]{64})", str(asset.get("digest") or ""))
+    return found.group(1) if found else None
+
+
 def releases_of(github, tags):
     """What is kept under a tag that begins with `tags`, the newest first: tag, date, address
-    and the files each holds. A draft is not kept yet."""
+    and the files each holds, each with the checksum GitHub gives it. A draft is not kept yet."""
     found = []
     for release in github.get("/releases?per_page=30") or ():
         tag = release.get("tag_name") or ""
@@ -218,6 +224,7 @@ def releases_of(github, tags):
                         "name": text(asset.get("name"), 200),
                         "size": asset.get("size"),
                         "url": text(asset.get("browser_download_url"), 500),
+                        "sha256": digest(asset),
                     }
                     for asset in release.get("assets") or ()
                 ],

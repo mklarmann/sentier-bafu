@@ -45,6 +45,16 @@ The full reading, with every clause and what sentier.dev's wiki says about it, i
   [#1](https://github.com/sentier-dev/sentier-bafu/issues/1). Until it is
   answered, say on the artefact which basis it claims.
 
+## Downloads from this site
+
+A file of a build is offered on [Patch and build](../site/patch-and-build.md) only where a
+tagged build holds the very same bytes; GitHub gives each file it keeps a checksum, and the
+page compares it with the checksum the build recorded. A click on the file first shows
+BAFU's terms in short, and the file is handed out only when the reader accepts them
+(clause 7). Nothing about the click is recorded or remembered: the question is asked each
+time. It needs JavaScript; without it, a download link leads to this section and hands out
+nothing. The manifest of a build holds no data and is linked as it is.
+
 ## What a copy must carry
 
 A served build, a package, a parquet set or an export derived from the Data

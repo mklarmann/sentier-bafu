@@ -115,6 +115,8 @@ class Site:
         self.findings = community.load_findings(self.root)
         self.contributions = community.load_contributions(self.root)
         self.patches = self.patches_as_built(community.load_patches(self.root))
+        # How a file of a build is handed out: after a question, where the site sets "download".
+        self.download = lastrun.download_settings(self.config, {doc["page"] for doc in self.docs})
         issues, self.issues_source = triage.load_issues(
             self.repo, issues_snapshot, offline, require_issues
         )
@@ -357,6 +359,9 @@ class Site:
             opening, rendered = rendered.split(OPENING_END, 1)
         # The packages of a release are also offered beside the text, under "On this page".
         beside = lastrun.rail_box(self, up) if "build-files" in used else ""
+        # A file offered under terms asks first: the question, once on the page that offers it.
+        if "data-download=" in rendered + beside:
+            rendered += lastrun.download_dialog(self, up)
         return shell.prose_page(self, doc, rendered, sections, listing=wide, up=up, opening=opening, beside=beside)
 
     # --------------------------------------------------------------------- build

@@ -28,6 +28,7 @@
      it ("index"); the build then checks it and writes these tokens on every page (see
      scripts/sitebuild/theme.py). Without it they are the brand's green. The logo, the paper
      and the type are the same on every Sentier site. */
+  --arrow-down: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M6 1.5v6.2M3.3 5.2 6 7.9l2.7-2.7M1.8 10.5h8.4' fill='none' stroke='%23000' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");  /* a mask: its colour is the link's */
   --index: var(--green);
   --index-dark: var(--green-dark);
   --index-soft: var(--sage);       /* never text */
@@ -694,6 +695,32 @@ td:first-child { font-weight: 600; }
 @media (max-width: 39.99rem) {
   .changes li { grid-template-columns: minmax(0, 1fr); padding-inline: var(--s4); }
 }
+
+/* The question a download asks first (assets/download.js, sitebuild/lastrun.download_dialog). */
+a.download { font-weight: 700; white-space: nowrap; }
+a.download > code { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: .2em; }
+/* a file to take away: an arrow into a tray, in the colour of the link */
+a.download::after {
+  content: ""; display: inline-block; width: .8em; height: .8em; margin-left: .3em; vertical-align: -.08em; background: currentColor;
+  -webkit-mask: var(--arrow-down) center / contain no-repeat; mask: var(--arrow-down) center / contain no-repeat;
+}
+.download-terms {
+  width: min(34rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); padding: 0;
+  border: 1px solid var(--line); border-top: 3px solid var(--index); border-radius: var(--radius);
+  background: var(--surface); color: var(--ink); box-shadow: 0 1.5rem 3rem rgba(0, 0, 0, .28);
+}
+.download-terms::backdrop { background: rgba(20, 24, 22, .55); }
+.download-box { padding: var(--s5); line-height: 1.5; }
+.download-box > * + * { margin-top: var(--s3); }
+.download-title { font-size: var(--t-xl); font-weight: 800; line-height: 1.2; color: var(--index-dark); outline: none; }
+.download-file { font-size: var(--t-sm); }
+.download-file code { overflow-wrap: anywhere; }
+.download-file [data-download-bytes] { white-space: nowrap; }
+.download-box ul { padding-left: 1.25rem; }
+.download-box li + li { margin-top: .4rem; }
+.download-more { font-size: var(--t-sm); }
+.download-box .actions { margin-top: var(--s5); }
+@media (max-width: 30rem) { .download-box .actions .button { flex: 1 1 100%; } }
 
 /* ------------------------------------------------------------------ footer */
 .footer { border-top: 1px solid var(--line); background: var(--paper-deep); color: var(--muted); font-size: var(--t-sm); line-height: 1.55; }

@@ -37,6 +37,23 @@
     }
   },
   "patched_page": "patch-and-build.html",
+  "download": {
+    "title": "Before you download: BAFU's Terms of Use",
+    "intro": "This file is part of a patched copy of BAFU's life cycle inventories: Modified Data, not BAFU's original data. Download it only if you accept BAFU's Terms of Use, and with them these three conditions:",
+    "points": [
+      "Credit the source: “Life Cycle Inventory database of the Swiss Federal Administration, BAFU:2026”.",
+      "Keep the label Modified Data and the record of modifications with the data.",
+      "Pass it on only under terms substantially equivalent to BAFU's, and never sell it."
+    ],
+    "more": "BAFU's terms, and what they ask of a copy",
+    "accept": "Accept and download",
+    "cancel": "Cancel",
+    "page": "about/terms.html",
+    "anchor": "downloads-from-this-site",
+    "free": [
+      "manifest.json"
+    ]
+  },
   "repository": "https://github.com/sentier-dev/sentier-bafu",
   "site_url": "https://sentier-dev.github.io/sentier-bafu/",
   "source_ref": "main",

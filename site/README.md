@@ -63,13 +63,14 @@ The scripts in `scripts/`, the stylesheet and the two scripts of the pages are t
 | `finding_label`, `finding_form` | the label of an issue that is a finding, and the file name of its form in `.github/ISSUE_TEMPLATE/`. The form's field for the release is headed "*provider* release it was observed in" | `finding`, `data-finding.yml` |
 | `older_numbering_until`, `older_numbering_note` | the last finding number of an older numbering, and a sentence about it for the table of findings | this repository's number; a sibling sets `0` |
 | `ledger_notes` | sentences for the head of the table of findings (`ledger.md`) | none |
+| `download` | how a file of a build is handed out: `{title, intro, points, more, accept, cancel, page, anchor, free}`. A link to a file then asks first: it leads to `page#anchor`, and `assets/download.js` shows these words in a dialog and hands out the file only when the reader accepts. `free` names files that hold no data (a manifest), linked as they are. See "The walk through a run" | a file is linked as it is |
 | `patched_page`, `run` | the page about the patched copy, where a site has one (other pages then lead to it), and the workflow whose last run a page walks through (see "The walk through a run") | no such page; no run |
 | `nav`, `footer`, `documents`, `redirects` | the pages of the site | required |
 
 The shared files, which a sibling copies as they are:
 
 - `scripts/build_site.py`, `scripts/check_site.py`, `scripts/community.py`, `scripts/triage.py`, `scripts/intake.py`, `scripts/sync.py`, `scripts/github_api.py`, `scripts/last_run.py` and the folders `scripts/sitebuild` and `scripts/runrecord`;
-- `site/style.css`, and of `site/assets`: `list.js`, `replay.js`, `nunito-latin.woff2`, `OFL.txt`, `dds-logo.svg`, `favicon-32x32.png`;
+- `site/style.css`, and of `site/assets`: `list.js`, `replay.js`, `download.js`, `nunito-latin.woff2`, `OFL.txt`, `dds-logo.svg`, `favicon-32x32.png`;
 - the folder `schema`.
 
 Everything else is a repository's own: its configuration, its pages, its records, its issue forms and its workflows. `scripts/intake.py` reports the checks under the names that the repository's own `.github/workflows/checks.yml` gives its jobs.
@@ -92,6 +93,8 @@ A page asks for the walk with `<!-- generated: last-run -->`. The Site workflow 
 A run that did not happen on GitHub can be shown as well: `python3 scripts/last_run.py --local --summary run.json --transcript transcript.json --out record.json` makes its record from the two files, and `scripts/build_site.py --last-run record.json` builds a site with it. The page marks it: "Not a run on GitHub". Whether a published site may show such a record is the repository's own rule; a workflow that never passes `--last-run` never does.
 
 A finding names its datasets by number (`code`, a whole number). Where the datasets of a provider have no number, a finding lists none and says in `scope` what it is about.
+
+**Files of a build.** A file the run lists (`files` in its account) is offered for download only where a build with a tag holds the very same bytes: GitHub gives each file it keeps a SHA-256, and the page compares it with the run's. A file of a newer run with the same name is other bytes and is not offered in its place. Where the site sets `download`, every link to such a file, in the table, in the box beside the text and in the run's own note of it, asks first. Nothing about the click is recorded. Without the script the link leads to the terms and hands out nothing.
 
 **A preview on a fork.** GitHub starts a workflow by hand or on a schedule only if the workflow is on the repository's default branch. A fork that previews the site and the walk therefore needs three settings: the branch that holds the workflows is its default branch, Pages is built by a workflow, and that branch may deploy to the `github-pages` environment. The Site workflow passes `--source-repository` and `--source-ref` to the build, so that links to source files lead to the branch that was built: a file that only the fork's branch has is then found.
 

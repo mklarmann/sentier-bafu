@@ -14,6 +14,12 @@ hold the page to the run:
   unchanged; a step only groups them, in their order. A test compares the page with the
   transcript line by line.
 
+A file of a run is offered for download only where a build with a tag holds the very same
+bytes (GitHub gives each file it keeps its SHA-256). Where the site hands its files out under
+terms (site/config.json "download"), every such link asks first: it leads to the terms, and
+the script (assets/download.js) shows them in a dialog and hands out the file only when the
+reader accepts. Nothing about the click is recorded.
+
 Nothing here knows a dataset or a tool: a step is what the run names, with the words the
 site's own file has for it. The page adds no step of its own. A step the run says it could not run
 in this place ("not run here") is drawn as open, with the run's reason, and is no failure. A run that did not happen
@@ -194,10 +200,12 @@ def short(checksum, length=12):
     return f'<code title="{esc(checksum)}">{esc(str(checksum)[:length])}</code>'
 
 
-def inline(site, text, up=""):
+def inline(site, text, up="", files=None):
     """A text of the run as HTML. It is plain and is escaped; two things in it are read:
     `a name` between backquotes is shown as code (a whole SHA-256 shortened, with all of it in
-    the title), and the number of a finding this site holds becomes a link to the finding."""
+    the title), and the number of a finding this site holds becomes a link to the finding.
+    `files` are the files of the run that can be downloaded ({name: file kept under a tag}):
+    a name of one of them becomes its download link."""
     def words(part):
         out, at = "", 0
         for found in FINDING.finditer(part):
@@ -210,10 +218,15 @@ def inline(site, text, up=""):
     parts = str(text).split("`")
     if len(parts) % 2 == 0:  # a backquote without its partner is a character like any other
         return words(str(text))
-    return "".join(
-        words(part) if n % 2 == 0 else (short(part) if SHA256.fullmatch(part) else f"<code>{esc(part)}</code>")
-        for n, part in enumerate(parts)
-    )
+    def code(part):
+        if SHA256.fullmatch(part):
+            return short(part)
+        if files and part in files:
+            asset = files[part]
+            return download(site, asset["url"], part, megabytes(asset.get("size")), f"<code>{esc(part)}</code>", up)
+        return f"<code>{esc(part)}</code>"
+
+    return "".join(words(part) if n % 2 == 0 else code(part) for n, part in enumerate(parts))
 
 
 def sentence(site, text, up=""):
@@ -422,6 +435,7 @@ def showcase(site, record, up, title="The last run", ids=""):
     )
     below = '<dl class="run-answers">' + "".join(f"<div><dt>{label}</dt><dd>{value}</dd></div>" for label, value in answers) + "</dl>"
 
+    files = offered(record)
     tabs, panels = "", ""
     for n, step in enumerate(steps, start=1):
         name, words = step["name"], text_for(texts, endings, step["name"])
@@ -441,7 +455,7 @@ def showcase(site, record, up, title="The last run", ids=""):
             f'<div><dt>{esc(one["label"])}</dt><dd>{esc(figure(one["value"]))}</dd></div>' for one in step.get("figures") or ()
         )
         reason = f'<p class="run-reason">{sentence(site, step["reason"], up)}</p>' if step.get("reason") else ""
-        more = "".join(f"<li>{inline(site, note, up)}</li>" for note in step.get("notes") or ())
+        more = "".join(f"<li>{inline(site, note, up, files)}</li>" for note in step.get("notes") or ())
         about = f'<p>{esc(words["text"])}</p>' if words.get("text") else ""
         panels += (
             f'<article class="run-panel" id="{ids}run-step-{n}" data-step="{n - 1}">'
@@ -625,17 +639,101 @@ def megabytes(size):
     return f"{size / 1e6:,.1f} MB" if isinstance(size, (int, float)) and not isinstance(size, bool) else ""
 
 
+def tagged_files(record):
+    """Every file kept under a tag, by its SHA-256, the newest first: {sha256: file}."""
+    held = {}
+    for release in record.get("releases") or ():
+        for asset in release.get("assets") or ():
+            if SHA256.fullmatch(str(asset.get("sha256") or "")):
+                held.setdefault(asset["sha256"], asset)
+    return held
+
+
+def offered(record):
+    """The files of a run that can be downloaded: {name: file kept under a tag}. A file is
+    offered only where a build with a tag holds the very same bytes, so what a reader gets is
+    what the run lists, checked by its checksum. The file of a newer run with the same name
+    is other bytes, and is not offered in its place."""
+    held = tagged_files(record)
+    return {
+        file["name"]: held[file["sha256"]]
+        for file in (record.get("summary") or {}).get("files") or ()
+        if file.get("sha256") in held
+    }
+
+
+def download(site, url, name, size, label, up=""):
+    """A link to a file kept under a tag. Where the site hands its files out under terms
+    (site/config.json "download"), the link leads to the terms and carries the file's address:
+    the script asks the reader to accept the terms first, and only then hands out the file.
+    Without the script the link hands out nothing. A file the configuration names as holding
+    no data ("free") is linked as it is."""
+    terms = getattr(site, "download", None)
+    if not terms or name in terms["free"]:
+        return ext(url, label)
+    return (
+        f'<a class="download" href="{up}{esc(terms["page"])}#{esc(terms["anchor"])}" data-download="{esc(url)}" '
+        f'data-download-name="{esc(name)}" data-download-size="{esc(size)}">{label}</a>'
+    )
+
+
+DOWNLOAD_TEXTS = ("title", "intro", "more", "accept", "cancel")
+
+
+def download_settings(config, pages):
+    """How a site hands out a file of a build, from site/config.json "download", checked; None
+    when it sets none (a file is then linked as it is). `pages` are the pages of the site."""
+    terms = config.get("download")
+    if terms is None:
+        return None
+    wrong = 'site/config.json: "download" is {title, intro, points, more, accept, cancel, page, anchor, free}'
+    if not isinstance(terms, dict) or set(terms) != {*DOWNLOAD_TEXTS, "points", "page", "anchor", "free"}:
+        raise ValueError(wrong)
+    texts = [terms[key] for key in DOWNLOAD_TEXTS] + list(terms["points"] if isinstance(terms["points"], list) else [None])
+    if not all(isinstance(t, str) and t.strip() and len(t) <= 400 for t in texts) or not 1 <= len(terms["points"]) <= 6:
+        raise ValueError(wrong + ": texts of up to 400 characters, one to six points")
+    if terms["page"] not in pages:
+        raise ValueError(f'site/config.json: download.page is not a page of the site: {terms["page"]}')
+    if not re.fullmatch(r"[a-z0-9]+(-[a-z0-9]+)*", str(terms["anchor"])):
+        raise ValueError("site/config.json: download.anchor is the id of a heading on that page")
+    if not isinstance(terms["free"], list) or not all(isinstance(n, str) and n for n in terms["free"]):
+        raise ValueError("site/config.json: download.free lists the names of files that hold no data")
+    return terms
+
+
+def download_dialog(site, up=""):
+    """The question a download asks first, once on a page that offers a file under terms. The
+    site's own words; the script fills in which file it is."""
+    terms = getattr(site, "download", None)
+    if not terms:
+        return ""
+    points = "".join(f"<li>{esc(point)}</li>" for point in terms["points"])
+    page = f'{up}{esc(terms["page"])}'
+    return (
+        '<dialog class="download-terms" id="download-terms" aria-labelledby="download-terms-title"><div class="download-box">'
+        f'<p class="download-title" id="download-terms-title" tabindex="-1" autofocus>{esc(terms["title"])}</p>'
+        '<p class="download-file"><code data-download-file></code> <span class="quiet" data-download-bytes></span></p>'
+        f'<p>{esc(terms["intro"])}</p><ul>{points}</ul>'
+        f'<p class="download-more"><a href="{page}">{esc(terms["more"])}</a></p>'
+        '<form method="dialog" class="actions">'
+        f'<a class="button primary" data-download-accept href="{page}#{esc(terms["anchor"])}">{esc(terms["accept"])}</a>'
+        f'<button class="button" value="cancel">{esc(terms["cancel"])}</button>'
+        "</form></div></dialog>"
+        f'<script src="{up}assets/download.js" defer></script>'
+    )
+
+
 def package_rows(record):
     """The files the last run made, each with where it can be had:
-    [{label, name, size, sha256, same, url}]. `url` is a file of the newest tagged build with
-    the same name, or None: a file that no tagged build holds can't be downloaded."""
+    [{label, name, size, sha256, same, url}]. `url` is the file a tagged build holds with the
+    same bytes, or None: a file that no tagged build holds can't be downloaded."""
     account = record.get("summary") or {}
-    newest = (record.get("releases") or [{}])[0]
-    held = {asset.get("name"): asset.get("url") for asset in newest.get("assets") or ()}
+    files = offered(record)
     return [
         {
             "label": file["label"], "name": file["name"], "size": megabytes(file["bytes"]),
-            "sha256": file.get("sha256"), "same": file.get("same"), "url": held.get(file["name"]),
+            "sha256": file.get("sha256"), "same": file.get("same"),
+            "url": (files.get(file["name"]) or {}).get("url"),
         }
         for file in account.get("files") or ()
     ]
@@ -654,7 +752,8 @@ def packages(site, up=""):
         listed_ = '<ul class="plain releases">' + "".join(
             f'<li><strong><code>{esc(release["tag"])}</code></strong> <span class="quiet">· {day(release["published"], long=True)}</span> · '
             f'{ext(release["url"], TAG["on GitHub"])}'
-            + "".join(f'<br>{ext(asset["url"], "<code>" + esc(asset["name"]) + "</code>")} <span class="quiet">{megabytes(asset["size"])}</span>'
+            + "".join(f'<br>{download(site, asset["url"], asset["name"], megabytes(asset["size"]), "<code>" + esc(asset["name"]) + "</code>", up)}'
+                      f' <span class="quiet">{megabytes(asset["size"])}</span>'
                       for asset in release["assets"])
             + "</li>"
             for release in releases
@@ -668,7 +767,7 @@ def packages(site, up=""):
         head = ("File", "For", "Size", "SHA-256", "Where")
         lines = ""
         for row in rows:
-            where = ext(row["url"], "Download") if row["url"] else TAG["where not"]
+            where = download(site, row["url"], row["name"], row["size"], "Download", up) if row["url"] else TAG["where not"]
             read = "" if row["same"] is not False else ' <span class="run-no"><strong>did not read back the same</strong></span>'
             checksum = short(row["sha256"]) if row["sha256"] else ""
             cells = (f'<code>{esc(row["name"])}</code>{read}', esc(row["label"]), esc(row["size"]), checksum, where)
@@ -697,7 +796,7 @@ def rail_box(site, up=""):
     title = TAG["box of"].format(tag=esc(newest["tag"])) if newest.get("tag") else TAG["box"]
     items = "".join(
         f'<li><span class="downloads-name">{esc(row["label"])}</span><span class="quiet">{esc(row["size"])}</span>'
-        + (ext(row["url"], "Download") if row["url"] else f'<span class="quiet">{TAG["where not"]}</span>')
+        + (download(site, row["url"], row["name"], row["size"], "Download", up) if row["url"] else f'<span class="quiet">{TAG["where not"]}</span>')
         + "</li>"
         for row in rows
     )

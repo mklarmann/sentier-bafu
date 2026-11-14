@@ -45,7 +45,7 @@ SHARED = (
     "scripts/build_site.py", "scripts/check_site.py", "scripts/community.py", "scripts/triage.py",
     "scripts/intake.py", "scripts/sync.py", "scripts/github_api.py", "scripts/sitebuild",
     "scripts/last_run.py", "scripts/runrecord",
-    "site/style.css", "site/assets/list.js", "site/assets/replay.js", "site/assets/nunito-latin.woff2",
+    "site/style.css", "site/assets/list.js", "site/assets/replay.js", "site/assets/download.js", "site/assets/nunito-latin.woff2",
     "site/assets/OFL.txt", "site/assets/dds-logo.svg", "site/assets/favicon-32x32.png", "schema",
 )
 REPO = "https://github.com/sentier-dev/sentier-agribalyse"
@@ -460,7 +460,7 @@ class Names(unittest.TestCase):
                   ("community.py", "intake.py", "sync.py", "triage.py", "github_api.py", "build_site.py", "check_site.py",
                    "last_run.py")]
         shared += sorted((ROOT / "scripts/sitebuild").glob("*.py")) + sorted((ROOT / "scripts/runrecord").glob("*.py"))
-        shared += [ROOT / "site/assets/list.js", ROOT / "site/assets/replay.js"]
+        shared += [ROOT / "site/assets/list.js", ROOT / "site/assets/replay.js", ROOT / "site/assets/download.js"]
         # the third: transcripts written before the wrapper was shared carry this name of their format
         allowed = re.compile(r'"schema": "sentier-bafu/[a-z-]+/\d"|sentier-bafu-automation|"sentier-bafu/transcript/1"')
         for path in shared:
@@ -469,6 +469,7 @@ class Names(unittest.TestCase):
         # the page of a run and what reads it know no tool of this repository and no word for what only
         # a provider does: a sibling's run has steps and words of its own
         for path in (ROOT / "scripts/sitebuild/lastrun.py", ROOT / "scripts/last_run.py", ROOT / "site/assets/replay.js",
+                     ROOT / "site/assets/download.js",
                      *sorted((ROOT / "scripts/runrecord").glob("*.py"))):
             for number, line in enumerate(path.read_text().splitlines(), 1):
                 self.assertNotRegex(line, r"(?i)brightway|openlca|simapro|ilcd|\\bpatch|import fix|provider build", f"{path.name}:{number}")

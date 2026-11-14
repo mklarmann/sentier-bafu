@@ -676,6 +676,93 @@ class PageTests(unittest.TestCase):
         contribution["summary"]["steps"][2]["name"] = "C900-other build"
         self.assertIn("A contribution, built beside the patched copy", shown(contribution)[2])
 
+    @staticmethod
+    def kept(record, *names, other_bytes=(), digest=True):
+        """A build with a tag that keeps the named files of `record`, and its manifest."""
+        base = "https://github.com/sentier-dev/sentier-bafu/releases/download/patched-2026-v1.1"
+        by_name = {f["name"]: f for f in record["summary"]["files"]}
+        assets = [{"name": "manifest.json", "size": 2000, "browser_download_url": f"{base}/manifest.json",
+                   "digest": "sha256:" + "e" * 64}]
+        for name in names:
+            checksum = "f" * 64 if name in other_bytes else by_name[name]["sha256"]
+            asset = {"name": name, "size": by_name[name]["bytes"], "browser_download_url": f"{base}/{name}"}
+            assets.append(asset | ({"digest": f"sha256:{checksum}"} if digest else {}))
+        return [{"tag_name": "patched-2026-v1.1", "draft": False, "published_at": "2026-11-20T10:00:00Z",
+                 "html_url": "https://github.com/sentier-dev/sentier-bafu/releases/tag/patched-2026-v1.1",
+                 "assets": assets}], base
+
+    def test_a_file_is_offered_only_where_a_tagged_build_holds_the_same_bytes(self):
+        files = [f["name"] for f in a_record()["summary"]["files"]]
+        releases, base = self.kept(a_record(), files[0], files[1], other_bytes=(files[1],))
+        record = a_record(releases=releases)
+        self.assertEqual(record["releases"][0]["assets"][1]["sha256"], record["summary"]["files"][0]["sha256"])
+        self.assertEqual(set(lastrun.offered(record)), {files[0]})
+        block = lastrun.packages(a_site(record))
+        self.assertIn(f'href="{base}/{files[0]}">Download</a>', block)
+        # the same name with other bytes is another build's file: it is not offered in its place
+        self.assertEqual(block.count(">Download</a>"), 1)
+        self.assertEqual(block.count("not offered"), len(files) - 1)
+        # without GitHub's checksum the bytes can't be compared, and nothing is offered
+        releases, _ = self.kept(a_record(), files[0], digest=False)
+        unknown = a_record(releases=releases)
+        self.assertIsNone(unknown["releases"][0]["assets"][1]["sha256"])
+        self.assertEqual(lastrun.offered(unknown), {})
+
+    def test_a_site_that_hands_files_out_under_terms_asks_first_everywhere_it_offers_one(self):
+        record = a_record()
+        files = [f["name"] for f in record["summary"]["files"]]
+        releases, base = self.kept(record, *files)
+        record = a_record(releases=releases)
+        config = json.loads((ROOT / "site/config.json").read_text())
+        site = a_site(record)
+        site.download = lastrun.download_settings(config, {"about/terms.html"})
+        block, box, run = lastrun.packages(site, "../"), lastrun.rail_box(site, "../"), lastrun.last_run(site, "../")
+        terms = 'href="../about/terms.html#downloads-from-this-site"'
+        for name in files:
+            # the table, the box beside the text, and the run's own note of the file
+            for where, markup in (("table", block), ("box", box), ("step", run)):
+                self.assertIn(f'data-download="{base}/{name}"', markup, f"{where}: {name}")
+                # the address of a file is never a link of its own: every link to it asks first
+                self.assertNotIn(f'href="{base}/{name}"', markup, f"{where}: {name}")
+        self.assertEqual(block.count(terms), 2 * len(files))  # the table, and the list of the tag's files
+        self.assertEqual(box.count(terms), len(files))
+        self.assertEqual(run.count(terms), len(files))
+        self.assertIn(f'<code>{files[0]}</code></a>', run)
+        # the manifest holds no data: it is linked as it is
+        self.assertIn(f'href="{base}/manifest.json"', block)
+        dialog = lastrun.download_dialog(site, "../")
+        self.assertEqual(dialog.count("<dialog "), 1)
+        self.assertIn('src="../assets/download.js"', dialog)
+        text = html.unescape(dialog)
+        for words in (config["download"]["title"], *config["download"]["points"], "Accept and download", "Cancel"):
+            self.assertIn(words, text)
+        self.assertIn(f'data-download-accept href="../about/terms.html#downloads-from-this-site"', dialog)
+        # a site that sets no terms links its files as they are, and asks nothing
+        plain = a_site(record)
+        self.assertIn(f'href="{base}/{files[0]}">Download</a>', lastrun.packages(plain))
+        self.assertNotIn("data-download", lastrun.packages(plain) + lastrun.last_run(plain))
+        self.assertEqual(lastrun.download_dialog(plain), "")
+
+    def test_the_terms_of_a_download_are_checked_before_anything_is_built(self):
+        config = json.loads((ROOT / "site/config.json").read_text())
+        terms = config["download"]
+        pages = {"about/terms.html"}
+        self.assertIsNone(lastrun.download_settings({}, pages))
+        self.assertEqual(lastrun.download_settings(config, pages), terms)
+        for broken in (
+            {k: v for k, v in terms.items() if k != "accept"},
+            terms | {"points": []},
+            terms | {"points": ["x"] * 7},
+            terms | {"title": " "},
+            terms | {"page": "nowhere.html"},
+            terms | {"anchor": "Not An Id"},
+            terms | {"free": "manifest.json"},
+            terms | {"more": "x" * 401},
+            terms | {"extra": "?"},
+        ):
+            with self.assertRaises(ValueError):
+                lastrun.download_settings({"download": broken}, pages)
+
     def test_nothing_is_offered_for_download_that_no_release_holds(self):
         record = a_record()
         files = [f["name"] for f in record["summary"]["files"]]
@@ -692,12 +779,15 @@ class PageTests(unittest.TestCase):
         self.assertNotIn("Download", block + box)
         self.assertIn('data-show-after="build-files"', box)
         self.assertIn('id="build-files"', block)
-        # a release that holds one of the files: that one can be downloaded, from GitHub
+        # a release that holds one of the files, the same bytes: that one can be downloaded, from GitHub
         base = "https://github.com/sentier-dev/sentier-bafu/releases"
+        checksum = record["summary"]["files"][0]["sha256"]
         release = {"tag_name": "patched-2026-v1.1", "draft": False, "published_at": "2026-11-20T10:00:00Z",
                    "html_url": f"{base}/tag/patched-2026-v1.1",
-                   "assets": [{"name": "manifest.json", "size": 2000, "browser_download_url": f"{base}/download/patched-2026-v1.1/manifest.json"},
-                              {"name": files[0], "size": 16000000, "browser_download_url": f"{base}/download/patched-2026-v1.1/{files[0]}"}]}
+                   "assets": [{"name": "manifest.json", "size": 2000, "browser_download_url": f"{base}/download/patched-2026-v1.1/manifest.json",
+                               "digest": "sha256:" + "0" * 64},
+                              {"name": files[0], "size": 16000000, "browser_download_url": f"{base}/download/patched-2026-v1.1/{files[0]}",
+                               "digest": f"sha256:{checksum}"}]}
         drafts = [{"tag_name": "patched-draft", "draft": True, "html_url": f"{base}/x", "assets": []},
                   {"tag_name": "v1.0", "draft": False, "html_url": f"{base}/y", "assets": []}]
         released = a_record(releases=[*drafts, release])
@@ -1039,6 +1129,33 @@ class TwoRunsTests(unittest.TestCase):
 
 @unittest.skipIf(build_site is None, "the site build needs the markdown package")
 class SiteTests(unittest.TestCase):
+    def test_a_page_that_offers_a_file_carries_the_question_once_and_the_built_site_checks(self):
+        record = a_record()
+        files = [f["name"] for f in record["summary"]["files"]]
+        releases, base = PageTests.kept(record, *files)
+        with tempfile.TemporaryDirectory() as tmp:
+            for name, kept in (("offered", releases), ("none", ())):
+                snapshot, out = Path(tmp) / f"{name}.json", Path(tmp) / name
+                snapshot.write_text(json.dumps(a_record(releases=kept)))
+                with contextlib_silence():
+                    build_site.build(out, offline=True, root=DATA, last_run_snapshot=snapshot)
+                    # every local link and anchor resolves, and no file of the data is in the site
+                    self.assertEqual(__import__("check_site").check(out), 0, name)
+                source = (out / "patch-and-build.html").read_text()
+                if name == "none":
+                    # nothing is offered, so nothing is asked and no script is loaded
+                    self.assertNotIn("<dialog", source)
+                    self.assertNotIn("download.js", source)
+                    continue
+                self.assertEqual(source.count('<dialog class="download-terms"'), 1)
+                self.assertEqual(source.count("assets/download.js"), 1)
+                self.assertTrue((out / "assets/download.js").is_file())
+                self.assertEqual(source.count("data-download="), 4 * len(files))
+                for name_ in files:
+                    self.assertNotIn(f'href="{base}/{name_}"', source)
+                # the link leads to a section of the terms that exists, where a reader without the script lands
+                self.assertIn('id="downloads-from-this-site"', (out / "about/terms.html").read_text())
+
     def test_the_patched_release_page_shows_the_last_run_and_the_site_holds_its_record(self):
         record = a_record(a_manifest(failed="patched build"), conclusion="failure", failed_step="Run the whole path")
         with tempfile.TemporaryDirectory() as tmp:
