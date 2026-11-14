@@ -733,9 +733,12 @@ def patch_errors(data):
 
 def registry_module():
     """scripts/patches_snapshot.py, which reads the patch registry. Loaded by its path, so that
-    it is found however this file was started."""
+    it is found however this file was started. None where the script is not there: it belongs
+    to the patch tool, and a repository without community patches has neither."""
     name = "patches_snapshot"
     if name not in sys.modules:
+        if not Path(__file__).with_name(f"{name}.py").is_file():
+            return None
         spec = importlib.util.spec_from_file_location(name, Path(__file__).with_name(f"{name}.py"))
         sys.modules[name] = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(sys.modules[name])
@@ -753,6 +756,8 @@ def registry_errors(root, patches):
     check that runs inside the tool's environment.
     """
     registry = registry_module()
+    if registry is None:
+        return [], []
     try:
         wanted, how = registry.expected(root)
     except registry.Unreadable as problem:

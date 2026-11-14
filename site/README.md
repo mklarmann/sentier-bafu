@@ -65,6 +65,16 @@ The scripts in `scripts/`, the stylesheet and the two scripts of the pages are t
 | `ledger_notes` | sentences for the head of the table of findings (`ledger.md`) | none |
 | `nav`, `footer`, `documents`, `redirects` | the pages of the site | required |
 
+The shared files, which a sibling copies as they are:
+
+- `scripts/build_site.py`, `scripts/check_site.py`, `scripts/community.py`, `scripts/triage.py`, `scripts/intake.py`, `scripts/sync.py`, `scripts/github_api.py` and the folder `scripts/sitebuild`;
+- `site/style.css`, and of `site/assets`: `list.js`, `nunito-latin.woff2`, `OFL.txt`, `dds-logo.svg`, `favicon-32x32.png`;
+- the folder `schema`.
+
+Everything else is a repository's own: its configuration, its pages, its records, its issue forms and its workflows. `scripts/intake.py` reports the checks under the names that the repository's own `.github/workflows/checks.yml` gives its jobs.
+
+What belongs to the patch tool and the release build is not shared, and the shared files run without it: `src/`, `scripts/release_build/`, `scripts/build_release.py`, `scripts/export_release.py`, `scripts/last_run.py`, `scripts/patches_snapshot.py`, `site/patched-release.md`, `site/run-steps.json`, `site/assets/replay.js`, and the workflows `full-release.yml` and `release-build.yml`. The test builds its sibling from the shared files alone and starts the sibling's own copy of the scripts, so a shared file that reaches for one of these fails there.
+
 A site has a page for the patched release only if `documents` lists `patched-release.html`. Without it no page links there, the build reads no release build, and `api/v1/last-run.json` is not written.
 
 A finding names its datasets by number (`code`, a whole number). Where the datasets of a provider have no number, a finding lists none and says in `scope` what it is about.

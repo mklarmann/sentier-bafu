@@ -87,10 +87,22 @@ LOGIN = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})(?:\[bot\])?")
 SHA = re.compile(r"[0-9a-f]{40}")
 BRANCH = re.compile(r"[A-Za-z0-9._/-]+")
 MAINTAINERS = {"OWNER", "MEMBER", "COLLABORATOR"}
-# The job names of .github/workflows/checks.yml. A pull request opened by a workflow starts no
-# workflow, so intake.yml runs the same checks and reports them under the same names.
-CHECK_CONTEXTS = ("Records and unit tests", "Site build and links", "Tests hold through a finding's life",
-                  "Patch tool lint and tests")
+# The job names of .github/workflows/checks.yml, read from that file: each repository has its
+# own jobs. A pull request opened by a workflow starts no workflow, so intake.yml runs the same
+# checks and reports them under the same names.
+CHECKS_FILE = ".github/workflows/checks.yml"
+
+
+def check_contexts(root=ROOT):
+    """The name of every job of the checks workflow, in its order; none where there is no file."""
+    path = Path(root) / CHECKS_FILE
+    if not path.is_file():
+        return ()
+    jobs = path.read_text(encoding="utf-8").split("\njobs:\n", 1)[-1]
+    return tuple(name.strip().strip("\"'") for name in re.findall(r"(?m)^    name: (.+)$", jobs))
+
+
+CHECK_CONTEXTS = check_contexts()
 
 # The fields of a record that come from the form; `/record` replaces these and nothing else.
 FORM_FIELDS = ("title", "kind", "datasets", "scope", "releases", "observation", "exposure", "method", "notes")

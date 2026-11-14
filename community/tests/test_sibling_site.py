@@ -1,17 +1,21 @@
 """The scripts and the stylesheet are the same files in every dataset's repository. What
 differs from one dataset to another is said in site/config.json and nowhere in the code.
 
-These tests build a made-up sibling of this repository from the same files: another provider
-and dataset, release ids of another shape, datasets without a number, no patched release and
-no release build, a form and a label of its own, and an index colour of its own. It must pass
-the check of the records, build and pass the check of the site. Then they hold the colour to
-its rules: whether a colour can be read is computed, not judged by eye.
+These tests build a made-up sibling of this repository: another provider and dataset, release
+ids of another shape, datasets without a number, no patched release and no release build, a
+form and a label of its own, and an index colour of its own. It holds the shared files (SHARED,
+the list site/README.md gives) and nothing else of this repository: not the patch tool, not
+the release build, not their scripts. It must pass the check of the records, build and pass
+the check of the site, and it must do so with its own copy of the scripts, started as a
+sibling would start them. Then the tests hold the colour to its rules: whether a colour can be
+read is computed, not judged by eye.
 """
 
 import io
 import json
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -35,6 +39,13 @@ try:
 except ModuleNotFoundError:  # the markdown package is a site-build dependency only
     build_site = None
 
+# What every dataset's repository has as the same files. site/README.md gives this list.
+SHARED = (
+    "scripts/build_site.py", "scripts/check_site.py", "scripts/community.py", "scripts/triage.py",
+    "scripts/intake.py", "scripts/sync.py", "scripts/github_api.py", "scripts/sitebuild",
+    "site/style.css", "site/assets/list.js", "site/assets/nunito-latin.woff2", "site/assets/OFL.txt",
+    "site/assets/dds-logo.svg", "site/assets/favicon-32x32.png", "schema",
+)
 REPO = "https://github.com/sentier-dev/sentier-agribalyse"
 SITE = "https://sentier-dev.github.io/sentier-agribalyse/"
 AUBERGINE = "#5d4a66"
@@ -50,45 +61,53 @@ class Quiet:
 
 
 def sibling(target, **changes):
-    """A copy of this repository that is about another dataset, from the same scripts."""
-    root = frozen.copy_repository(target)
-    config = json.loads((root / "site/config.json").read_text())
-    config.update(
-        dataset="AGRIBALYSE", provider="ADEME", repository=REPO, site_url=SITE,
+    """A repository about another dataset: the shared files, and everything else its own."""
+    root = Path(target)
+    for name in SHARED:
+        source, copy = ROOT / name, root / name
+        copy.parent.mkdir(parents=True, exist_ok=True)
+        if source.is_dir():
+            shutil.copytree(source, copy, ignore=shutil.ignore_patterns("__pycache__"))
+        else:
+            shutil.copy(source, copy)
+    pages = (("index.html", "Overview"), ("findings.html", "Findings"), ("feedback.html", "Feedback to ADEME"),
+             ("contributions.html", "Contributions"), ("take-part.html", "Take part"))
+    documents = [
+        {"title": title, "source": f"site/{page[:-5]}.md", "page": page, "description": f"{title} of the AGRIBALYSE workspace."}
+        for page, title in pages[1:]
+    ] + [{"title": "Data (JSON)", "source": "site/data.md", "page": "about/data.html", "description": "The data files of this site."}]
+    config = dict(
+        dataset="AGRIBALYSE", provider="ADEME", repository=REPO, site_url=SITE, source_ref="main",
         releases=[{"id": "3.2", "name": "AGRIBALYSE 3.2", "background": "ecoinvent 3.9.1"}],
         older_numbering_until=0, index=AUBERGINE, lookup_example="F1",
         finding_label="agribalyse-finding", finding_form="agribalyse-data-finding.yml",
         home_title="AGRIBALYSE: community findings", title_suffix="AGRIBALYSE findings",
         description="Users of the AGRIBALYSE database record measured findings here.",
+        # No patched release and no release build: no page for them is part of this site.
+        nav=[list(page) for page in pages], footer=[["about/data.html", "Data (JSON)"]], documents=documents,
     )
-    for key in ("dataset_code_pattern", "ledger_notes", "older_numbering_note", "sibling_name", "sibling_url",
-                "assessments"):
-        config.pop(key, None)
-    # No patched release and no release build: the page for them is not part of this site.
-    config["nav"] = [item for item in config["nav"] if item[0] != "patched-release.html"]
-    config["documents"] = [doc for doc in config["documents"] if doc["page"] != "patched-release.html"]
-    config["redirects"] = {}
     config.update(changes)
     (root / "site/config.json").write_text(json.dumps(config, indent=2) + "\n")
-    # Its own words: a page of prose with the blocks it asks for, and nothing about this repository.
+    # Its own words: a page of prose with the block it asks for, and nothing about this repository.
     blocks = {"findings.html": "findings-list", "feedback.html": "feedback-lists", "contributions.html": "contributions-list",
               "about/data.html": "data-files"}
-    for doc in config["documents"]:
+    for doc in documents:
         asked = f"\n\n<!-- generated: {blocks[doc['page']]} -->" if doc["page"] in blocks else ""
         (root / doc["source"]).write_text(f"# {doc['title']}\n\nWhat users of AGRIBALYSE find in the data.{asked}\n")
-        doc.pop("also", None)
-    (root / "site/config.json").write_text(json.dumps(config, indent=2) + "\n")
+    # Its own checks, under its own names: it has no patch tool to lint.
+    (root / ".github/workflows").mkdir(parents=True)
+    (root / ".github/workflows/checks.yml").write_text(
+        "name: Checks\non:\n  pull_request:\njobs:\n  records:\n    name: Records and unit tests\n"
+        "    runs-on: ubuntu-latest\n  site:\n    name: Site build and links\n    runs-on: ubuntu-latest\n"
+    )
     # Its own records: findings about processes that have a name and no number.
-    for name in ("community/findings", "community/contributions", "community/recommendations"):
-        shutil.rmtree(root / name)
-        (root / name).mkdir()
-    (root / "community/patches.json").unlink(missing_ok=True)
+    for name in ("community/findings/0", "community/contributions", "community/recommendations"):
+        (root / name).mkdir(parents=True)
     (root / "community/recommendations/tracker.json").write_text("[]\n")
     for n in (1, 2, 4, 12):
         record = synthetic_finding(n)
         record.update(datasets=[], scope="The process Wheat grain, conventional, at farm gate (FR).", releases=["3.2"])
         text = json.dumps(record).replace("https://github.com/sentier-dev/sentier-bafu", REPO)
-        (root / "community/findings/0").mkdir(exist_ok=True)
         (root / f"community/findings/0/F{n}.json").write_text(text + "\n")
     return root
 
@@ -114,6 +133,35 @@ class SiblingSite(unittest.TestCase):
         with Quiet():
             self.assertEqual(check_site.check(self.out), 0)
         self.assertIn("findings/F12.html", self.pages)
+
+    def test_it_runs_on_its_own_copy_of_the_scripts_without_the_patch_tool_or_the_release_build(self):
+        """Started as a sibling starts them: its own files, its own folder, a new process. A
+        script of the shared set that reaches for a file outside the set fails here."""
+        present = sorted(p.relative_to(self.root).as_posix() for p in (self.root / "scripts").iterdir())
+        self.assertEqual(present, sorted(name for name in SHARED if name.startswith("scripts/")))
+        for gone in ("scripts/last_run.py", "scripts/release_build", "scripts/build_release.py",
+                     "scripts/patches_snapshot.py", "src", "site/patched-release.md", "site/run-steps.json"):
+            self.assertFalse((self.root / gone).exists(), gone)
+
+        def run(*arguments):
+            return subprocess.run([sys.executable, *arguments], cwd=self.root, capture_output=True, text=True, check=False)
+
+        checked = run("scripts/community.py", "check")
+        self.assertEqual(checked.returncode, 0, checked.stdout + checked.stderr)
+        self.assertIn("Validated 4 findings", checked.stdout)
+        out = Path(self.temp.name) / "its-own-build"
+        built = run("scripts/build_site.py", "--offline", "--out", str(out))
+        self.assertEqual(built.returncode, 0, built.stdout + built.stderr)
+        self.assertNotIn("release build", built.stdout)
+        self.assertEqual(run("scripts/check_site.py", str(out)).returncode, 0)
+        self.assertEqual((out / "findings.html").read_text(), self.pages["findings.html"].replace(str(self.out), str(out)))
+        # the scripts the workflows start with the runner's own Python and nothing installed
+        names = run("-I", "-c", "import sys; sys.path.insert(0, 'scripts'); import intake, sync, triage; "
+                                "print(intake.CHECK_CONTEXTS, intake.FINDING_LABEL, sync.FINDING_LABEL, intake.FORM_FILE)")
+        self.assertEqual(names.returncode, 0, names.stderr)
+        self.assertEqual(names.stdout.strip(),
+                         "('Records and unit tests', 'Site build and links') agribalyse-finding agribalyse-finding "
+                         ".github/ISSUE_TEMPLATE/agribalyse-data-finding.yml")
 
     def test_a_release_id_is_a_name_of_the_configured_list_whatever_its_shape(self):
         record = json.loads((self.root / "community/findings/0/F1.json").read_text())
@@ -273,6 +321,20 @@ class Names(unittest.TestCase):
                 file.write_text(json.dumps(base | {key: bad}))
                 with self.subTest(key=key, bad=bad), self.assertRaises(ValueError):
                     community.load_config(tmp)
+
+    def test_the_list_of_shared_files_is_the_one_the_site_readme_gives(self):
+        told = (ROOT / "site/README.md").read_text().split("## A sibling site", 1)[1].split("\n## ", 1)[0]
+        for name in SHARED:
+            self.assertIn(f"`{name}`" if "/assets/" not in name else f"`{name.rsplit('/', 1)[1]}`", told, name)
+            self.assertTrue((ROOT / name).exists(), name)
+        # every script of the site and the records is either shared or named as not shared
+        scripts = sorted(p.relative_to(ROOT).as_posix() for p in (ROOT / "scripts").iterdir()
+                         if p.suffix == ".py" or p.is_dir() and p.name != "__pycache__")
+        own = {"scripts/release_build", "scripts/build_release.py", "scripts/export_release.py", "scripts/last_run.py",
+               "scripts/patches_snapshot.py", "scripts/full_release_table.py", "scripts/check_patched_release.py",
+               "scripts/new_patch.py", "scripts/build_brightway_flows_data.py", "scripts/check_integration_receipt.py",
+               "scripts/audit_flow_mapping.py", "scripts/audit_registry.py", "scripts/build_checks.py"}
+        self.assertEqual(set(scripts) - set(SHARED) - own, set(), "a new script is shared, or it is this repository's own")
 
     def test_the_shared_code_names_no_dataset(self):
         """A name of this repository's dataset in the shared files would be wrong in a sibling's copy.

@@ -26,7 +26,6 @@ from urllib.parse import urlsplit
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import community  # noqa: E402
 import github_api  # noqa: E402
-import last_run  # noqa: E402
 import triage  # noqa: E402
 from sitebuild import contributions, data, findings, lastrun, overview, pages, prose, shell, status, theme  # noqa: E402
 from sitebuild.text import esc, plural  # noqa: E402,F401
@@ -124,7 +123,13 @@ class Site:
             for doc in self.docs for source in [doc["source"], *doc.get("also", [])]
             if (self.root / source).is_file()
         )
-        self.last_run = last_run.load(self.built_by, last_run_snapshot, offline) if shows_run else None
+        # scripts/last_run.py and scripts/release_build/ belong to the release build: a repository
+        # without one does not have them, so they are loaded here and not with this file.
+        self.last_run = self.run_reader = None
+        if shows_run:
+            import last_run
+            self.run_reader = last_run
+            self.last_run = last_run.load(self.built_by, last_run_snapshot, offline)
         self.built = build_date()
         self.revision = revision(self.root)
         self.written = set()
@@ -400,7 +405,7 @@ class Site:
                     folder.rmdir()
         print(f"Built {self.dataset}: {len(self.pages)} pages in {out}")
         if self.last_run is not None:
-            print(last_run.said(self.last_run))
+            print(self.run_reader.said(self.last_run))
         # For maintainers, in the build log only: a public page does not name labels.
         differences = self.triage["label_differences"]
         if differences:
