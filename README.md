@@ -87,7 +87,7 @@ Some files that come with the code keep their own terms:
 
 - The EcoSpold 1 schema files in `src/bafu_community_fixes/schemas/ecospold1/` are under the EcoSpold Public License 1.0 (see [their README](src/bafu_community_fixes/schemas/ecospold1/README.md)).
 - The Brightway Flows data in `src/bafu_community_fixes/data/` is under the Open Database License 1.0 (see [its README](src/bafu_community_fixes/data/README.md)). So is `scripts/release_build/brightway-flows-targets-bafu-2026-v1.csv`, which is derived from Brightway Flows 1.1.0 for the build's second way of linking flows. The permission recorded for the first two files has not been asked for this one.
-- The Brightway installer in `brightway-installer/` is the code of sentier-brightway, moved here with its history. It is under the MIT licence too, © 2026 Départ de Sentier ([its LICENSE](brightway-installer/LICENSE)).
+- The Brightway installer in `src/sentier_brightway/` is the code of sentier-brightway, moved here with its history. It is under the MIT licence too, © 2026 Départ de Sentier ([its LICENSE](src/sentier_brightway/LICENSE)).
 - The Rubik font in the patch tool's reports ([Rubik-OFL.txt](src/bafu_community_fixes/report_assets/Rubik-OFL.txt)) and the site's Nunito font ([OFL.txt](site/assets/OFL.txt)) are under the SIL Open Font License 1.1.
 - The Départ de Sentier logo (`site/assets/dds-logo.svg`) is by Sylvain Prevost, under CC BY 4.0 (see [site/README.md](site/README.md)).
 

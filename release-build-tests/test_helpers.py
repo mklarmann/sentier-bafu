@@ -1,4 +1,4 @@
-"""The two helpers that prepare sentier-brightway's input. Synthetic tables only."""
+"""The helpers that prepare the installer's input. Synthetic tables only."""
 
 import importlib.util
 import json
@@ -33,7 +33,7 @@ COUNTS = {"processes.parquet": 2, "exchanges.parquet": 5}
 
 
 class Metadata(unittest.TestCase):
-    def test_keys_sentier_brightway_reads(self):
+    def test_keys_the_installer_reads(self):
         metadata = inventory_metadata.build_metadata(DISTINCT, COUNTS, TEXTS)
         self.assertEqual(metadata["source"], "x-2026")
         self.assertEqual(metadata["source_version"], "v1")
@@ -209,14 +209,10 @@ class PublishedResults(unittest.TestCase):
 
 
 class Source:
-    """Stands in for sentier-brightway's pinned source."""
+    """Stands in for one source of the installer's pins."""
 
     def __init__(self, name, ref, files, repo="org/repo"):
         self.name, self.ref, self.files, self.repo = name, ref, files, repo
-
-
-def make(source, commit, files):
-    return Source(source.name, commit, files, source.repo)
 
 
 class DataPins(unittest.TestCase):
@@ -225,48 +221,23 @@ class DataPins(unittest.TestCase):
         Source("sentier-mappings", "b" * 40, {"m/one.json": "2" * 64, "m/two.json": "3" * 64}),
     )
 
-    def test_without_overrides_the_pins_are_sentier_brightways(self):
-        sources, record = data_root.apply_overrides(self.sources, {}, make)
-        self.assertEqual([s.ref for s in sources], ["a" * 40, "b" * 40])
-        self.assertEqual({entry["pinned_by"] for entry in record}, {"sentier-brightway"})
+    def test_a_build_records_each_source_as_pinned(self):
+        record = data_root.pin_record(self.sources)
+        self.assertEqual([entry["name"] for entry in record], ["sentier-vocab", "sentier-mappings"])
+        self.assertEqual([entry["commit"] for entry in record], ["a" * 40, "b" * 40])
+        self.assertEqual({entry["repository"] for entry in record}, {"org/repo"})
+        self.assertEqual({entry["pinned_by"] for entry in record}, {"this repository"})
+        self.assertEqual(record[1]["files"], {"m/one.json": "2" * 64, "m/two.json": "3" * 64})
 
-    def test_an_override_moves_one_source_and_is_recorded_with_its_reason(self):
-        override = {"commit": "c" * 40, "reason": "a fix", "files": {"m/one.json": "4" * 64}}
-        sources, record = data_root.apply_overrides(
-            self.sources, {"sentier-mappings": override}, make
-        )
-        vocab, mappings = sources
-        self.assertEqual(vocab.ref, "a" * 40)
-        self.assertEqual(mappings.ref, "c" * 40)
-        self.assertEqual(mappings.files, {"m/one.json": "4" * 64, "m/two.json": "3" * 64})
-        entry = record[1]
-        self.assertEqual(entry["pinned_by"], "this build")
-        self.assertEqual(entry["reason"], "a fix")
-        self.assertEqual(entry["sentier_brightway_commit"], "b" * 40)
-        self.assertEqual(entry["files_that_differ"], ["m/one.json"])
-        self.assertEqual(record[0]["pinned_by"], "sentier-brightway")
-
-    def test_an_override_for_unknown_data_or_an_unknown_file_is_refused(self):
-        with self.assertRaisesRegex(ValueError, "not pinned"):
-            data_root.apply_overrides(self.sources, {"other": {"commit": "c" * 40}}, make)
-        override = {"commit": "c" * 40, "reason": "x", "files": {"m/three.json": "4" * 64}}
-        with self.assertRaisesRegex(ValueError, "other files"):
-            data_root.apply_overrides(self.sources, {"sentier-mappings": override}, make)
-
-    def test_the_committed_overrides_are_complete(self):
+    def test_the_build_has_no_second_place_for_a_data_pin(self):
         import tomllib
 
+        # a pin in two places can disagree: the build's pins name tools and no data
         pins = tomllib.loads((REPOSITORY / "scripts/release_build/pins.toml").read_text())
-        for name, override in pins.get("data", {}).items():
-            self.assertRegex(override["commit"], r"^[0-9a-f]{40}$", name)
-            self.assertTrue(override["reason"], name)
-            for digest in override.get("files", {}).values():
-                self.assertRegex(digest, r"^[0-9a-f]{64}$")
+        self.assertEqual(set(pins), {"tools"})
 
 
-@unittest.skipUnless(
-    importlib.util.find_spec("sentier_brightway"), "sentier-brightway is not installed here"
-)
+@unittest.skipUnless(HAS_PANDAS, "the installer (the `brightway` extra) is not installed here")
 class PinnedData(unittest.TestCase):
     def test_everything_but_the_inventory_is_taken_from_the_pins(self):
         sources, record = data_root.pinned_sources()
@@ -278,15 +249,15 @@ class PinnedData(unittest.TestCase):
             self.assertRegex(source.ref, r"^[0-9a-f]{40}$")
             for digest in source.files.values():
                 self.assertRegex(digest, r"^[0-9a-f]{64}$")
-        self.assertEqual({entry["pinned_by"] for entry in record}, {"sentier-brightway"})
+        self.assertEqual({entry["pinned_by"] for entry in record}, {"this repository"})
 
-    def test_the_committed_override_names_files_sentier_brightway_pins(self):
-        import tomllib
+    def test_the_pins_are_the_ones_the_installer_reads_on_its_own(self):
+        from sentier_brightway.fetch import load_packaged_manifest
 
-        pins = tomllib.loads((REPOSITORY / "scripts/release_build/pins.toml").read_text())
-        sources, record = data_root.pinned_sources(pins.get("data", {}))
-        moved = [entry for entry in record if entry["pinned_by"] == "this build"]
-        self.assertEqual([entry["name"] for entry in moved], sorted(pins.get("data", {})))
+        own = {source.name: source.ref for source in load_packaged_manifest()}
+        _, record = data_root.pinned_sources()
+        for entry in record:
+            self.assertEqual(entry["commit"], own[entry["name"]], entry["name"])
 
 
 if __name__ == "__main__":

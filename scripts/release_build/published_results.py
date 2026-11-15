@@ -1,4 +1,4 @@
-"""Summarise sentier-brightway's comparison with BAFU's published LCIA results.
+"""Summarise the installer's comparison with BAFU's published LCIA results.
 
 `sentier-brightway backtest` scores every dataset in the 25 EF 3.1 categories and joins
 BAFU's results workbook by dataset name and location. It writes `vs_bafu.csv` (one row per
@@ -7,7 +7,7 @@ writes a summary: how many datasets were joined, and per category how many were 
 the share within 1 % and within 5 %, and the median difference.
 
 Matching BAFU's published results is not a goal. The summary shows what a build changes.
-Run it in the sentier-brightway environment (it needs pandas).
+Run it in this repository's environment, with the `brightway` extra (it needs pandas).
 """
 
 import argparse

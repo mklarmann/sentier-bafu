@@ -1,4 +1,4 @@
-"""Write the `metadata.json` that sentier-brightway needs beside the importer's parquet files.
+"""Write the `metadata.json` that the installer needs beside the importer's parquet files.
 
 `sentier-importers run bafu-processes` and `run bafu-exchanges` write `processes.parquet` and
 `exchanges.parquet`. The folder's `metadata.json` (source, release, sectors, row counts) is

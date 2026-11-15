@@ -38,7 +38,7 @@ on:
       - "scripts/build_release.py"
       - "scripts/export_release.py"
       - "scripts/release_build/**"
-      - "brightway-installer/**"
+      - "src/sentier_brightway/**"
       - "community/layers/**"
       - "pyproject.toml"
       - "uv.lock"

@@ -11,7 +11,7 @@
 #   bafu           what BAFU's EcoSpold 1 files write (BAFU:2026 v1 uses these 20 strings on
 #                  11,947 reference functions and 420,063 exchanges)
 #   brightway      what the Brightway build writes on nodes and exchanges
-#                  (brightway-installer/src/sentier_brightway/units.py)
+#                  (src/sentier_brightway/units.py)
 #   openlca        the unit name given to the openLCA JSON-LD and ILCD writer. That writer
 #                  accepts the unit names of its own table (bw-ilcd-bridge, bw_ilcd/units.py,
 #                  which follows openLCA's reference data, GreenDelta/data refdata/units.csv)

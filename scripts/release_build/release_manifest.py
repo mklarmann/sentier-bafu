@@ -266,7 +266,7 @@ def build_section(folder: Path) -> dict | None:
         "built_from_fingerprint": release.get("built_tree_sha256"),
         "tools": {
             name: record.get("tools", {}).get(name)
-            for name in ("this repository", "sentier-importers", "sentier-brightway")
+            for name in ("this repository", "sentier-importers")
         },
         "data": [
             {key: pin.get(key) for key in ("name", "commit", "pinned_by")}

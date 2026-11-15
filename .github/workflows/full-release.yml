@@ -26,7 +26,7 @@ on:
       - "scripts/compare_flow_linkings.py"
       - "release-build-tests/**"
       - "export-tests/**"
-      - "brightway-installer/**"
+      - "src/sentier_brightway/**"
       - "community/layers/**"
       - "pyproject.toml"
       - "uv.lock"
@@ -121,15 +121,16 @@ jobs:
       - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           enable-cache: false
-      - name: Install the patch tool
-        run: uv sync --locked
+      - name: Install the patch tool and the installer
+        run: uv sync --locked --extra brightway
       - name: Build, audit, compare, export and write the manifest for eight made-up datasets
         # One command, as for the real release: provider and patched build, the checks of
         # the patch run, the comparison, the exports with their read-back, a made-up
         # contribution built beside the patched copy, the manifest. Clones
         # sentier-importers at the commit in scripts/release_build/pins.toml, runs the
-        # Brightway installer of this repository (brightway-installer/) and downloads the
-        # pinned flow terms, methods and mapping (37 MB, checked by SHA-256). No BAFU data.
+        # patch tool and the Brightway installer from the environment above, and downloads
+        # the pinned flow terms, methods and mapping (37 MB, checked by SHA-256). No BAFU
+        # data.
         env:
           RELEASE_BUILD_WHOLE_PATH: "1"
           RELEASE_BUILD_TOOLS: ${{ runner.temp }}/tools
@@ -137,19 +138,17 @@ jobs:
         run: |
           uv run --no-project --python 3.12 python -m unittest discover \
             -s release-build-tests -p test_whole_path.py
-      - name: Run the build's tests that need pandas, SciPy and bw2data
+      - name: Run the build's tests, with the patch tool, pandas, SciPy and bw2data at hand
+        # The one environment holds everything a test of the build may need, so no test of
+        # this folder is skipped for a missing package (the whole path above is skipped
+        # here: it has run).
         if: ${{ !cancelled() }}
-        run: |
-          uv run --frozen --project brightway-installer --python 3.12 \
-            --extra testing python -m unittest discover -s release-build-tests
+        run: uv run --no-sync python -m unittest discover -s release-build-tests
       - name: Run the export step's tests on a made-up database
         if: ${{ !cancelled() }}
         run: |
           uv run --no-project --python 3.12 --with-requirements export-tests/requirements.txt \
             pytest export-tests
-      - name: Check the adapter against what the patch tool writes
-        if: ${{ !cancelled() }}
-        run: uv run --no-sync python -m unittest discover -s release-build-tests -p test_adapter.py
       - name: Check the data of the second linking against its sources
         # Downloads two files of Brightway Flows 1.1.0 from Zenodo (62 MB), checks their MD5
         # and writes the file again in memory: the committed file must be what they give.

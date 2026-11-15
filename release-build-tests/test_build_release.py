@@ -125,56 +125,67 @@ class Plan(unittest.TestCase):
 
 
 class Pins(unittest.TestCase):
-    def test_the_importer_is_pinned_by_full_commit_and_the_installer_is_in_this_repository(self):
+    def test_the_importer_is_the_one_pinned_checkout(self):
         pins = build_release.load_pins()
-        self.assertEqual(set(pins), {"sentier-importers", "sentier-brightway"})
-        importer, installer = pins["sentier-importers"], pins["sentier-brightway"]
+        self.assertEqual(set(pins), {"sentier-importers"})
+        importer = pins["sentier-importers"]
         self.assertRegex(importer["commit"], r"^[0-9a-f]{40}$")
         self.assertTrue(importer["repository"].startswith("https://github.com/sentier-dev/"))
-        # the installer has no checkout to pin: its code is a folder of this repository,
-        # and the pin says where it came from
-        self.assertNotIn("commit", installer)
-        self.assertNotIn("repository", installer)
-        folder = build_release.REPOSITORY / installer["folder"]
-        self.assertTrue((folder / "pyproject.toml").is_file())
-        self.assertTrue((folder / "uv.lock").is_file())
-        self.assertTrue((folder / "src/sentier_brightway/sources.toml").is_file())
-        self.assertRegex(installer["moved_at"], r"^[0-9a-f]{40}$")
-        self.assertTrue(installer["moved_from"].startswith("https://github.com/sentier-dev/"))
+
+    def test_the_installer_is_a_package_of_this_repository(self):
+        import tomllib
+
+        project = tomllib.loads((build_release.REPOSITORY / "pyproject.toml").read_text())
+        # one project and one lock: the installer is the second package of the distribution,
+        # behind the extra the build asks for, and no pin names it
+        self.assertIn("sentier_brightway", project["tool"]["uv"]["build-backend"]["module-name"])
+        self.assertIn(build_release.Project.extra, project["project"]["optional-dependencies"])
+        self.assertEqual(
+            project["project"]["scripts"]["sentier-brightway"], "sentier_brightway.cli:main"
+        )
+        package = build_release.REPOSITORY / "src" / "sentier_brightway"
+        self.assertTrue((package / "sources.toml").is_file())
+        # no project of its own: neither the old folder nor a project file beside the code
+        self.assertFalse((build_release.REPOSITORY / "brightway-installer").exists())
+        for name in ("pyproject.toml", "uv.lock"):
+            self.assertTrue((build_release.REPOSITORY / name).is_file())
+            self.assertEqual(list((build_release.REPOSITORY / "src").glob(f"**/{name}")), [])
+        pins = (build_release.HELPERS / "pins.toml").read_text()
+        self.assertNotIn("[data.", pins)  # the data is pinned in sources.toml, and only there
 
     def test_the_tool_command_runs_in_the_locked_environment(self):
         pin = {"commit": "0" * 40, "python": "3.12", "extra": "testing", "repository": "x"}
-        tool = build_release.Tool("sentier-brightway", pin, Path("/tools/sb"), Path("/venvs"))
+        tool = build_release.Tool("sentier-importers", pin, Path("/tools/si"), Path("/venvs"))
         self.assertEqual(
-            tool.command("sentier-brightway", "db"),
+            tool.command("sentier-importers", "run"),
             [
-                *("uv", "run", "--frozen", "--project", "/tools/sb"),
-                *("--python", "3.12", "--extra", "testing", "sentier-brightway", "db"),
+                *("uv", "run", "--frozen", "--project", "/tools/si"),
+                *("--python", "3.12", "--extra", "testing", "sentier-importers", "run"),
             ],
         )
-        self.assertEqual(tool.env(), {"UV_PROJECT_ENVIRONMENT": "/venvs/sentier-brightway"})
+        self.assertEqual(tool.env(), {"UV_PROJECT_ENVIRONMENT": "/venvs/sentier-importers"})
         self.assertEqual(build_release.Tool("t", pin, Path("/tools/t"), None).env(), {})
 
-    def test_a_tool_of_this_repository_runs_from_its_folder_here(self):
-        pin = build_release.load_pins()["sentier-brightway"]
-        tool = build_release.Tool("sentier-brightway", pin, Path("/tools/sb"), Path("/venvs"))
-        folder = build_release.REPOSITORY / "brightway-installer"
-        # the folder for checkouts is not where it is, and nothing is cloned there
-        self.assertEqual(tool.folder, folder)
-        self.assertEqual(
-            tool.command("sentier-brightway", "db")[:5],
-            ["uv", "run", "--frozen", "--project", str(folder)],
-        )
-        self.assertEqual(tool.env(), {"UV_PROJECT_ENVIRONMENT": "/venvs/sentier-brightway"})
-        # it is at this repository's commit, whatever --allow-unpinned says
-        self.assertEqual(tool.ensure(False), build_release._repository_commit())
-        self.assertEqual(tool.ensure(True), build_release._repository_commit())
-
-    def test_a_tool_of_this_repository_that_is_missing_stops_the_build(self):
-        tool = build_release.Tool("gone", {"folder": "no-such-folder"}, Path("/tools/x"), None)
-        with self.assertRaisesRegex(build_release.BuildError, "is not in this repository"):
-            tool.ensure(True)
-        self.assertFalse(Path("/tools/x").exists())
+    def test_this_repositorys_steps_run_in_its_one_environment(self):
+        project = build_release.Project(Path("/venvs"))
+        repository = str(build_release.REPOSITORY)
+        for command in (("bafu-fixes", "run"), ("sentier-brightway", "db")):
+            # the patch tool and the installer: the same project, lock and extra
+            self.assertEqual(
+                project.command(*command),
+                [
+                    "uv",
+                    "run",
+                    "--frozen",
+                    "--project",
+                    repository,
+                    "--extra",
+                    "brightway",
+                    *command,
+                ],
+            )
+        self.assertEqual(project.env(), {"UV_PROJECT_ENVIRONMENT": "/venvs/sentier-bafu"})
+        self.assertEqual(build_release.Project(None).env(), {})
 
 
 class Checkout(unittest.TestCase):
@@ -464,7 +475,7 @@ class BuildRecords(unittest.TestCase):
             "import_fixes": {"renumber-exchanges": 3},
             "record_of_changes": ["release-report.html"],
         },
-        "tools": {"this repository": "c", "sentier-importers": "d", "sentier-brightway": "e"},
+        "tools": {"this repository": "c", "sentier-importers": "d"},
         "databases": {"no_ef_3_1_flow": "bafu-2026-v1-patched-residual"},
         "data_pins": [{"name": "sentier-mappings", "commit": "f" * 40}],
     }

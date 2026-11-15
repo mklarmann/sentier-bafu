@@ -99,13 +99,14 @@ Five jobs, none of which writes and none of which needs BAFU's data:
   use, and runs the unit tests on the copy. A test that reads the repository's own records fails
   here, before it fails on somebody's pull request. Tests of rules read
   `community/tests/fixtures/frozen` instead.
-- **Patch tool lint and tests**: the patch tool's environment (Python 3.14, `uv sync --locked`),
-  `ruff`, the tool's tests on a small made-up dataset, `community.py check` once more where the
-  tool is installed, and the receipt that accounts for every file of the two repositories that
-  were brought together.
-- **Brightway installer lint and tests**: the installer's own locked environment (Python 3.12,
-  `uv run --frozen --project brightway-installer`), `ruff` with the folder's settings, and the
-  installer's tests on a made-up data root. Nothing is downloaded.
+- **Patch tool lint and tests**: the project's environment without the installer's
+  dependencies (Python 3.14, `uv sync --locked`), `ruff` over every Python file the project's
+  settings cover (the patch tool, the installer, the scripts), the patch tool's tests on a small
+  made-up dataset, `community.py check` once more where the tool is installed, and the receipt
+  that accounts for every file of the two repositories that were brought together.
+- **Brightway installer tests**: the same project and lock with the `brightway` extra
+  (`uv sync --locked --extra brightway`), and the installer's tests on a made-up data root.
+  Nothing is downloaded.
 
 `community/patches.json`, from which the site reads the community patches, is never kept by hand:
 `scripts/patches_snapshot.py` writes it from the patch registry, and `community.py check` fails
@@ -428,7 +429,7 @@ Before merging:
 2. **Branch protection for `main`:** require a pull request. If checks are to be required,
    require exactly `Records and unit tests`, `Site build and links`,
    `Tests hold through a finding's life`, `Patch tool lint and tests` and
-   `Brightway installer lint and tests`; the intake reports its
+   `Brightway installer tests`; the intake reports its
    proposals under these names. The jobs of `full-release.yml` run only for pull requests that
    touch the patch tool or the build, so they cannot be required for every pull request.
 3. **Tags:** a rule that only maintainers create tags `patched-*`.

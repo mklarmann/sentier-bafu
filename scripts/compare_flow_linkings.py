@@ -9,16 +9,16 @@ uses, scores every dataset in the 25 EF 3.1 categories, and writes what differs:
 * per flow, the factor each linking ends on: which flows lose a factor, which gain one,
   and why a flow has none under the links.
 
-Run it in the installer's environment, which has pandas, bw2calc and the installer:
+Run it in this repository's environment, with the `brightway` extra:
 
-    uv run --frozen --project brightway-installer --python 3.12 --extra testing \\
+    uv run --frozen --extra brightway \\
         python scripts/compare_flow_linkings.py --work output/linkings --out comparison.json
 
-The data is the build's: the flow terms, the methods and the mapping at the installer's
-pins, moved where `scripts/release_build/pins.toml` moves one (the mapping, today), and
-BAFU's inventory at the installer's pin. Everything is downloaded once into `--work` and
-checked by SHA-256. `--data-root` takes a folder that already holds the four data folders
-instead; the file then says that the data was supplied.
+The data is the build's, because the build and the installer read one set of pins
+(`src/sentier_brightway/sources.toml`): the flow terms, the methods, the mapping, and BAFU's
+inventory as sentier-inventory holds it. The installer downloads them once into its cache
+and checks each file's SHA-256. `--data-root` takes a folder that already holds the four
+data folders instead; the file then says that the data was supplied.
 
 `--work` receives two exports that hold BAFU's inventory: keep that folder on your machine.
 The file written with `--out` holds counts, the names of elementary flows and no amount of
@@ -29,41 +29,31 @@ import argparse
 import collections
 import json
 import sys
-import tomllib
 from datetime import date
 from pathlib import Path
 
 REPOSITORY = Path(__file__).resolve().parents[1]
 HELPERS = REPOSITORY / "scripts" / "release_build"
 FLOW_LINKS = HELPERS / "brightway-flows-targets-bafu-2026-v1.csv"
-PINS = HELPERS / "pins.toml"
-INVENTORY = "sentier-inventory"
 MAPPING, LINKS = "sentier-mappings", "brightway-flows"
 
 
-def build_data(work: Path, pins: Path) -> tuple[Path, list[dict]]:
-    """A data root with the data the build uses, and the pins it was made from."""
-    sys.path.insert(0, str(HELPERS))
-    import data_root
-    from sentier_brightway.fetch import load_packaged_manifest, manifest_key, materialize
+def pinned_data() -> tuple[Path, list[dict]]:
+    """The data at the installer's pins, downloaded and checked, and the pins. The pinned
+    files are taken whatever `$SENTIER_DATA_ROOT` says, so that the file names what was read."""
+    from sentier_brightway.fetch import (
+        default_cache_dir,
+        load_packaged_manifest,
+        manifest_key,
+        materialize,
+    )
 
-    overrides = tomllib.loads(pins.read_text()).get("data", {})
-    sources, record = data_root.pinned_sources(overrides)
-    inventory = tuple(s for s in load_packaged_manifest() if s.name == INVENTORY)
-    folders = {}
-    for group in (sources, inventory):
-        folder = work / "pinned" / manifest_key(group)
-        materialize(group, cache_dir=folder)
-        folders |= {source.name: folder / source.name for source in group}
-    root = work / "data-root"
-    root.mkdir(parents=True, exist_ok=True)
-    for name, folder in folders.items():
-        link = root / name
-        if link.is_symlink():
-            link.unlink()
-        link.symlink_to(folder)
-    used = [{k: pin[k] for k in ("name", "commit", "pinned_by")} for pin in record]
-    used += [{"name": s.name, "commit": s.ref, "pinned_by": "sentier-brightway"} for s in inventory]
+    manifest = load_packaged_manifest()
+    root = materialize(manifest, cache_dir=default_cache_dir() / manifest_key(manifest))
+    used = [
+        {"name": source.name, "commit": source.ref, "pinned_by": "this repository"}
+        for source in manifest
+    ]
     return root, used
 
 
@@ -77,6 +67,7 @@ def relative(x, y):
 def datasets(work: Path, data_root: Path, flow_links: Path) -> dict:
     """Score every dataset both ways; per category, how many move and which way."""
     import numpy as np
+
     import sentier_brightway as sb
     from sentier_brightway.backtest import CATEGORIES
     from sentier_brightway.backtest.scorer import score_all
@@ -268,13 +259,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--work", type=Path, required=True, help="Folder for data and exports")
     parser.add_argument("--out", type=Path, required=True, help="The comparison (JSON)")
     parser.add_argument("--data-root", type=Path, help="A folder with the four data folders")
-    parser.add_argument("--pins", type=Path, default=PINS, help="The build's pins.toml")
     parser.add_argument("--flow-links", type=Path, default=FLOW_LINKS)
     args = parser.parse_args(argv)
     if args.data_root:
         root, used = args.data_root.resolve(), "supplied with --data-root"
     else:
-        root, used = build_data(args.work.resolve(), args.pins)
+        root, used = pinned_data()
     result = {
         "date": date.today().isoformat(),
         "data": used,

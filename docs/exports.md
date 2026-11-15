@@ -69,7 +69,7 @@ The Brightway file is a `.bw2package` because it installs the datasets, with nam
 metadata, into a Brightway project of the user's choice (tested with bw2data 4.8), and
 because the two other writers read exactly this file: all three exports come from one
 checksummed source. It does not replace the `registry/` and `bw_package/` files that
-sentier-brightway writes for calculating without a project.
+the installer's `sentier-brightway files` writes for calculating without a project.
 
 ## Where the provenance is
 

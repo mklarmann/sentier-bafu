@@ -7,8 +7,9 @@ amounts are BAFU's. Both say what the build itself changed (the relinking to EF 
 A database built with a contribution's layer says which contribution, and never carries
 BAFU's name or the patched copy's.
 
-The record goes under the key `release_build` of each named database. Run it in the
-sentier-brightway environment, with `BRIGHTWAY2_DIR` set to the folder the build wrote.
+The record goes under the key `release_build` of each named database. Run it in this
+repository's environment, with the `brightway` extra and with `BRIGHTWAY2_DIR` set to the
+folder the build wrote.
 """
 
 import argparse

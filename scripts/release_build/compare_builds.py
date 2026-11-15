@@ -23,9 +23,10 @@ It answers three questions and fails if it can't answer one of them:
 3. Which scores moved, and does every moved dataset have a changed dataset in its supply
    chain whose change can affect that method?
 
-Run it in the environment that holds sentier-brightway (pandas, and the bridge and method
-readers). The output holds dataset codes, names, counts and scores; no inventory amounts
-other than the before and after values of changed exchanges.
+Run it in this repository's environment, with the `brightway` extra (pandas, and the
+installer's readers of the links and the methods). The output holds dataset codes, names,
+counts and scores; no inventory amounts other than the before and after values of changed
+exchanges.
 """
 
 import argparse

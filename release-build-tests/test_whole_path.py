@@ -167,10 +167,7 @@ class WholePath(unittest.TestCase):
         import build_release
 
         venvs = os.environ.get("RELEASE_BUILD_VENVS")
-        pin = build_release.load_pins()["sentier-brightway"]
-        tool = build_release.Tool(
-            "sentier-brightway", pin, Path("."), Path(venvs) if venvs else None
-        )
+        tool = build_release.Project(Path(venvs) if venvs else None)
         out = self.root / "linkings.json"
         command = tool.command(
             *("python", str(REPOSITORY / "scripts" / "compare_flow_linkings.py")),

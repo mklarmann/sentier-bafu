@@ -1,33 +1,19 @@
-# Tools the Brightway build calls. sentier-importers is a checkout pinned by commit:
-# `build_release.py` refuses a checkout at another commit or with local changes. Change the
-# pin together with a measured run. sentier-brightway's code is part of this repository.
+# The one tool the build takes from another repository. sentier-importers is a checkout
+# pinned by commit: `build_release.py` refuses a checkout at another commit or with local
+# changes. Change the pin together with a measured run.
 
 [tools.sentier-importers]
 repository = "https://github.com/sentier-dev/sentier-importers"
 commit = "28b28edd152a507f4ad02d3fde715223ea7d25e5"
 python = "3.12"
 
-# The code that writes the Brightway databases and the EF 3.1 methods lives in this
-# repository, in `brightway-installer/`, with the history of sentier-dev/sentier-brightway up
-# to the commit named here (moved on 15 November 2026). It keeps its own `uv` environment
-# and lock, so the build runs it as before; what it was built with is this repository's commit.
-[tools.sentier-brightway]
-folder = "brightway-installer"
-moved_from = "https://github.com/sentier-dev/sentier-brightway"
-moved_at = "90d57eb47430015c378aa31572600c9722bb5b07"
-python = "3.12"
-extra = "testing" # brings bw2data, which the `db` command and the audit need
-
-# The elementary flow terms, the EF 3.1 methods and the BAFU to EF 3.1 mapping are pinned by
-# sentier-brightway, by commit and SHA-256, in its `sources.toml`
-# (`brightway-installer/src/sentier_brightway/sources.toml`). The build takes those files
-# and replaces only the inventory. A `[data.<name>]` table moves one of them to another commit;
-# `files` lists the SHA-256 of every file that differs from sentier-brightway's pin.
-
-[data.sentier-mappings]
-commit = "179aab3047c982e8cfa40b318da8be4b3e057782"
-reason = "Contains the correction of BAFU's Chlorine to air (high population) onto EF 3.1 chlorine (sentier-mappings #22, 12 November 2026), which sentier-brightway's pin 5ba4acd does not have."
-
-[data.sentier-mappings.files]
-"data/bafu-2026-v1__ef-3.1/biosphere-1-curated.json" = "4fddf714710e4c44ca2bba760020820dd1ddd15ffb11fe802fba12cf927f3dfd"
-"data/bafu-2026-v1__ef-3.1/metadata.json" = "f4f543f4a6fd6648721529c0c87a991ed4a58c259acd08d688a9d93416e311ad"
+# Everything else is this repository's own and is pinned where it lives:
+#
+# - the patch tool and the Brightway installer (`src/bafu_community_fixes`,
+#   `src/sentier_brightway`) run in this repository's locked environment (`uv.lock`), with
+#   the `brightway` extra; a build records this repository's commit;
+# - the elementary flow terms, the EF 3.1 methods and the BAFU to EF 3.1 mapping are pinned
+#   by commit and SHA-256 in `src/sentier_brightway/sources.toml`. The build takes those
+#   files and replaces only the inventory. The mapping is at sentier-mappings `179aab3`,
+#   which holds the correction of BAFU's Chlorine to air (high population) onto EF 3.1
+#   chlorine (sentier-mappings #22, 12 November 2026).

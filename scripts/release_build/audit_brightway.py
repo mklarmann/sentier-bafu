@@ -1,4 +1,4 @@
-"""Audit a Brightway database installed by sentier-brightway and write one JSON file.
+"""Audit a Brightway database the installer of this repository wrote; write one JSON file.
 
 It reads the Brightway project itself, not the files it was built from:
 
@@ -27,9 +27,10 @@ dataset, and one transposed solve per method for all datasets. The two must agre
 residual of every solve is checked, and three sample scores are recomputed with bw2calc's
 own `LCA`. `LeastSquaresLCA` is never used.
 
-Run it in the environment that holds sentier-brightway, with `BRIGHTWAY2_DIR` set to the
-folder the build wrote. It refuses to run without `BRIGHTWAY2_DIR`, so that it can't open
-the Brightway projects a person keeps in their default folder.
+Run it in this repository's environment, with the `brightway` extra and with
+`BRIGHTWAY2_DIR` set to the folder the build wrote. It refuses to run without
+`BRIGHTWAY2_DIR`, so that it can't open the Brightway projects a person keeps in their
+default folder.
 """
 
 import argparse
@@ -581,7 +582,7 @@ def audit(
         key: bd.get_node(database=key[0], code=key[1]) for key in emitted if key[0] == residual_db
     }
     residual_names = sorted({node["name"] for node in residual_nodes.values()})
-    # sentier-brightway gives a flow without an EF 3.1 flow its compartment from the pinned
+    # the installer gives a flow without an EF 3.1 flow its compartment from the pinned
     # flow terms. A flow with no compartment is one those terms don't hold: its name,
     # compartment or unit differs from BAFU's release, so the mapping can't know it either.
     unknown = {key: node for key, node in residual_nodes.items() if not node.get("categories")}
@@ -723,7 +724,7 @@ def audit(
             **{
                 name: _version(name)
                 for name in (
-                    "sentier-brightway",
+                    "bafu-community-fixes",  # the patch tool and the installer
                     "bw2data",
                     "bw2calc",
                     "bw-processing",

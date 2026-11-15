@@ -6,9 +6,12 @@ name: Checks
 # lint and tests. Nothing is written and nothing is deployed.
 #
 # The records, the site and their tests need Python 3.12 and run outside the package project
-# (`uv run --no-project --python 3.12`). The patch tool needs Python 3.14 and its locked
-# environment (`uv sync --locked`). CONTRIBUTING.md lists these commands for a run on your own
-# machine, and community/tests/test_workflows.py compares the two lists.
+# (`uv run --no-project --python 3.12`). The patch tool and the Brightway installer are the
+# two packages of this repository's project: Python 3.14 and one lock. The patch tool runs
+# without the installer's dependencies (`uv sync --locked`); the installer needs the
+# `brightway` extra (`uv sync --locked --extra brightway`). CONTRIBUTING.md lists these
+# commands for a run on your own machine, and community/tests/test_workflows.py compares the
+# two lists.
 #
 # What needs BAFU's release (the patch run on a pull request, the build) is in
 # full-release.yml and release-build.yml.
@@ -102,8 +105,10 @@ jobs:
         run: uv run --no-project --python 3.12 --with markdown==3.7 --with pyyaml==6.0.2 python community/tests/lifecycle_steps.py
 
   package:
-    # The patch tool's own lint and tests, on its small fixture. What a patch does to BAFU's
-    # full release is shown by full-release.yml.
+    # Lint and formatting of every Python file the project's settings cover (the patch tool,
+    # the installer, the scripts), and the patch tool's tests on its small fixture, in an
+    # environment without the installer's dependencies: the patch tool must run without
+    # them. What a patch does to BAFU's full release is shown by full-release.yml.
     name: Patch tool lint and tests
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -141,10 +146,10 @@ jobs:
           uv run --no-project --python 3.12 python scripts/check_integration_receipt.py --rev "$rev"
 
   installer:
-    # The Brightway installer of this repository (brightway-installer/), in its own locked
-    # environment and with its own lint settings: lint, formatting, and its tests on a
-    # made-up data root. None of BAFU's data, and no download.
-    name: Brightway installer lint and tests
+    # The Brightway installer (src/sentier_brightway), the project's second package: its
+    # tests on a made-up data root, in the project's locked environment with the `brightway`
+    # extra. None of BAFU's data, and no download. Its lint runs in the job above.
+    name: Brightway installer tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
     concurrency:
@@ -157,11 +162,8 @@ jobs:
           persist-credentials: false
       - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
-          python-version: "3.12"
           enable-cache: false
-      - name: Lint
-        run: uv run --frozen --project brightway-installer --python 3.12 --extra testing --extra dev ruff check brightway-installer
-      - name: Check the formatting
-        run: uv run --frozen --project brightway-installer --python 3.12 --extra testing --extra dev ruff format --check brightway-installer
+      - name: Install the patch tool and the installer
+        run: uv sync --locked --extra brightway
       - name: Run the installer's tests
-        run: uv run --frozen --project brightway-installer --python 3.12 --extra testing --extra dev pytest brightway-installer
+        run: uv run --no-sync pytest installer-tests
