@@ -18,8 +18,9 @@ Everything comes from public, pinned sources: the crosswalk in this repository, 
 files of Brightway Flows 1.1.0 from Zenodo (https://doi.org/10.5281/zenodo.23554066),
 checked against their MD5 checksums. Downloads are cached in the user cache folder.
 
-Writes `src/bafu_community_fixes/data/brightway-flows-targets-bafu-2026-v1.csv`, one row
-for each row of the crosswalk, in the same order.
+Writes `scripts/release_build/brightway-flows-targets-bafu-2026-v1.csv`, one row for each
+row of the crosswalk, in the same order. The file is kept with the build, which reads it,
+and not with the patch tool's data: the patch tool does not use it.
 
 Usage:
     uv run python scripts/build_brightway_flows_targets.py
@@ -41,10 +42,16 @@ import sys
 import urllib.request
 from pathlib import Path
 
-DATA = Path(__file__).parents[1] / "src" / "bafu_community_fixes" / "data"
+REPOSITORY = Path(__file__).parents[1]
 RELEASE = "bafu-2026-v1"
-CROSSWALK = DATA / f"brightway-flows-crosswalk-{RELEASE}.csv"
-TARGETS = DATA / f"brightway-flows-targets-{RELEASE}.csv"
+CROSSWALK = (
+    REPOSITORY
+    / "src"
+    / "bafu_community_fixes"
+    / "data"
+    / f"brightway-flows-crosswalk-{RELEASE}.csv"
+)
+TARGETS = REPOSITORY / "scripts" / "release_build" / f"brightway-flows-targets-{RELEASE}.csv"
 
 BRIGHTWAY_FLOWS_RELEASE = "1.1.0"
 ZENODO_DOI = "10.5281/zenodo.23554066"
@@ -67,7 +74,9 @@ FIELDS = (
     "flow_id",  # the same flow in the pinned release
     *("flow_name", "flow_context", "flow_unit", "flow_list"),
     *("conversion", "conversion_basis"),
-    *("factors_from", "factors_derivation"),
+    # the flow named as the source of factors, its unit (a factor is per unit of a flow, so
+    # it can be taken over only between flows counted in one unit), and how it is derived
+    *("factors_from", "factors_unit", "factors_derivation"),
 )
 
 
@@ -177,6 +186,13 @@ def targets(crosswalk: list[dict], harmonised: dict, factors: dict) -> list[dict
             multiplier, basis = None, ""
         outside = flow["source"] != EF_LIST
         named, how = sources.get(identifier, (set(), set())) if outside else (set(), set())
+        source_of_factors = next(iter(named)) if len(named) == 1 else ""
+        # The named source is a flow of the list where the factor is carried over from it.
+        # Where the factor is adopted or restated, it is a flow of another implementation's
+        # own list: the unit of such a flow is not known here, and stays empty.
+        source_flow = (
+            flows.get(current(source_of_factors, redirects)) if source_of_factors else None
+        )
         rows.append(
             {field: row[field] for field in ("name", "category", "subCategory", "unit", "key")}
             | {
@@ -188,7 +204,8 @@ def targets(crosswalk: list[dict], harmonised: dict, factors: dict) -> list[dict
                 "flow_list": flow["source"],
                 "conversion": "" if multiplier is None else repr(float(multiplier)),
                 "conversion_basis": basis if multiplier is not None else "",
-                "factors_from": next(iter(named)) if len(named) == 1 else "",
+                "factors_from": source_of_factors,
+                "factors_unit": source_flow["unit"] if source_flow else "",
                 "factors_derivation": "+".join(sorted(how)),
             }
         )
@@ -209,8 +226,9 @@ def summary(rows: list[dict]) -> str:
     return (
         f"{len(rows)} rows ({len(shipped)} flows as shipped): "
         f"{len(shipped) - len(outside)} link to an EF 3.1 flow, {len(outside)} to a flow outside "
-        f"EF 3.1, of which {sum(bool(row['factors_from']) for row in outside)} take their "
-        f"factors from one EF 3.1 flow; "
+        f"EF 3.1, of which {sum(bool(row['factors_from']) for row in outside)} have one flow "
+        f"named as the source of their factors "
+        f"({sum(bool(row['factors_unit']) for row in outside)} of them a flow of the list); "
         f"{sum(row['brightway_flow_id'] != row['flow_id'] for row in shipped)} identifier "
         f"replaced by the release; {sum(bool(row['conversion']) for row in shipped)} "
         f"conversions stated"

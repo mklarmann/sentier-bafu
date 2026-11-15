@@ -23,8 +23,8 @@ from .compare import (
 )
 
 BASELINE = "BAFU-2026 v1 LCIA Results (openLCA, EF 3.1)"
-EMISSIONS_CSV = "emissions.csv"  # absolute scores; read by dashboard/backtest_dashboard.html
-VS_BAFU_CSV = "vs_bafu.csv"  # pct vs BAFU; read by the dashboard
+EMISSIONS_CSV = "emissions.csv"  # absolute scores
+VS_BAFU_CSV = "vs_bafu.csv"  # pct vs BAFU; the build of sentier-bafu reads it
 VS_BAFU_META = "vs_bafu_meta.json"
 OUTLIER_REASONS = "outlier_reasons.json"  # per-category notes; header (i) + cell tooltip
 BOXES_JSON = "boxes.json"  # box-plot statistics per sector and category; the page's main view

@@ -38,6 +38,7 @@ on:
       - "scripts/build_release.py"
       - "scripts/export_release.py"
       - "scripts/release_build/**"
+      - "brightway-installer/**"
       - "community/layers/**"
       - "pyproject.toml"
       - "uv.lock"

@@ -22,7 +22,7 @@ OTHER = "b" * 40
 FIELDS = (
     *("name", "category", "subCategory", "unit", "key", "brightway_flow_id", "flow_id"),
     *("flow_name", "flow_context", "flow_unit", "flow_list", "conversion", "conversion_basis"),
-    *("factors_from", "factors_derivation"),
+    *("factors_from", "factors_unit", "factors_derivation"),
 )
 
 
@@ -42,6 +42,7 @@ def row(name, category, sub, unit, flow_id, **more):
         "conversion": "",
         "conversion_basis": "",
         "factors_from": "",
+        "factors_unit": "",
         "factors_derivation": "",
     }
     return fields | more
@@ -65,6 +66,7 @@ def rows(heat_unit="kWh"):
             conversion="0.001",
             conversion_basis="unit-table",
             factors_from=E2,
+            factors_unit="kBq",
             factors_derivation="carried",
         ),
         row(
@@ -150,9 +152,13 @@ def test_a_flow_outside_ef_without_a_named_source_has_no_factor(data_root):
     assert links.bridge[B3].nomenclature is True
     assert all(OTHER not in dict(spec.cfs) for spec in links.methods)
     assert links.report.without_factor == 1
-    # and with the option that leaves such flows unlinked, it stays in the residual database
+    # and with the option that leaves such flows unlinked, it stays in the residual database,
+    # and the report says how many were left out
     skipped = linked(data_root, rows(heat_unit="MJ"), include_without_factor=False)
     assert B3 not in skipped.bridge
+    assert skipped.report.left_out_without_factor == 1
+    assert any("1 not linked, as asked" in line for line in skipped.report.lines())
+    assert links.report.left_out_without_factor == 0
 
 
 def test_a_named_source_without_a_factor_gives_none(data_root):
@@ -161,6 +167,75 @@ def test_a_named_source_without_a_factor_gives_none(data_root):
     links = linked(data_root, content)
     assert links.bridge[B2].nomenclature is True
     assert links.report.outside_ef_with_factors == 0
+
+
+def test_a_factor_is_taken_over_only_between_flows_counted_in_one_unit(data_root):
+    # a factor is per unit of a flow: the uranium flow is in kBq, and so must its source be
+    for unit in ("Bq", ""):  # another unit, and a source whose unit the file does not know
+        content = rows()
+        content[1]["factors_unit"] = unit
+        links = linked(data_root, content)
+        assert all(OUTSIDE not in dict(spec.cfs) for spec in links.methods), unit
+        assert links.bridge[B2].nomenclature is True
+        assert links.report.outside_ef_with_factors == 0
+    # two spellings of the unit are one unit
+    content = rows()
+    content[1]["factors_unit"] = "kilo Becquerel"
+    assert linked(data_root, content).report.outside_ef_with_factors == 1
+
+
+def test_a_flow_of_ef_that_the_flow_terms_do_not_hold_is_named_by_the_link(data_root):
+    """EF 3.1 holds flows that the installer's flow terms and methods do not. A link that
+    ends on one would otherwise make a node named by its identifier, as an emission."""
+    unknown = "c0c0c0c0-0000-4000-8000-00000000000c"
+    content = rows()
+    content[2] = row(
+        "Heat, waste",
+        "emissions to air",
+        "unspecified",
+        "MJ",
+        unknown,
+        flow_name="heat, waste, as EF 3.1 calls it",
+    )
+    links = linked(data_root, content)
+    added = links.ef_flows.set_index("code")
+    assert added.at[unknown, "name"] == "heat, waste, as EF 3.1 calls it"
+    assert tuple(added.at[unknown, "categories"]) == ("emissions to air", "unspecified")
+    assert links.report.in_ef == 2 and links.report.in_ef_without_term == 1
+    assert any("not in the flow terms" in line for line in links.report.lines())
+    result = sb.assemble(data_root, flow_links=write(data_root.parent / "t.csv", content))
+    node = result.biosphere[(BIOSPHERE_DB, unknown)]
+    assert node["name"] == "heat, waste, as EF 3.1 calls it" and node["type"] == "emission"
+    # a flow the terms do hold keeps the name they give it
+    assert result.biosphere[(BIOSPHERE_DB, E1)]["name"] == "carbon dioxide (fossil)"
+    assert "not in the flow terms" not in "\n".join(linked(data_root, rows()).report.lines())
+
+
+def test_a_node_says_where_the_flow_goes_as_far_as_its_source_flows_agree(data_root):
+    assert bf._shared([("emissions to air", "high. pop.")]) == ("emissions to air", "high. pop.")
+    assert bf._shared([("emissions to air", "high. pop."), ("emissions to air", "low. pop.")]) == (
+        "emissions to air",
+    )
+    assert bf._shared([("emissions to air", "x"), ("emissions to water", "x")]) == ()
+    assert bf._shared([("resources",), ("resources", "in ground")]) == ("resources",)
+    # CO2 to air and uranium to a lake, both onto one flow outside EF 3.1: no place in common
+    content = rows()
+    content[0] = row(
+        "Carbon dioxide, fossil",
+        "emissions to air",
+        "unspecified",
+        "kg",
+        OUTSIDE,
+        flow_name="uranium-238, to a lake",
+        flow_unit="kBq",
+        flow_list="bafu algorithm addition",
+        conversion="2.0",
+        factors_from=E2,
+        factors_unit="kBq",
+        factors_derivation="carried",
+    )
+    links = linked(data_root, content)
+    assert tuple(links.ef_flows.set_index("code").at[OUTSIDE, "categories"]) == ()
 
 
 def test_a_node_is_made_for_a_linked_flow_outside_ef(data_root):
@@ -221,13 +296,15 @@ def test_the_files_say_how_they_were_linked_and_keep_the_file(data_root, links_f
     sb.import_files(out, data_root=data_root, flow_links=links_file, datapackages=False)
     manifest = json.loads((out / "manifest.json").read_text())
     assert manifest["linking"] == "brightway-flows"
-    assert manifest["bridge_packages"] == []
+    assert manifest["bridge_packages"] == [] and manifest["bridge_folder"] is None
     kept = out / "mappings" / "brightway-flows" / links_file.name
     assert kept.read_bytes() == links_file.read_bytes()
     assert not (out / "mappings" / "bafu-2026-v1__ef-3.1").exists()
     plain = data_root.parent / "plain"
     sb.import_files(plain, data_root=data_root, datapackages=False)
-    assert json.loads((plain / "manifest.json").read_text())["linking"] == "sentier-mappings"
+    mapped = json.loads((plain / "manifest.json").read_text())
+    assert mapped["linking"] == "sentier-mappings"
+    assert mapped["bridge_folder"] == "bafu-2026-v1__ef-3.1" and mapped["bridge_packages"]
 
 
 def test_the_command_line_takes_the_file(data_root, links_file, capsys):
@@ -257,6 +334,19 @@ def test_a_file_that_is_not_a_targets_file_is_refused(tmp_path, data_root, capsy
     content[1]["conversion"] = "about a thousandth"
     with pytest.raises(ValueError, match="not a number"):
         bf.load_targets(write(tmp_path / "words.csv", content))
+    # one flow has one name, one unit, one list and one source of factors on every row
+    content = rows()
+    content[2] = row("Heat, waste", "emissions to air", "unspecified", "MJ", E1, flow_unit="MJ")
+    with pytest.raises(ValueError, match="is described in two ways"):
+        bf.load_targets(write(tmp_path / "two-units.csv", content))
     # and the command says so, and ends with an error
     assert main(["coverage", "--data-root", str(data_root), "--flow-links", str(short)]) == 2
     assert "columns missing" in capsys.readouterr().err
+
+
+def test_an_export_that_is_already_made_takes_no_linking(tmp_path, links_file, capsys):
+    made = ["backtest", "--out", str(tmp_path / "out"), "--files", str(tmp_path / "files")]
+    assert main([*made, "--flow-links", str(links_file)]) == 2
+    assert "already made" in capsys.readouterr().err
+    assert main([*made, "--flow-terms-of", "bafu-2026"]) == 2
+    assert "already made" in capsys.readouterr().err

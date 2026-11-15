@@ -27,7 +27,7 @@ BAFU's `Chlorine` to air (high population).
 
 **The build can also link through those identifiers** (`build --linking brightway-flows`,
 since 15 November 2026). It is a second way to build, measured against the first and not
-the build's own yet: 166 flows lose their factor under it. See "The second linking: through
+the build's own yet: 165 flows lose a factor under it. See "The second linking: through
 Brightway Flows" below.
 
 ## Run it
@@ -50,7 +50,9 @@ python3 scripts/build_release.py compare output/provider output/patched --out ou
 in `scripts/release_build/pins.toml` (or uses a checkout given with `--tools`). The code of
 sentier-brightway is part of this repository, in `brightway-installer/`, with its history up
 to `90d57eb` (moved on 15 November 2026). Each runs in its own `uv` environment, and everything
-is written under the output folder. Options:
+is written under the output folder. The installer is at this repository's commit: a build
+from a tree with local changes says so in `build.json`, for the installer as for the build's
+own scripts, and `--allow-unpinned` is about the checkout of sentier-importers only. Options:
 
 - `build latest OUT` lets the patch tool download and check BAFU's release first.
 - `--published-results FILE` adds the comparison with BAFU's published LCIA results. The
@@ -422,59 +424,69 @@ statements are kept apart, each taken from where it is made:
 |---|---|---|
 | Which flow it is | the crosswalk of patch 0010, with the identifier the flow has in Brightway Flows 1.1.0 | the flow stays on BAFU's flow, without a factor |
 | How an amount converts | the multiplier Brightway Flows 1.1.0 states for the link (192 links; 159 of them Bq to kBq) | two spellings of one unit need none; otherwise the conversion is unknown and the flow is not linked |
-| What the flow costs | the build's own methods (sentier-methods). A flow outside EF 3.1 takes the build's factors of the one EF 3.1 flow that Brightway Flows' own implementation of EF 3.1 names as their source | the flow has no factor |
+| What the flow costs | the build's own methods (sentier-methods). A flow outside EF 3.1 takes the build's factors of the one flow that Brightway Flows' own implementation of EF 3.1 names as their source, where the two are counted in one unit | the flow has no factor |
 
 No factor is read from Brightway Flows. What the installer needs beside the crosswalk is in
-`src/bafu_community_fixes/data/brightway-flows-targets-bafu-2026-v1.csv`, written by
+`scripts/release_build/brightway-flows-targets-bafu-2026-v1.csv`, written by
 `scripts/build_brightway_flows_targets.py` from two files of Brightway Flows 1.1.0 on Zenodo,
-checked by their MD5.
+checked by their MD5. The file is derived from Brightway Flows and is under the Open Database
+License 1.0, like the crosswalk.
+
+A flow of EF 3.1 that the pinned flow terms and methods do not hold (38 of BAFU's flows end
+on one) gets a node with the name the link gives it. A node of a flow that is reached from
+several of BAFU's flows says where the flow goes as far as those flows agree.
 
 ### What it changes, measured on 15 November 2026
 
-`scripts/compare_flow_linkings.py` builds BAFU's release both ways and scores all 11,947
-datasets in the 25 categories. The record is
-`community/runs/flow-linking-in-the-build-2026-11-15.json`.
+`scripts/compare_flow_linkings.py` builds BAFU's release both ways, on the data the build
+uses (the mapping at `179aab3`), and scores all 11,947 datasets in the 25 categories. The
+record is `community/runs/flow-linking-in-the-build-2026-11-15.json`. A flow "has a factor"
+in a method when the flow it is linked to has one there that is not zero.
 
 | | Mapping of sentier-mappings | Links of patch 0010 |
 |---|---:|---:|
 | Flows linked, of 2,679 | 2,566 | 2,677 |
 | Elementary exchanges linked, of 293,747 | 284,443 | 293,636 |
-| Linked flows without a factor in any method | 518 | 785 |
-| Flows that end on a factor | 2,048 | 1,892 |
+| Flows with a factor in at least one method | 1,950 | 1,794 |
 
 - **The links reach more flows.** Only two stay unlinked: mine gas in m3 and in Nm3, whose
   target is in sm3, with no conversion stated.
-- **Fewer flows end on a factor.** 166 flows (14,278 exchanges, 4.9 % of all) have a factor
-  through the mapping and none through the links; 9 gain one.
-- **Those 166 are in most supply chains.** 11,801 of the 11,947 datasets move by more than
-  1 % in at least one category, nearly all downwards: particulate matter (11,446 datasets),
-  freshwater eutrophication (11,636), freshwater ecotoxicity (10,143) and land use (11,134).
-  Acidification and terrestrial eutrophication do not move for any dataset; climate change
-  moves for 20.
+- **Fewer flows end on a factor.** 165 flows (13,868 exchanges, 4.7 % of all) lose a factor
+  in at least one method, 164 of them in every method; 8 gain one.
+- **Those flows are in most supply chains.** 11,801 of the 11,947 datasets move by more than
+  1 % in at least one category: particulate matter (11,446 datasets), freshwater
+  eutrophication (11,636), freshwater ecotoxicity (10,144) and land use (11,134). Nearly all
+  move downwards; in land use, 1,374 of the 11,134 move up. Acidification and terrestrial
+  eutrophication do not move for any dataset; climate change moves for 20.
 
-Why the 166 lose their factor:
+Why the 165 lose a factor:
 
 | Flows | Exchanges | Why |
 |---:|---:|---|
 | 92 | 7,602 | The flow is outside EF 3.1, and Brightway Flows names no flow as the source of factors. BAFU's own land classes are among them. |
-| 56 | 4,174 | Brightway Flows names a source, and that flow has no factor in the build's methods. Its own implementation adopts or restates one there. |
-| 14 | 2,301 | The link ends on an EF 3.1 flow that has no factor in the build's methods. |
+| 55 | 4,086 | Brightway Flows adopts or restates a factor from another implementation's list. The source it names is a flow of that list, which the build's methods do not hold. |
+| 13 | 1,891 | The link ends on an EF 3.1 flow that has no factor there in the build's methods. |
 | 2 | 111 | Not linked: the conversion is unknown. |
 | 2 | 90 | Brightway Flows names two flows as the source. |
+| 1 | 88 | The named source has no factor there in the build's methods. |
 
 So the mapping stays the build's linking. What would let the links take over is listed
 under "What is missing".
 
+A first run of this measurement, shown on the page for some hours on 15 November, used the
+installer's own pin of the mapping (`5ba4acd`) and gave 166 flows; the entry that differs
+is BAFU's chlorine to air.
+
 ## What is missing
 
-0. **The links of patch 0010 are not the build's linking yet.** 166 flows lose their factor
+0. **The links of patch 0010 are not the build's linking yet.** 165 flows lose a factor
    (above). 92 of them need a source of factors in Brightway Flows, which is a change there.
-   56 depend on which factors count for a flow outside EF 3.1: the build's own, as now, or
+   55 depend on which factors count for a flow outside EF 3.1: the build's own, as now, or
    those of Brightway Flows' own implementation. The comparison of two builds
-   (`compare_builds.py`) and the exports read the mapping and were not run with the second
-   linking, so `release` builds with the mapping only. The data file of the second linking
-   is derived from Brightway Flows 1.1.0 (ODbL); the permission recorded for the crosswalk
-   has not been asked for it.
+   (`compare_builds.py`) reads the mapping and refuses a build of the second linking, and the
+   exports were not run with it, so `release` builds with the mapping only. The data file of
+   the second linking is derived from Brightway Flows 1.1.0 (ODbL); the permission recorded
+   for the crosswalk has not been asked for it.
 1. **The mapping does not know the corrected flow names.** The build does not need it to,
    because it links on the declared flow. A consumer that reads the patched copy without
    the provider release beside it does: the patched copy does not carry the declared name,

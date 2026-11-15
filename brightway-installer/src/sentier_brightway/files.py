@@ -95,7 +95,7 @@ def _manifest(
         "citation": citation(result.source),
         "sources": _pins(),
         "linking": result.coverage.linking,
-        "bridge_folder": BRIDGE_FOLDER,
+        "bridge_folder": BRIDGE_FOLDER if result.coverage.linking == "sentier-mappings" else None,
         "include_nomenclature": include_nomenclature,
         "bridge_packages": list(bridge_packages),
         "coverage": asdict(result.coverage),

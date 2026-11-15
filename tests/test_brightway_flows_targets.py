@@ -173,16 +173,35 @@ def test_factors_come_from_one_named_flow_or_from_none(script):
         crosswalk_row("No source", "kg", "s5", NONE),
     ]
     out = {r["name"]: r for r in built(script, rows, [])}
+
+    def named(name):
+        row = out[name]
+        return row["factors_from"], row["factors_unit"], row["factors_derivation"]
+
     # a flow of EF 3.1 has its own factors: nothing is named for it
-    assert (out["In EF"]["factors_from"], out["In EF"]["factors_derivation"]) == ("", "")
-    # only Brightway Flows' own implementation of EF 3.1 counts, and only without a geography
-    assert (out["One source"]["factors_from"], out["One source"]["factors_derivation"]) == (
-        EF,
-        "carried",
+    assert named("In EF") == ("", "", "")
+    # only Brightway Flows' own implementation of EF 3.1 counts, and only without a geography;
+    # the unit is the named flow's, so that a factor is taken over between equal units only
+    assert named("One source") == (EF, "kg", "carried")
+    assert named("Two sources") == ("", "", "carried+restated")
+    assert named("No source") == ("", "", "")
+
+
+def test_a_source_of_another_list_is_named_without_a_unit(script):
+    """An adopted or restated factor names a flow of another implementation's own list. It
+    is kept as named; its unit is not known here, and nothing is taken over from it."""
+    harmonised, factors = release([])
+    foreign = "9" * 8 + "-0000-4000-8000-000000000009"
+    factors["characterization_factors"].append(
+        factor(NONE, "own", source=foreign, derivation="adopted")
     )
-    assert out["Two sources"]["factors_from"] == ""
-    assert out["Two sources"]["factors_derivation"] == "carried+restated"
-    assert (out["No source"]["factors_from"], out["No source"]["factors_derivation"]) == ("", "")
+    out = script.targets([crosswalk_row("Adopted", "kg", "s5", NONE)], harmonised, factors)
+    assert out[0]["factors_from"] == foreign
+    assert (out[0]["factors_unit"], out[0]["factors_derivation"]) == ("", "adopted")
+    # a source the release replaced by another flow has that flow's unit
+    factors["characterization_factors"][-1]["source_flow_uuid"] = OLD
+    out = script.targets([crosswalk_row("Adopted", "kg", "s5", NONE)], harmonised, factors)
+    assert (out[0]["factors_from"], out[0]["factors_unit"]) == (OLD, "kg")
 
 
 def test_a_flow_the_release_does_not_hold_stops_the_build(script):
@@ -216,6 +235,9 @@ def test_the_committed_file_follows_the_crosswalk_row_by_row(script):
             assert float(mine["conversion"]) > 0 and mine["conversion_basis"]
         if mine["flow_list"] == "EF 3.1":
             assert mine["factors_from"] == "" and mine["factors_derivation"] == ""
+        if mine["factors_unit"]:
+            # every flow that takes factors over is counted in the unit of its source
+            assert mine["factors_from"] and mine["factors_unit"] == mine["flow_unit"]
         if mine["factors_from"]:
             # the flow named as the source is one flow; it need not be a flow of EF 3.1
             assert re.fullmatch(identifier, mine["factors_from"])

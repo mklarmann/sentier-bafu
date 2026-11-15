@@ -68,7 +68,7 @@ PINS = HELPERS / "pins.toml"
 # What the installer needs to follow patch 0010's links: for each row of the crosswalk, the
 # flow of Brightway Flows, its unit, the conversion that release states, and the EF 3.1 flow
 # a flow outside EF 3.1 takes its factors from (scripts/build_brightway_flows_targets.py).
-FLOW_LINKS = REPOSITORY / "src/bafu_community_fixes/data/brightway-flows-targets-bafu-2026-v1.csv"
+FLOW_LINKS = HELPERS / "brightway-flows-targets-bafu-2026-v1.csv"
 LINKINGS = ("sentier-mappings", "brightway-flows")
 # Where sentier-importers' registry expects BAFU's release, below its data root
 IMPORTER_INPUT = Path("sources") / "bafu-2026" / "BAFU-2026 v1_ecoSpold v1.zip"
@@ -778,7 +778,23 @@ def _linking_report(report: Path) -> list[str]:
     return lines
 
 
+def linking_of(build: Path) -> str:
+    """How a build linked its elementary flows, from its own record."""
+    record = build / "build.json"
+    if not record.is_file():
+        return LINKINGS[0]
+    return json.loads(record.read_text()).get("linking", LINKINGS[0])
+
+
 def compare(args: argparse.Namespace) -> int:
+    for build in (args.baseline, args.candidate):
+        if linking_of(build) != LINKINGS[0]:
+            # the comparison explains a moved score with the mapping's links and factors
+            raise BuildError(
+                f"{build} was linked through {linking_of(build)}. The comparison reads the "
+                f"mapping of {LINKINGS[0]} and cannot explain such a build yet; compare two "
+                f"builds linked through {LINKINGS[0]}"
+            )
     pins = load_pins(args.pins)
     tools_dir = (args.tools or args.candidate / "tools").resolve()
     venvs = args.venvs.resolve() if args.venvs else None
@@ -1131,7 +1147,8 @@ def release(args: argparse.Namespace) -> int:
     return int(data["status"] != "completed" or bool(blocked) or bool(held_back))
 
 
-def main(argv: list[str] | None = None) -> int:
+def arguments() -> argparse.ArgumentParser:
+    """The command line: `build`, `release` and `compare`, with their options."""
     parser = argparse.ArgumentParser(
         description=__doc__.splitlines()[0], formatter_class=argparse.RawDescriptionHelpFormatter
     )
@@ -1281,8 +1298,11 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("--out", type=Path, required=True, help="JSON file to write")
     common(c)
     c.set_defaults(run=compare)
+    return parser
 
-    args = parser.parse_args(argv)
+
+def main(argv: list[str] | None = None) -> int:
+    args = arguments().parse_args(argv)
     try:
         return args.run(args)
     except (BuildError, adapter.AdapterError) as error:

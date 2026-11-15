@@ -14,8 +14,7 @@ requires-python = ">=3.10"
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering",
 ]
 dependencies = [
@@ -30,8 +29,9 @@ dependencies = [
 ]
 
 [project.urls]
-source = "https://github.com/sentier-dev/sentier-brightway"
-tracker = "https://github.com/sentier-dev/sentier-brightway/issues"
+source = "https://github.com/sentier-dev/sentier-bafu/tree/main/brightway-installer"
+tracker = "https://github.com/sentier-dev/sentier-bafu/issues"
+origin = "https://github.com/sentier-dev/sentier-brightway"
 
 [project.scripts]
 sentier-brightway = "sentier_brightway.cli:main"

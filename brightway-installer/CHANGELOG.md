@@ -1,5 +1,24 @@
 # Changelog
 
+## In sentier-bafu (from 15 November 2026)
+
+The package was moved into sentier-dev/sentier-bafu at commit `90d57eb`, with its history,
+as the folder `brightway-installer/`. Since then:
+
+- Removed, because the build of sentier-bafu does not use them: the export of flow lists
+  (`flow_lists.py`, `flow_lists_output.py`, `scripts/export_flow_lists.py`), the dashboard
+  viewer (`dashboard/`) with `as_js_cats`, and the folder's own CI workflow and pre-commit
+  configuration. The backtest and everything it writes stay.
+- Lint and formatting with ruff alone (black and isort are gone; ruff's formatter leaves the
+  files as they were). The checks of sentier-bafu run lint, formatting and the tests on
+  every pull request.
+- `--flow-links FILE` on `db`, `files`, `coverage` and `backtest`: link the elementary flows
+  through Brightway Flows, with the links of patch 0010 (`brightway_flows.py`).
+- `--flow-terms-of SOURCE` on the same commands: read the elementary flow terms of another
+  source than the inventory's own.
+- `--report FILE` on `db`, `files` and `coverage`: the linking report as JSON.
+- The manifest of a files export and the coverage say how the flows were linked (`linking`).
+
 ## 0.1.0 (unreleased)
 
 - sentier-vocab term layer (sentier-vocab#34): elementary flows are read from

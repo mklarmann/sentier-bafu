@@ -71,7 +71,10 @@ RELEASE_BUILD_WHOLE_PATH=1 RELEASE_BUILD_TOOLS=output/tools RELEASE_BUILD_PINNED
 uv run --frozen --project brightway-installer --python 3.12 --extra testing python -m unittest discover -s release-build-tests
 uv run --no-project --python 3.12 --with-requirements export-tests/requirements.txt pytest export-tests
 uv run --no-sync python -m unittest discover -s release-build-tests -p test_adapter.py
+uv run --no-project --python 3.12 python scripts/build_brightway_flows_targets.py --check
 ```
+
+The last command downloads two files of Brightway Flows 1.1.0 from Zenodo (62 MB) and checks that `scripts/release_build/brightway-flows-targets-bafu-2026-v1.csv`, which the build's second way of linking flows reads, is what they give.
 
 ### On BAFU's release
 

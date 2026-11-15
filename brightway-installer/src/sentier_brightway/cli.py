@@ -143,6 +143,11 @@ def _run_backtest(args: argparse.Namespace, include: bool) -> str:
     from . import backtest as bt  # bw2calc is imported inside run_backtest
 
     files_dir = Path(args.files) if args.files else Path(args.out) / "files"
+    if args.files and (args.flow_links or args.flow_terms_of):
+        raise ValueError(
+            "--files names an export that is already made; --flow-links and --flow-terms-of "
+            "are options of making one and would not be used"
+        )
     if not args.files:
         # <out>/files is ours: overwrite only ever replaces a previous export there
         import_files(

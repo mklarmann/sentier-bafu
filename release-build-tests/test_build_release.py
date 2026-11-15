@@ -5,7 +5,9 @@ test files and by a full run on the release.
 """
 
 import argparse
+import contextlib
 import importlib.util
+import io
 import json
 import shutil
 import subprocess
@@ -498,16 +500,46 @@ class BuildRecords(unittest.TestCase):
         self.assertNotIn("sentier-mappings", step["description"])
 
     def test_the_mapping_is_the_default_and_the_other_linking_has_its_file(self):
-        self.assertEqual(build_release.LINKINGS, ("sentier-mappings", "brightway-flows"))
+        parser = build_release.arguments()
+        plain = parser.parse_args(["build", "release", "out"])
+        self.assertEqual(plain.linking, "sentier-mappings")
+        chosen = parser.parse_args(["build", "release", "out", "--linking", "brightway-flows"])
+        self.assertEqual(chosen.linking, "brightway-flows")
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            parser.parse_args(["build", "release", "out", "--linking", "something-else"])
+        # `release` builds with the mapping: it has no such option
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            parser.parse_args(["release", "release", "out", "--linking", "brightway-flows"])
         # the file is committed, one row for each row of the crosswalk patch 0010 uses
-        crosswalk = build_release.FLOW_LINKS.with_name(
-            build_release.FLOW_LINKS.name.replace("targets", "crosswalk")
+        crosswalk = (
+            build_release.REPOSITORY
+            / "src/bafu_community_fixes/data/brightway-flows-crosswalk-bafu-2026-v1.csv"
         )
         self.assertTrue(build_release.FLOW_LINKS.is_file())
         self.assertEqual(
             len(build_release.FLOW_LINKS.read_text().splitlines()),
             len(crosswalk.read_text().splitlines()),
         )
+
+    def test_the_comparison_refuses_a_build_of_the_other_linking(self):
+        with tempfile.TemporaryDirectory() as temp:
+            mapped, linked = Path(temp) / "provider", Path(temp) / "patched"
+            for folder, linking in ((mapped, "sentier-mappings"), (linked, "brightway-flows")):
+                folder.mkdir()
+                (folder / "build.json").write_text(json.dumps({"linking": linking}))
+            self.assertEqual(build_release.linking_of(mapped), "sentier-mappings")
+            self.assertEqual(build_release.linking_of(linked), "brightway-flows")
+            # a build from before the option says nothing, and was linked through the mapping
+            (mapped / "build.json").write_text("{}")
+            self.assertEqual(build_release.linking_of(mapped), "sentier-mappings")
+            out = str(Path(temp) / "comparison.json")
+            for pair in ((mapped, linked), (linked, mapped)):
+                with contextlib.redirect_stderr(io.StringIO()) as said:
+                    arguments = ["compare", str(pair[0]), str(pair[1]), "--out", out]
+                    code = build_release.main(arguments)
+                self.assertEqual(code, 1)
+                self.assertIn("was linked through brightway-flows", said.getvalue())
+            self.assertFalse(Path(out).exists())
 
     def test_a_contribution_says_whether_somebody_authorised_it(self):
         self.assertEqual(

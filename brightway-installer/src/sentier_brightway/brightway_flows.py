@@ -52,8 +52,11 @@ COLUMNS = frozenset(
         "flow_list",
         "conversion",
         "factors_from",
+        "factors_unit",
     }
 )
+# what the file says of a flow of Brightway Flows, the same on every row that links to it
+PER_FLOW = ("flow_name", "flow_unit", "flow_list", "factors_from", "factors_unit")
 
 
 @dataclass(frozen=True)
@@ -69,6 +72,11 @@ class LinkReport:
     converted: int
     unit_unknown: tuple[tuple[str, str, str], ...]  # (flow name, its unit, the target's unit)
     not_in_crosswalk: tuple[str, ...]  # flow names
+    # flows of EF 3.1 by the links that the installer's flow terms and methods do not hold:
+    # their node is made from the link, like the node of a flow outside EF 3.1
+    in_ef_without_term: int = 0
+    # left unlinked on request, because their flow has no factor in any method
+    left_out_without_factor: int = 0
 
     def lines(self) -> tuple[str, ...]:
         """The report, as the lines printed after an install."""
@@ -82,6 +90,16 @@ class LinkReport:
             f"  {self.without_factor} of the linked flows have no factor in any method "
             "(impact zero)",
         ]
+        if self.in_ef_without_term:
+            lines.append(
+                f"  {self.in_ef_without_term} of the flows of EF 3.1 are not in the flow terms "
+                "the methods come with; their name is the link's"
+            )
+        if self.left_out_without_factor:
+            lines.append(
+                f"  {self.left_out_without_factor} not linked, as asked: their flow has no "
+                "factor in any method"
+            )
         if self.unit_unknown:
             first = "; ".join(f"{name} ({a} to {b})" for name, a, b in self.unit_unknown[:3])
             lines.append(
@@ -100,7 +118,7 @@ class LinkReport:
 @dataclass(frozen=True)
 class FlowLinks:
     bridge: Mapping[str, BridgeEntry]
-    ef_flows: pd.DataFrame  # the EF 3.1 flows, and one row for each linked flow outside EF 3.1
+    ef_flows: pd.DataFrame  # the EF 3.1 flows, and one row for each other flow a link ends on
     methods: tuple[MethodSpec, ...]
     report: LinkReport
 
@@ -117,6 +135,7 @@ def load_targets(path: Path | str) -> dict[tuple[str, str, str, str], dict]:
             raise ValueError(f"{path}: columns missing: {', '.join(missing)}")
         rows = list(reader)
     targets: dict[tuple[str, str, str, str], dict] = {}
+    said: dict[str, tuple] = {}  # what the first row of a flow says of it
     for number, row in enumerate(rows, start=2):
         key = tuple(row[field] for field in KEY)
         if key in targets:
@@ -130,6 +149,12 @@ def load_targets(path: Path | str) -> dict[tuple[str, str, str, str], dict]:
                 raise ValueError(f"{path} line {number}: conversion is not a number") from None
             if not multiplier > 0:
                 raise ValueError(f"{path} line {number}: conversion is not above zero")
+        of_flow = tuple(row[field] for field in PER_FLOW)
+        if said.setdefault(row["flow_id"], of_flow) != of_flow:
+            raise ValueError(
+                f"{path} line {number}: {row['flow_id']} is described in two ways "
+                f"({', '.join(PER_FLOW)} are one flow's and must agree)"
+            )
         targets[key] = row
     if not targets:
         raise ValueError(f"{path}: no rows")
@@ -143,6 +168,18 @@ def _conversion(row: dict, unit: str) -> float | None:
     if normalize_unit(unit) == normalize_unit(row["flow_unit"]):
         return 1.0
     return None
+
+
+def _shared(categories: list[tuple[str, ...]]) -> tuple[str, ...]:
+    """What the source flows that end on one flow agree on, from the front: all of it when
+    they agree, the compartment alone when only the sub-compartments differ."""
+    shared = list(categories[0])
+    for other in categories[1:]:
+        length = 0
+        while length < min(len(shared), len(other)) and shared[length] == other[length]:
+            length += 1
+        shared = shared[:length]
+    return tuple(shared)
 
 
 def link(
@@ -165,12 +202,13 @@ def link(
     units = dict(zip(bio["flow"], bio["unit"]))
     exchange_names = dict(zip(bio["flow"], bio["flow_name"]))
     terms = source_flows.set_index("code")
-    known_ef = set(ef_flows["code"])
+    known = set(ef_flows["code"]) | {code for spec in methods for code in spec.flow_name}
 
     entries: dict[str, tuple[dict, float]] = {}
     unit_unknown: list[tuple[str, str, str]] = []
     not_in_crosswalk: list[str] = []
-    outside: dict[str, dict] = {}  # flow outside EF 3.1: the row its node is made from
+    ends_on: dict[str, list[tuple[str, ...]]] = {}  # flow: where its source flows go
+    rows_of: dict[str, dict] = {}
     for code in sorted(units):
         unit = "" if pd.isna(units[code]) else str(units[code])
         if code not in terms.index:
@@ -189,29 +227,26 @@ def link(
             unit_unknown.append((name, unit, row["flow_unit"]))
             continue
         entries[code] = (row, multiplier)
-        if row["flow_list"] != EF_LIST and row["flow_id"] not in known_ef:
-            outside.setdefault(
-                row["flow_id"],
-                {
-                    "code": row["flow_id"],
-                    "name": row["flow_name"],
-                    "categories": categories,
-                    "cas_number": None,
-                    "factors_from": row["factors_from"],
-                },
-            )
+        ends_on.setdefault(row["flow_id"], []).append(categories)
+        rows_of[row["flow_id"]] = row
 
-    # a flow outside EF 3.1 takes, in each method, the factor of the EF 3.1 flow named for it
+    # A flow outside EF 3.1 takes, in each method, the factor of the flow named for it,
+    # where the two are counted in one unit: a factor is per unit of the flow.
+    outside = {flow for flow, row in rows_of.items() if row["flow_list"] != EF_LIST}
     carried = {
-        code: node["factors_from"] for code, node in outside.items() if node["factors_from"]
+        flow: rows_of[flow]["factors_from"]
+        for flow in sorted(outside)
+        if rows_of[flow]["factors_from"]
+        and normalize_unit(rows_of[flow]["flow_unit"])
+        == normalize_unit(rows_of[flow]["factors_unit"])
     }
     extended = []
     with_factors: set[str] = set()
     for spec in methods:
         own = dict(spec.cfs)
-        added = tuple((code, own[source]) for code, source in carried.items() if source in own)
-        with_factors.update(code for code, _ in added)
-        names = {code: outside[code]["name"] for code, _ in added}
+        added = tuple((flow, own[source]) for flow, source in carried.items() if source in own)
+        with_factors.update(flow for flow, _ in added)
+        names = {flow: rows_of[flow]["flow_name"] for flow, _ in added}
         extended.append(
             replace(
                 spec,
@@ -222,9 +257,11 @@ def link(
     characterised = {code for spec in extended for code, _ in spec.cfs}
 
     bridge: dict[str, BridgeEntry] = {}
+    left_out = 0
     for code, (row, multiplier) in entries.items():
         without = row["flow_id"] not in characterised
         if without and not include_without_factor:
+            left_out += 1
             continue
         bridge[code] = BridgeEntry(
             target_code=row["flow_id"],
@@ -233,14 +270,23 @@ def link(
             nomenclature=without,
         )
 
-    linked_outside = {e.target_code for e in bridge.values() if e.target_code in outside}
+    # A node needs a name and a place. The installer's flow terms give them for the flows of
+    # EF 3.1 they hold; for every other flow a link ends on, the link's own name is taken,
+    # and the source's words for where the flow goes, as far as its source flows agree.
+    linked = {entry.target_code for entry in bridge.values()}
+    made = sorted(flow for flow in linked if flow not in known)
     flows = pd.concat(
         [
             ef_flows,
             pd.DataFrame(
                 [
-                    {k: outside[code][k] for k in ("code", "name", "categories", "cas_number")}
-                    for code in sorted(linked_outside)
+                    {
+                        "code": flow,
+                        "name": rows_of[flow]["flow_name"],
+                        "categories": _shared(ends_on[flow]),
+                        "cas_number": None,
+                    }
+                    for flow in made
                 ],
                 columns=["code", "name", "categories", "cas_number"],
             ).astype(object),
@@ -261,6 +307,10 @@ def link(
         converted=sum(1 for code in bridge if entries[code][0]["conversion"]),
         unit_unknown=tuple(unit_unknown),
         not_in_crosswalk=tuple(not_in_crosswalk),
+        in_ef_without_term=sum(
+            1 for e in bridge.values() if e.target_code not in outside and e.target_code in made
+        ),
+        left_out_without_factor=left_out,
     )
     return FlowLinks(
         bridge=MappingProxyType(bridge), ef_flows=flows, methods=tuple(extended), report=report

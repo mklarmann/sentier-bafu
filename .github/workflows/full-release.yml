@@ -22,6 +22,8 @@ on:
       - "scripts/build_release.py"
       - "scripts/export_release.py"
       - "scripts/release_build/**"
+      - "scripts/build_brightway_flows_targets.py"
+      - "scripts/compare_flow_linkings.py"
       - "release-build-tests/**"
       - "export-tests/**"
       - "brightway-installer/**"
@@ -148,3 +150,8 @@ jobs:
       - name: Check the adapter against what the patch tool writes
         if: ${{ !cancelled() }}
         run: uv run --no-sync python -m unittest discover -s release-build-tests -p test_adapter.py
+      - name: Check the data of the second linking against its sources
+        # Downloads two files of Brightway Flows 1.1.0 from Zenodo (62 MB), checks their MD5
+        # and writes the file again in memory: the committed file must be what they give.
+        if: ${{ !cancelled() }}
+        run: uv run --no-project --python 3.12 python scripts/build_brightway_flows_targets.py --check
