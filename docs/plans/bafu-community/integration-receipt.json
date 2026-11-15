@@ -102,8 +102,8 @@
       "source_sha256": "3ab7a0b44c971523d704c20cd6cc5f48758ff650da58eda35f159014eac46fac",
       "disposition": "merged",
       "destination": "pyproject.toml",
-      "reason": "Only addition: [tool.ruff] extend-exclude for the eight workspace Python paths, so ruff in community CI checks exactly the files it checked at 053c799. Project metadata, dependencies, scripts, build backend, requires-python and pytest settings are unchanged; uv.lock still validates.",
-      "destination_sha256": "a8f9221f5e9061441d4cdf5d1d6b73bfb8f17e0da8f3c2f6af1a7c7d94881d43"
+      "reason": "Only addition: [tool.ruff] extend-exclude for the eight workspace Python paths, so ruff in community CI checks exactly the files it checked at 053c799. Project metadata, dependencies, scripts, build backend, requires-python and pytest settings are unchanged; uv.lock still validates. Since 14 November also community/runs/, whose run scripts keep the bytes their README pins (review on #40).",
+      "destination_sha256": "3e4153c379c68361ccdcb220f5f44d2887248959b658798ff7a985cdd9de8310"
     },
     {
       "source": "community",
@@ -1109,7 +1109,7 @@
     },
     {
       "path": "pyproject.toml",
-      "reason": "ruff extend-exclude for the workspace paths."
+      "reason": "ruff extend-exclude for the workspace paths, and community/runs/ (scripts pinned by sha256)."
     },
     {
       "path": "community/build-validation.md",
@@ -1179,7 +1179,7 @@
     {
       "path": "docs/plans/bafu-community/integration-receipt.md",
       "reason": "This receipt, generated from its JSON.",
-      "sha256": "334cb5c54c7853ebbfad0c81cb4364598320b733b1f8357b206ed2a6d7a38598"
+      "sha256": "f5f0425ff7b0f34f266e7687b5e686ad9c40ab667cc230ac6787bb5a82384b34"
     },
     {
       "path": "docs/plans/bafu-community/integration-receipt.json",

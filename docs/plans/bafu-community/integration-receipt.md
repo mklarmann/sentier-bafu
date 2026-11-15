@@ -74,6 +74,8 @@ The planning inventory pinned workspace `87d14af` (52 files) and community `15bb
   integration attempt.
 - **First attempt:** `codex/integrate-community-fixes` merged the same community head
   into workspace `14e718e` and was never pushed. This branch supersedes it on `a13bbbf`.
+  The pull request (#40) carries this branch's commits under the name
+  `codex/integrate-community-fixes`: the name of the first attempt, not its commits.
 
 ## Dispositions
 
@@ -106,7 +108,7 @@ reason, or the old path of a moved file.
 | Changed path | Why |
 |---|---|
 | `.gitlab-ci.yml` | Registry test path (test move) and the Python 3.12 / --no-project pins. |
-| `pyproject.toml` | ruff extend-exclude for the workspace paths. |
+| `pyproject.toml` | ruff extend-exclude for the workspace paths, and community/runs/ (scripts pinned by sha256). |
 | `community/build-validation.md` | Python 3.12 / --no-project for audit_registry.py, with a note about the script's pinned docstring. |
 | `community/ci/github-actions.yml` | --no-project --python 3.12 for the site build. |
 | `site/README.md` | States the Python 3.12, no-project invocation. |
