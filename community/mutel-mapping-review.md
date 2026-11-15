@@ -35,6 +35,11 @@ their explicit correct multiplier; missing/null factors cannot default these
 magnitude changes to one. A unit/fallback refusal identifies a package,
 entry or flow that needs fixing before the build can proceed.
 
+**Comparison with BAFU's published results.** The score comparison of this route against BAFU's
+published LCIA results, and where its differences come from, is in
+[Evidence and build validation](build-validation.md#compare-scores-with-bafus-published-results).
+It does not use C002's mapping, so C002's own comparison stays not run.
+
 These fixes do not turn the current EF 3.1 bridge into a consumer of the
 BAFU→openLCA 2.8.2 mapping. That integration remains
 [C002](contributions/C002.json). Its next inputs are the pinned LCIA package
