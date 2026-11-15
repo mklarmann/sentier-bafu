@@ -1,0 +1,165 @@
+"""sentier-brightway: install Sentier data into a Brightway project."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+from . import backtest
+from ._version import __version__
+from .bridge import load_bridge
+from .build import BuildResult, build
+from .constants import DEFAULT_SOURCE
+from .fetch import resolve_data_root
+from .flows import load_ef_flows, load_source_flows
+from .inventory import load_inventory
+from .methods import load_methods
+from .report import Coverage, render
+
+__all__ = [
+    "__version__",
+    "import_db",
+    "import_files",
+    "import_bafu_db",
+    "import_bafu_files",
+    "DEFAULT_SOURCE",
+    "coverage",
+    "assemble",
+    "render",
+    "Coverage",
+    "BuildResult",
+    "backtest",
+]
+
+
+def _assemble_from_root(
+    root: Path, include_nomenclature: bool, source: str, source_version: str | None = None
+) -> BuildResult:
+    """Build from an already resolved data root."""
+    return build(
+        inventory=load_inventory(root, source=source, source_version=source_version),
+        ef_flows=load_ef_flows(root),
+        bafu_flows=load_source_flows(root, source),
+        bridge=load_bridge(root, include_nomenclature=include_nomenclature),
+        methods=load_methods(root),
+    )
+
+
+def assemble(
+    data_root: Path | str | None = None,
+    include_nomenclature: bool = True,
+    source: str = DEFAULT_SOURCE,
+    source_version: str | None = None,
+) -> BuildResult:
+    """Read the Sentier data (local root or verified download) and build the node dicts.
+
+    ``source`` selects the inventory folder (``data/<source>-<version>/`` in sentier-inventory)
+    and names the inventory and residual databases after it; ``source_version`` picks one
+    release when the data root serves several of the same source."""
+    return _assemble_from_root(
+        resolve_data_root(data_root), include_nomenclature, source, source_version
+    )
+
+
+def coverage(
+    data_root: Path | str | None = None,
+    include_nomenclature: bool = True,
+    source: str = DEFAULT_SOURCE,
+    source_version: str | None = None,
+) -> Coverage:
+    """Linking coverage without touching Brightway."""
+    return assemble(data_root, include_nomenclature, source, source_version).coverage
+
+
+def import_db(
+    project: str,
+    overwrite: bool = False,
+    data_root: Path | str | None = None,
+    include_nomenclature: bool = True,
+    source: str = DEFAULT_SOURCE,
+    source_version: str | None = None,
+) -> Coverage:
+    """Install one inventory ``source`` (default BAFU-2026) + EF 3.1 biosphere + EF 3.1
+    methods into ``project``. The inventory database is named after ``source`` (never after
+    ``source_version``, which only picks a release when several are served).
+
+    Run inside the Python environment where Brightway / Activity Browser is installed.
+    ``include_nomenclature=False`` keeps source flows whose EF counterpart has no factor in
+    the residual database instead of relinking them.
+
+    With ``overwrite`` the previous install is removed before the new one is written; if
+    the write fails part-way, re-running with ``overwrite=True`` (CLI: ``--overwrite``) is
+    the recovery step.
+    """
+    from .writer import write  # bw2data import stays lazy
+
+    result = assemble(data_root, include_nomenclature, source, source_version)
+    write(result, project=project, overwrite=overwrite)
+    return result.coverage
+
+
+def import_bafu_db(
+    project: str,
+    overwrite: bool = False,
+    data_root: Path | str | None = None,
+    include_nomenclature: bool = True,
+    source: str = DEFAULT_SOURCE,
+    source_version: str | None = None,
+) -> Coverage:
+    """Thin wrapper over ``import_db`` kept under its original name."""
+    return import_db(project, overwrite, data_root, include_nomenclature, source, source_version)
+
+
+def import_files(
+    out_dir: Path | str,
+    data_root: Path | str | None = None,
+    include_nomenclature: bool = True,
+    datapackages: bool = True,
+    overwrite: bool = False,
+    source: str = DEFAULT_SOURCE,
+    source_version: str | None = None,
+) -> Coverage:
+    """Write one inventory ``source`` (default BAFU-2026) + EF 3.1 as plain files instead of a
+    bw2data project.
+
+    ``out_dir`` receives ``registry/`` (parquet tables joined by integer ``bw_id``),
+    ``mappings/`` (every JSON of the bridge folder, copied verbatim; ``manifest.bridge_packages``
+    lists the packages that were applied and ``include_nomenclature`` says whether the order-4
+    package was), ``bw_package/``
+    (bw_processing datapackages for ``bw2calc.LCA`` with no bw2data project; skipped with
+    ``datapackages=False``) and ``manifest.json``. Read them back with
+    ``sentier_brightway.registry.load_registry`` and
+    ``sentier_brightway.datapackage.load_inventory_datapackage`` /
+    ``load_method_datapackage`` / ``score``.
+
+    A non-empty ``out_dir`` is refused unless ``overwrite=True``, and even then only a
+    previous export (a folder with a ``manifest.json``) is replaced; anything else is left
+    alone.
+    """
+    from .files import write_files
+
+    root = resolve_data_root(data_root)
+    result = _assemble_from_root(root, include_nomenclature, source, source_version)
+    write_files(
+        result,
+        data_root=root,
+        out_dir=Path(out_dir),
+        datapackages=datapackages,
+        overwrite=overwrite,
+        include_nomenclature=include_nomenclature,
+    )
+    return result.coverage
+
+
+def import_bafu_files(
+    out_dir: Path | str,
+    data_root: Path | str | None = None,
+    include_nomenclature: bool = True,
+    datapackages: bool = True,
+    overwrite: bool = False,
+    source: str = DEFAULT_SOURCE,
+    source_version: str | None = None,
+) -> Coverage:
+    """Thin wrapper over ``import_files`` kept under its original name."""
+    return import_files(
+        out_dir, data_root, include_nomenclature, datapackages, overwrite, source, source_version
+    )

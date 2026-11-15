@@ -1,0 +1,72 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sentier-brightway"
+version = "0.1.0"
+description = "Install Sentier data (BAFU-2026 LCI, EF 3.1 methods, flow mappings) into a Brightway project"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Laurenz Bougan", email = "laurenz@d-d-s.ch" }]
+requires-python = ">=3.10"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering",
+]
+dependencies = [
+    "pandas>=2.0",
+    "pyarrow>=14",
+    "platformdirs>=4",
+    "tomli>=2; python_version < \"3.11\"",
+    "bw_processing>=1.0",
+    "numpy>=1.24",
+    "openpyxl>=3.1",
+    "bw2calc>=2.0",
+]
+
+[project.urls]
+source = "https://github.com/sentier-dev/sentier-brightway"
+tracker = "https://github.com/sentier-dev/sentier-brightway/issues"
+
+[project.scripts]
+sentier-brightway = "sentier_brightway.cli:main"
+
+[project.optional-dependencies]
+testing = ["pytest>=8", "pytest-cov", "bw2data>=4.0"]
+dev = ["black==24.10.0", "isort==5.13.2", "ruff==0.8.6", "pre-commit", "build"]
+fast = ["pypardiso>=0.4"]
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+sentier_brightway = ["sources.toml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["bw: needs bw2data/bw2calc installed"]
+
+[tool.coverage.run]
+source = ["src"]
+
+[tool.black]
+line-length = 99
+target-version = ["py310"]
+
+[tool.isort]
+profile = "black"
+line_length = 99
+
+[tool.ruff]
+line-length = 99
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
