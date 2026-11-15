@@ -9,7 +9,7 @@ from pathlib import Path
 import pandas as pd
 import pyarrow.parquet as pq
 
-from ._frames import data_root_error, require_columns
+from ._frames import data_root_error, note_read, require_columns
 from .constants import DEFAULT_SOURCE, REPO_INVENTORY
 
 PROCESS_COLUMNS = frozenset(
@@ -126,11 +126,12 @@ def _read_folder(folder: SourceFolder) -> tuple[pd.DataFrame, pd.DataFrame]:
     require_columns(
         pq.read_schema(processes_path).empty_table().to_pandas(), PROCESS_COLUMNS, processes_path
     )
-    p = pd.read_parquet(processes_path, filters=[("source", "==", folder.source)])
+    note_read(folder.path / "metadata.json")  # read when the folder was chosen
+    p = pd.read_parquet(note_read(processes_path), filters=[("source", "==", folder.source)])
     exchanges_path = folder.path / "exchanges.parquet"
     if not exchanges_path.is_file():
         raise FileNotFoundError(f"{folder.path} has processes.parquet but no exchanges.parquet")
-    e = pd.read_parquet(exchanges_path)
+    e = pd.read_parquet(note_read(exchanges_path))
     require_columns(e, EXCHANGE_COLUMNS, exchanges_path)
     e = e[e["process_id"].isin(p["process_id"])]
     return p, _with_uncertainty_columns(e)

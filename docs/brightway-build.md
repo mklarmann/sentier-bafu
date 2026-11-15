@@ -263,8 +263,7 @@ by dataset name and location (`backtest/compare.py:23`, `:191`); the workbook's
 `RER without CH` is read as `Europe without Switzerland` (`:72`). The patched copy writes
 `EURwoCH` for that location, and its 26 datasets there are joined under BAFU's spelling
 (since 15 November 2026; before, they were left out). With `--published-results` the build
-runs
-it and `published_results.py` writes, per category, how many datasets were compared, the
+runs it and `published_results.py` writes, per category, how many datasets were compared, the
 share within 1 % and within 5 %, and the median difference. Matching BAFU's published
 results is not a goal; the step shows what a build changes.
 
@@ -520,9 +519,13 @@ is BAFU's chlorine to air.
    checked against the data on every run; a step that is not in the table (a new patch) is
    explained from the fields the run summary says it changed. A list of the changed rows
    themselves would make the attribution exact.
-6. **sentier-brightway's export manifest names its own pins** even when `--data-root` supplies
-   other data, so the files export behind the comparison with BAFU's results misstates the
-   inventory and the mapping commit. `build.json` holds the pins that were used.
+6. *(Closed on 15 November 2026.)* The manifest of a files export named the installer's own
+   pins even when `--data-root` supplied other data, so the export behind the comparison
+   with BAFU's results misstated the inventory. The installer now records which files it
+   reads. The manifest names a source's commit only where every file read is a pinned file
+   with the pinned SHA-256; for any other source it lists the files read with their SHA-256
+   and no commit. For a build that means: flow terms, methods and mapping as pinned, and the
+   inventory as the three files the build made.
 7. *(Closed on 15 November 2026.)* 26 datasets of a patched copy were not joined to BAFU's
    published results, because the comparison did not know `EURwoCH`, the patched copy's
    spelling of `Europe without Switzerland`. They are joined now, and the run report counts

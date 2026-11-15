@@ -155,3 +155,70 @@ def test_packaged_manifest_parses():
         assert len(source.ref) == 40 and set(source.ref) <= hexdigits
         for digest in source.files.values():
             assert len(digest) == 64 and set(digest) <= hexdigits
+
+
+def test_a_source_read_as_pinned_is_named_with_its_commit(tmp_path):
+    data = b"pinned bytes"
+    manifest = _manifest("b" * 40, hashlib.sha256(data).hexdigest())
+    for source in manifest:
+        for path in source.files:
+            target = tmp_path / source.name / path
+            target.parent.mkdir(parents=True)
+            target.write_bytes(data)
+    read = [
+        tmp_path / "sentier-inventory/data/f.parquet",
+        tmp_path / "sentier-vocab/data/g.parquet",
+    ]
+    assert fetch.describe_sources(tmp_path, read, manifest) == [
+        {
+            "name": "sentier-inventory",
+            "repo": "sentier-dev/sentier-inventory",
+            "ref": "a" * 40,
+            "as_pinned": True,
+        },
+        {
+            "name": "sentier-vocab",
+            "repo": "sentier-dev/sentier-vocab",
+            "ref": "b" * 40,
+            "as_pinned": True,
+        },
+    ]
+
+
+def test_a_source_that_was_supplied_is_named_with_its_files_and_no_commit(tmp_path):
+    data = b"pinned bytes"
+    manifest = _manifest("b" * 40, hashlib.sha256(data).hexdigest())
+    pinned = tmp_path / "sentier-vocab/data/g.parquet"
+    other = tmp_path / "sentier-inventory/data/patched/f.parquet"  # a file no pin names
+    changed = tmp_path / "sentier-inventory/data/f.parquet"  # a pinned path, other bytes
+    for target, content in ((pinned, data), (other, data), (changed, b"other bytes")):
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(content)
+    digest = hashlib.sha256(data).hexdigest()
+    # a file no pin names: the source is not the pinned one, though the bytes agree
+    inventory, vocab = fetch.describe_sources(tmp_path, [other, pinned], manifest)
+    assert inventory == {
+        "name": "sentier-inventory",
+        "as_pinned": False,
+        "files": {"data/patched/f.parquet": digest},
+    }
+    assert vocab["as_pinned"] is True and vocab["ref"] == "b" * 40
+    # a pinned path with other bytes
+    (inventory,) = fetch.describe_sources(tmp_path, [changed], manifest)
+    assert inventory["as_pinned"] is False and "ref" not in inventory
+    assert inventory["files"] == {"data/f.parquet": hashlib.sha256(b"other bytes").hexdigest()}
+    # nothing read from a source: it is left out, not named as pinned
+    assert fetch.describe_sources(tmp_path, [], manifest) == []
+
+
+def test_the_files_read_are_recorded_only_inside_the_block(tmp_path):
+    from sentier_brightway._frames import note_read, recording_reads
+
+    first, second = tmp_path / "a", tmp_path / "b"
+    note_read(first)  # outside a block: nothing is kept, nothing fails
+    with recording_reads() as seen:
+        assert note_read(first) == first
+        note_read(second)
+        note_read(first)
+    note_read(second)
+    assert seen == [first, second]

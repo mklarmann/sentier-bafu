@@ -7,7 +7,7 @@ import os
 import tomllib
 import urllib.error
 import urllib.request
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
@@ -105,6 +105,38 @@ def materialize(manifest: tuple[Source, ...], cache_dir: Path) -> Path:
             except OSError as exc:
                 raise FetchError(f"failed to write {target}: {exc}; {_OFFLINE_HINT}") from exc
     return cache_dir
+
+
+def describe_sources(
+    data_root: Path, files_read: Iterable[Path], manifest: tuple[Source, ...] | None = None
+) -> list[dict]:
+    """What was read below ``data_root``, per pinned source, for the record of an export.
+
+    A source whose every file read is a pinned file with the pinned SHA-256 is named with
+    its repository and commit (``as_pinned`` true). Any other source was supplied: it is
+    named with the files that were read and their SHA-256, and with no commit, because none
+    is known. A data root that is given (``--data-root``) is read without a check, so this
+    is where an export finds out what it was made from. A source nothing was read from is
+    left out."""
+    manifest = load_packaged_manifest() if manifest is None else manifest
+    root = Path(data_root)
+    described = []
+    for source in manifest:
+        folder = root / source.name
+        read = {}
+        for path in files_read:
+            if Path(path).is_relative_to(folder):
+                relative = Path(path).relative_to(folder).as_posix()
+                read[relative] = _sha256(Path(path).read_bytes())
+        if not read:
+            continue
+        if all(source.files.get(path) == digest for path, digest in read.items()):
+            described.append(
+                {"name": source.name, "repo": source.repo, "ref": source.ref, "as_pinned": True}
+            )
+        else:
+            described.append({"name": source.name, "as_pinned": False, "files": read})
+    return described
 
 
 def default_cache_dir() -> Path:

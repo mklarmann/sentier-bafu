@@ -21,6 +21,10 @@ project: `src/sentier_brightway`, with its tests in `installer-tests/`. Since th
 - `backtest` joins a patched copy's datasets in `EURwoCH` to BAFU's published results
   (BAFU's release: `Europe without Switzerland`; the workbook: `RER without CH`). 26
   datasets were left out before. The output keeps the patched copy's spelling.
+- The manifest of a files export says what was read. `sources` names a source's repository
+  and commit only where every file read from it is a pinned file with the pinned SHA-256
+  (`as_pinned`); any other source is listed with the files read and their SHA-256. Before,
+  it named the pins of `sources.toml` whatever `--data-root` held.
 - The version is the distribution's (`bafu-community-fixes`). Importing the package without
   the `brightway` extra says which extra is missing.
 

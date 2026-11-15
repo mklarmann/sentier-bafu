@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import pytest
 
@@ -47,9 +48,48 @@ def test_manifest_content(result, data_root, tmp_path):
         "biosphere-1-curated.json",
         "biosphere-4-nomenclature.json",
     ]
-    assert len(manifest["sources"]) == 4
-    for source in manifest["sources"]:
-        assert set(source) == {"name", "repo", "ref"}
+    # this result was built from frames, with no record of the files they were read from
+    assert manifest["sources"] == []
+
+
+def test_the_manifest_names_what_was_read_and_no_pin_it_did_not_read(data_root, tmp_path):
+    """A data root that is given is read without a check. The manifest then lists the files
+    that were read with their SHA-256, and names no commit: the made-up files are not the
+    pinned ones, and the pins of ``sources.toml`` say nothing about them."""
+    import hashlib
+
+    import sentier_brightway
+
+    out = tmp_path / "out"
+    sentier_brightway.import_files(out, data_root=data_root)
+    sources = json.loads((out / "manifest.json").read_text())["sources"]
+    assert [source["name"] for source in sources] == [
+        "sentier-inventory",
+        "sentier-vocab",
+        "sentier-methods",
+        "sentier-mappings",
+    ]
+    for source in sources:
+        assert set(source) == {"name", "as_pinned", "files"} and source["as_pinned"] is False
+        for path, digest in source["files"].items():
+            file = data_root / source["name"] / path
+            assert digest == hashlib.sha256(file.read_bytes()).hexdigest()
+    inventory, _, methods, mappings = (set(source["files"]) for source in sources)
+    assert inventory == {
+        "data/bafu-2026-v1/metadata.json",
+        "data/bafu-2026-v1/processes.parquet",
+        "data/bafu-2026-v1/exchanges.parquet",
+    }
+    assert methods == {
+        "data/01-ef-3.1/methods.parquet",
+        "data/01-ef-3.1/characterization-factors.parquet",
+    }
+    # the mapping's metadata and the two packages it lists
+    assert {Path(path).name for path in mappings} == {
+        "metadata.json",
+        "biosphere-1-curated.json",
+        "biosphere-4-nomenclature.json",
+    }
 
 
 def test_datapackages_can_be_skipped(result, data_root, tmp_path):
@@ -134,10 +174,11 @@ def test_manifest_records_nomenclature_choice_and_applied_packages(result, data_
 
 
 def test_manifest_pin_errors_surface(result, data_root, tmp_path, monkeypatch):
-    def boom():
+    def boom(*_):
         raise ValueError("bad manifest")
 
-    monkeypatch.setattr(files, "load_packaged_manifest", boom)
+    # the pins are read when the sources are described; a broken pin file is not swallowed
+    monkeypatch.setattr(files, "describe_sources", boom)
     with pytest.raises(ValueError, match="bad manifest"):
         files.write_files(result, data_root=data_root, out_dir=tmp_path / "out")
 

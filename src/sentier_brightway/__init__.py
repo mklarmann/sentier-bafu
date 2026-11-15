@@ -19,6 +19,7 @@ if find_spec("pandas") is None:  # the patch tool alone is installed
     )
 
 from . import backtest, brightway_flows  # noqa: E402
+from ._frames import recording_reads
 from ._version import __version__
 from .bridge import load_bridge
 from .build import BuildResult, build
@@ -58,18 +59,25 @@ def _assemble_from_root(
     folder is not read. ``flow_terms_of`` names the source whose elementary flow terms the
     inventory uses, when that is not the inventory's own source: a patched copy of a release
     has its own name and the release's flows."""
-    inventory = load_inventory(root, source=source, source_version=source_version)
-    ef_flows = load_ef_flows(root)
-    source_flows = load_source_flows(root, flow_terms_of or source)
-    methods = load_methods(root)
+    with recording_reads() as files_read:
+        inventory = load_inventory(root, source=source, source_version=source_version)
+        ef_flows = load_ef_flows(root)
+        source_flows = load_source_flows(root, flow_terms_of or source)
+        methods = load_methods(root)
+        bridge = (
+            load_bridge(root, include_nomenclature=include_nomenclature)
+            if flow_links is None
+            else None
+        )
     if flow_links is None:
-        return build(
+        result = build(
             inventory=inventory,
             ef_flows=ef_flows,
             bafu_flows=source_flows,
-            bridge=load_bridge(root, include_nomenclature=include_nomenclature),
+            bridge=bridge,
             methods=methods,
         )
+        return replace(result, files_read=tuple(files_read))
     links = brightway_flows.link(
         inventory,
         source_flows,
@@ -88,7 +96,7 @@ def _assemble_from_root(
     coverage = replace(
         result.coverage, linking=brightway_flows.LINKING, link_lines=links.report.lines()
     )
-    return replace(result, coverage=coverage)
+    return replace(result, coverage=coverage, files_read=tuple(files_read))
 
 
 def assemble(

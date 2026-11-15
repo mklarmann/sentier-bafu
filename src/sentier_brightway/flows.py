@@ -14,7 +14,7 @@ from pathlib import Path
 import pandas as pd
 import pyarrow.parquet as pq
 
-from ._frames import codes_from_iris, data_root_error, require_columns
+from ._frames import codes_from_iris, data_root_error, note_read, require_columns
 from .constants import DEFAULT_SOURCE, EF_SOURCE_IRI, REPO_VOCAB, source_iri
 
 TERMS_FOLDER = "terms"
@@ -31,7 +31,9 @@ def _read_flow_terms(folder: Path) -> pd.DataFrame:
     for file in files:
         require_columns(pd.DataFrame(columns=pq.read_schema(file).names), TERM_COLUMNS, file)
         frames.append(
-            pd.read_parquet(file, columns=sorted(TERM_COLUMNS), filters=[("type", "==", FLOW_TYPE)])
+            pd.read_parquet(
+                note_read(file), columns=sorted(TERM_COLUMNS), filters=[("type", "==", FLOW_TYPE)]
+            )
         )
     return pd.concat(frames, ignore_index=True)
 

@@ -15,7 +15,7 @@ from .bridge import applied_packages
 from .build import BuildResult
 from .constants import BRIDGE_FOLDER, REPO_MAPPINGS, citation
 from .datapackage import PACKAGE_DIR, REGISTRY_DIR, write_datapackages
-from .fetch import load_packaged_manifest
+from .fetch import describe_sources
 from .registry import build_registry, write_registry
 
 LAYOUT_VERSION = "1"
@@ -73,16 +73,13 @@ def _copy_mappings(data_root: Path, out_dir: Path) -> None:
         shutil.copyfile(path, dst / path.name)
 
 
-def _pins() -> list[dict]:
-    return [{"name": s.name, "repo": s.repo, "ref": s.ref} for s in load_packaged_manifest()]
-
-
 def _manifest(
     result: BuildResult,
     registry,
     datapackages: bool,
     include_nomenclature: bool,
     bridge_packages: tuple[str, ...],
+    sources: list[dict],
 ) -> dict:
     return {
         "layout_version": LAYOUT_VERSION,
@@ -93,7 +90,9 @@ def _manifest(
         "inventory_db": result.inventory_db,
         "residual_db": result.residual_db,
         "citation": citation(result.source),
-        "sources": _pins(),
+        # per data source: the pinned commit where the files read are the pinned ones, and
+        # otherwise the files that were read, with their SHA-256 (fetch.describe_sources)
+        "sources": sources,
         "linking": result.coverage.linking,
         "bridge_folder": BRIDGE_FOLDER if result.coverage.linking == "sentier-mappings" else None,
         "include_nomenclature": include_nomenclature,
@@ -134,6 +133,9 @@ def write_files(
         _copy_mappings(data_root, out_dir)
     if datapackages:
         write_datapackages(registry, out_dir / PACKAGE_DIR)
-    manifest = _manifest(result, registry, datapackages, include_nomenclature, bridge_packages)
+    sources = describe_sources(data_root, result.files_read)
+    manifest = _manifest(
+        result, registry, datapackages, include_nomenclature, bridge_packages, sources
+    )
     (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=2, default=list))
     return out_dir

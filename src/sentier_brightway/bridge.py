@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from types import MappingProxyType
 
-from ._frames import data_root_error
+from ._frames import data_root_error, note_read
 from .constants import BRIDGE_FOLDER, NOMENCLATURE_KIND_ORDER, REPO_MAPPINGS
 
 SUPPORTED_SCHEMA_MAJOR = "0"
@@ -32,7 +32,7 @@ class BridgeEntry:
 
 def _load_json(path: Path) -> dict:
     try:
-        return json.loads(path.read_text())
+        return json.loads(note_read(path).read_text())
     except json.JSONDecodeError as exc:
         raise ValueError(f"{path}: invalid JSON ({exc})") from exc
 

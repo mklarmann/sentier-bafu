@@ -7,6 +7,7 @@ import warnings
 from collections import Counter, defaultdict
 from collections.abc import Mapping
 from dataclasses import dataclass
+from pathlib import Path
 
 import pandas as pd
 
@@ -46,6 +47,8 @@ class BuildResult:
     source_version: str | None = None
     inventory_db: str = "bafu-2026"
     residual_db: str = "bafu-2026-residual"
+    # the data files the build was read from, where the caller recorded them (``assemble``)
+    files_read: tuple[Path, ...] = ()
 
 
 def _is_null(value: object) -> bool:

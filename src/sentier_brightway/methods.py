@@ -9,7 +9,7 @@ from types import MappingProxyType
 
 import pandas as pd
 
-from ._frames import codes_from_iris, data_root_error, require_columns
+from ._frames import codes_from_iris, data_root_error, note_read, require_columns
 from .constants import METHOD_PREFIX, METHODS_FOLDER, REPO_METHODS
 
 METHOD_COLUMNS = frozenset({"method_id", "method_name", "impact_category", "unit"})
@@ -70,11 +70,11 @@ def load_methods(data_root: Path) -> tuple[MethodSpec, ...]:
     if not cfs_path.is_file():
         raise data_root_error("characterization-factors.parquet", cfs_path)
 
-    methods = pd.read_parquet(methods_path)
+    methods = pd.read_parquet(note_read(methods_path))
     require_columns(methods, METHOD_COLUMNS, methods_path)
     _check_no_duplicate_impact_category(methods, methods_path)
 
-    cfs = pd.read_parquet(cfs_path)
+    cfs = pd.read_parquet(note_read(cfs_path))
     require_columns(cfs, CF_COLUMNS, cfs_path)
 
     global_cfs = cfs[cfs["location"].isna()]
