@@ -18,6 +18,9 @@ project: `src/sentier_brightway`, with its tests in `installer-tests/`. Since th
 - `sources.toml` pins sentier-mappings at `179aab3`, the commit the build used. The build no
   longer moves a data pin of its own, so the installer run on its own and the build read
   the same files.
+- `backtest` joins a patched copy's datasets in `EURwoCH` to BAFU's published results
+  (BAFU's release: `Europe without Switzerland`; the workbook: `RER without CH`). 26
+  datasets were left out before. The output keeps the patched copy's spelling.
 - The version is the distribution's (`bafu-community-fixes`). Importing the package without
   the `brightway` extra says which extra is missing.
 

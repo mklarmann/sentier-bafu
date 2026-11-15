@@ -261,7 +261,9 @@ with one transposed solve per category (`backtest/scorer.py:145-175`) and compar
 LCIA results workbook, sheet `BAFU_2026 v1` (`backtest/reference.py:62-120`). Rows are joined
 by dataset name and location (`backtest/compare.py:23`, `:191`); the workbook's
 `RER without CH` is read as `Europe without Switzerland` (`:72`). The patched copy writes
-`EURwoCH`, so 26 of its datasets are not joined. With `--published-results` the build runs
+`EURwoCH` for that location, and its 26 datasets there are joined under BAFU's spelling
+(since 15 November 2026; before, they were left out). With `--published-results` the build
+runs
 it and `published_results.py` writes, per category, how many datasets were compared, the
 share within 1 % and within 5 %, and the median difference. Matching BAFU's published
 results is not a goal; the step shows what a build changes.
@@ -381,7 +383,7 @@ Both builds were compared with BAFU's corrected LCIA results workbook (July 2026
 
 | | Provider release | Patched copy |
 |---|---|---|
-| datasets joined by name and location | 11,947 | 11,921 (26 are now `EURwoCH`) |
+| datasets joined by name and location | 11,947 | 11,921 (26 are `EURwoCH`, and were not joined then) |
 | climate change within 1 % | 99.98 % | 99.96 % |
 | Resource use, fossils within 1 % | 97.75 % | 97.72 % |
 | Resource use, fossils, median difference | −0.07 % | −0.07 % |
@@ -521,8 +523,10 @@ is BAFU's chlorine to air.
 6. **sentier-brightway's export manifest names its own pins** even when `--data-root` supplies
    other data, so the files export behind the comparison with BAFU's results misstates the
    inventory and the mapping commit. `build.json` holds the pins that were used.
-7. **26 datasets of a patched copy are not joined to BAFU's published results**, because
-   the comparison does not know `EURwoCH`.
+7. *(Closed on 15 November 2026.)* 26 datasets of a patched copy were not joined to BAFU's
+   published results, because the comparison did not know `EURwoCH`, the patched copy's
+   spelling of `Europe without Switzerland`. They are joined now, and the run report counts
+   them (`own_location_spellings_joined`).
 8. **Only global factors are installed**, and only EF 3.1. Uncertainty is carried into the
    Brightway database but not into the files export.
 9. *(Closed.)* The build's workflow has run on GitHub's runners since 13 November 2026, in a

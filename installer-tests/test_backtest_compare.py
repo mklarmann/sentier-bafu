@@ -234,6 +234,26 @@ def test_align_applies_reference_location_aliases():
     assert cmp.LOCATION_ALIASES["US-SERC"] == "SERC"
 
 
+def test_align_joins_a_patched_copys_spelling_of_a_location():
+    """A patched copy writes ``EURwoCH`` where BAFU's release has ``Europe without
+    Switzerland`` (the workbook: ``RER without CH``). The row is joined, and keeps its own
+    spelling in what is written."""
+    scores = _scores().assign(location=["EURwoCH", "EURwoCH", "GLO"])
+    reference = _reference().assign(
+        location=["RER without CH", "Europe without Switzerland", "EURwoCH"]
+    )
+    aligned = cmp.align(scores, reference, CATS)
+    assert aligned.frame["resolution"].tolist() == ["mapped", "mapped", "unmatched"]
+    assert aligned.frame["location"].tolist() == ["EURwoCH", "EURwoCH", "GLO"]
+    assert cmp.JOIN_LOCATION not in aligned.frame.columns
+    assert (aligned.respelled_ours, aligned.aliased_ref) == (2, 1)
+    # a reference row that is used is not reported as unused; the third one is
+    assert aligned.unmatched_ref == (("Other", "EURwoCH"),)
+    # without the patched spelling nothing is counted
+    plain = cmp.align(_scores(), _reference(), CATS)
+    assert plain.respelled_ours == 0
+
+
 def test_align_strips_names_on_both_sides():
     scores = _scores().assign(name=[LOW + " ", MEDIUM, "Widget"])
     reference = _reference().assign(name=[LOW, MEDIUM + "  ", "Other"])
