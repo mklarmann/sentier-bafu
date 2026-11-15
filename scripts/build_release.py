@@ -497,11 +497,6 @@ def build(args: argparse.Namespace) -> int:
             *("python", str(HELPERS / "data_root.py"), str(paths["pinned_data"])),
             *("--pins", str(args.pins.resolve()), "--record", str(out / "data-pins.json")),
         ]
-        terms = paths["data_root"] / "sentier-vocab" / "terms"
-        if paths["patched"]:
-            # sentier-brightway looks up the flow terms of the inventory's own source
-            data_command += ["--flow-terms", PROVIDER_SOURCE, database]
-            data_command += [str(terms / f"{database}.parquet")]
         step("data", brightway.command(*data_command), brightway.env())
         pinned = json.loads((out / "data-pins.json").read_text())
         inventory = paths["data_root"] / "sentier-inventory" / "data" / folder_name
@@ -509,11 +504,7 @@ def build(args: argparse.Namespace) -> int:
         for file in sorted(tables.iterdir()):
             shutil.copy2(file, inventory / file.name)
         for name in PINNED_DATA:
-            if name == "sentier-vocab" and paths["patched"]:
-                for file in sorted((Path(pinned["folder"]) / name / "terms").glob("*.parquet")):
-                    (terms / file.name).symlink_to(file)
-            else:
-                (paths["data_root"] / name).symlink_to(Path(pinned["folder"]) / name)
+            (paths["data_root"] / name).symlink_to(Path(pinned["folder"]) / name)
         record["data_pins"] = [
             {key: value for key, value in pin.items() if key != "files"}
             for pin in pinned["sources"]
@@ -522,16 +513,22 @@ def build(args: argparse.Namespace) -> int:
         # 7. install
         bw_env = {**brightway.env(), "BRIGHTWAY2_DIR": str(paths["brightway_dir"])}
         paths["brightway_dir"].mkdir(parents=True, exist_ok=True)
+        # a patched copy has its own name and the flows of BAFU's release, because its
+        # elementary exchanges are linked on the flows BAFU declared
+        flows_of = ["--flow-terms-of", PROVIDER_SOURCE] if paths["patched"] else []
+        install_report = paths["logs"] / "install-report.json"
         step(
             "install",
             brightway.command(
                 *("sentier-brightway", "db", "--project", paths["project"]),
                 *("--source", database, "--data-root", str(paths["data_root"])),
+                *("--report", str(install_report)),
+                *flows_of,
                 *flow_links,
             ),
             bw_env,
         )
-        record["coverage"] = _coverage_lines(paths["logs"] / "install.log")
+        record["coverage"] = _linking_report(install_report)
 
         # 8. mark
         build_steps = _build_steps(record, receipt, inventory)
@@ -586,6 +583,7 @@ def build(args: argparse.Namespace) -> int:
                     *("sentier-brightway", "backtest", "--out", str(paths["published"])),
                     *("--source", database, "--data-root", str(paths["data_root"])),
                     *("--xlsx", str(workbook.resolve())),
+                    *flows_of,
                     *flow_links,
                 ),
                 brightway.env(),
@@ -770,11 +768,14 @@ def _repository_commit() -> str:
     return commit + (" (with local changes)" if changed else "")
 
 
-def _coverage_lines(log: Path) -> list[str]:
-    """The linking report sentier-brightway prints after an install."""
-    lines = log.read_text(errors="replace").splitlines()
-    start = next((i for i, line in enumerate(lines) if line.startswith("Installed ")), None)
-    return [] if start is None else [line for line in lines[start:] if line.strip()]
+def _linking_report(report: Path) -> list[str]:
+    """The lines of the linking report the installer wrote beside its install."""
+    if not report.is_file():
+        raise BuildError(f"The installer wrote no report at {report}")
+    lines = json.loads(report.read_text()).get("lines")
+    if not isinstance(lines, list) or not all(isinstance(line, str) for line in lines):
+        raise BuildError(f"{report} holds no lines of a linking report")
+    return lines
 
 
 def compare(args: argparse.Namespace) -> int:

@@ -242,16 +242,19 @@ class Steps(unittest.TestCase):
             result = build_release.run(command, log=Path(temp) / "step.log", accept=(0, 1))
             self.assertEqual(result["returncode"], 1)
 
-    def test_the_linking_report_is_taken_from_the_install_log(self):
+    def test_the_linking_report_is_the_file_the_installer_wrote(self):
         with tempfile.TemporaryDirectory() as temp:
-            log = Path(temp) / "install.log"
-            log.write_text(
-                "writing method 1/25\r 50%|#\nInstalled bafu-2026: 2 processes\n\nLinked 1/2\n"
-            )
-            self.assertEqual(
-                build_release._coverage_lines(log),
-                ["Installed bafu-2026: 2 processes", "Linked 1/2"],
-            )
+            report = Path(temp) / "install-report.json"
+            lines = ["Installed bafu-2026: 2 processes", "Linked 1/2"]
+            report.write_text(json.dumps({"linking": "sentier-mappings", "lines": lines}))
+            self.assertEqual(build_release._linking_report(report), lines)
+            # what the installer printed is not read: no report, or one without lines, stops
+            report.write_text(json.dumps({"lines": "Installed"}))
+            with self.assertRaisesRegex(build_release.BuildError, "holds no lines"):
+                build_release._linking_report(report)
+            report.unlink()
+            with self.assertRaisesRegex(build_release.BuildError, "wrote no report"):
+                build_release._linking_report(report)
 
 
 class WholePathRecord(unittest.TestCase):

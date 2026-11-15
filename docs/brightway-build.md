@@ -211,10 +211,12 @@ commit of each data source and says whether sentier-brightway or this build pinn
 Where BAFU is hard-coded in sentier-brightway: the default source `bafu-2026`
 (`constants.py:9`), the mapping folder `bafu-2026-v1__ef-3.1` (`:18`), the methods folder
 `01-ef-3.1` (`:20`) and the citation (`:23-27`). `--source` selects the inventory folder and
-names the databases (`constants.py:36-43`); the flow terms must carry the same source name
-(`flows.py:85-88`). For a patched copy the build therefore writes the provider's 2,679
-elementary flow terms again under the patched name. They are the same flows, because the
-exchanges are linked on the declared ones.
+names the databases (`constants.py:36-43`). By default the flow terms are looked up under the
+same source name (`flows.py:85-88`). A patched copy has its own name and the flows of BAFU's
+release, because its exchanges are linked on the declared ones; the build tells the installer
+so (`--flow-terms-of bafu-2026`), and the installer reads BAFU's 2,679 flow terms as they are
+pinned. Until 15 November 2026 the build wrote those terms a second time under the patched
+name.
 
 ### 5. The install and the marker
 
@@ -485,9 +487,10 @@ under "What is missing".
    when tried.
 3. **The importer writes no `metadata.json` from its command line**, and has no way to point
    at a release file other than the fixed path below its data root.
-4. **sentier-brightway names the database after the source and looks up flow terms of that
-   same source.** The build writes the provider's flow terms again under the patched name. A
-   database name independent of the source would make that unnecessary.
+4. *(Closed on 15 November 2026.)* The installer looked up flow terms under the name of the
+   inventory's source, so the build wrote the provider's flow terms again under the patched
+   name. The installer now takes the source of the flow terms as an option, and the build
+   reads its linking report from a file the installer writes, not from what it printed.
 5. **The patch tool's run summary says which fields a step changed, not which rows.** The
    comparison attributes changed rows with a table of what each known step may change,
    checked against the data on every run; a step that is not in the table (a new patch) is

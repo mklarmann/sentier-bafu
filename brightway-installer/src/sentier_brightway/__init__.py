@@ -38,12 +38,16 @@ def _assemble_from_root(
     source: str,
     source_version: str | None = None,
     flow_links: Path | str | None = None,
+    flow_terms_of: str | None = None,
 ) -> BuildResult:
     """Build from an already resolved data root. With ``flow_links`` (the targets file of
     patch 0010's crosswalk) the flows are linked through Brightway Flows, and the mapping
-    folder is not read."""
+    folder is not read. ``flow_terms_of`` names the source whose elementary flow terms the
+    inventory uses, when that is not the inventory's own source: a patched copy of a release
+    has its own name and the release's flows."""
     inventory = load_inventory(root, source=source, source_version=source_version)
-    ef_flows, source_flows = load_ef_flows(root), load_source_flows(root, source)
+    ef_flows = load_ef_flows(root)
+    source_flows = load_source_flows(root, flow_terms_of or source)
     methods = load_methods(root)
     if flow_links is None:
         return build(
@@ -80,6 +84,7 @@ def assemble(
     source: str = DEFAULT_SOURCE,
     source_version: str | None = None,
     flow_links: Path | str | None = None,
+    flow_terms_of: str | None = None,
 ) -> BuildResult:
     """Read the Sentier data (local root or verified download) and build the node dicts.
 
@@ -88,7 +93,12 @@ def assemble(
     release when the data root serves several of the same source. ``flow_links`` links the
     elementary flows through Brightway Flows (see ``brightway_flows``)."""
     return _assemble_from_root(
-        resolve_data_root(data_root), include_nomenclature, source, source_version, flow_links
+        resolve_data_root(data_root),
+        include_nomenclature,
+        source,
+        source_version,
+        flow_links,
+        flow_terms_of,
     )
 
 
@@ -98,9 +108,12 @@ def coverage(
     source: str = DEFAULT_SOURCE,
     source_version: str | None = None,
     flow_links: Path | str | None = None,
+    flow_terms_of: str | None = None,
 ) -> Coverage:
     """Linking coverage without touching Brightway."""
-    return assemble(data_root, include_nomenclature, source, source_version, flow_links).coverage
+    return assemble(
+        data_root, include_nomenclature, source, source_version, flow_links, flow_terms_of
+    ).coverage
 
 
 def import_db(
@@ -111,6 +124,7 @@ def import_db(
     source: str = DEFAULT_SOURCE,
     source_version: str | None = None,
     flow_links: Path | str | None = None,
+    flow_terms_of: str | None = None,
 ) -> Coverage:
     """Install one inventory ``source`` (default BAFU-2026) + EF 3.1 biosphere + EF 3.1
     methods into ``project``. The inventory database is named after ``source`` (never after
@@ -126,7 +140,9 @@ def import_db(
     """
     from .writer import write  # bw2data import stays lazy
 
-    result = assemble(data_root, include_nomenclature, source, source_version, flow_links)
+    result = assemble(
+        data_root, include_nomenclature, source, source_version, flow_links, flow_terms_of
+    )
     write(result, project=project, overwrite=overwrite)
     return result.coverage
 
@@ -152,6 +168,7 @@ def import_files(
     source: str = DEFAULT_SOURCE,
     source_version: str | None = None,
     flow_links: Path | str | None = None,
+    flow_terms_of: str | None = None,
 ) -> Coverage:
     """Write one inventory ``source`` (default BAFU-2026) + EF 3.1 as plain files instead of a
     bw2data project.
@@ -173,7 +190,9 @@ def import_files(
     from .files import write_files
 
     root = resolve_data_root(data_root)
-    result = _assemble_from_root(root, include_nomenclature, source, source_version, flow_links)
+    result = _assemble_from_root(
+        root, include_nomenclature, source, source_version, flow_links, flow_terms_of
+    )
     write_files(
         result,
         data_root=root,

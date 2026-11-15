@@ -142,35 +142,6 @@ class Labels(unittest.TestCase):
         self.assertEqual(result["exchanges_linked_on_the_declared_flow"], 1)
 
 
-@unittest.skipUnless(HAS_ARROW, "pyarrow is not installed here")
-class FlowTerms(unittest.TestCase):
-    def test_the_providers_flow_terms_are_written_again_under_the_patched_name(self):
-        import pyarrow as pa
-        import pyarrow.parquet as pq
-
-        provider = data_root.SOURCE_IRI + "bafu-2026"
-        rows = {
-            "iri": ["flow-1", "flow-2", "process-1", "ef-1"],
-            "type": ["elementary-flow", "elementary-flow", "process", "elementary-flow"],
-            "pref_label": ["One", "Two", "A process", "An EF flow"],
-            "source": [provider, provider, provider, data_root.SOURCE_IRI + "ef-3.1"],
-            "attributes": ["{}"] * 4,
-        }
-        with tempfile.TemporaryDirectory() as temp:
-            terms = Path(temp) / "terms"
-            terms.mkdir()
-            pq.write_table(pa.table(rows), terms / "all.parquet")
-            target = Path(temp) / "out" / "patched.parquet"
-            count = data_root.write_flow_terms(terms, target, "bafu-2026", "bafu-2026-v1-patched")
-            written = pq.read_table(target).to_pydict()
-            with self.assertRaisesRegex(ValueError, "No elementary flow terms"):
-                data_root.write_flow_terms(terms, target, "other-source", "x")
-        self.assertEqual(count, 2)
-        self.assertEqual(written["iri"], ["flow-1", "flow-2"])
-        self.assertEqual(set(written["source"]), {data_root.SOURCE_IRI + "bafu-2026-v1-patched"})
-        self.assertEqual(written["pref_label"], ["One", "Two"])
-
-
 BUILD = {
     "patched": True,
     "release_name": "X:2026 v1",

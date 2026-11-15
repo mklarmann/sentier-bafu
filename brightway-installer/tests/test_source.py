@@ -138,3 +138,49 @@ def test_db_mode_writes_databases_named_after_the_source(other_root, bw_project)
     assert "bafu-2026" not in bd.databases
     assert len(bd.Database(OTHER)) == 2
     assert len(bd.Database(f"{OTHER}-residual")) == 1
+
+
+@pytest.fixture
+def copy_root(data_root):
+    """The fixture inventory under another name, as a patched copy of a release is: its rows
+    and metadata carry the new name, and the flow terms are still the release's."""
+    old = data_root / INVENTORY_FOLDER
+    folder = old.with_name(f"{OTHER}-{OTHER_VERSION}")
+    old.rename(folder)
+    path = folder / "processes.parquet"
+    proc = pd.read_parquet(path)
+    proc["source"] = OTHER
+    proc["source_version"] = OTHER_VERSION
+    proc.to_parquet(path, index=False)
+    (folder / "metadata.json").write_text(json.dumps(inventory_metadata(OTHER, OTHER_VERSION)))
+    return data_root
+
+
+def test_a_copy_uses_the_flow_terms_of_the_source_it_names(copy_root):
+    # the copy has no flow terms of its own name
+    with pytest.raises(ValueError, match="no elementary flows with source"):
+        assemble(copy_root, include_nomenclature=False, source=OTHER)
+    result = assemble(
+        copy_root, include_nomenclature=False, source=OTHER, flow_terms_of=DEFAULT_SOURCE
+    )
+    # the databases are the copy's, and the flow left unlinked has the release's name for it
+    assert (result.inventory_db, result.residual_db) == (OTHER, f"{OTHER}-residual")
+    node = result.residual[(f"{OTHER}-residual", B3)]
+    assert node["name"] == "Heat, waste"
+    assert node["categories"] == ("emissions to air", "unspecified")
+
+
+def test_the_command_line_takes_the_source_of_the_flow_terms(copy_root, tmp_path, capsys):
+    report = tmp_path / "report.json"
+    arguments = ["coverage", "--data-root", str(copy_root), "--source", OTHER]
+    assert cli.main(arguments) == 2
+    assert "no elementary flows with source" in capsys.readouterr().err
+    assert cli.main([*arguments, "--flow-terms-of", DEFAULT_SOURCE, "--report", str(report)]) == 0
+    printed = capsys.readouterr().out
+    assert f"Installed {OTHER}: 2 processes" in printed
+    # the report file holds the same lines, without the empty ones, and the counts
+    written = json.loads(report.read_text())
+    assert written["lines"] == [line for line in printed.splitlines() if line.strip()]
+    assert written["linking"] == "sentier-mappings"
+    assert written["coverage"]["flows_used"] == 3
+    assert written["coverage"]["inventory_db"] == OTHER

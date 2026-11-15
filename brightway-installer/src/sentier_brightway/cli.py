@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import sys
 import warnings
+from dataclasses import asdict
 from pathlib import Path
 
 from . import coverage, import_db, import_files, render
@@ -41,6 +43,25 @@ def _add_flow_links(parser: argparse.ArgumentParser) -> None:
     )
 
 
+def _add_flow_terms_of(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--flow-terms-of",
+        default=None,
+        metavar="SOURCE",
+        help="the source whose elementary flow terms the inventory uses, when that is not "
+        "--source itself (a patched copy of a release has its own name and the release's flows)",
+    )
+
+
+def _add_report(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--report",
+        default=None,
+        metavar="FILE",
+        help="also write the linking report as JSON: the lines printed, and the counts",
+    )
+
+
 def _parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="sentier-brightway")
     sub = p.add_subparsers(dest="command", required=True)
@@ -51,6 +72,8 @@ def _parser() -> argparse.ArgumentParser:
     db.add_argument("--project", required=True, help="bw2data project name")
     _add_source(db)
     _add_flow_links(db)
+    _add_flow_terms_of(db)
+    _add_report(db)
     db.add_argument("--overwrite", action="store_true", help="replace existing databases")
     db.add_argument("--data-root", default=None, help="local ~/dds-shaped folder (skips download)")
     db.add_argument(
@@ -65,6 +88,8 @@ def _parser() -> argparse.ArgumentParser:
     fil.add_argument("--out", required=True, help="output folder")
     _add_source(fil)
     _add_flow_links(fil)
+    _add_flow_terms_of(fil)
+    _add_report(fil)
     fil.add_argument("--overwrite", action="store_true", help="replace a non-empty output folder")
     fil.add_argument(
         "--no-datapackages",
@@ -83,6 +108,8 @@ def _parser() -> argparse.ArgumentParser:
     cov = sub.add_parser("coverage", help="print linking coverage, no Brightway needed")
     _add_source(cov)
     _add_flow_links(cov)
+    _add_flow_terms_of(cov)
+    _add_report(cov)
     cov.add_argument("--data-root", default=None)
     cov.add_argument("--skip-nomenclature", action="store_true")
 
@@ -105,6 +132,7 @@ def _parser() -> argparse.ArgumentParser:
     bt.add_argument("--data-root", default=None, help="local ~/dds-shaped folder (skips download)")
     _add_source(bt)
     _add_flow_links(bt)
+    _add_flow_terms_of(bt)
     bt.add_argument("--skip-nomenclature", action="store_true")
     bt.add_argument("--fixture-categories", action="store_true", help=argparse.SUPPRESS)
     return p
@@ -125,6 +153,7 @@ def _run_backtest(args: argparse.Namespace, include: bool) -> str:
             source=args.source,
             source_version=args.source_version,
             flow_links=args.flow_links,
+            flow_terms_of=args.flow_terms_of,
         )
     cats = bt.FIXTURE_CATEGORIES if args.fixture_categories else bt.CATEGORIES
     xlsx = Path(args.xlsx) if args.xlsx else bt.DEFAULT_XLSX.expanduser()
@@ -144,6 +173,7 @@ def _run(args: argparse.Namespace) -> str:
             source=args.source,
             source_version=args.source_version,
             flow_links=args.flow_links,
+            flow_terms_of=args.flow_terms_of,
         )
     elif args.command == "files":
         cov = import_files(
@@ -155,6 +185,7 @@ def _run(args: argparse.Namespace) -> str:
             source=args.source,
             source_version=args.source_version,
             flow_links=args.flow_links,
+            flow_terms_of=args.flow_terms_of,
         )
     else:
         cov = import_db(
@@ -165,8 +196,16 @@ def _run(args: argparse.Namespace) -> str:
             source=args.source,
             source_version=args.source_version,
             flow_links=args.flow_links,
+            flow_terms_of=args.flow_terms_of,
         )
     text = render(cov)
+    if args.report:
+        report = {
+            "linking": cov.linking,
+            "lines": [line for line in text.splitlines() if line.strip()],
+            "coverage": asdict(cov),
+        }
+        Path(args.report).write_text(json.dumps(report, indent=2) + "\n")
     if args.command == "files":
         text += f"\nFiles written to {Path(args.out).resolve()}"
     return text
