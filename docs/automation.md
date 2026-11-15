@@ -87,7 +87,7 @@ lists.
 
 ### checks.yml
 
-Four jobs, none of which writes and none of which needs BAFU's data:
+Five jobs, none of which writes and none of which needs BAFU's data:
 
 - **Records and unit tests**: `community.py check`, the unit tests, the build audit template, the
   tests of the export audit. On Python 3.12, outside the package project.
@@ -103,6 +103,9 @@ Four jobs, none of which writes and none of which needs BAFU's data:
   `ruff`, the tool's tests on a small made-up dataset, `community.py check` once more where the
   tool is installed, and the receipt that accounts for every file of the two repositories that
   were brought together.
+- **Brightway installer lint and tests**: the installer's own locked environment (Python 3.12,
+  `uv run --frozen --project brightway-installer`), `ruff` with the folder's settings, and the
+  installer's tests on a made-up data root. Nothing is downloaded.
 
 `community/patches.json`, from which the site reads the community patches, is never kept by hand:
 `scripts/patches_snapshot.py` writes it from the patch registry, and `community.py check` fails
@@ -424,7 +427,8 @@ Before merging:
    and approve pull requests". Without it the intake fails when it opens the pull request.
 2. **Branch protection for `main`:** require a pull request. If checks are to be required,
    require exactly `Records and unit tests`, `Site build and links`,
-   `Tests hold through a finding's life` and `Patch tool lint and tests`; the intake reports its
+   `Tests hold through a finding's life`, `Patch tool lint and tests` and
+   `Brightway installer lint and tests`; the intake reports its
    proposals under these names. The jobs of `full-release.yml` run only for pull requests that
    touch the patch tool or the build, so they cannot be required for every pull request.
 3. **Tags:** a rule that only maintainers create tags `patched-*`.

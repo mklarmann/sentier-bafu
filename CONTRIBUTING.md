@@ -8,11 +8,12 @@ Open an issue or a pull request. For a contribution, name the BAFU release and t
 
 Run the checks that fit your change before you open a pull request. This section is the one place that lists them. The workflows run the same commands, and a test compares the two lists. [docs/automation.md](docs/automation.md) says which workflow runs what.
 
-The checks use three environments, and each keeps its own. All of them need [uv](https://docs.astral.sh/uv/).
+The checks use four environments, and each keeps its own. All of them need [uv](https://docs.astral.sh/uv/).
 
 - The records, the site and their tests need Python 3.12 and the `markdown` package. They run outside the package project, with `uv run --no-project --python 3.12`.
 - The patch tool needs Python 3.14 and its locked environment, which `uv sync --locked` installs.
-- The build of a Brightway database and of the exports makes its own environments from the versions pinned in `scripts/release_build/pins.toml`.
+- The Brightway installer (`brightway-installer/`) needs Python 3.12 and its own locked environment, which `uv run --frozen --project brightway-installer` makes.
+- The build of a Brightway database and of the exports uses that environment, and makes one more for sentier-importers at the version pinned in `scripts/release_build/pins.toml`.
 
 ### Records, site and unit tests
 
@@ -49,15 +50,25 @@ uv run --no-project --python 3.12 python scripts/check_integration_receipt.py --
 - The second `check` runs where the patch tool is installed. It compares `community/patches.json` with the patches as the tool itself lists them. The first one reads the patch files without the tool.
 - The last two lines check the receipt that accounts for every file of the two repositories that were brought together here. The check needs the whole history (`git fetch --unshallow` in a shallow clone).
 
+### The Brightway installer
+
+```sh
+uv run --frozen --project brightway-installer --python 3.12 --extra testing --extra dev ruff check brightway-installer
+uv run --frozen --project brightway-installer --python 3.12 --extra testing --extra dev ruff format --check brightway-installer
+uv run --frozen --project brightway-installer --python 3.12 --extra testing --extra dev pytest brightway-installer
+```
+
+- `brightway-installer/` is the code that writes the Brightway databases and the EF 3.1 methods. It has its own environment (Python 3.12, pandas, bw2data), its own lock and its own lint settings; the patch tool's `ruff` leaves the folder alone.
+- Its tests build a made-up data root. They need none of BAFU's data and download nothing.
+
 ### The build, on a made-up release
 
-These tests build a Brightway database and the exports from eight made-up datasets. They need none of BAFU's data. The first command clones [sentier-importers](https://github.com/sentier-dev/sentier-importers) at its pinned version into `output/tools` and downloads 37 MB of pinned flow lists and impact methods. The code that writes the Brightway databases is in this repository, in `brightway-installer/`; the second and third commands run in its environment. The three variables belong to that command alone: with them set, the second command would build everything a second time.
+These tests build a Brightway database and the exports from eight made-up datasets. They need none of BAFU's data. The first command clones [sentier-importers](https://github.com/sentier-dev/sentier-importers) at its pinned version into `output/tools` and downloads 37 MB of pinned flow lists and impact methods. The code that writes the Brightway databases is in this repository, in `brightway-installer/`; the second command runs in its environment. The three variables belong to that command alone: with them set, the second command would build everything a second time.
 
 ```sh
 RELEASE_BUILD_WHOLE_PATH=1 RELEASE_BUILD_TOOLS=output/tools RELEASE_BUILD_PINNED_DATA=output/pinned-data \
   uv run --no-project --python 3.12 python -m unittest discover -s release-build-tests -p test_whole_path.py
 uv run --frozen --project brightway-installer --python 3.12 --extra testing python -m unittest discover -s release-build-tests
-uv run --frozen --project brightway-installer --python 3.12 --extra testing pytest brightway-installer
 uv run --no-project --python 3.12 --with-requirements export-tests/requirements.txt pytest export-tests
 uv run --no-sync python -m unittest discover -s release-build-tests -p test_adapter.py
 ```

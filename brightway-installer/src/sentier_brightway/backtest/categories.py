@@ -1,7 +1,6 @@
-"""The 25 EF 3.1 categories: our method ids, dashboard short ids and labels, BAFU headers.
+"""The 25 EF 3.1 categories: our method ids, short ids and labels, BAFU headers.
 
-This is the single source of truth. The dashboard's ``CATS`` array is generated from it
-(``as_js_cats``) and a test asserts the HTML carries exactly that text.
+This is the single source of truth for them.
 """
 
 from __future__ import annotations
@@ -168,12 +167,3 @@ def shorts() -> tuple[str, ...]:
 
 def method_ids() -> tuple[str, ...]:
     return tuple(c.method_id for c in CATEGORIES)
-
-
-def as_js_cats() -> str:
-    """The dashboard's ``const CATS = [...]`` block, one ``[short, label]`` pair per line."""
-    width = max(len(c.short) for c in CATEGORIES) + 3
-    lines = [
-        f"  [{(chr(39) + c.short + chr(39) + ',').ljust(width)} '{c.label}']," for c in CATEGORIES
-    ]
-    return "const CATS = [\n" + "\n".join(lines) + "\n];"

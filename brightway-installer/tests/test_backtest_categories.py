@@ -5,7 +5,6 @@ import pytest
 
 from sentier_brightway.backtest.categories import (
     CATEGORIES,
-    as_js_cats,
     by_header,
     by_short,
     method_ids,
@@ -38,14 +37,6 @@ def test_by_header_returns_none_for_unknown():
 
 def test_by_header_matches_with_extra_whitespace():
     assert by_header("Human  toxicity cancer (inorganics)   [ CTUh ]") is by_short("ht_c_inorg")
-
-
-def test_js_cats_renders_one_line_per_category():
-    js = as_js_cats()
-    assert js.startswith("const CATS = [\n")
-    assert js.rstrip().endswith("];")
-    assert js.count("\n  ['") == 25
-    assert "  ['ht_c_inorg',   'HT: C Inorg.']," in js
 
 
 def test_real_method_ids_exist():

@@ -140,11 +140,6 @@ jobs:
         run: |
           uv run --frozen --project brightway-installer --python 3.12 \
             --extra testing python -m unittest discover -s release-build-tests
-      - name: Run the Brightway installer's own tests
-        if: ${{ !cancelled() }}
-        run: |
-          uv run --frozen --project brightway-installer --python 3.12 \
-            --extra testing pytest brightway-installer
       - name: Run the export step's tests on a made-up database
         if: ${{ !cancelled() }}
         run: |
