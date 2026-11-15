@@ -21,10 +21,12 @@ dataset history requires a separately designed complete change stream, not
 inference from these samples.
 
 Reuse design concepts with an independent implementation under the existing
-MIT project. Brightway Flows code is AGPL-3.0-or-later and data ODbL-1.0;
-copying its implementation or redistributing its data requires an explicit
-licensing decision. Preserve the community repo's documented permission and
-confirm its applicability to consolidation before republishing the data.
+MIT project. Brightway Flows code is AGPL-3.0-or-later and data ODbL-1.0.
+Copying its implementation requires an explicit licensing decision; its data
+may be redistributed under the ODbL with its notices. The community repo
+records the author's permission for the pipeline's output to follow the BAFU
+Terms of Use instead of ODbL share-alike; confirm that it applies to this
+repository before publishing output from it.
 
 It awaits the decision of Chris Mutel and Laurenz Bougan in
 [#18](https://github.com/sentier-dev/sentier-bafu/issues/18).
