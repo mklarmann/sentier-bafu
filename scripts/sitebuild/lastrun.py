@@ -68,6 +68,7 @@ TAG = {
     "on GitHub": "the tag on GitHub",
     "box": "Files of the last build", "box of": "Build <code>{tag}</code>", "about": "About tagged builds",
     "where not": "not offered",
+    "listed below": "and the {files} listed below",
 }
 NO_FAILURE = ("completed", "skipped", "not run here")
 DRAWN = {"not run here": "open"}               # a step this place can't run is open, not left undone
@@ -636,7 +637,10 @@ def last_run(site, up=""):
 
 
 def megabytes(size):
-    return f"{size / 1e6:,.1f} MB" if isinstance(size, (int, float)) and not isinstance(size, bool) else ""
+    """A size as a reader takes it in: megabytes, or kilobytes where that would read 0.0 MB."""
+    if not isinstance(size, (int, float)) or isinstance(size, bool):
+        return ""
+    return f"{size / 1e6:,.1f} MB" if size >= 50_000 else f"{max(1, round(size / 1e3)):,} kB"
 
 
 def tagged_files(record):
@@ -749,29 +753,39 @@ def packages(site, up=""):
         return ('<div class="packages" id="build-files" data-packages><p class="list-none">'
                 f"{TAG['not read']}</p></div>")
     releases = record.get("releases") or []
+    rows = package_rows(record)
+    # a file the table below offers is not listed a second time under its tag
+    below = {row["url"] for row in rows if row["url"]}
     if releases:
-        listed_ = '<ul class="plain releases">' + "".join(
-            f'<li><strong><code>{esc(release["tag"])}</code></strong> <span class="quiet">· {day(release["published"], long=True)}</span> · '
-            f'{ext(release["url"], TAG["on GitHub"])}'
-            + "".join(f'<br>{download(site, asset["url"], asset["name"], megabytes(asset["size"]), "<code>" + esc(asset["name"]) + "</code>", up) if asset.get("url") else "<code>" + esc(asset["name"]) + "</code>"}'
-                      f' <span class="quiet">{megabytes(asset["size"])}</span>'
-                      for asset in release["assets"])
-            + "</li>"
-            for release in releases
-        ) + "</ul>"
+        listed_ = '<ul class="plain releases">'
+        for release in releases:
+            own = [asset for asset in release["assets"] if asset.get("url") not in below]
+            shared = len(release["assets"]) - len(own)
+            listed_ += (
+                f'<li><strong><code>{esc(release["tag"])}</code></strong> <span class="quiet">· {day(release["published"], long=True)}</span> · '
+                f'{ext(release["url"], TAG["on GitHub"])}'
+                + "".join(f'<br>{download(site, asset["url"], asset["name"], megabytes(asset["size"]), "<code>" + esc(asset["name"]) + "</code>", up) if asset.get("url") else "<code>" + esc(asset["name"]) + "</code>"}'
+                          f' <span class="quiet">{megabytes(asset["size"])}</span>'
+                          for asset in own)
+                + (f'<br><span class="quiet">{TAG["listed below"].format(files=plural(shared, "file"))}</span>' if shared else "")
+                + "</li>"
+            )
+        listed_ += "</ul>"
     else:
         listed_ = f'<p class="list-none">{TAG["none yet"]}</p>'
-    rows = package_rows(record)
     table = ""
     if rows:
         run = record.get("run")
-        head = ("File", "For", "Size", "SHA-256", "Where")
+        # three columns that fit the text's width: what the file is for, the file with its
+        # size and checksum beneath, and where it can be had
+        head = ("For", "File", "Where")
         lines = ""
         for row in rows:
             where = download(site, row["url"], row["name"], row["size"], "Download", up) if row["url"] else TAG["where not"]
             read = "" if row["same"] is not False else ' <span class="run-no"><strong>did not read back the same</strong></span>'
-            checksum = short(row["sha256"]) if row["sha256"] else ""
-            cells = (f'<code>{esc(row["name"])}</code>{read}', esc(row["label"]), esc(row["size"]), checksum, where)
+            facts = " · ".join(part for part in (esc(row["size"]), f'SHA-256 {short(row["sha256"])}' if row["sha256"] else "") if part)
+            file = f'<code>{esc(row["name"])}</code>{read}' + (f'<span class="file-facts">{facts}</span>' if facts else "")
+            cells = (esc(row["label"]), file, where)
             lines += '<tr role="row">' + "".join(
                 f'<td role="cell" data-label="{label}">{cell}</td>' for label, cell in zip(head, cells)
             ) + "</tr>"
@@ -779,7 +793,7 @@ def packages(site, up=""):
         which = (f"run{number_of(run)}, " if number_of(run) else "") + when(started)
         table = (
             f"<p>The files of the last run ({which}), each read back after it was written:</p>"
-            '<div class="table-wrap"><table role="table" class="cols-5 key-short"><thead role="rowgroup"><tr role="row">'
+            '<div class="table-wrap"><table role="table" class="cols-3 key-short files"><thead role="rowgroup"><tr role="row">'
             + "".join(f'<th role="columnheader" scope="col">{label}</th>' for label in head)
             + f'</tr></thead><tbody role="rowgroup">{lines}</tbody></table></div>'
         )

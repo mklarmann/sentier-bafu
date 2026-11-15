@@ -572,7 +572,7 @@ html:not(.js) #stage-withdrawn:target ~ .filter .chip[data-filter="withdrawn"] {
 /* A cell never breaks inside a word; a short first column never wraps; below 40rem every
    row becomes a block with its column labels (below 62rem for five columns or more).
    Nothing scrolls sideways. */
-.table-wrap { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); margin-top: var(--s5); }
+.table-wrap { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); margin-top: var(--s5); overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; font-size: .9375rem; line-height: 1.5; }
 th, td { padding: .7rem var(--s4); text-align: left; vertical-align: top; overflow-wrap: normal; word-break: normal; hyphens: manual; }
 th { font-size: var(--t-xs); font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); white-space: nowrap; background: var(--paper-deep); }
@@ -906,6 +906,14 @@ a.download::after {
 /* the packages of a release: in the text, and small beside it */
 .packages > * + * { margin-top: var(--s4); }
 .packages .table-wrap { margin-top: var(--s3); }
+/* the files of a run: what each is for, the file with its size and checksum beneath, where to get it */
+table.files code { overflow-wrap: anywhere; }
+table.files .file-facts { display: block; margin-top: .2rem; font-size: var(--t-sm); font-weight: 400; color: var(--muted); }
+table.files .file-facts code { font-size: inherit; }
+@media (min-width: 40rem) {
+  table.files :is(th, td):last-child { white-space: nowrap; text-align: right; }
+  table.files :is(th, td):first-child { width: 1%; }
+}
 .releases > li + li { margin-top: var(--s3); }
 .toc .downloads { margin-top: var(--s6); }
 .downloads { padding: var(--s4); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }

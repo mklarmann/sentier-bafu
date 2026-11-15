@@ -15,6 +15,7 @@ import copy
 import html
 import io
 import json
+import re
 import sys
 import tempfile
 import types
@@ -708,6 +709,36 @@ class PageTests(unittest.TestCase):
         self.assertIsNone(unknown["releases"][0]["assets"][1]["sha256"])
         self.assertEqual(lastrun.offered(unknown), {})
 
+    def test_the_files_table_fits_the_text_and_a_tag_does_not_list_its_files_twice(self):
+        record = a_record()
+        files = [f["name"] for f in record["summary"]["files"]]
+        releases, base = self.kept(record, files[0], files[1], other_bytes=(files[1],))
+        block = lastrun.packages(a_site(a_record(releases=releases)))
+        table = block[block.index("<table"):]
+        listed = block[:block.index("<table")]
+        # three columns: what a file is for, the file with its size and checksum beneath, where
+        self.assertIn('class="cols-3 key-short files"', table)
+        self.assertEqual(re.findall(r'<th role="columnheader" scope="col">([^<]+)</th>', table), ["For", "File", "Where"])
+        self.assertEqual(table.count('<span class="file-facts">'), len(files))
+        self.assertRegex(table, r'<span class="file-facts">[\d.,]+ [kM]B · SHA-256 <code title="[0-9a-f]{64}">[0-9a-f]{12}</code></span>')
+        # the file the table offers is named once under its tag, by a count; the one the tag
+        # holds with other bytes is listed there, because the table can't offer it
+        self.assertNotIn(f"{base}/{files[0]}", listed)
+        self.assertIn(f'href="{base}/{files[1]}"', listed)
+        self.assertIn("and the 1 file listed below", listed)
+        self.assertIn(f'href="{base}/manifest.json"', listed)
+        # a tag whose files are all other bytes says nothing of the table
+        releases, _ = self.kept(record, files[1], other_bytes=(files[1],))
+        self.assertNotIn("listed below", lastrun.packages(a_site(a_record(releases=releases))))
+
+    def test_a_small_file_is_not_said_to_have_no_size(self):
+        self.assertEqual(lastrun.megabytes(16_139_890), "16.1 MB")
+        self.assertEqual(lastrun.megabytes(50_000), "0.1 MB")
+        self.assertEqual(lastrun.megabytes(30_000), "30 kB")
+        self.assertEqual(lastrun.megabytes(200), "1 kB")
+        self.assertEqual(lastrun.megabytes(None), "")
+        self.assertEqual(lastrun.megabytes(True), "")
+
     def test_a_site_that_hands_files_out_under_terms_asks_first_everywhere_it_offers_one(self):
         record = a_record()
         files = [f["name"] for f in record["summary"]["files"]]
@@ -724,7 +755,8 @@ class PageTests(unittest.TestCase):
                 self.assertIn(f'data-download="{base}/{name}"', markup, f"{where}: {name}")
                 # the address of a file is never a link of its own: every link to it asks first
                 self.assertNotIn(f'href="{base}/{name}"', markup, f"{where}: {name}")
-        self.assertEqual(block.count(terms), 2 * len(files))  # the table, and the list of the tag's files
+        # the table alone: a file it offers is not listed a second time under its tag
+        self.assertEqual(block.count(terms), len(files))
         self.assertEqual(box.count(terms), len(files))
         self.assertEqual(run.count(terms), len(files))
         self.assertIn(f'<code>{files[0]}</code></a>', run)
@@ -1190,7 +1222,7 @@ class SiteTests(unittest.TestCase):
                 self.assertEqual(source.count('<dialog class="download-terms"'), 1)
                 self.assertEqual(source.count("assets/download.js"), 1)
                 self.assertTrue((out / "assets/download.js").is_file())
-                self.assertEqual(source.count("data-download="), 4 * len(files))
+                self.assertEqual(source.count("data-download="), 3 * len(files))
                 for name_ in files:
                     self.assertNotIn(f'href="{base}/{name_}"', source)
                 # the link leads to a section of the terms that exists, where a reader without the script lands
