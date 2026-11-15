@@ -1,0 +1,2220 @@
+{
+ "date": "2026-11-15",
+ "kind": "measurement of a build option; evidence for a decision, not an acceptance test",
+ "question": "What changes when the build links BAFU's elementary flows through Brightway Flows, with the links of patch 0010, in place of the mapping of sentier-mappings?",
+ "design": "BAFU:2026 v1 as the installer reads it (11,947 datasets, 293,747 elementary exchanges, 2,679 flows), built twice with only the linking changed and scored in the 25 EF 3.1 categories of the build's methods (sentier-methods, factors without a location). Linking one: sentier-mappings at 179aab3. Linking two: the crosswalk patch 0010 uses, with brightway-flows-targets-bafu-2026-v1.csv (Brightway Flows 1.1.0, https://doi.org/10.5281/zenodo.23554066): an amount is converted only where that release states the conversion; a flow outside EF 3.1 takes the build's factors of the one EF 3.1 flow that Brightway Flows' own implementation of EF 3.1 names as their source; no factor is read from Brightway Flows. A dataset moves when its score differs by more than 1 % of the larger of the two.",
+ "reproduce": "uv run --frozen --project brightway-installer --python 3.12 --extra testing python scripts/compare_flow_linkings.py --work output/linkings --out comparison.json",
+ "report_of_each_linking": {
+  "sentier-mappings": [
+   "Installed bafu-2026: 11947 processes",
+   "Installed ef-3.1-biosphere and 25 EF 3.1 methods",
+   "Linked 2566/2679 bafu-2026 flows to EF 3.1 (95.8%); 284443/293747 biosphere exchanges (96.8%)",
+   "  518 of the linked flows point at EF flows with no factor (nomenclature only, impact zero)",
+   "Unlinked flows kept in bafu-2026-residual (no EF 3.1 counterpart in the bridge):",
+   "  economic issues: 5",
+   "  emissions to air: 18",
+   "  emissions to soil: 10",
+   "  emissions to water: 32",
+   "  non material emissions: 8",
+   "  resources: 40"
+  ],
+  "brightway-flows": [
+   "Installed bafu-2026: 11947 processes",
+   "Installed ef-3.1-biosphere and 25 EF 3.1 methods",
+   "Linked through Brightway Flows (the links of patch 0010): 2677/2679 flows",
+   "  1993 to a flow of EF 3.1; 684 to a flow outside EF 3.1, of which 331 take the factors of the EF 3.1 flow Brightway Flows names",
+   "  192 linked with a conversion the release states",
+   "  785 of the linked flows have no factor in any method (impact zero)",
+   "  2 not linked: the units differ and the release states no conversion (for example Gas, mine, off-gas, process, coal mining/m3 (m3 to sm3); Gas, mine, off-gas, process, coal mining/m3 (Nm3 to sm3))",
+   "  293636/293747 biosphere exchanges linked (100.0%)",
+   "Unlinked flows kept in bafu-2026-residual:",
+   "  resources: 2"
+  ]
+ },
+ "flows": {
+  "flows_used": 2679,
+  "elementary_exchanges": 293747,
+  "flows_that_lose_a_factor_in_some_method": 166,
+  "their_exchanges": 14278,
+  "why_a_factor_is_lost": [
+   {
+    "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors",
+    "flows": 92,
+    "exchanges": 7602
+   },
+   {
+    "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: adopted)",
+    "flows": 29,
+    "exchanges": 1584
+   },
+   {
+    "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: restated)",
+    "flows": 26,
+    "exchanges": 2502
+   },
+   {
+    "why": "its EF 3.1 flow has no factor in the build's methods",
+    "flows": 14,
+    "exchanges": 2301
+   },
+   {
+    "why": "not linked: the units differ and no conversion is stated",
+    "flows": 2,
+    "exchanges": 111
+   },
+   {
+    "why": "Brightway Flows names more than one flow as the source of its factors",
+    "flows": 2,
+    "exchanges": 90
+   },
+   {
+    "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: carried)",
+    "flows": 1,
+    "exchanges": 88
+   }
+  ],
+  "flows_that_gain_a_factor_in_some_method": 9
+ },
+ "per_method": [
+  {
+   "method": "ef-3.1:acidification",
+   "flows_that_lose_their_factor": 0,
+   "their_exchanges": 0,
+   "flows_that_gain_a_factor": 0,
+   "their_exchanges_gained": 0,
+   "flows_with_another_factor": 0
+  },
+  {
+   "method": "ef-3.1:climate-change",
+   "flows_that_lose_their_factor": 2,
+   "their_exchanges": 2,
+   "flows_that_gain_a_factor": 2,
+   "their_exchanges_gained": 96,
+   "flows_with_another_factor": 0
+  },
+  {
+   "method": "ef-3.1:climate-change-biogenic",
+   "flows_that_lose_their_factor": 0,
+   "their_exchanges": 0,
+   "flows_that_gain_a_factor": 0,
+   "their_exchanges_gained": 0,
+   "flows_with_another_factor": 0
+  },
+  {
+   "method": "ef-3.1:climate-change-fossil",
+   "flows_that_lose_their_factor": 2,
+   "their_exchanges": 2,
+   "flows_that_gain_a_factor": 2,
+   "their_exchanges_gained": 96,
+   "flows_with_another_factor": 0
+  },
+  {
+   "method": "ef-3.1:climate-change-land-use-and-land-use-change",
+   "flows_that_lose_their_factor": 0,
+   "their_exchanges": 0,
+   "flows_that_gain_a_factor": 0,
+   "their_exchanges_gained": 0,
+   "flows_with_another_factor": 0
+  },
+  {
+   "method": "ef-3.1:ef-particulate-matter",
+   "flows_that_lose_their_factor": 5,
+   "their_exchanges": 1064,
+   "flows_that_gain_a_factor": 0,
+   "their_exchanges_gained": 0,
+   "flows_with_another_factor": 0
+  },
+  {
+   "method": "ef-3.1:eutrophication-marine",
+   "flows_that_lose_their_factor": 5,
+   "their_exchanges": 949,
+   "flows_that_gain_a_factor": 0,
+   "their_exchanges_gained": 0,
+   "flows_with_another_factor": 0
+  },
+  {
+   "method": "ef-3.1:eutrophication-freshwater",
+   "flows_that_lose_their_factor": 3,
+   "their_exchanges": 420,
+   "flows_that_gain_a_factor": 0,
+   "their_exchanges_gained": 0,
+   "flows_with_another_factor": 0
+  },
+  {
+   "method": "ef-3.1:eutrophication-terrestrial",
+   "flows_that_lose_their_factor": 0,
+   "their_exchanges": 0,
+   "flows_that_gain_a_factor": 0,
+   "their_exchanges_gained": 0,
+   "flows_with_another_factor": 0
+  },
+  {
+   "method": "ef-3.1:human-toxicity-cancer-organics",
+   "flows_that_lose_their_factor": 1,
+   "their_exchanges": 8,
+   "flows_that_gain_a_factor": 0,
+   "their_exchanges_gained": 0,
+   "flows_with_another_factor": 7
+  },
+  {
+   "method": "ef-3.1:human-toxicity-cancer",
+   "flows_that_lose_their_factor": 10,
+   "their_exchanges": 1281,
+   "flows_that_gain_a_factor": 0,
+   "their_exchanges_gained": 0,
+   "flows_with_another_factor": 7
+  },
+  {
+   "method": "ef-3.1:human-toxicity-cancer-inorganics",
+   "flows_that_lose_their_factor": 9,
+   "their_exchanges": 1273,
+   "flows_that_gain_a_factor": 0,
+   "their_exchanges_gained": 0,
+   "flows_with_another_factor": 0
+  },
+  {
+   "method": "ef-3.1:human-toxicity-non-cancer",
+   "flows_that_lose_their_factor": 51,
+   "their_exchanges": 4705,
+   "flows_that_gain_a_factor": 2,
+   "their_exchanges_gained": 96,
+   "flows_with_another_factor": 30
+  },
+  {
+   "method": "ef-3.1:human-toxicity-non-cancer-inorganics",
+   "flows_that_lose_their_factor": 39,
+   "their_exchanges": 3995,
+   "flows_that_gain_a_factor": 0,
+   "their_exchanges_gained": 0,
+   "flows_with_another_factor": 8
+  },
+  {
+   "method": "ef-3.1:human-toxicity-non-cancer-organics",
+   "flows_that_lose_their_factor": 12,
+   "their_exchanges": 710,
+   "flows_that_gain_a_factor": 2,
+   "their_exchanges_gained": 96,
+   "flows_with_another_factor": 22
+  },
+  {
+   "method": "ef-3.1:ionising-radiation-human-health",
+   "flows_that_lose_their_factor": 9,
+   "their_exchanges": 284,
+   "flows_that_gain_a_factor": 0,
+   "their_exchanges_gained": 0,
+   "flows_with_another_factor": 0
+  },
+  {
+   "method": "ef-3.1:land-use",
+   "flows_that_lose_their_factor": 67,
+   "their_exchanges": 5045,
+   "flows_that_gain_a_factor": 0,
+   "their_exchanges_gained": 0,
+   "flows_with_another_factor": 3
+  },
+  {
+   "method": "ef-3.1:ozone-depletion",
+   "flows_that_lose_their_factor": 0,
+   "their_exchanges": 0,
+   "flows_that_gain_a_factor": 0,
+   "their_exchanges_gained": 0,
+   "flows_with_another_factor": 0
+  },
+  {
+   "method": "ef-3.1:photochemical-ozone-formation-human-health",
+   "flows_that_lose_their_factor": 2,
+   "their_exchanges": 11,
+   "flows_that_gain_a_factor": 1,
+   "their_exchanges_gained": 95,
+   "flows_with_another_factor": 0
+  },
+  {
+   "method": "ef-3.1:resource-use-fossils",
+   "flows_that_lose_their_factor": 2,
+   "their_exchanges": 111,
+   "flows_that_gain_a_factor": 0,
+   "their_exchanges_gained": 0,
+   "flows_with_another_factor": 6
+  },
+  {
+   "method": "ef-3.1:resource-use-minerals-and-metals",
+   "flows_that_lose_their_factor": 1,
+   "their_exchanges": 1,
+   "flows_that_gain_a_factor": 0,
+   "their_exchanges_gained": 0,
+   "flows_with_another_factor": 2
+  },
+  {
+   "method": "ef-3.1:water-use",
+   "flows_that_lose_their_factor": 4,
+   "their_exchanges": 198,
+   "flows_that_gain_a_factor": 5,
+   "their_exchanges_gained": 13,
+   "flows_with_another_factor": 0
+  },
+  {
+   "method": "ef-3.1:ecotoxicity-freshwater",
+   "flows_that_lose_their_factor": 69,
+   "their_exchanges": 5925,
+   "flows_that_gain_a_factor": 2,
+   "their_exchanges_gained": 96,
+   "flows_with_another_factor": 29
+  },
+  {
+   "method": "ef-3.1:ecotoxicity-freshwater-inorganics",
+   "flows_that_lose_their_factor": 52,
+   "their_exchanges": 5217,
+   "flows_that_gain_a_factor": 1,
+   "their_exchanges_gained": 410,
+   "flows_with_another_factor": 6
+  },
+  {
+   "method": "ef-3.1:ecotoxicity-freshwater-organics",
+   "flows_that_lose_their_factor": 18,
+   "their_exchanges": 1118,
+   "flows_that_gain_a_factor": 2,
+   "their_exchanges_gained": 96,
+   "flows_with_another_factor": 22
+  }
+ ],
+ "datasets": {
+  "datasets": 11947,
+  "moved_in_any_category_over_1_percent": 11801
+ },
+ "per_category": [
+  {
+   "category": "climate",
+   "moved_over_1_percent": 20,
+   "moved_over_10_percent": 16,
+   "lower": 10,
+   "higher": 8
+  },
+  {
+   "category": "cc_bio",
+   "moved_over_1_percent": 0,
+   "moved_over_10_percent": 0,
+   "lower": 0,
+   "higher": 0
+  },
+  {
+   "category": "cc_fos",
+   "moved_over_1_percent": 20,
+   "moved_over_10_percent": 20,
+   "lower": 12,
+   "higher": 7
+  },
+  {
+   "category": "cc_luc",
+   "moved_over_1_percent": 0,
+   "moved_over_10_percent": 0,
+   "lower": 0,
+   "higher": 0
+  },
+  {
+   "category": "ozone",
+   "moved_over_1_percent": 8,
+   "moved_over_10_percent": 8,
+   "lower": 5,
+   "higher": 3
+  },
+  {
+   "category": "radiation",
+   "moved_over_1_percent": 23,
+   "moved_over_10_percent": 23,
+   "lower": 12,
+   "higher": 11
+  },
+  {
+   "category": "photo_ox",
+   "moved_over_1_percent": 29,
+   "moved_over_10_percent": 19,
+   "lower": 18,
+   "higher": 11
+  },
+  {
+   "category": "pm",
+   "moved_over_1_percent": 11446,
+   "moved_over_10_percent": 5108,
+   "lower": 11431,
+   "higher": 15
+  },
+  {
+   "category": "ht_nc",
+   "moved_over_1_percent": 4548,
+   "moved_over_10_percent": 678,
+   "lower": 4534,
+   "higher": 14
+  },
+  {
+   "category": "ht_nc_inorg",
+   "moved_over_1_percent": 5005,
+   "moved_over_10_percent": 731,
+   "lower": 4984,
+   "higher": 21
+  },
+  {
+   "category": "ht_nc_org",
+   "moved_over_1_percent": 54,
+   "moved_over_10_percent": 26,
+   "lower": 41,
+   "higher": 13
+  },
+  {
+   "category": "ht_c",
+   "moved_over_1_percent": 4221,
+   "moved_over_10_percent": 665,
+   "lower": 4186,
+   "higher": 34
+  },
+  {
+   "category": "ht_c_inorg",
+   "moved_over_1_percent": 6380,
+   "moved_over_10_percent": 1016,
+   "lower": 6339,
+   "higher": 41
+  },
+  {
+   "category": "ht_c_org",
+   "moved_over_1_percent": 22,
+   "moved_over_10_percent": 22,
+   "lower": 10,
+   "higher": 10
+  },
+  {
+   "category": "acid",
+   "moved_over_1_percent": 0,
+   "moved_over_10_percent": 0,
+   "lower": 0,
+   "higher": 0
+  },
+  {
+   "category": "e_fw",
+   "moved_over_1_percent": 11636,
+   "moved_over_10_percent": 11007,
+   "lower": 11626,
+   "higher": 10
+  },
+  {
+   "category": "e_m",
+   "moved_over_1_percent": 7290,
+   "moved_over_10_percent": 794,
+   "lower": 7282,
+   "higher": 8
+  },
+  {
+   "category": "e_t",
+   "moved_over_1_percent": 0,
+   "moved_over_10_percent": 0,
+   "lower": 0,
+   "higher": 0
+  },
+  {
+   "category": "ecotox",
+   "moved_over_1_percent": 10143,
+   "moved_over_10_percent": 4597,
+   "lower": 10127,
+   "higher": 15
+  },
+  {
+   "category": "ecotox_inorg",
+   "moved_over_1_percent": 10209,
+   "moved_over_10_percent": 4828,
+   "lower": 10197,
+   "higher": 11
+  },
+  {
+   "category": "ecotox_org",
+   "moved_over_1_percent": 1798,
+   "moved_over_10_percent": 235,
+   "lower": 1787,
+   "higher": 10
+  },
+  {
+   "category": "land",
+   "moved_over_1_percent": 11134,
+   "moved_over_10_percent": 8375,
+   "lower": 9760,
+   "higher": 1374
+  },
+  {
+   "category": "water",
+   "moved_over_1_percent": 5224,
+   "moved_over_10_percent": 1666,
+   "lower": 5145,
+   "higher": 78
+  },
+  {
+   "category": "energy",
+   "moved_over_1_percent": 32,
+   "moved_over_10_percent": 21,
+   "lower": 13,
+   "higher": 19
+  },
+  {
+   "category": "mater",
+   "moved_over_1_percent": 21,
+   "moved_over_10_percent": 21,
+   "lower": 8,
+   "higher": 11
+  }
+ ],
+ "findings": [
+  "The links reach more flows (2,677 of 2,679 against 2,566), and every conversion they need is stated by Brightway Flows 1.1.0 (192).",
+  "Fewer flows end on a factor: 166 flows (14,278 exchanges, 4.9 % of all) have a factor through the mapping and none through the links; 9 gain one.",
+  "Those 166 are in most supply chains: 11,801 of 11,947 datasets move by more than 1 % in at least one category, nearly all downwards. Particulate matter, freshwater eutrophication, ecotoxicity and land use move for more than 10,000 datasets each.",
+  "Acidification, terrestrial eutrophication and the biogenic and land-use parts of climate change do not move for any dataset. Climate change moves for 20.",
+  "92 of the 166 are flows outside EF 3.1 for which Brightway Flows names no flow as the source of factors (BAFU's land classes among them). 56 have a named source that has no factor in the build's methods, where Brightway Flows' own implementation adopts or restates one. 14 end on an EF 3.1 flow without a factor in the build's methods."
+ ],
+ "limits": [
+  "Says what differs, not which linking is right flow by flow. The classification of the differing flows is a separate piece of work.",
+  "The build's methods are the reference for factors. With Brightway Flows' own factors the result would differ; that was not measured here.",
+  "Measured on BAFU's release as shipped. The patched copy links on the flows BAFU declared, so its flows are the same.",
+  "The exports for LCA tools and the comparison of two builds were not run with the second linking."
+ ],
+ "lost": [
+  {
+   "name": "Particulates, > 2.5 um, and < 10um",
+   "category": "emissions to air",
+   "subCategory": "high. pop.",
+   "unit": "kg",
+   "exchanges": 426,
+   "flow_list": "EF 3.1",
+   "methods": 1,
+   "why": "its EF 3.1 flow has no factor in the build's methods"
+  },
+  {
+   "name": "Chlorine",
+   "category": "emissions to air",
+   "subCategory": "high. pop.",
+   "unit": "kg",
+   "exchanges": 410,
+   "flow_list": "EF 3.1",
+   "methods": 1,
+   "why": "its EF 3.1 flow has no factor in the build's methods"
+  },
+  {
+   "name": "Nitrogen",
+   "category": "emissions to water",
+   "subCategory": "river",
+   "unit": "kg",
+   "exchanges": 389,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Transformation, to industrial area, built up",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2",
+   "exchanges": 336,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Occupation, industrial area, built up",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2a",
+   "exchanges": 330,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Particulates, > 2.5 um, and < 10um",
+   "category": "emissions to air",
+   "subCategory": "low. pop.",
+   "unit": "kg",
+   "exchanges": 272,
+   "flow_list": "EF 3.1",
+   "methods": 1,
+   "why": "its EF 3.1 flow has no factor in the build's methods"
+  },
+  {
+   "name": "Particulates, > 2.5 um, and < 10um",
+   "category": "emissions to air",
+   "subCategory": "unspecified",
+   "unit": "kg",
+   "exchanges": 272,
+   "flow_list": "EF 3.1",
+   "methods": 1,
+   "why": "its EF 3.1 flow has no factor in the build's methods"
+  },
+  {
+   "name": "Phosphate",
+   "category": "emissions to water",
+   "subCategory": "groundwater",
+   "unit": "kg",
+   "exchanges": 217,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 1,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: restated)"
+  },
+  {
+   "name": "Lead",
+   "category": "emissions to water",
+   "subCategory": "groundwater",
+   "unit": "kg",
+   "exchanges": 209,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 6,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Cadmium",
+   "category": "emissions to water",
+   "subCategory": "groundwater",
+   "unit": "kg",
+   "exchanges": 208,
+   "flow_list": "bafu algorithm addition",
+   "methods": 6,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Copper",
+   "category": "emissions to water",
+   "subCategory": "groundwater",
+   "unit": "kg",
+   "exchanges": 208,
+   "flow_list": "bafu algorithm addition",
+   "methods": 4,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Nitrate",
+   "category": "emissions to water",
+   "subCategory": "groundwater",
+   "unit": "kg",
+   "exchanges": 205,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 1,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: restated)"
+  },
+  {
+   "name": "Occupation, industrial area, vegetation",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2a",
+   "exchanges": 205,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Transformation, to industrial area, vegetation",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2",
+   "exchanges": 198,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Zinc",
+   "category": "emissions to water",
+   "subCategory": "groundwater",
+   "unit": "kg",
+   "exchanges": 196,
+   "flow_list": "bafu algorithm addition",
+   "methods": 4,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Chromium",
+   "category": "emissions to water",
+   "subCategory": "groundwater",
+   "unit": "kg",
+   "exchanges": 191,
+   "flow_list": "bafu algorithm addition",
+   "methods": 6,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Nitrogen",
+   "category": "emissions to water",
+   "subCategory": "ocean",
+   "unit": "kg",
+   "exchanges": 190,
+   "flow_list": "EF 3.1",
+   "methods": 1,
+   "why": "its EF 3.1 flow has no factor in the build's methods"
+  },
+  {
+   "name": "Oils, unspecified",
+   "category": "emissions to soil",
+   "subCategory": "industrial",
+   "unit": "kg",
+   "exchanges": 184,
+   "flow_list": "EF 3.1",
+   "methods": 4,
+   "why": "its EF 3.1 flow has no factor in the build's methods"
+  },
+  {
+   "name": "Transformation, from pasture, man made",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2",
+   "exchanges": 180,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 1,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: adopted)"
+  },
+  {
+   "name": "Mercury",
+   "category": "emissions to water",
+   "subCategory": "groundwater",
+   "unit": "kg",
+   "exchanges": 166,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 6,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Nickel",
+   "category": "emissions to water",
+   "subCategory": "groundwater",
+   "unit": "kg",
+   "exchanges": 149,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 6,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Iron",
+   "category": "emissions to water",
+   "subCategory": "groundwater",
+   "unit": "kg",
+   "exchanges": 147,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 2,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Manganese",
+   "category": "emissions to water",
+   "subCategory": "groundwater",
+   "unit": "kg",
+   "exchanges": 147,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 2,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: restated)"
+  },
+  {
+   "name": "Chloride",
+   "category": "emissions to water",
+   "subCategory": "groundwater",
+   "unit": "kg",
+   "exchanges": 140,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 2,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: restated)"
+  },
+  {
+   "name": "Water, fossil",
+   "category": "resources",
+   "subCategory": "in water",
+   "unit": "m3",
+   "exchanges": 138,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Arsenic",
+   "category": "emissions to water",
+   "subCategory": "groundwater",
+   "unit": "kg",
+   "exchanges": 135,
+   "flow_list": "bafu algorithm addition",
+   "methods": 6,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Selenium",
+   "category": "emissions to water",
+   "subCategory": "groundwater",
+   "unit": "kg",
+   "exchanges": 133,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 4,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Tin",
+   "category": "emissions to water",
+   "subCategory": "groundwater",
+   "unit": "kg",
+   "exchanges": 130,
+   "flow_list": "bafu algorithm addition",
+   "methods": 2,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Aluminium",
+   "category": "emissions to water",
+   "subCategory": "groundwater",
+   "unit": "kg",
+   "exchanges": 120,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 4,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Fluoride",
+   "category": "emissions to water",
+   "subCategory": "groundwater",
+   "unit": "kg",
+   "exchanges": 118,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 4,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: restated)"
+  },
+  {
+   "name": "Strontium",
+   "category": "emissions to water",
+   "subCategory": "groundwater",
+   "unit": "kg",
+   "exchanges": 118,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 2,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Transformation, from pasture, man made, intensive",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2",
+   "exchanges": 115,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 1,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: adopted)"
+  },
+  {
+   "name": "Transformation, to pasture, man made",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2",
+   "exchanges": 112,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 1,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: adopted)"
+  },
+  {
+   "name": "Silicon",
+   "category": "emissions to water",
+   "subCategory": "groundwater",
+   "unit": "kg",
+   "exchanges": 109,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 4,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: restated)"
+  },
+  {
+   "name": "Antimony",
+   "category": "emissions to water",
+   "subCategory": "groundwater",
+   "unit": "kg",
+   "exchanges": 108,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 4,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Barium",
+   "category": "emissions to water",
+   "subCategory": "groundwater",
+   "unit": "kg",
+   "exchanges": 108,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 4,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Chromium VI",
+   "category": "emissions to water",
+   "subCategory": "groundwater",
+   "unit": "kg",
+   "exchanges": 108,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 6,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: restated)"
+  },
+  {
+   "name": "Cobalt",
+   "category": "emissions to water",
+   "subCategory": "groundwater",
+   "unit": "kg",
+   "exchanges": 108,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 4,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Molybdenum",
+   "category": "emissions to water",
+   "subCategory": "groundwater",
+   "unit": "kg",
+   "exchanges": 108,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 4,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Phosphorus",
+   "category": "emissions to water",
+   "subCategory": "groundwater",
+   "unit": "kg",
+   "exchanges": 108,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 5,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: restated)"
+  },
+  {
+   "name": "Titanium",
+   "category": "emissions to water",
+   "subCategory": "groundwater",
+   "unit": "kg",
+   "exchanges": 108,
+   "flow_list": "bafu algorithm addition",
+   "methods": 4,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Vanadium",
+   "category": "emissions to water",
+   "subCategory": "groundwater",
+   "unit": "kg",
+   "exchanges": 108,
+   "flow_list": "bafu algorithm addition",
+   "methods": 4,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Magnesium",
+   "category": "emissions to water",
+   "subCategory": "groundwater",
+   "unit": "kg",
+   "exchanges": 107,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 4,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: restated)"
+  },
+  {
+   "name": "Aluminium",
+   "category": "emissions to water",
+   "subCategory": "unspecified",
+   "unit": "kg",
+   "exchanges": 106,
+   "flow_list": "EF 3.1",
+   "methods": 2,
+   "why": "its EF 3.1 flow has no factor in the build's methods"
+  },
+  {
+   "name": "Beryllium",
+   "category": "emissions to water",
+   "subCategory": "groundwater",
+   "unit": "kg",
+   "exchanges": 106,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 6,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Transformation, from dump site, inert material landfill",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2",
+   "exchanges": 106,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 1,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: adopted)"
+  },
+  {
+   "name": "Transformation, to dump site, inert material landfill",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2",
+   "exchanges": 106,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 1,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: adopted)"
+  },
+  {
+   "name": "Tungsten",
+   "category": "emissions to water",
+   "subCategory": "groundwater",
+   "unit": "kg",
+   "exchanges": 105,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 2,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: restated)"
+  },
+  {
+   "name": "Thallium",
+   "category": "emissions to water",
+   "subCategory": "groundwater",
+   "unit": "kg",
+   "exchanges": 104,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 4,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Boron",
+   "category": "emissions to water",
+   "subCategory": "groundwater",
+   "unit": "kg",
+   "exchanges": 103,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 2,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: restated)"
+  },
+  {
+   "name": "Bromine",
+   "category": "emissions to water",
+   "subCategory": "groundwater",
+   "unit": "kg",
+   "exchanges": 103,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 4,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: restated)"
+  },
+  {
+   "name": "Iodide",
+   "category": "emissions to water",
+   "subCategory": "groundwater",
+   "unit": "kg",
+   "exchanges": 100,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 2,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: restated)"
+  },
+  {
+   "name": "Gas, mine, off-gas, process, coal mining/m3",
+   "category": "resources",
+   "subCategory": "in ground",
+   "unit": "m3",
+   "exchanges": 99,
+   "flow_list": "EF 3.1",
+   "methods": 1,
+   "why": "not linked: the units differ and no conversion is stated"
+  },
+  {
+   "name": "Transformation, from tropical rain forest",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2",
+   "exchanges": 99,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Ammonium, ion",
+   "category": "emissions to water",
+   "subCategory": "groundwater",
+   "unit": "kg",
+   "exchanges": 97,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 5,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: restated)"
+  },
+  {
+   "name": "Transformation, from shrub land, sclerophyllous",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2",
+   "exchanges": 97,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 1,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: adopted)"
+  },
+  {
+   "name": "Occupation, traffic area, road embankment",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2a",
+   "exchanges": 95,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Phosphorus",
+   "category": "emissions to soil",
+   "subCategory": "industrial",
+   "unit": "kg",
+   "exchanges": 95,
+   "flow_list": "EF 3.1",
+   "methods": 5,
+   "why": "its EF 3.1 flow has no factor in the build's methods"
+  },
+  {
+   "name": "Silver",
+   "category": "emissions to water",
+   "subCategory": "groundwater",
+   "unit": "kg",
+   "exchanges": 95,
+   "flow_list": "bafu algorithm addition",
+   "methods": 4,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Transformation, to traffic area, road embankment",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2",
+   "exchanges": 95,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Transformation, from industrial area, vegetation",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2",
+   "exchanges": 94,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Transformation, to industrial area, benthos",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2",
+   "exchanges": 93,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Occupation, industrial area, benthos",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2a",
+   "exchanges": 92,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Transformation, from arable, organic",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2",
+   "exchanges": 92,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Occupation, shrub land, sclerophyllous",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2a",
+   "exchanges": 91,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 1,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: adopted)"
+  },
+  {
+   "name": "Transformation, to arable, organic",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2",
+   "exchanges": 91,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Transformation, to forest, intensive, normal",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2",
+   "exchanges": 91,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Transformation, to shrub land, sclerophyllous",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2",
+   "exchanges": 91,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 1,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: adopted)"
+  },
+  {
+   "name": "Transformation, from industrial area, built up",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2",
+   "exchanges": 90,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Chloride",
+   "category": "emissions to soil",
+   "subCategory": "industrial",
+   "unit": "kg",
+   "exchanges": 89,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 2,
+   "why": "Brightway Flows names more than one flow as the source of its factors"
+  },
+  {
+   "name": "Fluoride",
+   "category": "emissions to soil",
+   "subCategory": "industrial",
+   "unit": "kg",
+   "exchanges": 89,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 4,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: restated)"
+  },
+  {
+   "name": "Glyphosate",
+   "category": "emissions to soil",
+   "subCategory": "industrial",
+   "unit": "kg",
+   "exchanges": 89,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 4,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: restated)"
+  },
+  {
+   "name": "Magnesium",
+   "category": "emissions to soil",
+   "subCategory": "industrial",
+   "unit": "kg",
+   "exchanges": 89,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 4,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: restated)"
+  },
+  {
+   "name": "Occupation, annual crop, organic",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2a",
+   "exchanges": 89,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Occupation, forest, intensive, normal",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2a",
+   "exchanges": 89,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Occupation, forest, intensive, short-cycle",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2a",
+   "exchanges": 89,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Transformation, from forest, intensive, clear-cutting",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2",
+   "exchanges": 89,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Transformation, from forest, intensive, normal",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2",
+   "exchanges": 89,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Transformation, from industrial area, benthos",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2",
+   "exchanges": 89,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Transformation, to dump site, residual material landfill",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2",
+   "exchanges": 89,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 1,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: adopted)"
+  },
+  {
+   "name": "Transformation, to forest, intensive, clear-cutting",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2",
+   "exchanges": 89,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Transformation, to forest, intensive, short-cycle",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2",
+   "exchanges": 89,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Acrylate",
+   "category": "emissions to water",
+   "subCategory": "river",
+   "unit": "kg",
+   "exchanges": 88,
+   "flow_list": "bafu algorithm addition",
+   "methods": 4,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: carried)"
+  },
+  {
+   "name": "Barite",
+   "category": "emissions to water",
+   "subCategory": "ocean",
+   "unit": "kg",
+   "exchanges": 88,
+   "flow_list": "bafu algorithm addition",
+   "methods": 2,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Boron",
+   "category": "emissions to soil",
+   "subCategory": "industrial",
+   "unit": "kg",
+   "exchanges": 88,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 2,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: restated)"
+  },
+  {
+   "name": "Occupation, dump site, benthos",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2a",
+   "exchanges": 88,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Occupation, permanent crop, fruit, intensive",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2a",
+   "exchanges": 88,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Particulates, > 2.5 um, and < 10um",
+   "category": "emissions to air",
+   "subCategory": "low. pop., long-term",
+   "unit": "kg",
+   "exchanges": 88,
+   "flow_list": "EF 3.1",
+   "methods": 1,
+   "why": "its EF 3.1 flow has no factor in the build's methods"
+  },
+  {
+   "name": "Silicon",
+   "category": "emissions to soil",
+   "subCategory": "industrial",
+   "unit": "kg",
+   "exchanges": 88,
+   "flow_list": "EF 3.1",
+   "methods": 4,
+   "why": "its EF 3.1 flow has no factor in the build's methods"
+  },
+  {
+   "name": "Transformation, from annual crop, non-irrigated, fallow",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2",
+   "exchanges": 88,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Transformation, from dump site, residual material landfill",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2",
+   "exchanges": 88,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 1,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: adopted)"
+  },
+  {
+   "name": "Transformation, from dump site, sanitary landfill",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2",
+   "exchanges": 88,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 1,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: adopted)"
+  },
+  {
+   "name": "Transformation, from dump site, slag compartment",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2",
+   "exchanges": 88,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 1,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: adopted)"
+  },
+  {
+   "name": "Transformation, to arable, non-irrigated, fallow",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2",
+   "exchanges": 88,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Transformation, to dump site, benthos",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2",
+   "exchanges": 88,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Transformation, to dump site, sanitary landfill",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2",
+   "exchanges": 88,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 1,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: adopted)"
+  },
+  {
+   "name": "Transformation, to dump site, slag compartment",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2",
+   "exchanges": 88,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 1,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: adopted)"
+  },
+  {
+   "name": "Transformation, to permanent crop, fruit, intensive",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2",
+   "exchanges": 88,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Oils, unspecified",
+   "category": "emissions to soil",
+   "subCategory": "forestry",
+   "unit": "kg",
+   "exchanges": 87,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 4,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: restated)"
+  },
+  {
+   "name": "Transformation, to arable, non-irrigated, diverse-intensive",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2",
+   "exchanges": 74,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Occupation, annual crop, non-irrigated, diverse-intensive",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2a",
+   "exchanges": 72,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Transformation, from arable, non-irrigated, diverse-intensive",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2",
+   "exchanges": 72,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Radium-226",
+   "category": "emissions to water",
+   "subCategory": "groundwater",
+   "unit": "kBq",
+   "exchanges": 70,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 1,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: restated)"
+  },
+  {
+   "name": "Uranium-238",
+   "category": "emissions to water",
+   "subCategory": "groundwater",
+   "unit": "kBq",
+   "exchanges": 70,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 1,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: restated)"
+  },
+  {
+   "name": "Nitrogen",
+   "category": "emissions to water",
+   "subCategory": "unspecified",
+   "unit": "kg",
+   "exchanges": 68,
+   "flow_list": "EF 3.1",
+   "methods": 1,
+   "why": "its EF 3.1 flow has no factor in the build's methods"
+  },
+  {
+   "name": "Plutonium-alpha",
+   "category": "emissions to air",
+   "subCategory": "low. pop.",
+   "unit": "kBq",
+   "exchanges": 68,
+   "flow_list": "EF 3.1",
+   "methods": 1,
+   "why": "its EF 3.1 flow has no factor in the build's methods"
+  },
+  {
+   "name": "Chlormequat",
+   "category": "emissions to soil",
+   "subCategory": "agricultural",
+   "unit": "kg",
+   "exchanges": 66,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 4,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Kerosene",
+   "category": "emissions to air",
+   "subCategory": "high. pop.",
+   "unit": "kg",
+   "exchanges": 64,
+   "flow_list": "bafu algorithm addition",
+   "methods": 2,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Petrol",
+   "category": "emissions to water",
+   "subCategory": "river",
+   "unit": "kg",
+   "exchanges": 64,
+   "flow_list": "bafu algorithm addition",
+   "methods": 4,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Chlorine",
+   "category": "emissions to water",
+   "subCategory": "groundwater",
+   "unit": "kg",
+   "exchanges": 56,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 2,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: restated)"
+  },
+  {
+   "name": "Lithium",
+   "category": "emissions to water",
+   "subCategory": "groundwater",
+   "unit": "kg",
+   "exchanges": 56,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 4,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "PAH, polycyclic aromatic hydrocarbons",
+   "category": "emissions to water",
+   "subCategory": "groundwater",
+   "unit": "kg",
+   "exchanges": 56,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 4,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: restated)"
+  },
+  {
+   "name": "Primisulfuron",
+   "category": "emissions to soil",
+   "subCategory": "agricultural",
+   "unit": "kg",
+   "exchanges": 55,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 2,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: adopted)"
+  },
+  {
+   "name": "Water, NO",
+   "category": "emissions to water",
+   "subCategory": "fossilwater",
+   "unit": "m3",
+   "exchanges": 54,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Copper ion",
+   "category": "emissions to air",
+   "subCategory": "high. pop.",
+   "unit": "kg",
+   "exchanges": 38,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 4,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: adopted)"
+  },
+  {
+   "name": "Occupation, industrial area, built up",
+   "category": "resources",
+   "subCategory": "unspecified",
+   "unit": "m2a",
+   "exchanges": 25,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Transformation, to industrial area, built up",
+   "category": "resources",
+   "subCategory": "unspecified",
+   "unit": "m2",
+   "exchanges": 25,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Plutonium-alpha",
+   "category": "emissions to air",
+   "subCategory": "low. pop.",
+   "unit": "Bq",
+   "exchanges": 20,
+   "flow_list": "EF 3.1",
+   "methods": 1,
+   "why": "its EF 3.1 flow has no factor in the build's methods"
+  },
+  {
+   "name": "Radium-226",
+   "category": "emissions to water",
+   "subCategory": "groundwater",
+   "unit": "Bq",
+   "exchanges": 20,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 1,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: restated)"
+  },
+  {
+   "name": "Uranium-238",
+   "category": "emissions to water",
+   "subCategory": "groundwater",
+   "unit": "Bq",
+   "exchanges": 20,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 1,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: restated)"
+  },
+  {
+   "name": "Occupation, industrial area, vegetation",
+   "category": "resources",
+   "subCategory": "unspecified",
+   "unit": "m2a",
+   "exchanges": 15,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Transformation, to industrial area, vegetation",
+   "category": "resources",
+   "subCategory": "unspecified",
+   "unit": "m2",
+   "exchanges": 15,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Occupation, sealed soil",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2a",
+   "exchanges": 14,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Plutonium-alpha",
+   "category": "emissions to air",
+   "subCategory": "unspecified",
+   "unit": "kBq",
+   "exchanges": 14,
+   "flow_list": "EF 3.1",
+   "methods": 1,
+   "why": "its EF 3.1 flow has no factor in the build's methods"
+  },
+  {
+   "name": "Transformation, from unspecified, natural (non-use)",
+   "category": "resources",
+   "subCategory": "unspecified",
+   "unit": "m2",
+   "exchanges": 14,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 1,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: adopted)"
+  },
+  {
+   "name": "Gas, mine, off-gas, process, coal mining/m3",
+   "category": "resources",
+   "subCategory": "in ground",
+   "unit": "Nm3",
+   "exchanges": 12,
+   "flow_list": "EF 3.1",
+   "methods": 1,
+   "why": "not linked: the units differ and no conversion is stated"
+  },
+  {
+   "name": "Carbon monoxide",
+   "category": "emissions to air",
+   "subCategory": "unspecified",
+   "unit": "kg",
+   "exchanges": 10,
+   "flow_list": "bafu algorithm addition",
+   "methods": 3,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Copper ion",
+   "category": "emissions to water",
+   "subCategory": "unspecified",
+   "unit": "kg",
+   "exchanges": 10,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 4,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: adopted)"
+  },
+  {
+   "name": "Occupation, pasture, man made, intensive",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2a",
+   "exchanges": 9,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 1,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: adopted)"
+  },
+  {
+   "name": "Benzene (as BTEX)",
+   "category": "emissions to water",
+   "subCategory": "unspecified",
+   "unit": "kg",
+   "exchanges": 8,
+   "flow_list": "bafu algorithm addition",
+   "methods": 6,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Iron, ion",
+   "category": "emissions to water",
+   "subCategory": "unspecified",
+   "unit": "kg",
+   "exchanges": 7,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 2,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: adopted)"
+  },
+  {
+   "name": "Transformation, to sealed soil",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2",
+   "exchanges": 7,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Particulates",
+   "category": "emissions to air",
+   "subCategory": "unspecified",
+   "unit": "kg",
+   "exchanges": 6,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Transformation, to pasture, man made, intensive",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2",
+   "exchanges": 6,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 1,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: adopted)"
+  },
+  {
+   "name": "Transformation, from pasture, man made, extensive",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2",
+   "exchanges": 5,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 1,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: adopted)"
+  },
+  {
+   "name": "Transformation, to pasture, man made, extensive",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2",
+   "exchanges": 4,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 1,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: adopted)"
+  },
+  {
+   "name": "Water, process, surface",
+   "category": "resources",
+   "subCategory": "in water",
+   "unit": "kg",
+   "exchanges": 4,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Occupation, pasture, man made, extensive",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2a",
+   "exchanges": 3,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 1,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: adopted)"
+  },
+  {
+   "name": "Transformation, from pasture and meadow, organic",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2",
+   "exchanges": 3,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Azadirachtin A+B",
+   "category": "emissions to soil",
+   "subCategory": "agricultural",
+   "unit": "kg",
+   "exchanges": 2,
+   "flow_list": "bafu algorithm addition",
+   "methods": 2,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Cerium",
+   "category": "emissions to water",
+   "subCategory": "river",
+   "unit": "kg",
+   "exchanges": 2,
+   "flow_list": "bafu algorithm addition",
+   "methods": 4,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Disodium acid methane arsenate",
+   "category": "emissions to soil",
+   "subCategory": "agricultural",
+   "unit": "kg",
+   "exchanges": 2,
+   "flow_list": "bafu algorithm addition",
+   "methods": 2,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Occupation, pasture, man made",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2a",
+   "exchanges": 2,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 1,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: adopted)"
+  },
+  {
+   "name": "Occupation, pasture, man made, organic",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2a",
+   "exchanges": 2,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Occupation, tropical rain forest",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2a",
+   "exchanges": 2,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Octene (mixture of isomers)",
+   "category": "emissions to air",
+   "subCategory": "unspecified",
+   "unit": "kg",
+   "exchanges": 2,
+   "flow_list": "bafu algorithm addition",
+   "methods": 4,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Transformation, to pasture and meadow, organic",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2",
+   "exchanges": 2,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Transformation, to tropical rain forest",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2",
+   "exchanges": 2,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Water",
+   "category": "emissions to water",
+   "subCategory": "groundwater",
+   "unit": "kg",
+   "exchanges": 2,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Ammonia",
+   "category": "emissions to soil",
+   "subCategory": "industrial",
+   "unit": "kg",
+   "exchanges": 1,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 4,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: restated)"
+  },
+  {
+   "name": "Arsenic, ion",
+   "category": "emissions to air",
+   "subCategory": "unspecified",
+   "unit": "kg",
+   "exchanges": 1,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 6,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: adopted)"
+  },
+  {
+   "name": "Chromium III",
+   "category": "emissions to soil",
+   "subCategory": "industrial",
+   "unit": "kg",
+   "exchanges": 1,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 4,
+   "why": "Brightway Flows names more than one flow as the source of its factors"
+  },
+  {
+   "name": "Copper ion",
+   "category": "emissions to air",
+   "subCategory": "unspecified",
+   "unit": "kg",
+   "exchanges": 1,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 4,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: adopted)"
+  },
+  {
+   "name": "Curium alpha",
+   "category": "emissions to water",
+   "subCategory": "river",
+   "unit": "kBq",
+   "exchanges": 1,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Ethane, 1,1,2-trifluoro-, HFC-143",
+   "category": "emissions to air",
+   "subCategory": "unspecified",
+   "unit": "kg",
+   "exchanges": 1,
+   "flow_list": "bafu algorithm addition",
+   "methods": 2,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Hexamethylene diamine",
+   "category": "emissions to air",
+   "subCategory": "unspecified",
+   "unit": "kg",
+   "exchanges": 1,
+   "flow_list": "bafu algorithm addition",
+   "methods": 4,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "N-octane",
+   "category": "emissions to air",
+   "subCategory": "unspecified",
+   "unit": "kg",
+   "exchanges": 1,
+   "flow_list": "bafu algorithm addition",
+   "methods": 5,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Occupation, unspecified, natural (non-use)",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2a",
+   "exchanges": 1,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 1,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: adopted)"
+  },
+  {
+   "name": "P-cyanophenol",
+   "category": "emissions to soil",
+   "subCategory": "industrial",
+   "unit": "kg",
+   "exchanges": 1,
+   "flow_list": "bafu algorithm addition",
+   "methods": 2,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Plutonium-alpha",
+   "category": "emissions to water",
+   "subCategory": "river",
+   "unit": "kBq",
+   "exchanges": 1,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Propane, 1,1,1,3,3-pentafluoro-, HFC-245fa",
+   "category": "emissions to air",
+   "subCategory": "unspecified",
+   "unit": "kg",
+   "exchanges": 1,
+   "flow_list": "bafu algorithm addition",
+   "methods": 4,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Thiazole, 2-(thiocyanatemethylthio)benzo-",
+   "category": "emissions to soil",
+   "subCategory": "agricultural",
+   "unit": "kg",
+   "exchanges": 1,
+   "flow_list": "bafu algorithm addition",
+   "methods": 2,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Transformation, from forest, intensive, short-cycle",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2",
+   "exchanges": 1,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Transformation, from permanent crop, fruit, extensive",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2",
+   "exchanges": 1,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  },
+  {
+   "name": "Transformation, from unspecified, natural (non-use)",
+   "category": "resources",
+   "subCategory": "land",
+   "unit": "m2",
+   "exchanges": 1,
+   "flow_list": "ecoinvent algorithm addition",
+   "methods": 1,
+   "why": "the EF 3.1 flow named as the source of its factors has none in the build's methods (Brightway Flows: adopted)"
+  },
+  {
+   "name": "Zinc, Zn 0.63%, Au 9.7E-4%, Ag 9.7E-4%, Cu 0.38%, Pb 0.014%, in ore",
+   "category": "resources",
+   "subCategory": "in ground",
+   "unit": "kg",
+   "exchanges": 1,
+   "flow_list": "bafu algorithm addition",
+   "methods": 1,
+   "why": "outside EF 3.1, and Brightway Flows names no flow as the source of factors"
+  }
+ ],
+ "gained": [
+  {
+   "name": "Chlorine",
+   "category": "emissions to air",
+   "subCategory": "high. pop.",
+   "unit": "kg",
+   "exchanges": 410,
+   "flow_list": "EF 3.1",
+   "methods": 1
+  },
+  {
+   "name": "Ethane, 1,1,1-trichloro-, HCFC-140",
+   "category": "emissions to air",
+   "subCategory": "low. pop.",
+   "unit": "kg",
+   "exchanges": 95,
+   "flow_list": "EF 3.1",
+   "methods": 7
+  },
+  {
+   "name": "Water, embodied in product, CH",
+   "category": "economic issues",
+   "subCategory": "unspecified",
+   "unit": "kg",
+   "exchanges": 9,
+   "flow_list": "EF 3.1",
+   "methods": 1
+  },
+  {
+   "name": "Methyl pentane",
+   "category": "emissions to water",
+   "subCategory": "river",
+   "unit": "kg",
+   "exchanges": 1,
+   "flow_list": "bafu algorithm addition",
+   "methods": 4
+  },
+  {
+   "name": "Pentane, perfluoro-",
+   "category": "emissions to air",
+   "subCategory": "unspecified",
+   "unit": "kg",
+   "exchanges": 1,
+   "flow_list": "EF 3.1",
+   "methods": 2
+  },
+  {
+   "name": "Water, embodied in product, ES",
+   "category": "economic issues",
+   "subCategory": "unspecified",
+   "unit": "kg",
+   "exchanges": 1,
+   "flow_list": "EF 3.1",
+   "methods": 1
+  },
+  {
+   "name": "Water, embodied in product, KE",
+   "category": "economic issues",
+   "subCategory": "unspecified",
+   "unit": "kg",
+   "exchanges": 1,
+   "flow_list": "EF 3.1",
+   "methods": 1
+  },
+  {
+   "name": "Water, embodied in product, MX",
+   "category": "economic issues",
+   "subCategory": "unspecified",
+   "unit": "kg",
+   "exchanges": 1,
+   "flow_list": "EF 3.1",
+   "methods": 1
+  },
+  {
+   "name": "Water, embodied in product, PE",
+   "category": "economic issues",
+   "subCategory": "unspecified",
+   "unit": "kg",
+   "exchanges": 1,
+   "flow_list": "EF 3.1",
+   "methods": 1
+  }
+ ],
+ "measured_by": "agent-run measurement; the script and its inputs are public and pinned"
+}

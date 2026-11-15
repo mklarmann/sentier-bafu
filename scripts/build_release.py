@@ -65,6 +65,11 @@ from release_build import layer as layer_file  # noqa: E402
 REPOSITORY = Path(__file__).resolve().parents[1]
 HELPERS = REPOSITORY / "scripts" / "release_build"
 PINS = HELPERS / "pins.toml"
+# What the installer needs to follow patch 0010's links: for each row of the crosswalk, the
+# flow of Brightway Flows, its unit, the conversion that release states, and the EF 3.1 flow
+# a flow outside EF 3.1 takes its factors from (scripts/build_brightway_flows_targets.py).
+FLOW_LINKS = REPOSITORY / "src/bafu_community_fixes/data/brightway-flows-targets-bafu-2026-v1.csv"
+LINKINGS = ("sentier-mappings", "brightway-flows")
 # Where sentier-importers' registry expects BAFU's release, below its data root
 IMPORTER_INPUT = Path("sources") / "bafu-2026" / "BAFU-2026 v1_ecoSpold v1.zip"
 IMPORTER_SOURCES = ("bafu-processes", "bafu-exchanges")
@@ -319,11 +324,15 @@ def build(args: argparse.Namespace) -> int:
         "sentier-brightway", pins["sentier-brightway"], tools_dir / "sentier-brightway", venvs
     )
     database, residual = paths["database"], paths["residual_database"]
+    flow_links = ["--flow-links", str(FLOW_LINKS)] if args.linking == "brightway-flows" else []
+    if flow_links and not FLOW_LINKS.is_file():
+        raise BuildError(f"{FLOW_LINKS} is not there; the Brightway Flows linking needs it")
     record = {
         "label": paths["label"],
         "patched": paths["patched"],
         "started": datetime.now(UTC).isoformat(timespec="seconds"),
         "status": "running",
+        "linking": args.linking,
         "release": {"name": paths["release_name"], "folder": str(paths["release"])},
         "tools": {
             "this repository": _repository_commit(),
@@ -518,6 +527,7 @@ def build(args: argparse.Namespace) -> int:
             brightway.command(
                 *("sentier-brightway", "db", "--project", paths["project"]),
                 *("--source", database, "--data-root", str(paths["data_root"])),
+                *flow_links,
             ),
             bw_env,
         )
@@ -576,6 +586,7 @@ def build(args: argparse.Namespace) -> int:
                     *("sentier-brightway", "backtest", "--out", str(paths["published"])),
                     *("--source", database, "--data-root", str(paths["data_root"])),
                     *("--xlsx", str(workbook.resolve())),
+                    *flow_links,
                 ),
                 brightway.env(),
             )
@@ -666,14 +677,27 @@ def _build_steps(record: dict, receipt: adapter.Receipt, inventory: Path) -> lis
     An export of the database lists these after the patch tool's own steps.
     """
     mapping = next(pin for pin in record["data_pins"] if pin["name"] == "sentier-mappings")
+    if record.get("linking") == "brightway-flows":
+        linked = (
+            "Elementary exchanges are linked to flows of Brightway Flows, through the links "
+            f"of patch 0010 ({FLOW_LINKS.name}). An amount is converted only where Brightway "
+            "Flows states the conversion. A flow outside EF 3.1 takes the factors of the "
+            "EF 3.1 flow that Brightway Flows names for it; where it names none, the flow has "
+            "no factor. Exchanges whose conversion is unknown stay on BAFU's flow, in the "
+            f"database {record['databases']['no_ef_3_1_flow']}, without a factor."
+        )
+    else:
+        linked = (
+            "Elementary exchanges are linked to EF 3.1 flows through "
+            f"sentier-mappings at {mapping['commit'][:12]}, with its conversion factors. "
+            "Exchanges of flows the mapping does not hold stay on BAFU's flow, in the "
+            f"database {record['databases']['no_ef_3_1_flow']}, without a factor."
+        )
     steps = [
         {
             "id": "build-ef-3.1-links",
             "kind": "build step",
-            "description": "Elementary exchanges are linked to EF 3.1 flows through "
-            f"sentier-mappings at {mapping['commit'][:12]}, with its conversion factors. "
-            "Exchanges of flows the mapping does not hold stay on BAFU's flow, in the "
-            f"database {record['databases']['no_ef_3_1_flow']}, without a factor.",
+            "description": linked,
             "datasets": receipt.datasets,
         }
     ]
@@ -1138,6 +1162,15 @@ def main(argv: list[str] | None = None) -> int:
     )
     b.add_argument("out", type=Path, help="Empty folder for everything the build writes")
     b.add_argument("--no-patches", action="store_true", help="Build the provider release as is")
+    b.add_argument(
+        "--linking",
+        choices=LINKINGS,
+        default=LINKINGS[0],
+        help="How elementary flows are linked to the flows of the impact methods: through "
+        "the mapping of sentier-mappings (default), or through Brightway Flows, with the "
+        "links of patch 0010. The second is measured and not yet the build's own: flows "
+        "lose their factor under it (docs/brightway-build.md).",
+    )
     b.add_argument("--only", nargs="+", metavar="ID", help="Apply only these patches")
     b.add_argument("--skip", nargs="+", metavar="ID", help="Don't apply these patches")
     b.add_argument(

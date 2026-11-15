@@ -477,6 +477,35 @@ class BuildRecords(unittest.TestCase):
         for step in steps:  # the shape an export step reads
             self.assertTrue({"id", "kind", "description"} <= set(step))
 
+    def test_the_build_says_which_way_the_flows_were_linked(self):
+        receipt = build_release.adapter.Receipt(datasets=7)
+        by_mapping = build_release._build_steps(self.record, receipt, Path("inventory"))[0]
+        self.assertIn("through sentier-mappings at ffffffffffff", by_mapping["description"])
+        linked = self.record | {"linking": "brightway-flows"}
+        step = build_release._build_steps(linked, receipt, Path("inventory"))[0]
+        # the same step, with what this linking does: which flow, which conversion, which factors
+        self.assertEqual(step["id"], "build-ef-3.1-links")
+        for words in (
+            "through the links of patch 0010",
+            "only where Brightway Flows states the conversion",
+            "takes the factors of the EF 3.1 flow",
+            "bafu-2026-v1-patched-residual",
+        ):
+            self.assertIn(words, step["description"])
+        self.assertNotIn("sentier-mappings", step["description"])
+
+    def test_the_mapping_is_the_default_and_the_other_linking_has_its_file(self):
+        self.assertEqual(build_release.LINKINGS, ("sentier-mappings", "brightway-flows"))
+        # the file is committed, one row for each row of the crosswalk patch 0010 uses
+        crosswalk = build_release.FLOW_LINKS.with_name(
+            build_release.FLOW_LINKS.name.replace("targets", "crosswalk")
+        )
+        self.assertTrue(build_release.FLOW_LINKS.is_file())
+        self.assertEqual(
+            len(build_release.FLOW_LINKS.read_text().splitlines()),
+            len(crosswalk.read_text().splitlines()),
+        )
+
     def test_a_contribution_says_whether_somebody_authorised_it(self):
         self.assertEqual(
             build_release.standing({"authorised_by": None}), "proposed, not authorised"
