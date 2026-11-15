@@ -25,8 +25,8 @@ class BridgeEntry:
     target_unit: str
     conversion_factor: float = 1.0
     nomenclature: bool = False  # target EF flow carries no factor in any EF 3.1 method
-    # captured for completeness; not used for linking in v0.1 because regionalized CFs
-    # are skipped by the methods reader, so a located target is equivalent to the global one
+    # the country the source flow names, where the mapping states one. ``located.locate``
+    # gives such a flow the target and the factors of that country.
     target_location: str | None = None
 
 

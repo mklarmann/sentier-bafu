@@ -189,8 +189,14 @@ def link(
     methods: tuple[MethodSpec, ...],
     targets: Mapping[tuple[str, str, str, str], dict],
     include_without_factor: bool = True,
+    locations: Mapping[str, str] | None = None,
 ) -> FlowLinks:
     """The bridge, the flows and the methods for ``build()``, from the links.
+
+    ``locations`` gives, per source flow code, the country the flow names. The links do not
+    state it (``Water, CH`` and ``Water`` end on one flow), so it is taken from where it is
+    stated, the mapping of sentier-mappings. ``build()`` then gives the flow that country's
+    factor, as it does for the mapping's own links.
 
     ``source_flows`` are the source's own flow terms (``code, name, categories``); a flow's
     unit is the unit of its exchanges, which is one, because the unit is part of what makes
@@ -242,16 +248,26 @@ def link(
     }
     extended = []
     with_factors: set[str] = set()
+    takers: dict[str, list[str]] = {}  # the flow named as the source: the flows that take from it
+    for flow, source in carried.items():
+        takers.setdefault(source, []).append(flow)
     for spec in methods:
         own = dict(spec.cfs)
         added = tuple((flow, own[source]) for flow, source in carried.items() if source in own)
         with_factors.update(flow for flow, _ in added)
         names = {flow: rows_of[flow]["flow_name"] for flow, _ in added}
+        # the factors of single countries are carried the same way, country by country
+        of_countries = {
+            (flow, location): value
+            for (source, location), value in spec.located.items()
+            for flow in takers.get(source, ())
+        }
         extended.append(
             replace(
                 spec,
                 cfs=spec.cfs + added,
                 flow_name=MappingProxyType({**spec.flow_name, **names}),
+                located=MappingProxyType({**spec.located, **of_countries}),
             )
         )
     characterised = {code for spec in extended for code, _ in spec.cfs}
@@ -268,6 +284,7 @@ def link(
             target_unit=row["flow_unit"],
             conversion_factor=multiplier,
             nomenclature=without,
+            target_location=(locations or {}).get(code),
         )
 
     # A node needs a name and a place. The installer's flow terms give them for the flows of

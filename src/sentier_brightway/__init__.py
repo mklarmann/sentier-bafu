@@ -53,22 +53,25 @@ def _assemble_from_root(
     source_version: str | None = None,
     flow_links: Path | str | None = None,
     flow_terms_of: str | None = None,
+    include_located: bool = True,
 ) -> BuildResult:
     """Build from an already resolved data root. With ``flow_links`` (the targets file of
     patch 0010's crosswalk) the flows are linked through Brightway Flows, and the mapping
     folder is not read. ``flow_terms_of`` names the source whose elementary flow terms the
     inventory uses, when that is not the inventory's own source: a patched copy of a release
-    has its own name and the release's flows."""
+    has its own name and the release's flows. ``include_located=False`` leaves the flows
+    that name a country on the factor without a location (``located.py``)."""
     with recording_reads() as files_read:
         inventory = load_inventory(root, source=source, source_version=source_version)
         ef_flows = load_ef_flows(root)
         source_flows = load_source_flows(root, flow_terms_of or source)
         methods = load_methods(root)
-        bridge = (
-            load_bridge(root, include_nomenclature=include_nomenclature)
-            if flow_links is None
-            else None
-        )
+        if flow_links is None:
+            bridge = load_bridge(root, include_nomenclature=include_nomenclature)
+        else:
+            # the mapping does not link the flows here, and it is still read: it is the one
+            # place that states which country a flow names
+            bridge = load_bridge(root)
     if flow_links is None:
         result = build(
             inventory=inventory,
@@ -76,6 +79,7 @@ def _assemble_from_root(
             bafu_flows=source_flows,
             bridge=bridge,
             methods=methods,
+            include_located=include_located,
         )
         return replace(result, files_read=tuple(files_read))
     links = brightway_flows.link(
@@ -85,6 +89,9 @@ def _assemble_from_root(
         methods,
         brightway_flows.load_targets(flow_links),
         include_without_factor=include_nomenclature,
+        locations={
+            code: entry.target_location for code, entry in bridge.items() if entry.target_location
+        },
     )
     result = build(
         inventory=inventory,
@@ -92,6 +99,7 @@ def _assemble_from_root(
         bafu_flows=source_flows,
         bridge=links.bridge,
         methods=links.methods,
+        include_located=include_located,
     )
     coverage = replace(
         result.coverage, linking=brightway_flows.LINKING, link_lines=links.report.lines()
@@ -106,13 +114,15 @@ def assemble(
     source_version: str | None = None,
     flow_links: Path | str | None = None,
     flow_terms_of: str | None = None,
+    include_located: bool = True,
 ) -> BuildResult:
     """Read the Sentier data (local root or verified download) and build the node dicts.
 
     ``source`` selects the inventory folder (``data/<source>-<version>/`` in sentier-inventory)
     and names the inventory and residual databases after it; ``source_version`` picks one
     release when the data root serves several of the same source. ``flow_links`` links the
-    elementary flows through Brightway Flows (see ``brightway_flows``)."""
+    elementary flows through Brightway Flows (see ``brightway_flows``). A flow that names a
+    country takes that country's factor (``located``) unless ``include_located`` is False."""
     return _assemble_from_root(
         resolve_data_root(data_root),
         include_nomenclature,
@@ -120,6 +130,7 @@ def assemble(
         source_version,
         flow_links,
         flow_terms_of,
+        include_located,
     )
 
 
@@ -130,10 +141,17 @@ def coverage(
     source_version: str | None = None,
     flow_links: Path | str | None = None,
     flow_terms_of: str | None = None,
+    include_located: bool = True,
 ) -> Coverage:
     """Linking coverage without touching Brightway."""
     return assemble(
-        data_root, include_nomenclature, source, source_version, flow_links, flow_terms_of
+        data_root,
+        include_nomenclature,
+        source,
+        source_version,
+        flow_links,
+        flow_terms_of,
+        include_located,
     ).coverage
 
 
@@ -146,6 +164,7 @@ def import_db(
     source_version: str | None = None,
     flow_links: Path | str | None = None,
     flow_terms_of: str | None = None,
+    include_located: bool = True,
 ) -> Coverage:
     """Install one inventory ``source`` (default BAFU-2026) + EF 3.1 biosphere + EF 3.1
     methods into ``project``. The inventory database is named after ``source`` (never after
@@ -162,7 +181,13 @@ def import_db(
     from .writer import write  # bw2data import stays lazy
 
     result = assemble(
-        data_root, include_nomenclature, source, source_version, flow_links, flow_terms_of
+        data_root,
+        include_nomenclature,
+        source,
+        source_version,
+        flow_links,
+        flow_terms_of,
+        include_located,
     )
     write(result, project=project, overwrite=overwrite)
     return result.coverage
@@ -190,6 +215,7 @@ def import_files(
     source_version: str | None = None,
     flow_links: Path | str | None = None,
     flow_terms_of: str | None = None,
+    include_located: bool = True,
 ) -> Coverage:
     """Write one inventory ``source`` (default BAFU-2026) + EF 3.1 as plain files instead of a
     bw2data project.
@@ -212,7 +238,13 @@ def import_files(
 
     root = resolve_data_root(data_root)
     result = _assemble_from_root(
-        root, include_nomenclature, source, source_version, flow_links, flow_terms_of
+        root,
+        include_nomenclature,
+        source,
+        source_version,
+        flow_links,
+        flow_terms_of,
+        include_located,
     )
     write_files(
         result,
@@ -222,6 +254,7 @@ def import_files(
         overwrite=overwrite,
         include_nomenclature=include_nomenclature,
         flow_links=None if flow_links is None else Path(flow_links),
+        include_located=include_located,
     )
     return result.coverage
 

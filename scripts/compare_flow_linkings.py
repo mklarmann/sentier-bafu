@@ -106,6 +106,8 @@ def flows(data_root: Path, flow_links: Path) -> dict:
 
     A flow "has a factor" in a method when the flow it is linked to has a factor there that
     is not zero. A factor table also lists flows with a factor of zero; those do not count.
+    Both sides are what the installer builds: a flow that names a country is on the flow of
+    that country, with that country's factor, under either linking.
     """
     from dataclasses import replace
 
@@ -121,7 +123,10 @@ def flows(data_root: Path, flow_links: Path) -> dict:
     source_flows, ef_flows = load_source_flows(data_root), load_ef_flows(data_root)
     targets = bf.load_targets(flow_links)
     mapping = load_bridge(data_root)
-    links = bf.link(inventory, source_flows, ef_flows, methods, targets)
+    countries = {code: e.target_location for code, e in mapping.items() if e.target_location}
+    links = bf.link(inventory, source_flows, ef_flows, methods, targets, locations=countries)
+    built = build(inventory, ef_flows, source_flows, mapping, methods)
+    built_linked = build(inventory, links.ef_flows, source_flows, links.bridge, links.methods)
 
     bio = inventory.exchanges[inventory.exchanges["flow_type"] == "biosphere"]
     exchanges = bio.groupby("flow").size().to_dict()
@@ -137,10 +142,10 @@ def flows(data_root: Path, flow_links: Path) -> dict:
             str(unit[code]),
         )
 
-    def factors(specs):
-        return {spec.method_id: dict(spec.cfs) for spec in specs}
+    def factors(bound):
+        return {m.method_id: {key[1]: value for key, value in m.cfs} for m in bound}
 
-    before, after = factors(methods), factors(links.methods)
+    before, after = factors(built.methods), factors(built_linked.methods)
 
     def factor(table, bridge, method, code):
         entry = bridge.get(code)
@@ -152,8 +157,8 @@ def flows(data_root: Path, flow_links: Path) -> dict:
     for method in before:
         lost, gained, changed = [], [], []
         for code in exchanges:
-            a = factor(before, mapping, method, code)
-            b = factor(after, links.bridge, method, code)
+            a = factor(before, built.links, method, code)
+            b = factor(after, built_linked.links, method, code)
             if a != 0:
                 has_before.add(code)
             if b != 0:
@@ -181,7 +186,7 @@ def flows(data_root: Path, flow_links: Path) -> dict:
 
     def why(code):
         row = targets[four(code)]
-        if code not in links.bridge:
+        if code not in built_linked.links:
             return "not linked: the units differ and no conversion is stated"
         if row["flow_list"] == bf.EF_LIST:
             return "its EF 3.1 flow has no factor there in the build's methods"
@@ -227,9 +232,8 @@ def flows(data_root: Path, flow_links: Path) -> dict:
     def lines(result):
         return [line for line in render(result).splitlines() if line.strip()][:-1]
 
-    plain = build(inventory, ef_flows, source_flows, mapping, methods).coverage
-    linked = build(inventory, links.ef_flows, source_flows, links.bridge, links.methods).coverage
-    linked = replace(linked, linking=bf.LINKING, link_lines=links.report.lines())
+    plain = built.coverage
+    linked = replace(built_linked.coverage, linking=bf.LINKING, link_lines=links.report.lines())
     return {
         "flows_used": len(exchanges),
         "elementary_exchanges": int(sum(exchanges.values())),

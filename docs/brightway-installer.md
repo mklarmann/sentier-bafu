@@ -43,10 +43,12 @@ SHA-256. That file is the one place a data pin lives: the build reads the same c
 
 ## What it writes
 
-- `ef-3.1-biosphere`: one node for each flow of EF 3.1, and for each flow a link ends on.
+- `ef-3.1-biosphere`: one node for each flow of EF 3.1, and for each flow a link ends on. A
+  flow in one country (`Water, CH`) has a node of its own, with the country as its location.
 - `<source>`: the inventory, named after its source (`bafu-2026` for BAFU's release).
 - `<source>-residual`: the source's elementary flows that are not linked, without a factor.
-- The methods `("sentier", "EF v3.1", <category>)`, with the factors that have no location.
+- The methods `("sentier", "EF v3.1", <category>)`: the factors that have no location, and
+  for the flows of one country that country's factor.
 
 ## How elementary flows are linked
 
@@ -56,6 +58,11 @@ SHA-256. That file is the one place a data pin lives: the build reads the same c
   (`brightway_flows.py`). An amount is converted only where Brightway Flows states the
   conversion, and a flow outside EF 3.1 takes the factors of the one flow Brightway Flows
   names as their source. [The build's page](brightway-build.md) says what that changes.
+
+**A flow that names a country** takes that country's factor in the methods that have one,
+under either linking (`located.py`). BAFU has 238 such flows, `Water, CH` among them, and
+the mapping states the country of each. `--skip-located` gives them the factor without a
+location, as before 15 November 2026.
 
 Two more options serve the build: `--flow-terms-of SOURCE` reads the elementary flow terms of
 another source than the inventory's own (a patched copy of a release has its own name and the
@@ -74,9 +81,8 @@ checks of every pull request run all of these.
 
 ## What it does not do
 
-- Only EF 3.1, and only its factors without a location. BAFU's exchanges carry no location
-  of their own, so a factor of one country could only be given to an exchange by the location
-  of its dataset. [The build's page](brightway-build.md) says what that would change.
+- Only EF 3.1. A flow that names no country takes the factor without a location, whatever
+  the location of its dataset: BAFU's exchanges carry no location of their own.
 - Uncertainty is carried into the Brightway database, not into the files export.
 - The comparison with BAFU's published results uses pypardiso for its solve where that
   package is installed, and SciPy's SuperLU otherwise. The project's lock does not hold

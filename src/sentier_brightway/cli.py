@@ -53,6 +53,15 @@ def _add_flow_terms_of(parser: argparse.ArgumentParser) -> None:
     )
 
 
+def _add_skip_located(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--skip-located",
+        action="store_true",
+        help="give a flow that names a country (Water, CH) the factor without a location, "
+        "not that country's factor",
+    )
+
+
 def _add_report(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--report",
@@ -73,6 +82,7 @@ def _parser() -> argparse.ArgumentParser:
     _add_source(db)
     _add_flow_links(db)
     _add_flow_terms_of(db)
+    _add_skip_located(db)
     _add_report(db)
     db.add_argument("--overwrite", action="store_true", help="replace existing databases")
     db.add_argument("--data-root", default=None, help="local ~/dds-shaped folder (skips download)")
@@ -89,6 +99,7 @@ def _parser() -> argparse.ArgumentParser:
     _add_source(fil)
     _add_flow_links(fil)
     _add_flow_terms_of(fil)
+    _add_skip_located(fil)
     _add_report(fil)
     fil.add_argument("--overwrite", action="store_true", help="replace a non-empty output folder")
     fil.add_argument(
@@ -107,6 +118,7 @@ def _parser() -> argparse.ArgumentParser:
     _add_source(cov)
     _add_flow_links(cov)
     _add_flow_terms_of(cov)
+    _add_skip_located(cov)
     _add_report(cov)
     cov.add_argument("--data-root", default=None)
     cov.add_argument("--skip-nomenclature", action="store_true")
@@ -131,6 +143,7 @@ def _parser() -> argparse.ArgumentParser:
     _add_source(bt)
     _add_flow_links(bt)
     _add_flow_terms_of(bt)
+    _add_skip_located(bt)
     bt.add_argument("--skip-nomenclature", action="store_true")
     bt.add_argument("--fixture-categories", action="store_true", help=argparse.SUPPRESS)
     return p
@@ -141,10 +154,10 @@ def _run_backtest(args: argparse.Namespace, include: bool) -> str:
     from . import backtest as bt  # bw2calc is imported inside run_backtest
 
     files_dir = Path(args.files) if args.files else Path(args.out) / "files"
-    if args.files and (args.flow_links or args.flow_terms_of):
+    if args.files and (args.flow_links or args.flow_terms_of or args.skip_located):
         raise ValueError(
-            "--files names an export that is already made; --flow-links and --flow-terms-of "
-            "are options of making one and would not be used"
+            "--files names an export that is already made; --flow-links, --flow-terms-of and "
+            "--skip-located are options of making one and would not be used"
         )
     if not args.files:
         # <out>/files is ours: overwrite only ever replaces a previous export there
@@ -157,6 +170,7 @@ def _run_backtest(args: argparse.Namespace, include: bool) -> str:
             source_version=args.source_version,
             flow_links=args.flow_links,
             flow_terms_of=args.flow_terms_of,
+            include_located=not args.skip_located,
         )
     cats = bt.FIXTURE_CATEGORIES if args.fixture_categories else bt.CATEGORIES
     xlsx = Path(args.xlsx) if args.xlsx else bt.DEFAULT_XLSX.expanduser()
@@ -177,6 +191,7 @@ def _run(args: argparse.Namespace) -> str:
             source_version=args.source_version,
             flow_links=args.flow_links,
             flow_terms_of=args.flow_terms_of,
+            include_located=not args.skip_located,
         )
     elif args.command == "files":
         cov = import_files(
@@ -189,6 +204,7 @@ def _run(args: argparse.Namespace) -> str:
             source_version=args.source_version,
             flow_links=args.flow_links,
             flow_terms_of=args.flow_terms_of,
+            include_located=not args.skip_located,
         )
     else:
         cov = import_db(
@@ -200,6 +216,7 @@ def _run(args: argparse.Namespace) -> str:
             source_version=args.source_version,
             flow_links=args.flow_links,
             flow_terms_of=args.flow_terms_of,
+            include_located=not args.skip_located,
         )
     text = render(cov)
     if args.report:

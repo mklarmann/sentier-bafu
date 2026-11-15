@@ -8,12 +8,14 @@ from collections import Counter, defaultdict
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
+from types import MappingProxyType
 
 import pandas as pd
 
 from .bridge import BridgeEntry
 from .constants import BIOSPHERE_DB, inventory_db, residual_db
 from .inventory import Inventory
+from .located import locate
 from .methods import MethodSpec
 from .report import Coverage
 from .units import normalize_unit
@@ -49,6 +51,9 @@ class BuildResult:
     residual_db: str = "bafu-2026-residual"
     # the data files the build was read from, where the caller recorded them (``assemble``)
     files_read: tuple[Path, ...] = ()
+    # source flow code -> the link that was built: its target (the one of a country, where
+    # the flow names one), unit and conversion. With ``methods`` this says what a flow costs.
+    links: Mapping[str, BridgeEntry] = MappingProxyType({})
 
 
 def _is_null(value: object) -> bool:
@@ -90,12 +95,18 @@ def _warn_unit_conflicts(conflicts: tuple[str, ...]) -> None:
 
 
 def build_biosphere(
-    ef_flows: pd.DataFrame, units: Mapping[str, str], methods: tuple[MethodSpec, ...]
+    ef_flows: pd.DataFrame,
+    units: Mapping[str, str],
+    methods: tuple[MethodSpec, ...],
+    located: Mapping[str, tuple[str, str]] | None = None,
 ) -> dict[Key, dict]:
     """One node per EF flow known to vocab, to any CF table, or to any bridge target.
 
     ``units`` is the first normalised target unit per EF code, as computed once by
-    ``_bridge_units`` in ``build()`` (conflict warnings are also ``build()``'s job)."""
+    ``_bridge_units`` in ``build()`` (conflict warnings are also ``build()``'s job).
+    ``located`` are the targets of single countries (``located.locate``): each is the node
+    of its flow again, with the country in its name and as its ``location``."""
+    located = located or {}
     names: dict[str, str] = dict(zip(ef_flows["code"], ef_flows["name"], strict=True))
     cas: dict[str, str | None] = dict(zip(ef_flows["code"], ef_flows["cas_number"], strict=True))
     # CF context is more specific than the vocab compartment, so it takes priority; among
@@ -111,8 +122,8 @@ def build_biosphere(
         **dict(zip(ef_flows["code"], ef_flows["categories"], strict=True)),
         **cf_categories,
     }
-    nodes = {}
-    for code in sorted(set(names) | set(units)):
+
+    def node_of(code: str) -> dict:
         cats = tuple(categories.get(code, ()))
         node = {
             "name": names.get(code, code),
@@ -123,7 +134,19 @@ def build_biosphere(
         }
         if cas.get(code):
             node["CAS number"] = cas[code]
-        nodes[(BIOSPHERE_DB, code)] = node
+        return node
+
+    nodes = {}
+    for code in sorted((set(names) | set(units)) - set(located)):
+        nodes[(BIOSPHERE_DB, code)] = node_of(code)
+    for key, (code, location) in sorted(located.items()):
+        flow = node_of(code)
+        nodes[(BIOSPHERE_DB, key)] = {
+            **flow,
+            "name": f"{flow['name']}, {location}",
+            "unit": units.get(key, flow["unit"]),
+            "location": location,
+        }
     return nodes
 
 
@@ -365,6 +388,7 @@ def _coverage(
     unit_conflicts: int,
     dbs: Databases = _DEFAULT_DBS,
     source: str = "bafu-2026",
+    located: Mapping[str, tuple[str, str]] | None = None,
 ) -> Coverage:
     """Coverage over ``bio`` (the biosphere exchange rows) and the ``unmapped`` codes."""
     used = set(bio["flow"])
@@ -380,6 +404,9 @@ def _coverage(
         flows_used=len(used),
         flows_mapped=len(used) - len(unmapped),
         flows_nomenclature=sum(1 for code in used if code in bridge and bridge[code].nomenclature),
+        flows_located=sum(
+            1 for code in used if code in bridge and bridge[code].target_code in (located or {})
+        ),
         exchange_rows=len(bio),
         exchange_rows_mapped=int(bio["flow"].isin(bridge.keys()).sum()),
         residual_by_compartment=tuple(sorted(counter.items())),
@@ -398,14 +425,24 @@ def build(
     bafu_flows: pd.DataFrame,
     bridge: Mapping[str, BridgeEntry],
     methods: tuple[MethodSpec, ...],
+    include_located: bool = True,
 ) -> BuildResult:
+    """The nodes of the three databases and the methods, from the tables.
+
+    A linked flow that names a country takes the target and the factors of that country
+    (``located.locate``); ``include_located=False`` leaves every flow on the factor without
+    a location."""
+    nodes_of_countries: Mapping[str, tuple[str, str]] = {}
+    if include_located:
+        found = locate(bridge, methods)
+        bridge, methods, nodes_of_countries = found.bridge, found.methods, found.nodes
     bio = inventory.exchanges[inventory.exchanges["flow_type"] == "biosphere"]
     unmapped = set(bio["flow"]) - set(bridge.keys())
     units, conflicts = _bridge_units(bridge)
     _warn_unit_conflicts(conflicts)
     dbs = Databases.for_source(inventory.source)
     return BuildResult(
-        biosphere=build_biosphere(ef_flows, units, methods),
+        biosphere=build_biosphere(ef_flows, units, methods, nodes_of_countries),
         residual=build_residual(unmapped, bafu_flows, inventory.exchanges, dbs.residual),
         inventory=build_inventory(inventory, bridge, dbs),
         methods=_bind_methods(methods),
@@ -419,7 +456,9 @@ def build(
             unit_conflicts=len(conflicts),
             dbs=dbs,
             source=inventory.source,
+            located=nodes_of_countries,
         ),
+        links=bridge,
         source=inventory.source,
         source_version=inventory.source_version,
         inventory_db=dbs.inventory,

@@ -1,4 +1,6 @@
-"""Read EF 3.1 methods and their global characterization factors from sentier-methods."""
+"""Read EF 3.1 methods and their characterization factors from sentier-methods: the factors
+without a location, which every flow takes, and the factors of single countries, which a
+flow takes only where it names the country (``located.py``)."""
 
 from __future__ import annotations
 
@@ -31,6 +33,9 @@ class MethodSpec:
     # consumer combining specs should let the first one win, with the vocab's own
     # pref_label taking priority over either.
     flow_name: Mapping[str, str]
+    # (ef_flow_code, location) -> factor, for the factors of one country. No flow takes one
+    # unless it names the country (``located.locate``).
+    located: Mapping[tuple[str, str], float] = MappingProxyType({})
 
 
 def _split_context(ctx: str | None) -> tuple[str, ...]:
@@ -50,6 +55,20 @@ def _check_no_duplicate_global_cfs(global_cfs: pd.DataFrame, path: Path) -> None
         raise ValueError(
             f"{path}: duplicate (method_id, flow) pairs among global characterization "
             f"factors: {pairs[:5]}"
+        )
+
+
+def _check_no_duplicate_located_cfs(located_cfs: pd.DataFrame, path: Path) -> None:
+    dup_mask = located_cfs.duplicated(subset=["method_id", "flow", "location"], keep=False)
+    if dup_mask.any():
+        triples = list(
+            located_cfs.loc[dup_mask, ["method_id", "flow", "location"]]
+            .drop_duplicates()
+            .itertuples(index=False, name=None)
+        )
+        raise ValueError(
+            f"{path}: duplicate (method_id, flow, location) among the characterization "
+            f"factors of single countries: {triples[:5]}"
         )
 
 
@@ -79,6 +98,24 @@ def load_methods(data_root: Path) -> tuple[MethodSpec, ...]:
 
     global_cfs = cfs[cfs["location"].isna()]
     _check_no_duplicate_global_cfs(global_cfs, cfs_path)
+    located_cfs = cfs[cfs["location"].notna()]
+    _check_no_duplicate_located_cfs(located_cfs, cfs_path)
+    located_cfs = located_cfs.assign(
+        code=codes_from_iris(located_cfs["flow"].astype(str), cfs_path),
+        factor_value=located_cfs["factor_value"].astype(float),
+        location=located_cfs["location"].astype(str),
+    )
+    located_by_method = {
+        method_id: MappingProxyType(
+            {
+                (str(code), str(location)): float(value)
+                for code, location, value in zip(
+                    rows["code"], rows["location"], rows["factor_value"], strict=True
+                )
+            }
+        )
+        for method_id, rows in located_cfs.groupby("method_id", sort=False)
+    }
 
     ctx_map = {c: _split_context(c) for c in global_cfs["flow_context"].unique()}
     global_cfs = global_cfs.assign(
@@ -109,6 +146,7 @@ def load_methods(data_root: Path) -> tuple[MethodSpec, ...]:
                     dict(zip(rows["code"], rows["context"], strict=True))
                 ),
                 flow_name=MappingProxyType(dict(zip(rows["code"], rows["flow_name"], strict=True))),
+                located=located_by_method.get(m.method_id, MappingProxyType({})),
             )
         )
     return tuple(specs)

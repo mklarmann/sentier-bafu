@@ -25,6 +25,15 @@ project: `src/sentier_brightway`, with its tests in `installer-tests/`. Since th
   and commit only where every file read from it is a pinned file with the pinned SHA-256
   (`as_pinned`); any other source is listed with the files read and their SHA-256. Before,
   it named the pins of `sources.toml` whatever `--data-root` held.
+- A flow that names a country takes that country's factor (`located.py`). The mapping
+  states the country for 238 of BAFU's flows (`target.location`), and sentier-methods holds
+  factors of single countries; until now the reader dropped those and every flow took the
+  factor without a location. 184 flows of BAFU's release are linked to the flow of their
+  country, a node of its own. Water use moves for 5,197 of 11,947 datasets, land use for 5,
+  nothing else. `--skip-located` builds as before. Under `--flow-links` the country is
+  taken from the mapping too, because the links do not state it.
+- `BuildResult.links` holds the link that was built for each flow, and `MethodSpec.located`
+  the factors of single countries.
 - The version is the distribution's (`bafu-community-fixes`). Importing the package without
   the `brightway` extra says which extra is missing.
 

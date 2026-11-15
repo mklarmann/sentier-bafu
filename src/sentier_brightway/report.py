@@ -24,6 +24,9 @@ class Coverage:
     source: str = DEFAULT_SOURCE
     inventory_db: str = inventory_db(DEFAULT_SOURCE)
     residual_db: str = residual_db(DEFAULT_SOURCE)
+    # subset of flows_mapped: flows that name a country and are linked to the flow of that
+    # country, with the country's factor in the methods that have one
+    flows_located: int = 0
     # how the elementary flows were linked: through the mapping folder of sentier-mappings,
     # or through Brightway Flows (then ``link_lines`` is that linking's own report)
     linking: str = "sentier-mappings"
@@ -40,6 +43,12 @@ class Coverage:
 
 def render(cov: Coverage) -> str:
     residual_lines = [f"  {comp}: {n}" for comp, n in cov.residual_by_compartment] or ["  none"]
+    located_lines = []
+    if cov.flows_located:
+        located_lines = [
+            f"  {cov.flows_located} of the linked flows name a country and take that country's "
+            "factor where a method has one"
+        ]
     conflict_lines = []
     if cov.unit_conflicts:
         conflict_lines = [
@@ -52,6 +61,7 @@ def render(cov: Coverage) -> str:
                 f"Installed {cov.inventory_db}: {cov.processes} processes",
                 f"Installed {BIOSPHERE_DB} and {cov.methods} EF 3.1 methods",
                 *cov.link_lines,
+                *located_lines,
                 f"  {cov.exchange_rows_mapped}/{cov.exchange_rows} biosphere exchanges linked "
                 f"({cov.exchange_share:.1%})",
                 f"Unlinked flows kept in {cov.residual_db}:",
@@ -68,6 +78,7 @@ def render(cov: Coverage) -> str:
         f"exchanges ({cov.exchange_share:.1%})",
         f"  {cov.flows_nomenclature} of the linked flows point at EF flows with no factor "
         "(nomenclature only, impact zero)",
+        *located_lines,
         *conflict_lines,
         f"Unlinked flows kept in {cov.residual_db} (no EF 3.1 counterpart in the bridge):",
         *residual_lines,

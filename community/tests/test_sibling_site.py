@@ -450,7 +450,7 @@ class Names(unittest.TestCase):
                "scripts/patches_snapshot.py", "scripts/full_release_table.py", "scripts/check_patched_release.py",
                "scripts/new_patch.py", "scripts/build_brightway_flows_data.py", "scripts/check_integration_receipt.py",
                "scripts/build_brightway_flows_targets.py", "scripts/compare_flow_linkings.py",
-               "scripts/pin_sources.py",
+               "scripts/pin_sources.py", "scripts/compare_located_factors.py",
                "scripts/audit_flow_mapping.py", "scripts/audit_registry.py", "scripts/build_checks.py"}
         self.assertEqual(set(scripts) - set(SHARED) - own, set(), "a new script is shared, or it is this repository's own")
 

@@ -80,6 +80,7 @@ def _manifest(
     include_nomenclature: bool,
     bridge_packages: tuple[str, ...],
     sources: list[dict],
+    include_located: bool,
 ) -> dict:
     return {
         "layout_version": LAYOUT_VERSION,
@@ -96,6 +97,8 @@ def _manifest(
         "linking": result.coverage.linking,
         "bridge_folder": BRIDGE_FOLDER if result.coverage.linking == "sentier-mappings" else None,
         "include_nomenclature": include_nomenclature,
+        # whether a flow that names a country was given that country's factor
+        "include_located": include_located,
         "bridge_packages": list(bridge_packages),
         "coverage": asdict(result.coverage),
         "counts": {
@@ -116,6 +119,7 @@ def write_files(
     overwrite: bool = False,
     include_nomenclature: bool = True,
     flow_links: Path | None = None,
+    include_located: bool = True,
 ) -> Path:
     """Write the output folder. ``include_nomenclature`` must match the value ``result`` was
     built with; it is recorded in the manifest together with the packages actually applied.
@@ -135,7 +139,13 @@ def write_files(
         write_datapackages(registry, out_dir / PACKAGE_DIR)
     sources = describe_sources(data_root, result.files_read)
     manifest = _manifest(
-        result, registry, datapackages, include_nomenclature, bridge_packages, sources
+        result,
+        registry,
+        datapackages,
+        include_nomenclature,
+        bridge_packages,
+        sources,
+        include_located,
     )
     (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=2, default=list))
     return out_dir

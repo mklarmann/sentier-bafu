@@ -24,6 +24,7 @@ on:
       - "scripts/release_build/**"
       - "scripts/build_brightway_flows_targets.py"
       - "scripts/compare_flow_linkings.py"
+      - "scripts/compare_located_factors.py"
       - "release-build-tests/**"
       - "export-tests/**"
       - "src/sentier_brightway/**"
