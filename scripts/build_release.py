@@ -36,8 +36,9 @@ patched copy is called `bafu-2026-v1-patched`, so that nobody takes it for BAFU'
 A contribution is never built into either: `--contribution` builds the patched copy plus
 that one layer as a database under the contribution's own name.
 
-sentier-importers and sentier-brightway are used at the commits in `release_build/pins.toml`,
-each in its own `uv` environment. This script needs Python 3.12 or newer, `uv` and `git`.
+sentier-importers is used at the commit in `release_build/pins.toml`. sentier-brightway's code
+is part of this repository (`brightway-installer/`). Each runs in its own `uv` environment.
+This script needs Python 3.12 or newer, `uv` and `git`.
 
 Everything is written under `OUT`. The built database holds BAFU's inventory, which is under
 BAFU's Terms of Use: keep `OUT` local, and never upload it from a CI job. `build.json`, the
@@ -152,13 +153,23 @@ def run(
 
 
 class Tool:
-    """A pinned checkout of another repository, run in its own `uv` environment."""
+    """A tool the build runs in its own `uv` environment: a pinned checkout of another
+    repository, or a folder of this one (a pin with `folder`, which is then where it is,
+    whatever folder the caller keeps checkouts in)."""
 
     def __init__(self, name: str, pin: dict, folder: Path, venvs: Path | None):
+        self.inside = bool(pin.get("folder"))
+        if self.inside:
+            folder = REPOSITORY / pin["folder"]
         self.name, self.pin, self.folder, self.venvs = name, pin, folder, venvs
 
     def ensure(self, allow_unpinned: bool) -> str:
-        """Clone the checkout if it is missing; return the commit it is at."""
+        """Clone the checkout if it is missing; return the commit it is at. A tool that is
+        part of this repository is at this repository's commit, and nothing is cloned."""
+        if self.inside:
+            if not (self.folder / "pyproject.toml").is_file():
+                raise BuildError(f"{self.name} is not in this repository at {self.folder}")
+            return _repository_commit()
         if not self.folder.exists():
             self.folder.parent.mkdir(parents=True, exist_ok=True)
             _git("clone", "--quiet", self.pin["repository"], str(self.folder))
@@ -1106,8 +1117,8 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument(
             "--tools",
             type=Path,
-            help="Folder with checkouts of sentier-importers and sentier-brightway; missing "
-            "ones are cloned there at the pinned commit (default: OUT/tools)",
+            help="Folder with the checkout of sentier-importers; a missing one is cloned "
+            "there at the pinned commit (default: OUT/tools)",
         )
         p.add_argument(
             "--venvs", type=Path, help="Keep the tools' environments here, not in the checkouts"

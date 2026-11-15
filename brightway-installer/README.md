@@ -1,5 +1,7 @@
 # sentier-brightway
 
+> This folder is the code of [sentier-brightway](https://github.com/sentier-dev/sentier-brightway) as of commit `90d57eb`, moved into sentier-bafu on 15 November 2026 with its history. The build of this repository runs it from here (`scripts/release_build/pins.toml`). The text below is the package's own description; where it says to clone sentier-brightway, use this folder instead.
+
 ```mermaid
 flowchart LR
     inv[sentier-inventory] -->|fetch| sb[sentier-brightway]

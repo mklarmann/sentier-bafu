@@ -41,10 +41,11 @@ python3 scripts/build_release.py build path/to/bafu-2026-v1 output/patched
 python3 scripts/build_release.py compare output/provider output/patched --out output/comparison.json
 ```
 
-`build` needs Python 3.12 or newer, `uv` and `git`. It clones sentier-importers and
-sentier-brightway at the commits in `scripts/release_build/pins.toml` (or uses checkouts given
-with `--tools`), runs each in its own `uv` environment, and writes everything under the output
-folder. Options:
+`build` needs Python 3.12 or newer, `uv` and `git`. It clones sentier-importers at the commit
+in `scripts/release_build/pins.toml` (or uses a checkout given with `--tools`). The code of
+sentier-brightway is part of this repository, in `brightway-installer/`, with its history up
+to `90d57eb` (moved on 15 November 2026). Each runs in its own `uv` environment, and everything
+is written under the output folder. Options:
 
 - `build latest OUT` lets the patch tool download and check BAFU's release first.
 - `--published-results FILE` adds the comparison with BAFU's published LCIA results. The

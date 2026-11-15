@@ -96,11 +96,11 @@ uv run bafu-fixes run latest output/ --strict --report output/report.html
 
 Everything starts from the ecoSpold v1 files of BAFU:2026 v1. The patch tool downloads them and checks the download against a known checksum. Nothing is changed in this step.
 
-[sentier-brightway](https://github.com/sentier-dev/sentier-brightway) builds a Brightway database from BAFU:2026 v1 without the community patches, together with the EF 3.1 impact methods.
+The Brightway installer of this repository, in the folder `brightway-installer`, builds a Brightway database from BAFU:2026 v1 without the community patches, together with the EF 3.1 impact methods. It is the code of [sentier-brightway](https://github.com/sentier-dev/sentier-brightway), which was moved here with its history.
 
 ```sh
-git clone https://github.com/sentier-dev/sentier-brightway.git
-cd sentier-brightway
+git clone https://github.com/sentier-dev/sentier-bafu.git
+cd sentier-bafu/brightway-installer
 uv sync
 uv run sentier-brightway coverage
 uv run sentier-brightway db --project NAME

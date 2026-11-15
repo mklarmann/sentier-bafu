@@ -123,12 +123,22 @@ class Plan(unittest.TestCase):
 
 
 class Pins(unittest.TestCase):
-    def test_both_tools_are_pinned_by_full_commit(self):
+    def test_the_importer_is_pinned_by_full_commit_and_the_installer_is_in_this_repository(self):
         pins = build_release.load_pins()
         self.assertEqual(set(pins), {"sentier-importers", "sentier-brightway"})
-        for pin in pins.values():
-            self.assertRegex(pin["commit"], r"^[0-9a-f]{40}$")
-            self.assertTrue(pin["repository"].startswith("https://github.com/sentier-dev/"))
+        importer, installer = pins["sentier-importers"], pins["sentier-brightway"]
+        self.assertRegex(importer["commit"], r"^[0-9a-f]{40}$")
+        self.assertTrue(importer["repository"].startswith("https://github.com/sentier-dev/"))
+        # the installer has no checkout to pin: its code is a folder of this repository,
+        # and the pin says where it came from
+        self.assertNotIn("commit", installer)
+        self.assertNotIn("repository", installer)
+        folder = build_release.REPOSITORY / installer["folder"]
+        self.assertTrue((folder / "pyproject.toml").is_file())
+        self.assertTrue((folder / "uv.lock").is_file())
+        self.assertTrue((folder / "src/sentier_brightway/sources.toml").is_file())
+        self.assertRegex(installer["moved_at"], r"^[0-9a-f]{40}$")
+        self.assertTrue(installer["moved_from"].startswith("https://github.com/sentier-dev/"))
 
     def test_the_tool_command_runs_in_the_locked_environment(self):
         pin = {"commit": "0" * 40, "python": "3.12", "extra": "testing", "repository": "x"}
@@ -142,6 +152,27 @@ class Pins(unittest.TestCase):
         )
         self.assertEqual(tool.env(), {"UV_PROJECT_ENVIRONMENT": "/venvs/sentier-brightway"})
         self.assertEqual(build_release.Tool("t", pin, Path("/tools/t"), None).env(), {})
+
+    def test_a_tool_of_this_repository_runs_from_its_folder_here(self):
+        pin = build_release.load_pins()["sentier-brightway"]
+        tool = build_release.Tool("sentier-brightway", pin, Path("/tools/sb"), Path("/venvs"))
+        folder = build_release.REPOSITORY / "brightway-installer"
+        # the folder for checkouts is not where it is, and nothing is cloned there
+        self.assertEqual(tool.folder, folder)
+        self.assertEqual(
+            tool.command("sentier-brightway", "db")[:5],
+            ["uv", "run", "--frozen", "--project", str(folder)],
+        )
+        self.assertEqual(tool.env(), {"UV_PROJECT_ENVIRONMENT": "/venvs/sentier-brightway"})
+        # it is at this repository's commit, whatever --allow-unpinned says
+        self.assertEqual(tool.ensure(False), build_release._repository_commit())
+        self.assertEqual(tool.ensure(True), build_release._repository_commit())
+
+    def test_a_tool_of_this_repository_that_is_missing_stops_the_build(self):
+        tool = build_release.Tool("gone", {"folder": "no-such-folder"}, Path("/tools/x"), None)
+        with self.assertRaisesRegex(build_release.BuildError, "is not in this repository"):
+            tool.ensure(True)
+        self.assertFalse(Path("/tools/x").exists())
 
 
 class Checkout(unittest.TestCase):

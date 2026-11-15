@@ -45,6 +45,9 @@ line-length = 100
 # the community lint scope stays exactly what it was. Bringing them under ruff is a
 # separate, visible change.
 extend-exclude = [
+    # sentier-brightway's code, moved here with its history, keeps its own style and its
+    # own lint settings (brightway-installer/pyproject.toml) until it is reshaped.
+    "brightway-installer/",
     # Scripts of a recorded run keep the bytes their README pins by sha256.
     "community/runs/",
     "community/tests/",

@@ -24,6 +24,7 @@ on:
       - "scripts/release_build/**"
       - "release-build-tests/**"
       - "export-tests/**"
+      - "brightway-installer/**"
       - "community/layers/**"
       - "pyproject.toml"
       - "uv.lock"
@@ -124,9 +125,9 @@ jobs:
         # One command, as for the real release: provider and patched build, the checks of
         # the patch run, the comparison, the exports with their read-back, a made-up
         # contribution built beside the patched copy, the manifest. Clones
-        # sentier-importers and sentier-brightway at the commits in
-        # scripts/release_build/pins.toml and downloads the pinned flow terms, methods
-        # and mapping (37 MB, checked by SHA-256). No BAFU data.
+        # sentier-importers at the commit in scripts/release_build/pins.toml, runs the
+        # Brightway installer of this repository (brightway-installer/) and downloads the
+        # pinned flow terms, methods and mapping (37 MB, checked by SHA-256). No BAFU data.
         env:
           RELEASE_BUILD_WHOLE_PATH: "1"
           RELEASE_BUILD_TOOLS: ${{ runner.temp }}/tools
@@ -137,8 +138,13 @@ jobs:
       - name: Run the build's tests that need pandas, SciPy and bw2data
         if: ${{ !cancelled() }}
         run: |
-          uv run --frozen --project "$RUNNER_TEMP/tools/sentier-brightway" --python 3.12 \
+          uv run --frozen --project brightway-installer --python 3.12 \
             --extra testing python -m unittest discover -s release-build-tests
+      - name: Run the Brightway installer's own tests
+        if: ${{ !cancelled() }}
+        run: |
+          uv run --frozen --project brightway-installer --python 3.12 \
+            --extra testing pytest brightway-installer
       - name: Run the export step's tests on a made-up database
         if: ${{ !cancelled() }}
         run: |
