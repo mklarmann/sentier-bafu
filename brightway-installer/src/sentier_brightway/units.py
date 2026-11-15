@@ -28,6 +28,12 @@ _UNITS = MappingProxyType(
         "personkm": "person kilometer",
         "m3y": "cubic meter-year",
         "kmy": "kilometer-year",
+        # spellings of Brightway Flows for units above, and one unit of its own
+        "m2.a": "square meter-year",
+        "m3.a": "cubic meter-year",
+        "t.km": "ton kilometer",
+        "p.km": "person kilometer",
+        "sm3": "standard cubic meter",
     }
 )
 

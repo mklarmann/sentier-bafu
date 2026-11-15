@@ -24,6 +24,10 @@ class Coverage:
     source: str = DEFAULT_SOURCE
     inventory_db: str = inventory_db(DEFAULT_SOURCE)
     residual_db: str = residual_db(DEFAULT_SOURCE)
+    # how the elementary flows were linked: through the mapping folder of sentier-mappings,
+    # or through Brightway Flows (then ``link_lines`` is that linking's own report)
+    linking: str = "sentier-mappings"
+    link_lines: tuple[str, ...] = ()
 
     @property
     def flow_share(self) -> float:
@@ -42,6 +46,20 @@ def render(cov: Coverage) -> str:
             f"  {cov.unit_conflicts} EF flows targeted with conflicting units "
             "(check sentier-mappings)"
         ]
+    if cov.link_lines:
+        return "\n".join(
+            [
+                f"Installed {cov.inventory_db}: {cov.processes} processes",
+                f"Installed {BIOSPHERE_DB} and {cov.methods} EF 3.1 methods",
+                *cov.link_lines,
+                f"  {cov.exchange_rows_mapped}/{cov.exchange_rows} biosphere exchanges linked "
+                f"({cov.exchange_share:.1%})",
+                f"Unlinked flows kept in {cov.residual_db}:",
+                *residual_lines,
+                "",
+                citation(cov.source),
+            ]
+        )
     lines = [
         f"Installed {cov.inventory_db}: {cov.processes} processes",
         f"Installed {BIOSPHERE_DB} and {cov.methods} EF 3.1 methods",

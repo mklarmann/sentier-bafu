@@ -31,6 +31,16 @@ def _add_source(parser: argparse.ArgumentParser) -> None:
     )
 
 
+def _add_flow_links(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--flow-links",
+        default=None,
+        metavar="FILE",
+        help="link the elementary flows through Brightway Flows, with this targets file of "
+        "patch 0010's crosswalk, in place of the mapping folder of sentier-mappings",
+    )
+
+
 def _parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="sentier-brightway")
     sub = p.add_subparsers(dest="command", required=True)
@@ -40,6 +50,7 @@ def _parser() -> argparse.ArgumentParser:
     )
     db.add_argument("--project", required=True, help="bw2data project name")
     _add_source(db)
+    _add_flow_links(db)
     db.add_argument("--overwrite", action="store_true", help="replace existing databases")
     db.add_argument("--data-root", default=None, help="local ~/dds-shaped folder (skips download)")
     db.add_argument(
@@ -53,6 +64,7 @@ def _parser() -> argparse.ArgumentParser:
     )
     fil.add_argument("--out", required=True, help="output folder")
     _add_source(fil)
+    _add_flow_links(fil)
     fil.add_argument("--overwrite", action="store_true", help="replace a non-empty output folder")
     fil.add_argument(
         "--no-datapackages",
@@ -70,6 +82,7 @@ def _parser() -> argparse.ArgumentParser:
 
     cov = sub.add_parser("coverage", help="print linking coverage, no Brightway needed")
     _add_source(cov)
+    _add_flow_links(cov)
     cov.add_argument("--data-root", default=None)
     cov.add_argument("--skip-nomenclature", action="store_true")
 
@@ -91,6 +104,7 @@ def _parser() -> argparse.ArgumentParser:
     )
     bt.add_argument("--data-root", default=None, help="local ~/dds-shaped folder (skips download)")
     _add_source(bt)
+    _add_flow_links(bt)
     bt.add_argument("--skip-nomenclature", action="store_true")
     bt.add_argument("--fixture-categories", action="store_true", help=argparse.SUPPRESS)
     return p
@@ -110,6 +124,7 @@ def _run_backtest(args: argparse.Namespace, include: bool) -> str:
             overwrite=True,
             source=args.source,
             source_version=args.source_version,
+            flow_links=args.flow_links,
         )
     cats = bt.FIXTURE_CATEGORIES if args.fixture_categories else bt.CATEGORIES
     xlsx = Path(args.xlsx) if args.xlsx else bt.DEFAULT_XLSX.expanduser()
@@ -128,6 +143,7 @@ def _run(args: argparse.Namespace) -> str:
             include_nomenclature=include,
             source=args.source,
             source_version=args.source_version,
+            flow_links=args.flow_links,
         )
     elif args.command == "files":
         cov = import_files(
@@ -138,6 +154,7 @@ def _run(args: argparse.Namespace) -> str:
             overwrite=args.overwrite,
             source=args.source,
             source_version=args.source_version,
+            flow_links=args.flow_links,
         )
     else:
         cov = import_db(
@@ -147,6 +164,7 @@ def _run(args: argparse.Namespace) -> str:
             include_nomenclature=include,
             source=args.source,
             source_version=args.source_version,
+            flow_links=args.flow_links,
         )
     text = render(cov)
     if args.command == "files":

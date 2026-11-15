@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 
-from . import backtest
+from . import backtest, brightway_flows
 from ._version import __version__
 from .bridge import load_bridge
 from .build import BuildResult, build
@@ -32,16 +33,45 @@ __all__ = [
 
 
 def _assemble_from_root(
-    root: Path, include_nomenclature: bool, source: str, source_version: str | None = None
+    root: Path,
+    include_nomenclature: bool,
+    source: str,
+    source_version: str | None = None,
+    flow_links: Path | str | None = None,
 ) -> BuildResult:
-    """Build from an already resolved data root."""
-    return build(
-        inventory=load_inventory(root, source=source, source_version=source_version),
-        ef_flows=load_ef_flows(root),
-        bafu_flows=load_source_flows(root, source),
-        bridge=load_bridge(root, include_nomenclature=include_nomenclature),
-        methods=load_methods(root),
+    """Build from an already resolved data root. With ``flow_links`` (the targets file of
+    patch 0010's crosswalk) the flows are linked through Brightway Flows, and the mapping
+    folder is not read."""
+    inventory = load_inventory(root, source=source, source_version=source_version)
+    ef_flows, source_flows = load_ef_flows(root), load_source_flows(root, source)
+    methods = load_methods(root)
+    if flow_links is None:
+        return build(
+            inventory=inventory,
+            ef_flows=ef_flows,
+            bafu_flows=source_flows,
+            bridge=load_bridge(root, include_nomenclature=include_nomenclature),
+            methods=methods,
+        )
+    links = brightway_flows.link(
+        inventory,
+        source_flows,
+        ef_flows,
+        methods,
+        brightway_flows.load_targets(flow_links),
+        include_without_factor=include_nomenclature,
     )
+    result = build(
+        inventory=inventory,
+        ef_flows=links.ef_flows,
+        bafu_flows=source_flows,
+        bridge=links.bridge,
+        methods=links.methods,
+    )
+    coverage = replace(
+        result.coverage, linking=brightway_flows.LINKING, link_lines=links.report.lines()
+    )
+    return replace(result, coverage=coverage)
 
 
 def assemble(
@@ -49,14 +79,16 @@ def assemble(
     include_nomenclature: bool = True,
     source: str = DEFAULT_SOURCE,
     source_version: str | None = None,
+    flow_links: Path | str | None = None,
 ) -> BuildResult:
     """Read the Sentier data (local root or verified download) and build the node dicts.
 
     ``source`` selects the inventory folder (``data/<source>-<version>/`` in sentier-inventory)
     and names the inventory and residual databases after it; ``source_version`` picks one
-    release when the data root serves several of the same source."""
+    release when the data root serves several of the same source. ``flow_links`` links the
+    elementary flows through Brightway Flows (see ``brightway_flows``)."""
     return _assemble_from_root(
-        resolve_data_root(data_root), include_nomenclature, source, source_version
+        resolve_data_root(data_root), include_nomenclature, source, source_version, flow_links
     )
 
 
@@ -65,9 +97,10 @@ def coverage(
     include_nomenclature: bool = True,
     source: str = DEFAULT_SOURCE,
     source_version: str | None = None,
+    flow_links: Path | str | None = None,
 ) -> Coverage:
     """Linking coverage without touching Brightway."""
-    return assemble(data_root, include_nomenclature, source, source_version).coverage
+    return assemble(data_root, include_nomenclature, source, source_version, flow_links).coverage
 
 
 def import_db(
@@ -77,6 +110,7 @@ def import_db(
     include_nomenclature: bool = True,
     source: str = DEFAULT_SOURCE,
     source_version: str | None = None,
+    flow_links: Path | str | None = None,
 ) -> Coverage:
     """Install one inventory ``source`` (default BAFU-2026) + EF 3.1 biosphere + EF 3.1
     methods into ``project``. The inventory database is named after ``source`` (never after
@@ -92,7 +126,7 @@ def import_db(
     """
     from .writer import write  # bw2data import stays lazy
 
-    result = assemble(data_root, include_nomenclature, source, source_version)
+    result = assemble(data_root, include_nomenclature, source, source_version, flow_links)
     write(result, project=project, overwrite=overwrite)
     return result.coverage
 
@@ -117,6 +151,7 @@ def import_files(
     overwrite: bool = False,
     source: str = DEFAULT_SOURCE,
     source_version: str | None = None,
+    flow_links: Path | str | None = None,
 ) -> Coverage:
     """Write one inventory ``source`` (default BAFU-2026) + EF 3.1 as plain files instead of a
     bw2data project.
@@ -138,7 +173,7 @@ def import_files(
     from .files import write_files
 
     root = resolve_data_root(data_root)
-    result = _assemble_from_root(root, include_nomenclature, source, source_version)
+    result = _assemble_from_root(root, include_nomenclature, source, source_version, flow_links)
     write_files(
         result,
         data_root=root,
@@ -146,6 +181,7 @@ def import_files(
         datapackages=datapackages,
         overwrite=overwrite,
         include_nomenclature=include_nomenclature,
+        flow_links=None if flow_links is None else Path(flow_links),
     )
     return result.coverage
 

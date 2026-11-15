@@ -94,6 +94,7 @@ def _manifest(
         "residual_db": result.residual_db,
         "citation": citation(result.source),
         "sources": _pins(),
+        "linking": result.coverage.linking,
         "bridge_folder": BRIDGE_FOLDER,
         "include_nomenclature": include_nomenclature,
         "bridge_packages": list(bridge_packages),
@@ -115,14 +116,22 @@ def write_files(
     datapackages: bool = True,
     overwrite: bool = False,
     include_nomenclature: bool = True,
+    flow_links: Path | None = None,
 ) -> Path:
     """Write the output folder. ``include_nomenclature`` must match the value ``result`` was
-    built with; it is recorded in the manifest together with the packages actually applied."""
-    bridge_packages = applied_packages(data_root, include_nomenclature)
+    built with; it is recorded in the manifest together with the packages actually applied.
+    With ``flow_links`` (the file ``result`` was linked through) that file is kept beside
+    the output in place of the mapping folder, and no package was applied."""
+    bridge_packages = () if flow_links else applied_packages(data_root, include_nomenclature)
     out_dir = _prepare(out_dir, overwrite)
     registry = build_registry(result)
     write_registry(registry, out_dir / REGISTRY_DIR)
-    _copy_mappings(data_root, out_dir)
+    if flow_links:
+        kept = out_dir / MAPPINGS_DIR / "brightway-flows"
+        kept.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(flow_links, kept / Path(flow_links).name)
+    else:
+        _copy_mappings(data_root, out_dir)
     if datapackages:
         write_datapackages(registry, out_dir / PACKAGE_DIR)
     manifest = _manifest(result, registry, datapackages, include_nomenclature, bridge_packages)
