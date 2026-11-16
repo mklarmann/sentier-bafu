@@ -39,7 +39,7 @@ brightway = [
     # What changed between the builds, before and after, in the format every Sentier dataset
     # repository writes (sentier-dev/sentier-diagnostics). Standard library only. Pinned to a
     # commit of its first version until a person merges and tags it; then to that tag.
-    "sentier-diagnostics @ git+https://github.com/sentier-dev/sentier-diagnostics@0e1f5be1864ef385eb66a4d144491c8063efa605",
+    "sentier-diagnostics @ git+https://github.com/sentier-dev/sentier-diagnostics@4b7e1c9bb2cf1783e2c3a6c0e31467373fd83ead",
 ]
 
 [project.scripts]
