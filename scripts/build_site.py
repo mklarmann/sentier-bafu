@@ -28,6 +28,7 @@ import community  # noqa: E402
 import github_api  # noqa: E402
 import last_run  # noqa: E402
 import triage  # noqa: E402
+from sitebuild import review as sitebuild_review  # noqa: E402
 from sitebuild import beforeafter, contributions, data, findings, lastrun, overview, pages, prose, shell, status, theme  # noqa: E402
 from sitebuild.text import esc, plural  # noqa: E402,F401
 
@@ -382,24 +383,47 @@ class Site:
 
     def comparison_pages(self):
         """A page for what each run of the record compared, before and after (`before-after.json`
-        of the run): `{ids of the run on the page: page}`. They are in no navigation: the step
-        of the walk through the run leads to them, and they lead back to it."""
+        of the run), and, where the run reviewed several pairs of builds, the page of that review
+        with a page for each pair: `{ids of the run on the page: {"compared", "review"}}`. They are
+        in no navigation: the step of the walk through the run leads to them, and they lead back."""
         record, found = self.last_run, {}
         if not record or record.get("state") != "read":
             return found
         back = self.walk_page
+        taken = {doc["page"] for doc in self.docs}
+
+        def free(name):
+            # a page of a run's comparison never stands in the place of a page of the site
+            if name in taken or name in self.pages:
+                raise ValueError(f"What the run compared would be written over the page {name}")
+            return name
+
         runs = [("", record)] + ([(lastrun.TAG_IDS, record["of_tag"])] if record.get("of_tag") else [])
         for ids, run in runs:
-            data = run.get("before_after")
-            if data is None:
-                continue
-            name = f"{ids}before-after.html"
-            step = lastrun.step_number(run, data.get("step"))
+            pages = found.setdefault(ids, {})
+            data, index = run.get("before_after"), run.get("review")
+            step = lastrun.step_number(run, (data or {}).get("step"))
             where = (f"{back}#{ids}run-step-{step}" if step else back) if back else None
             label = f"Step {step} of the {lastrun.lower(lastrun.named(record))}" if step else "The run"
-            self.page(name, beforeafter.page(self, data, name, (where, label) if where else None, current=back))
-            self.write_json(f"api/v1/{ids}before-after.json", data)
-            found[ids] = name
+            walk = (where, label) if where else None
+            if data is not None:
+                name = free(f"{ids}before-after.html")
+                self.page(name, beforeafter.page(self, data, name, walk, current=back))
+                self.write_json(f"api/v1/{ids}before-after.json", data)
+                pages["compared"] = name
+            if index is None:
+                continue
+            # The pages of a review keep the names its index gives them, behind the run's ids.
+            named = {page: f"{ids}{page}" for page in run.get("pairs") or {}}
+            named["before-after.html"] = pages.get("compared")
+            shown = index | {"pairs": [pair | {"page": named.get(pair.get("page"))} for pair in index["pairs"]]}
+            name = free(f"{ids}review.html")
+            self.page(name, sitebuild_review.page(self, shown, name, walk, current=back))
+            self.write_json(f"api/v1/{ids}review.json", shown)
+            pages["review"] = name
+            for page, pair in (run.get("pairs") or {}).items():
+                self.page(free(named[page]), beforeafter.page(self, pair, named[page], (name, "The review"), current=back))
+                self.write_json(f"api/v1/{named[page].removesuffix('.html')}.json", pair)
         return found
 
     def build(self):

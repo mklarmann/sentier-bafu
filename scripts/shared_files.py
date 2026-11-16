@@ -80,7 +80,7 @@ def problems(root=ROOT):
             found.append(f"{name}: missing")
         elif sha256(path.read_bytes()) != wanted:
             found.append(f"{name}: differs from the file of commit {manifest['commit'][:7]}")
-    for folder in manifest["folders"]:
+    for folder in manifest.get("folders", ()):
         for path in sorted((root / folder).glob("*")):
             name = path.relative_to(root).as_posix()
             if path.is_file() and name not in manifest["files"]:
@@ -124,13 +124,19 @@ def take(source, commit, root=ROOT, names=None):
         raise ValueError(f"commit {full[:7]} of the source has no {SETS}: it shares no sets yet") from None
     files, folders = expand(sets, names)
     for folder in sorted(folders):
-        listed = git(source, "ls-tree", "--name-only", full, folder + "/").decode().split()
-        files |= {name for name in listed if in_folder(name, folder)}
+        # the files of a shared folder, not what lies in a folder below it
+        listed = git(source, "ls-tree", full, folder + "/").decode().splitlines()
+        files |= {line.split("\t", 1)[1] for line in listed if line.split()[1] == "blob"}
+    # everything is read before anything is changed: a file the source does not have at that
+    # commit stops the take, and the copies here stay as they were
+    try:
+        contents = {name: git(source, "show", f"{full}:{name}") for name in sorted(files)}
+    except subprocess.CalledProcessError:
+        raise ValueError(f"commit {full[:7]} of the source lacks a file its sets name") from None
     for name in set(manifest["files"]) - files:  # shared before, and no more
         (root / name).unlink(missing_ok=True)
     taken = {}
-    for name in sorted(files):
-        data = git(source, "show", f"{full}:{name}")
+    for name, data in contents.items():
         path = root / name
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(data)

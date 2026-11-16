@@ -3,17 +3,26 @@
   "sets": {
     "sharing": {
       "about": "The script that takes the shared files and checks them. Every repository that takes a set has it.",
-      "files": ["scripts/shared_files.py"],
+      "files": [
+        "scripts/shared_files.py"
+      ],
       "folders": []
     },
     "run": {
-      "about": "What a run keeps of itself: its lines, its own account, and what it compared. The formats and their checks, without a page.",
+      "about": "What a run keeps of itself: its lines, its own account, what it compared and what it reviewed. The formats and their checks, without a page.",
       "files": [],
-      "folders": ["scripts/runrecord"]
+      "folders": [
+        "scripts/runrecord"
+      ],
+      "includes": [
+        "sharing"
+      ]
     },
     "before-after": {
-      "about": "Two sets of results over the same items, compared: the format and the counting, the page without a frame, its script and its styles, and how to read it. For a site whose frame is its own.",
-      "includes": ["run"],
+      "about": "Two sets of results over the same items, compared: the format and the counting, the six classes of a value against what was claimed, the page without a frame, its script and its styles, and how to read it. For a site whose frame is its own.",
+      "includes": [
+        "run"
+      ],
       "files": [
         "scripts/sitebuild/__init__.py",
         "scripts/sitebuild/text.py",
@@ -24,9 +33,25 @@
       ],
       "folders": []
     },
+    "review": {
+      "about": "Reviewing a change: the index of builds, causes with their claims and the pairs that were compared, its page and its script. It brings the comparison with it.",
+      "includes": [
+        "before-after"
+      ],
+      "files": [
+        "scripts/sitebuild/review.py",
+        "site/assets/review.js"
+      ],
+      "folders": []
+    },
     "site": {
       "about": "The whole site of a dataset repository: the records and their checks, the intake, the build, the stylesheet, the walk through a run and the page of a comparison.",
-      "includes": ["sharing", "run", "before-after"],
+      "includes": [
+        "sharing",
+        "run",
+        "before-after",
+        "review"
+      ],
       "files": [
         "scripts/build_site.py",
         "scripts/check_site.py",
@@ -45,7 +70,10 @@
         "site/assets/dds-logo.svg",
         "site/assets/favicon-32x32.png"
       ],
-      "folders": ["scripts/sitebuild", "schema"]
+      "folders": [
+        "scripts/sitebuild",
+        "schema"
+      ]
     }
   }
 }

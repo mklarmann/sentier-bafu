@@ -70,7 +70,7 @@ The scripts in `scripts/`, the stylesheet and the two scripts of the pages are t
 The shared files, which a sibling copies as they are:
 
 - `scripts/build_site.py`, `scripts/check_site.py`, `scripts/community.py`, `scripts/triage.py`, `scripts/intake.py`, `scripts/sync.py`, `scripts/github_api.py`, `scripts/last_run.py`, `scripts/shared_files.py` and the folders `scripts/sitebuild` and `scripts/runrecord`;
-- `site/style.css`, and of `site/assets`: `list.js`, `replay.js`, `download.js`, `before-after.js`, `before-after.css`, `nunito-latin.woff2`, `OFL.txt`, `dds-logo.svg`, `favicon-32x32.png`;
+- `site/style.css`, and of `site/assets`: `list.js`, `replay.js`, `download.js`, `before-after.js`, `before-after.css`, `review.js`, `nunito-latin.woff2`, `OFL.txt`, `dds-logo.svg`, `favicon-32x32.png`;
 - the folder `schema`, and `docs/before-after.md`.
 
 ### Shared with the sibling repositories
@@ -80,7 +80,8 @@ The shared files, which a sibling copies as they are:
 | Set | What it is | Who takes it |
 |---|---|---|
 | `site` | Everything above: the records and their checks, the intake, the build, the stylesheet, the walk through a run, the page of a comparison. | A repository whose site is this one, with its own configuration and pages. |
-| `before-after` | The comparison of two sets of results alone: the format and the counting, the page without a frame, its script and styles, `docs/before-after.md`. | A repository whose site has a frame of its own. |
+| `before-after` | The comparison of two sets of results alone: the format and the counting, the six classes of a value against what was claimed, the page without a frame, its script and styles, `docs/before-after.md`. | A repository whose site has a frame of its own. |
+| `review` | The review of a change: the index of builds, causes and compared pairs, its page and its script. It brings `before-after` with it. | A repository that builds more than two states and shows one cause at a time. |
 | `run` | The formats of what a run keeps of itself (`scripts/runrecord`), without a page. | A repository that only writes such files. |
 | `sharing` | `scripts/shared_files.py`. | Every repository that takes a set. |
 
@@ -120,6 +121,8 @@ A page asks for the walk with `<!-- generated: last-run -->`. The Site workflow 
 A run that did not happen on GitHub can be shown as well: `python3 scripts/last_run.py --local --summary run.json --transcript transcript.json --out record.json` makes its record from the two files, and `scripts/build_site.py --last-run record.json` builds a site with it. The page marks it: "Not a run on GitHub". Whether a published site may show such a record is the repository's own rule; a workflow that never passes `--last-run` never does.
 
 **What a run compared.** A run that changes data can say what the change did to the results: it writes `before-after.json` into the same folder as `run.json`, in the format `scripts/runrecord/before_after.py` describes and checks. The build then writes a page for it, `before-after.html` (for the last run made for a tag, `tag-before-after.html`), and the step of the walk that the file names gets a button that leads there. The page is in no navigation and leads back to its step. It shows the file as it is: how many items moved in each indicator, what caused it, and the items that moved with their results before and after. [docs/before-after.md](../docs/before-after.md) says how to read it and how a run writes one. A run that wrote no such file has no such page.
+
+**One cause at a time.** A run that built more than two states can say which pairs of them it compared: it writes `review.json` (`scripts/runrecord/review.py`) beside its comparison, and for each pair a comparison of its own, named as the index names the pair's page (`NAME.html` is the file `NAME.json`). The build then writes `review.html`, a page for each pair, and the same files under `api/v1/`; the step of the walk gets a second button, "One cause at a time". On that page a reader ticks causes and is shown the two builds that differ by exactly those, or told which build is missing. A page of a pair leads back to the review. A record holds at most 40 such comparisons. A pair whose file is missing or of another shape has no page, and the rest is shown.
 
 A finding names its datasets by number (`code`, a whole number). Where the datasets of a provider have no number, a finding lists none and says in `scope` what it is about.
 

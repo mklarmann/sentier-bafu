@@ -5,6 +5,8 @@
    A cell of the grid is after ÷ before; its colour says how far from 1 it lies (--d, 0 to 1)
    and on which side. These tables keep their columns on a narrow screen and scroll sideways:
    a row of 25 ratios cannot be stacked. */
+/* what is hidden stays hidden, whatever a rule below lays out */
+.ba-page [hidden], .ba-board [hidden], [data-review] [hidden] { display: none !important; }
 .wrap.ba-page { max-width: calc(104rem + 2 * var(--gutter)); }
 .ba-page .prose.wide > :is(h1, h2, p, ul, .ba-sides, .ba-figures) { max-width: 60rem; }
 .prose.wide > .ba-board { max-width: none; }
@@ -53,13 +55,14 @@
 .ba-why { display: block; margin-top: .1rem; font-size: var(--t-xs); font-weight: 400; color: var(--muted); }
 .ba-cell { border-left: 1px solid color-mix(in srgb, var(--line) 55%, transparent); }
 .ba-cell.is-same { color: var(--line-strong); }
+.ba-cell.is-slight { box-shadow: inset 0 0 0 1px var(--line-strong); }
 .ba-cell.is-opposite { color: var(--fail); font-weight: 700; }
 .ba-board.is-live .ba-grid tbody tr[data-i] { cursor: pointer; }
 .ba-grid tbody tr[aria-current="true"] th.ba-name { box-shadow: inset 4px 0 0 var(--index); }
 .ba-grid tr.empty td { padding: var(--s5); color: var(--muted); }
 .ba-more { margin-top: var(--s3); }
 .ba-detail { margin-top: var(--s5); padding: var(--s5); background: var(--surface); border: 1px solid var(--line); border-top: 4px solid var(--index); border-radius: var(--radius); }
-.ba-detail:focus { outline: none; }
+.ba-detail:focus-visible { outline: 3px solid var(--index); outline-offset: 2px; }
 .ba-detail > * + * { margin-top: var(--s3); }
 .ba-detail-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--s4); }
 .ba-detail h3 { margin: 0; }
@@ -70,6 +73,55 @@
 .ba-bar + .ba-bar { margin-top: 2px; }
 .ba-bar.is-after.is-opposite { background: var(--fail); }
 .ba-static { margin-top: var(--s5); }
+/* The six classes of a value (scripts/runrecord/before_after.py). Three ask for a reviewer's
+   eye and carry a signal; the others are quiet. A cell keeps its colour of how far it moved
+   and gets a mark of its class on its right edge. */
+.k-unchanged { --k: var(--line-strong); }
+.k-noise { --k: var(--wait); }
+.k-claimed { --k: var(--good); }
+.k-off { --k: var(--fail); }
+.k-unclaimed { --k: var(--fail); }
+.k-unmet { --k: var(--wait-ink); }
+.ba-verdict { margin-top: var(--s4); padding: var(--s3) var(--s4); border-left: 4px solid var(--line-strong); background: var(--surface); border-radius: 0 var(--radius) var(--radius) 0; }
+.ba-verdict.is-fine { border-left-color: var(--good); }
+.ba-verdict.is-open { border-left-color: var(--wait); background: var(--wait-tint); }
+.ba-verdict.is-odd { border-left-color: var(--fail); background: var(--fail-tint); }
+.ba-page .prose.wide > .ba-classes { max-width: 72rem; }
+.ba-classes { display: grid; grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr)); gap: var(--s3); margin-top: var(--s4); }
+.ba-class { padding: var(--s3) var(--s4); background: var(--surface); border: 1px solid var(--line); border-top: 4px solid var(--k); border-radius: var(--radius); }
+.ba-class dt { font-size: var(--t-xs); font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.ba-class dd { margin: 0; font-size: 1.75rem; font-weight: 800; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.ba-class p { margin-top: .15rem; font-size: var(--t-xs); line-height: 1.4; color: var(--muted); }
+.ba-class.is-none { border-top-color: var(--line); }
+.ba-class.is-none dd { color: var(--line-strong); }
+.ba-class .linklike { margin-top: var(--s2); font-size: var(--t-sm); }
+.ba-kinds > span { background: var(--k); }
+.ba-key[class*=" k-"] { background: var(--k); }
+.ba-kind { display: inline-block; padding: 0 .45rem; border: 1px solid var(--k); border-left-width: 4px; border-radius: 4px; font-size: var(--t-xs); font-weight: 700; white-space: nowrap; }
+.ba-cell:is(.k-off, .k-unclaimed, .k-unmet, .k-noise) { box-shadow: inset -4px 0 0 var(--k); }
+/* "Off claim" and "not claimed" both ask for a look and share the signal colour. Off claim is
+   drawn as a double line or a hatch, so that the two are told apart without a fourth colour. */
+.ba-cell.k-off { box-shadow: inset -2px 0 0 var(--k), inset -4px 0 0 var(--surface), inset -6px 0 0 var(--k); }
+.ba-key.k-off, .ba-kinds > span.k-off { background: repeating-linear-gradient(135deg, var(--k) 0 3px, var(--fail-tint) 3px 6px); }
+.ba-class.k-off { border-top-style: double; border-top-width: 6px; }
+.ba-kind.k-off { border-left-style: double; border-left-width: 6px; }
+.ba-claim { display: block; margin-top: .3rem; font-size: var(--t-sm); font-weight: 400; line-height: 1.45; max-width: 46rem; }
+.ba-setting { margin-top: var(--s4); font-size: var(--t-sm); line-height: 1.5; }
+.ba-variants { margin-top: var(--s3); }
+/* the index of a review (scripts/sitebuild/review.py): choose causes, find the pair */
+.rv-causes { display: grid; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); gap: var(--s3); margin-top: var(--s4); max-width: none; }
+.rv-cause { display: flex; align-items: flex-start; gap: var(--s3); cursor: pointer; padding: var(--s4); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+.rv-cause:has(input:checked) { border-color: var(--index); box-shadow: inset 4px 0 0 var(--index); }
+.rv-cause input { flex: none; margin: .3rem 0 0; }
+.rv-about { min-width: 0; }
+.rv-cause strong { font-weight: 800; }
+.rv-found { margin-top: var(--s5); padding: var(--s4) var(--s5); background: var(--surface); border: 1px solid var(--line); border-top: 4px solid var(--index); border-radius: var(--radius); max-width: 60rem; }
+.rv-found > * + * { margin-top: var(--s3); }
+.rv-counts { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s4); font-size: var(--t-sm); }
+.rv-counts b { font-variant-numeric: tabular-nums; }
+.rv-id { display: grid; grid-template-columns: max-content 1fr; gap: .1rem var(--s4); font-size: var(--t-sm); }
+.rv-id dt { color: var(--muted); }
+.rv-id dd { margin: 0; overflow-wrap: anywhere; }
 .ba-item { border-top: 1px solid var(--line); padding-block: var(--s3); }
 .ba-item > summary { cursor: pointer; font-weight: 700; }
 @media (max-width: 39.99rem) {

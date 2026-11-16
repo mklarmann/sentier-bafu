@@ -62,11 +62,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import github_api  # noqa: E402
-from runrecord import before_after, summary, transcript  # noqa: E402
+from runrecord import before_after, review, summary, transcript  # noqa: E402
 
 FORMAT = "sentier/last-run/2"
 MAX_ARCHIVE = 30 * 1024 * 1024
-MAX_FILE = 12 * 1024 * 1024
+MAX_FILE = before_after.MAX_BYTES  # the size a run's own writer refuses to exceed
 STATES = ("read", "no run", "not read", "unreadable")
 KEPT = ("read", "none", "expired", "needs a token", "unreadable")
 FILES = {
@@ -74,7 +74,25 @@ FILES = {
     "transcript": ("transcript.json", transcript.shape_errors),
     # what the run changed in the results, where it compared them; a run need not hold one
     "before_after": (before_after.FILE, before_after.shape_errors),
+    # where it compared several pairs of builds: which, and what each cause claims
+    "review": (review.FILE, review.shape_errors),
 }
+MAX_PAIRS = 40  # comparisons of a review that a record holds beside the run's own
+
+
+def pair_files(index):
+    """The comparisons a review's index names, as `{page: file name}`: the page of a pair is
+    `NAME.html`, and its comparison is the file `NAME.json` beside the index. The run's own
+    comparison (`before-after.json`) is not among them: a record holds it already."""
+    own = before_after.FILE.removesuffix(".json") + ".html"
+    pages = [pair.get("page") for pair in (index or {}).get("pairs", ())]
+    return {
+        page: page.removesuffix(".html") + ".json"
+        for page in pages[:MAX_PAIRS]
+        if page and page != own
+    }
+
+
 WORKFLOW_FILE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*\.ya?ml")
 PLAIN_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9 ._-]{0,79}")
 
@@ -175,34 +193,64 @@ def job_facts(job):
     }
 
 
+def read_member(bundle, name):
+    """One JSON file of an archive, parsed. Raises KeyError where it is not there and
+    ValueError where it is too large or is not JSON."""
+    info = bundle.getinfo(name)
+    if info.file_size > MAX_FILE:
+        raise ValueError(f"{name} is larger than a run's record can be")
+    try:
+        return json.loads(bundle.read(info).decode("utf-8"))
+    except ValueError:  # a text that is not UTF-8 is a ValueError too
+        raise ValueError(f"{name} is not JSON") from None
+
+
+def checked(check, data):
+    """What a format's check finds in a file. A check that fails on a file it was not written
+    for says so as a finding: one bad file never takes the run's other files with it."""
+    try:
+        return check(data)
+    except Exception as error:  # noqa: BLE001 - a file from a run is data, whatever its shape
+        return [f"it could not be checked ({type(error).__name__})"]
+
+
 def unpack(archive):
-    """run.json and transcript.json of an artifact's archive, each parsed or None, and what
-    was wrong. A file that is too large, unreadable or of another shape is left out."""
-    found, problems = {key: None for key in FILES}, []
+    """The files of a run that an artifact's archive holds (FILES), each parsed or None, the
+    comparisons a review's index names (`pairs`, by page), and what was wrong. A file that is
+    too large, unreadable or of another shape is left out."""
+    found, problems, pairs = {key: None for key in FILES}, [], {}
     try:
         with zipfile.ZipFile(io.BytesIO(archive)) as bundle:
-            for key, (name, _) in FILES.items():
+            for key, (name, check) in FILES.items():
                 try:
-                    info = bundle.getinfo(name)
+                    data = read_member(bundle, name)
                 except KeyError:
                     continue
-                if info.file_size > MAX_FILE:
-                    problems.append(f"{name} is larger than a run's record can be")
+                except ValueError as error:
+                    problems.append(str(error))
                     continue
+                errors = checked(check, data)
+                if errors:
+                    problems.append(f"{name}: {errors[0]}")
+                else:
+                    found[key] = data
+            for page, name in pair_files(found["review"]).items():
                 try:
-                    found[key] = json.loads(bundle.read(info).decode("utf-8"))
-                except ValueError:  # a text that is not UTF-8 is a ValueError too
-                    problems.append(f"{name} is not JSON")
+                    data = read_member(bundle, name)
+                except KeyError:
+                    problems.append(f"{name}: named by the review, and not kept")
+                    continue
+                except ValueError as error:
+                    problems.append(str(error))
+                    continue
+                errors = checked(before_after.shape_errors, data)
+                if errors:
+                    problems.append(f"{name}: {errors[0]}")
+                else:
+                    pairs[page] = data
     except zipfile.BadZipFile:
-        return found, ["the artifact is not an archive"]
-    for key, (name, check) in FILES.items():
-        if found[key] is None:
-            continue
-        errors = check(found[key])
-        if errors:
-            problems.append(f"{name}: {errors[0]}")
-            found[key] = None
-    return found, problems
+        return found | {"pairs": {}}, ["the artifact is not an archive"]
+    return found | {"pairs": pairs}, problems
 
 
 def digest(asset):
@@ -240,7 +288,7 @@ def releases_of(github, tags):
 
 def kept_by(github, run_id, artifact_name, fetch=fetch_address):
     """What a run kept: (kept, note, its files by the keys of FILES, each parsed or None)."""
-    nothing = dict.fromkeys(FILES)
+    nothing = dict.fromkeys(FILES) | {"pairs": {}}
     listing = github.get(f"/actions/runs/{int(run_id)}/artifacts?per_page=100") or {}
     wanted = [a for a in listing.get("artifacts") or () if a.get("name") == artifact_name]
     if not wanted:
@@ -318,14 +366,19 @@ def fetch(repository, run, token=None, transport=None, fetch=fetch_address):
     )
 
 
-def local(account, lines, run=None, commit=None, compared=None):
+def local(account, lines, run=None, commit=None, compared=None, index=None, pairs=None):
     """The record of a run that did not happen on GitHub, from the files it wrote.
     `account` is its run.json, `lines` its transcript.json, `compared` its before-after.json
-    if it wrote one; each is checked. GitHub holds no record of the run: the record has no
-    `run`, and `local` says when the run was."""
-    errors = summary.shape_errors(account) + transcript.shape_errors(lines)
+    if it wrote one, `index` its review.json with `pairs`, the comparisons that names by
+    page; each is checked. GitHub holds no record of the run: the record has no `run`, and
+    `local` says when the run was."""
+    errors = checked(summary.shape_errors, account) + checked(transcript.shape_errors, lines)
     if compared is not None:
-        errors += before_after.shape_errors(compared)
+        errors += checked(before_after.shape_errors, compared)
+    if index is not None:
+        errors += checked(review.shape_errors, index)
+    for data in (pairs or {}).values():
+        errors += checked(before_after.shape_errors, data)
     if errors:
         raise ValueError(errors[0])
     if commit is not None and not re.fullmatch(r"[0-9a-f]{7,40}", commit):
@@ -344,6 +397,8 @@ def local(account, lines, run=None, commit=None, compared=None):
         "summary": account,
         "transcript": lines,
         "before_after": compared,
+        "review": index,
+        "pairs": dict(pairs or {}) if index is not None else {},
         "tagged": None,
         "releases": [],
         "of_tag": None,
@@ -362,6 +417,7 @@ def said(record):
         ("summary", "its own account"),
         ("transcript", "transcript"),
         ("before_after", "what it compared"),
+        ("review", "its review"),
     )
     have = [what for key, what in files if record.get(key) is not None]
     have = ", ".join(have[:-1]) + (" and " if have[1:] else "") + "".join(have[-1:])
@@ -383,6 +439,20 @@ def said(record):
     return line
 
 
+def pairs_errors(part):
+    """What is wrong with the comparisons of a review that a record holds."""
+    pairs = part.get("pairs") or {}
+    if not isinstance(pairs, dict) or len(pairs) > MAX_PAIRS:
+        return ["`pairs` is not a short table of comparisons"]
+    found = []
+    for page, data in pairs.items():
+        if not (isinstance(page, str) and before_after.PAGE_NAME.fullmatch(page)):
+            found.append("a comparison of a review is not kept under the name of a page")
+            continue
+        found += [f"{page}: {error}" for error in checked(before_after.shape_errors, data)]
+    return found
+
+
 def run_errors(part):
     """What is wrong with one run of a record (GitHub's record of it, what it kept)."""
     found = []
@@ -397,8 +467,8 @@ def run_errors(part):
         found.append("`jobs` is not a list")
     for key, (name, check) in FILES.items():
         if part.get(key) is not None:
-            found += [f"{name}: {error}" for error in check(part[key])]
-    return found
+            found += [f"{name}: {error}" for error in checked(check, part[key])]
+    return found + pairs_errors(part)
 
 
 def shape_errors(record):
@@ -412,10 +482,10 @@ def shape_errors(record):
     if record.get("run") is None:  # a run that was not on GitHub: the run's own two files
         if not isinstance(record.get("local"), dict) or record.get("summary") is None:
             return ["a record without GitHub's record of a run holds the run's own account"]
-        found = []
+        found = pairs_errors(record)
         for key, (name, check) in FILES.items():
             if record.get(key) is not None:
-                found += [f"{name}: {error}" for error in check(record[key])]
+                found += [f"{name}: {error}" for error in checked(check, record[key])]
     else:
         found = run_errors(record)
         if found and found[0].startswith("`run` is not"):
@@ -498,6 +568,12 @@ def main(argv=None):
     parser.add_argument(
         "--before-after", type=Path, help="With --local: the before-after.json of the run, if any"
     )
+    parser.add_argument(
+        "--review",
+        type=Path,
+        help="With --local: the review.json of the run, if any; the comparisons it names "
+        "are read from the same folder",
+    )
     parser.add_argument("--commit", help="With --local: the commit the run was made of")
     parser.add_argument("--out", type=Path, required=True, help="Where to write the record")
     args = parser.parse_args(argv)
@@ -517,7 +593,17 @@ def main(argv=None):
                 if args.before_after
                 else None
             )
-            record = local(*read, run=run, commit=args.commit, compared=compared)
+            index, pairs = None, {}
+            if args.review:
+                index = json.loads(args.review.read_text(encoding="utf-8"))
+                wrong = checked(review.shape_errors, index)
+                if wrong:
+                    raise ValueError(f"{args.review.name}: {wrong[0]}")
+                for page, name in pair_files(index).items():
+                    pairs[page] = json.loads((args.review.parent / name).read_text("utf-8"))
+            record = local(
+                *read, run=run, commit=args.commit, compared=compared, index=index, pairs=pairs
+            )
         elif args.repository:
             record = fetch(args.repository, run, os.environ.get("GITHUB_TOKEN"))
         else:

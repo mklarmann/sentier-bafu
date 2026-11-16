@@ -9,9 +9,12 @@
   try { D = JSON.parse(board.querySelector('[data-ba-data]').textContent); } catch (e) { return; }
   var STEP = 100;
   var q = function (sel) { return board.querySelector(sel); };
-  var state = { filter: '', cause: '', group: '', sort: null, limit: STEP, chosen: null, list: [] };
+  var state = { filter: '', cause: '', group: '', kind: '', sort: null, limit: STEP, chosen: null, list: [] };
+  var KINDS = D.kinds || {}, SAID = D.said || {};
+  var parts = {}; // the breakdowns of single items that were loaded, by file name
   var threshold = D.threshold || 0;
-  D.moved.forEach(function (item, i) { item.i = i; });
+  D.causes = D.causes || [];
+  D.moved.forEach(function (item, i) { item.i = i; item.causes = item.causes || []; });
 
   function esc(s) {
     return String(s).replace(/[&<>"]/g, function (c) {
@@ -27,21 +30,35 @@
       var parts = x.toExponential(2).split('e');
       return parts[0] + ' × 10<sup>' + parseInt(parts[1], 10) + '</sup>';
     }
-    return a < 1000 ? String(parseFloat(x.toPrecision(3))) : grouped(Math.round(x));
+    var shown = parseFloat(x.toPrecision(3));
+    return Math.abs(shown) < 1000 ? String(shown) : grouped(Math.round(shown));
   }
-  function moved(b, a) {
-    if (b === null || a === null) return false;
-    var size = Math.max(Math.abs(b), Math.abs(a));
-    return size > 0 && Math.abs(a - b) / size > threshold;
+  // a ratio of a value that moved: more digits where three would read "1"
+  function ratioText(r) {
+    var text = number(r), digits = [4, 5, 6, 8];
+    for (var n = 0; n < digits.length && text === '1'; n++) text = String(parseFloat(r.toPrecision(digits[n])));
+    return text;
+  }
+  // whether an item moved in an indicator: as the file says, where it says (its results are
+  // rounded, so working it out again could differ); else from the two results
+  function moved(item, id) {
+    if (item.moved) return item.moved.indexOf(id) >= 0;
+    var pair = item.values[id];
+    if (!pair || pair[0] === null || pair[1] === null) return false;
+    var size = Math.max(Math.abs(pair[0]), Math.abs(pair[1]));
+    return size > 0 && Math.abs(pair[1] - pair[0]) / size > threshold;
   }
   function ratio(b, a) {
     if (b === null || a === null || b === 0 || a === 0 || (b > 0) !== (a > 0)) return null;
-    return a / b;
+    var r = a / b;
+    return isFinite(r) && r !== 0 ? r : null;
   }
-  // how far a pair lies from no change: -1 without a pair, 0 unchanged, 2 without a ratio
-  function distance(pair) {
+  // how far an item lies from no change in an indicator: -1 without a pair, 0 not moved,
+  // 2 without a ratio
+  function distance(item, id) {
+    var pair = item.values[id];
     if (!pair || pair[0] === null || pair[1] === null) return -1;
-    if (!moved(pair[0], pair[1])) return 0;
+    if (!moved(item, id)) return 0;
     var r = ratio(pair[0], pair[1]);
     return r === null ? 2 : Math.abs(Math.log10(r));
   }
@@ -50,16 +67,35 @@
     var change = (a - b) / Math.abs(b) * 100, size = Math.abs(change);
     return (change > 0 ? '+' : change < 0 ? '−' : '') + size.toFixed(size >= 10 ? 0 : size >= 1 ? 1 : 2) + ' %';
   }
-  function cell(pair) {
+  function capital(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+  // the class a value has is the one the file gives it: the page works none out
+  function cell(item, id) {
+    var pair = item.values[id], kind = (item.classes || {})[id];
     if (!pair || pair[0] === null || pair[1] === null) return '<td class="num ba-cell is-none"></td>';
+    var known = kind && KINDS[kind];
+    var mark = known ? ' k-' + KINDS[kind] + '" data-class="' + esc(kind) : '';
+    var said = known ? capital(kind) + ': ' + SAID[kind] : null;
     var r = ratio(pair[0], pair[1]);
-    if (!moved(pair[0], pair[1])) {
+    if (!moved(item, id)) {
       var same = r === null || number(r) === '1';
-      return '<td class="num ba-cell is-same" title="' + (same ? 'No change' : 'Within the threshold') + '">' + (same ? '1' : number(r)) + '</td>';
+      return '<td class="num ba-cell is-same' + mark + '" title="' +
+        esc(said || (same ? 'No change' : 'Not counted as moved: within the threshold, or near zero on both sides')) + '">' + (same ? '1' : number(r)) + '</td>';
     }
-    if (r === null) return '<td class="num ba-cell is-opposite" title="Zero, or of the other sign, on one side: no ratio">–</td>';
-    var depth = Math.min(1, Math.abs(Math.max(-1, Math.min(1, Math.log10(r)))) * 2.2).toFixed(2);
-    return '<td class="num ba-cell is-' + (r > 1 ? 'above' : 'below') + '" style="--d:' + depth + '">' + number(r) + '</td>';
+    if (r === null) {
+      return '<td class="num ba-cell is-opposite' + mark + '" title="' + esc('Zero, or of the other sign, on one side: no ratio' + (said ? '. ' + said : '')) + '">–</td>';
+    }
+    if (pair[1] === pair[0]) {
+      // counted as moved by the run, by less than the results as written show
+      return '<td class="num ba-cell is-slight' + mark + '" title="' + esc('Moved by less than the digits written here show' + (said ? '. ' + said : '')) + '">≈ 1</td>';
+    }
+    var depth = Math.max(0.12, Math.min(1, Math.abs(Math.max(-1, Math.min(1, Math.log10(r)))) * 2.2)).toFixed(2);
+    // the side is where the result went: of two results below zero the lower gives the larger quotient
+    return '<td class="num ba-cell is-' + (pair[1] > pair[0] ? 'above' : 'below') + mark + '"' + (said ? ' title="' + esc(said) + '"' : '') +
+      ' style="--d:' + depth + '">' + ratioText(r) + '</td>';
+  }
+  function has(item, kind) {
+    var kinds = item.classes || {};
+    return Object.keys(kinds).some(function (id) { return kinds[id] === kind; });
   }
   function name(item) {
     return esc(item.name) + (item.place ? ' <span class="quiet">' + esc(item.place) + '</span>' : '');
@@ -70,11 +106,12 @@
     var list = D.moved.filter(function (item) {
       return (!f || (item.name + ' ' + (item.place || '') + ' ' + item.id).toLowerCase().indexOf(f) >= 0) &&
         (!state.cause || item.causes.indexOf(state.cause) >= 0) &&
-        (!state.group || item.group === state.group);
+        (!state.group || item.group === state.group) &&
+        (!state.kind || has(item, state.kind));
     });
     if (state.sort) {
       var s = state.sort;
-      list.sort(function (x, y) { return distance(y.values[s]) - distance(x.values[s]) || x.i - y.i; });
+      list.sort(function (x, y) { return distance(y, s) - distance(x, s) || x.i - y.i; });
     }
     return list;
   }
@@ -85,7 +122,7 @@
       '<th scope="row" class="ba-name" title="' + esc(item.name) + '">' +
       '<button type="button" class="linklike" data-ba-open>' + name(item) + '</button>' +
       (why ? '<span class="ba-why">' + why + '</span>' : '') + '</th>' +
-      D.indicators.map(function (i) { return cell(item.values[i.id]); }).join('') + '</tr>';
+      D.indicators.map(function (i) { return cell(item, i.id); }).join('') + '</tr>';
   }
 
   function head() {
@@ -121,18 +158,59 @@
     counted();
   }
 
+  // what one result is made of, before and after, where the item has a breakdown
+  function breakdown(item, found) {
+    var html = '';
+    D.indicators.forEach(function (i) {
+      var entry = found.indicators[i.id];
+      if (!entry || !entry.parts.length) return;
+      var scale = 1e-300;
+      entry.parts.forEach(function (x) { scale = Math.max(scale, Math.abs(x.before || 0), Math.abs(x.after || 0)); });
+      var w = function (x) { return (100 * Math.abs(x || 0) / scale).toFixed(1); };
+      html += '<details class="ba-item"><summary>' + esc(i.name) + ' <span class="quiet">' + esc(entry.unit || i.unit || '') + '</span></summary>' +
+        '<div class="table-wrap"><table class="ba-table ba-values"><thead><tr><th scope="col">Part</th>' +
+        '<th scope="col" class="num">' + esc(D.before.label) + '</th><th scope="col" class="num">' + esc(D.after.label) + '</th>' +
+        '<th scope="col" class="ba-bars-head"><span class="visually-hidden">Before and after, as bars</span></th></tr></thead><tbody>' +
+        entry.parts.map(function (x) {
+          return '<tr><th scope="row">' + (x.kind ? '<span class="tag">' + esc(x.kind) + '</span> ' : '') + esc(x.label) + '</th>' +
+            '<td class="num">' + number(x.before) + '</td><td class="num">' + number(x.after) + '</td>' +
+            '<td class="ba-bars" aria-hidden="true"><span class="ba-bar is-before" style="width:' + w(x.before) + '%"></span>' +
+            '<span class="ba-bar is-after" style="width:' + w(x.after) + '%"></span></td></tr>';
+        }).join('') + '</tbody></table></div>' +
+        (entry.parts_not_listed ? '<p class="note">' + grouped(entry.parts_not_listed) + ' smaller parts are not listed.</p>' : '') + '</details>';
+    });
+    return html || '<p class="list-none">The breakdown of this ' + esc(D.items.one) + ' holds no part.</p>';
+  }
+
+  function loadParts(item) {
+    var place = q('[data-ba-parts]');
+    if (!place || !item.detail || !/^[A-Za-z0-9][A-Za-z0-9._-]*\.json$/.test(item.detail)) return;
+    var show = function (found) { if (state.chosen === item) place.innerHTML = breakdown(item, found); };
+    if (parts[item.detail]) { show(parts[item.detail]); return; }
+    place.innerHTML = '<p class="list-none">Loading what its results are made of.</p>';
+    fetch((D.details || '') + item.detail).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function (found) {
+        if (!found || !found.indicators || found.item !== item.id) throw new Error('not its breakdown');
+        parts[item.detail] = found; show(found);
+      })
+      .catch(function () { if (state.chosen === item) place.innerHTML = '<p class="list-none">Its breakdown could not be read.</p>'; });
+  }
+
   function detail(item) {
     var word = D.word[0];
+    var kinds = item.classes || null, against = item.reference || null;
     var body = D.indicators.map(function (i) {
       var pair = item.values[i.id];
       if (!pair) return '';
-      var changed = moved(pair[0], pair[1]);
+      var changed = moved(item, i.id);
       var r = ratio(pair[0], pair[1]);
       var scale = Math.max(Math.abs(pair[0] || 0), Math.abs(pair[1] || 0), 1e-300);
       var w = function (x) { return (100 * Math.abs(x || 0) / scale).toFixed(1); };
       return '<tr class="' + (changed ? 'is-moved' : 'is-still') + '"><th scope="row">' + esc(i.name) + '</th>' +
         '<td class="num">' + number(pair[0]) + '</td><td class="num">' + number(pair[1]) + '</td>' +
         '<td class="num">' + (changed ? (percent(pair[0], pair[1]) || '') : 'no change') + '</td>' +
+        (kinds ? '<td>' + (kinds[i.id] && KINDS[kinds[i.id]] ? '<span class="ba-kind k-' + KINDS[kinds[i.id]] + '">' + esc(kinds[i.id]) + '</span>' : '') + '</td>' : '') +
+        (against ? '<td class="num">' + (against[i.id] === null || against[i.id] === undefined ? '' : number(against[i.id])) + '</td>' : '') +
         '<td class="ba-bars" aria-hidden="true"><span class="ba-bar is-before" style="width:' + w(pair[0]) + '%"></span>' +
         '<span class="ba-bar is-after' + (r === null && changed ? ' is-opposite' : '') + '" style="width:' + w(pair[1]) + '%"></span></td>' +
         '<td class="quiet">' + esc(i.unit || '') + '</td></tr>';
@@ -153,8 +231,11 @@
       '<span><span class="ba-key is-after"></span>' + esc(D.after.label) + '</span></p>' +
       '<div class="table-wrap"><table class="ba-table ba-values"><thead><tr><th scope="col">' + esc(word.charAt(0).toUpperCase() + word.slice(1)) + '</th>' +
       '<th scope="col" class="num">' + esc(D.before.label) + '</th><th scope="col" class="num">' + esc(D.after.label) + '</th>' +
-      '<th scope="col" class="num">Change</th><th scope="col" class="ba-bars-head"><span class="visually-hidden">Before and after, as bars</span></th>' +
-      '<th scope="col">Unit</th></tr></thead><tbody>' + body + '</tbody></table></div>';
+      '<th scope="col" class="num">Change</th>' + (kinds ? '<th scope="col">Class</th>' : '') +
+      (against ? '<th scope="col" class="num">' + esc((D.reference || {}).label || 'Reference') + '</th>' : '') +
+      '<th scope="col" class="ba-bars-head"><span class="visually-hidden">Before and after, as bars</span></th>' +
+      '<th scope="col">Unit</th></tr></thead><tbody>' + body + '</tbody></table></div>' +
+      (item.detail ? '<h4>What its results are made of</h4><div data-ba-parts></div>' : '');
   }
 
   function open(item) {
@@ -162,6 +243,7 @@
     var panel = q('[data-ba-detail]');
     panel.innerHTML = detail(item);
     panel.hidden = false;
+    loadParts(item);
     Array.prototype.forEach.call(board.querySelectorAll('.ba-grid tbody tr'), function (tr) {
       if (+tr.getAttribute('data-i') === item.i) tr.setAttribute('aria-current', 'true'); else tr.removeAttribute('aria-current');
     });
@@ -173,7 +255,10 @@
     var panel = q('[data-ba-detail]'), item = state.chosen;
     panel.hidden = true; state.chosen = null;
     var row = item && board.querySelector('.ba-grid tbody tr[data-i="' + item.i + '"]');
-    if (row) { row.removeAttribute('aria-current'); var b = row.querySelector('[data-ba-open]'); if (b) b.focus(); }
+    var b = row && row.querySelector('[data-ba-open]');
+    if (row) row.removeAttribute('aria-current');
+    // a filter may have taken the row away: the filter then takes the focus
+    (b || q('[data-ba-filter]')).focus();
   }
 
   function fill(select, field, entries) {
@@ -190,6 +275,8 @@
   D.moved.forEach(function (item) { item.causes.forEach(function (c) { used[c] = 1; }); });
   fill(q('[data-ba-cause]'), q('[data-ba-cause-field]'), Object.keys(used).sort().map(function (c) { return [c, c]; }));
   fill(q('[data-ba-group]'), q('[data-ba-group-field]'), Object.keys(D.groups || {}).map(function (g) { return [g, D.groups[g]]; }));
+  var met = Object.keys(KINDS).filter(function (kind) { return D.moved.some(function (item) { return has(item, kind); }); });
+  fill(q('[data-ba-kind]'), q('[data-ba-kind-field]'), met.map(function (kind) { return [kind, capital(kind)]; }));
   q('.ba-controls').hidden = false;
   var fixed = board.querySelector('.ba-static');
   if (fixed) fixed.hidden = true;
@@ -199,7 +286,26 @@
   q('[data-ba-filter]').addEventListener('input', function (e) { state.filter = e.target.value; state.limit = STEP; render(); });
   q('[data-ba-cause]').addEventListener('change', function (e) { state.cause = e.target.value; state.limit = STEP; render(); });
   q('[data-ba-group]').addEventListener('change', function (e) { state.group = e.target.value; state.limit = STEP; render(); });
-  q('[data-ba-more]').addEventListener('click', function () { state.limit += STEP; render(); });
+  q('[data-ba-kind]').addEventListener('change', function (e) { state.kind = e.target.value; state.limit = STEP; render(); });
+  // a class of the summary above the grid shows the items that have a value of that class
+  Array.prototype.forEach.call(document.querySelectorAll('[data-ba-class]'), function (card) {
+    var kind = card.getAttribute('data-ba-class');
+    if (met.indexOf(kind) < 0 || met.length < 2) return;
+    var button = document.createElement('button');
+    button.type = 'button'; button.className = 'linklike'; button.textContent = 'Show these';
+    button.addEventListener('click', function () {
+      state.kind = kind; state.limit = STEP; q('[data-ba-kind]').value = kind; render();
+      board.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    });
+    card.appendChild(button);
+  });
+  q('[data-ba-more]').addEventListener('click', function () {
+    var from = state.limit;
+    state.limit += STEP; render();
+    // the button may be gone now: the first row it added takes the focus
+    var first = board.querySelectorAll('.ba-grid tbody tr[data-i] [data-ba-open]')[from];
+    if (first) first.focus();
+  });
   board.addEventListener('click', function (e) {
     var sort = e.target.closest('[data-ba-sort]');
     if (sort) {
