@@ -32,7 +32,11 @@ uv run --with pandas==2.2.3 --with pyarrow==19.0.1 scripts/audit_registry.py pat
 
 The [measured export audit](runs/bafu-export-audit.json) passed on the previously generated, pinned baseline: **11,947 processes; 11,947 production, 114,369 technosphere and 293,747 biosphere exchanges**. All 420,063 exchange rows were retained in this exported registry. No missing core-gas factors were found under the stated policy. The report records input source pins, script and artifact hashes and per-method coverage.
 
-This establishes registry counts and identities, not raw ecoSpold parity, factor correctness, full greenhouse-gas coverage or LCIA score parity. In particular, the reported lci-bafu served-build differences remain unresolved. The script refuses to overwrite an evidence file.
+This establishes registry counts and identities, not raw ecoSpold parity, factor correctness, full greenhouse-gas coverage or LCIA score parity. The script refuses to overwrite an evidence file.
+
+### Measured importer parity
+
+The [importer parity run](runs/importer-parity-2026-10-21.json) compares sentier-importers and lci-bafu exchange by exchange on the same archive ([#2](https://github.com/sentier-dev/sentier-bafu/issues/2)). Both read the same 420,063 exchanges with the same classes. lci-bafu serves 22 fewer: 21 biosphere exchanges whose flows its flow-list build does not ingest, and one technosphere link declared at a location where no supplier exists ([#29](https://github.com/sentier-dev/sentier-bafu/issues/29)). Separately, 11 exchanges link to different suppliers, because BAFU's supplier number and declared location name different datasets: sentier-importers links by supplier number and keeps the declared location as stated, lci-bafu follows the declared location. Which one BAFU intends is open; until it is settled, the inventory can store both for these 11. The run also records the 3,217 biosphere amounts that lci-bafu converts to the flow list's units. It establishes what each importer reads and serves, not which importer is right where the source is ambiguous.
 
 ## Pin the inputs and the outputs
 
