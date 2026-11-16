@@ -61,6 +61,7 @@ Where to read on:
 
 - [docs/patch-tool.md](docs/patch-tool.md): every option of the patch tool, how it works, what it writes and how to write a patch.
 - [docs/release-build.md](docs/release-build.md): each step of the build, what stops it and what is kept of a tagged build.
+- [docs/brightway-installer.md](docs/brightway-installer.md): the installer that writes the Brightway databases, and how to run it on its own.
 - [docs/exports.md](docs/exports.md): what each file holds and what was checked.
 - The site's [Patched copy](https://sentier-dev.github.io/sentier-bafu/patch-and-build.html) page lists the patches.
 

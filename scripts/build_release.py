@@ -72,6 +72,9 @@ PINS = HELPERS / "pins.toml"
 # a flow outside EF 3.1 takes its factors from (scripts/build_brightway_flows_targets.py).
 FLOW_LINKS = HELPERS / "brightway-flows-targets-bafu-2026-v1.csv"
 LINKINGS = ("sentier-mappings", "brightway-flows")
+# The name under which a build of the second linking keeps the file it was linked through,
+# so that the comparison reads the same file (release_build/compare_builds.py)
+KEPT_FLOW_LINKS = "flow-links.csv"
 # Where sentier-importers' registry expects BAFU's release, below its data root
 IMPORTER_INPUT = Path("sources") / "bafu-2026" / "BAFU-2026 v1_ecoSpold v1.zip"
 IMPORTER_SOURCES = ("bafu-processes", "bafu-exchanges")
@@ -335,9 +338,13 @@ def build(args: argparse.Namespace) -> int:
     )
     project = Project(venvs)
     database, residual = paths["database"], paths["residual_database"]
-    flow_links = ["--flow-links", str(FLOW_LINKS)] if args.linking == "brightway-flows" else []
-    if flow_links and not FLOW_LINKS.is_file():
-        raise BuildError(f"{FLOW_LINKS} is not there; the Brightway Flows linking needs it")
+    flow_links = []
+    if args.linking == LINKINGS[1]:
+        if not FLOW_LINKS.is_file():
+            raise BuildError(f"{FLOW_LINKS} is not there; the Brightway Flows linking needs it")
+        kept = out / KEPT_FLOW_LINKS
+        shutil.copyfile(FLOW_LINKS, kept)
+        flow_links = ["--flow-links", str(kept)]
     record = {
         "label": paths["label"],
         "patched": paths["patched"],
@@ -356,6 +363,15 @@ def build(args: argparse.Namespace) -> int:
         },
         "project": paths["project"],
         "databases": {"inventory": database, "flows": BIOSPHERE_DB, "no_ef_3_1_flow": residual},
+        # the installer's options, for whoever assembles the same links again (the comparison)
+        "install": {
+            "source": database,
+            "flow_terms_of": PROVIDER_SOURCE if paths["patched"] else None,
+            "located": True,
+            "flow_links": {"file": FLOW_LINKS.name, "sha256": adapter.sha256_file(FLOW_LINKS)}
+            if flow_links
+            else None,
+        },
         "steps": {},
     }
 
@@ -700,6 +716,11 @@ def _build_steps(record: dict, receipt: adapter.Receipt, inventory: Path) -> lis
             "Exchanges of flows the mapping does not hold stay on BAFU's flow, in the "
             f"database {record['databases']['no_ef_3_1_flow']}, without a factor."
         )
+    linked += (
+        " A flow that names a country (Water, CH) is linked to the flow of that country "
+        "and takes that country's factor in the methods that have one; the country is "
+        "the one sentier-mappings states for the flow."
+    )
     steps = [
         {
             "id": "build-ef-3.1-links",
@@ -793,14 +814,13 @@ def linking_of(build: Path) -> str:
 
 
 def compare(args: argparse.Namespace) -> int:
-    for build in (args.baseline, args.candidate):
-        if linking_of(build) != LINKINGS[0]:
-            # the comparison explains a moved score with the mapping's links and factors
-            raise BuildError(
-                f"{build} was linked through {linking_of(build)}. The comparison reads the "
-                f"mapping of {LINKINGS[0]} and cannot explain such a build yet; compare two "
-                f"builds linked through {LINKINGS[0]}"
-            )
+    if linking_of(args.baseline) != linking_of(args.candidate):
+        # a difference between the two would be the linking's, and no step explains that
+        raise BuildError(
+            f"{args.baseline} was linked through {linking_of(args.baseline)} and "
+            f"{args.candidate} through {linking_of(args.candidate)}. The comparison says "
+            "which step changed what between two builds of one linking."
+        )
     project = Project(args.venvs.resolve() if args.venvs else None)
     command = project.command(
         *("python", str(HELPERS / "compare_builds.py")),
@@ -970,6 +990,7 @@ def release(args: argparse.Namespace) -> int:
     shared += ["--allow-unpinned"] if args.allow_unpinned else []
     options = [*shared, "--pinned-data", str((args.pinned_data or out / "pinned-data").resolve())]
     options += ["--labels", str(args.labels.resolve()), "--xsd-check", args.xsd_check]
+    options += ["--linking", args.linking]
     options += ["--sample", str(args.sample.resolve())] if args.sample else []
     if args.published_results:
         options += ["--published-results", str(args.published_results.resolve())]
@@ -1182,15 +1203,14 @@ def arguments() -> argparse.ArgumentParser:
     )
     b.add_argument("out", type=Path, help="Empty folder for everything the build writes")
     b.add_argument("--no-patches", action="store_true", help="Build the provider release as is")
-    b.add_argument(
-        "--linking",
-        choices=LINKINGS,
-        default=LINKINGS[0],
-        help="How elementary flows are linked to the flows of the impact methods: through "
-        "the mapping of sentier-mappings (default), or through Brightway Flows, with the "
-        "links of patch 0010. The second is measured and not yet the build's own: flows "
-        "lose their factor under it (docs/brightway-build.md).",
+    linking_help = (
+        "How elementary flows are linked to the flows of the impact methods: through the "
+        "mapping of sentier-mappings (default), or through Brightway Flows, with the links "
+        "of patch 0010. The second runs the whole path too, and is not the build's own: "
+        "flows lose their factor under it, and nothing built with it is kept under a tag "
+        "(docs/brightway-build.md)."
     )
+    b.add_argument("--linking", choices=LINKINGS, default=LINKINGS[0], help=linking_help)
     b.add_argument("--only", nargs="+", metavar="ID", help="Apply only these patches")
     b.add_argument("--skip", nargs="+", metavar="ID", help="Don't apply these patches")
     b.add_argument(
@@ -1286,6 +1306,7 @@ def arguments() -> argparse.ArgumentParser:
         help="A contribution layer to build whether or not somebody has authorised it "
         "(repeatable); its database and exports say if nobody has",
     )
+    r.add_argument("--linking", choices=LINKINGS, default=LINKINGS[0], help=linking_help)
     r.add_argument("--xsd-check", choices=("off", "end", "every-step"), default="every-step")
     r.add_argument("--sample", type=Path, help="Datasets the audit scores (see `build`)")
     r.add_argument("--labels", type=Path, default=LABELS, help="See `build`")

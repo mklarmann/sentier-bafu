@@ -27,10 +27,16 @@ sentier-mappings `179aab3`, which corrects BAFU's `Chlorine` to air (high popula
 installer's pins (`src/sentier_brightway/sources.toml`) name that commit, so the installer
 run on its own and the build read the same mapping.
 
+**A flow that names a country takes that country's factor** (since 15 November 2026). BAFU
+has 238 elementary flows with a country in their name, such as `Water, CH`. The mapping
+states the country, and the methods hold factors of single countries, for water use mostly.
+The build brings the two together for 184 of those flows; every other flow takes the factor
+without a location. See "Flows that name a country" below.
+
 **The build can also link through those identifiers** (`build --linking brightway-flows`,
-since 15 November 2026). It is a second way to build, measured against the first and not
-the build's own yet: 165 flows lose a factor under it. See "The second linking: through
-Brightway Flows" below.
+since 15 November 2026). It is a second way to build. The whole path runs under it, and it
+is not the build's own: 165 flows lose a factor under it, and nothing built with it is kept
+under a tag. See "The second linking: through Brightway Flows" below.
 
 ## Run it
 
@@ -64,6 +70,8 @@ repository's commit: a build from a tree with local changes says so in `build.js
   skipped and says so.
 - `--pinned-data` lets several builds share one copy of the pinned flow terms, methods and
   mapping.
+- `--linking brightway-flows` links the elementary flows the second way (below). `release`
+  takes it too and hands it to both builds.
 - `--fail-on-findings` turns the audit's findings into a failed build.
 - `--sample FILE` names other datasets for the audit to score.
 - `--contribution LAYER` builds the patched copy plus one contribution, as a database of
@@ -76,7 +84,8 @@ database. It is under [BAFU's Terms of Use](terms-of-use.md): keep it local (`ou
 ignored by git). A CI job may keep `audit/audit.json` and the comparison, which hold counts,
 dataset codes, names and single scores. It must not upload the folder.
 
-`OUT/build.json` records the tool commits, the data pins, each step's time and peak memory,
+`OUT/build.json` records the tool commits, the data pins, how the flows were linked
+(`linking`) and the installer's options (`install`), each step's time and peak memory,
 the audit's errors and findings, and under `export` what an export of the database needs:
 the Brightway folder, the project, the three database names, the run summary of the patch
 tool (`release-summary.json`, which the build asks for and keeps), the table of labels, and
@@ -233,8 +242,8 @@ name.
 - `load_inventory` picks the folder whose `metadata.json` names the source
   (`inventory.py:141-161`). `load_bridge` reads the mapping's `replace` entries in package
   order, first entry wins (`bridge.py:125-136`). `load_methods` reads the factors that have no
-  location (`methods.py:80`), so country-specific factors, for water use for example, are not
-  installed.
+  location, which every flow takes, and the factors of single countries, which a flow takes
+  only where it names the country (`located.py`; see "Flows that name a country").
 - Every exchange is linked while the nodes are built (`build.py:219-235`): the product to its
   own dataset, a technosphere input to the dataset its `flow` names, an elementary exchange to
   the EF 3.1 flow the mapping gives for its flow identifier, multiplied by the mapping's
@@ -423,6 +432,65 @@ Over the four runs the whole build took 109 to 194 s (provider) and 275 to 370 s
 A first `data` step downloads 25 files, 37 MB; that took 12 s. The whole path on the made-up
 release took 126 s and 1,005 MB, most of it the install of the EF 3.1 flows and methods.
 
+## Flows that name a country
+
+BAFU's elementary exchanges carry no location. 238 of BAFU's 2,679 elementary flows carry
+one in their name instead: `Water, CH`, `Water, AT`,
+`Occupation, traffic area, rail network, CH`. The mapping of sentier-mappings links such a
+flow to its EF 3.1 flow and states the country beside it. sentier-methods holds, beside the
+factors without a location, 42,689 factors of single countries in 11 of the 25 methods.
+
+Until 15 November 2026 the installer read only the factors without a location, so `Water,
+CH` was scored like water anywhere. Now a linked flow that names a country for which a
+method has that country's factor is linked to the flow of that country: a node of its own
+in `ef-3.1-biosphere`, named like the flow with the country added, with the country as its
+`location`. It takes the country's factor in every method that has one, and the flow's
+factor without a location in every other method.
+
+A flow that names no country keeps the factor without a location, whatever the location
+of the dataset it is in. Nothing says where such an exchange takes place, and BAFU's own
+results read it the same way: in acidification and terrestrial eutrophication, where the
+methods hold factors of 36 countries, 99.33 % and 99.05 % of the build's scores equal
+BAFU's published ones to 0.01 %.
+
+### What it changes, measured on 15 November 2026
+
+`scripts/compare_located_factors.py` builds BAFU's release with and without the factors of
+countries and scores all 11,947 datasets. The record is
+`community/runs/factors-of-countries-2026-11-15.json`.
+
+| | |
+|---|---:|
+| Flows that name a country | 238 |
+| of which take a factor of their country | 184 (4,251 exchanges, 74 countries) |
+| of which name a country no method has a factor for | 54 |
+| Flows of a country they end on (an EF 3.1 flow in one country) | 183 |
+| of which have the country's factor in water use | 181 |
+| of which have the country's factor in land use | 2 |
+
+- **Water use moves for 5,197 of the 11,947 datasets** by more than 1 %, for 854 of them by
+  more than 10 %. 5,146 go down: a country's factor is mostly lower than the factor without
+  a location.
+- **Land use moves for 5 datasets**, all upwards and by more than 10 %: two flows of rail
+  land in Switzerland.
+- **No other category moves.**
+
+Against BAFU's corrected results workbook (July 2026), which is not a goal to match and is
+a second reading of what such a flow means:
+
+| | Factors without a location only | With the factors of countries |
+|---|---:|---:|
+| Water use within 1 % of BAFU's | 30.94 % | 53.84 % |
+| Water use within 5 % | 65.45 % | 79.52 % |
+| Water use, median difference | +2.20 % | +0.86 % |
+| Land use within 1 % | 99.09 % | 99.05 % |
+
+Water use comes much closer. Land use moves away for the five datasets: for the two flows
+of rail land, BAFU's results follow the factor without a location.
+
+`sentier-brightway db --skip-located` builds as before. The build has no such option: a
+build records under `install` that its flows took the factors of countries.
+
 ## The second linking: through Brightway Flows
 
 `build --linking brightway-flows` links every elementary exchange to the flow of Brightway
@@ -436,6 +504,7 @@ statements are kept apart, each taken from where it is made:
 | Which flow it is | the crosswalk of patch 0010, with the identifier the flow has in Brightway Flows 1.1.0 | the flow stays on BAFU's flow, without a factor |
 | How an amount converts | the multiplier Brightway Flows 1.1.0 states for the link (192 links; 159 of them Bq to kBq) | two spellings of one unit need none; otherwise the conversion is unknown and the flow is not linked |
 | What the flow costs | the build's own methods (sentier-methods). A flow outside EF 3.1 takes the build's factors of the one flow that Brightway Flows' own implementation of EF 3.1 names as their source, where the two are counted in one unit | the flow has no factor |
+| Which country the flow names | the mapping of sentier-mappings. The links end `Water, CH` and `Water` on one flow and state no country | the flow takes the factor without a location |
 
 No factor is read from Brightway Flows. What the installer needs beside the crosswalk is in
 `scripts/release_build/brightway-flows-targets-bafu-2026-v1.csv`, written by
@@ -452,7 +521,9 @@ several of BAFU's flows says where the flow goes as far as those flows agree.
 `scripts/compare_flow_linkings.py` builds BAFU's release both ways, on the data the build
 uses (the mapping at `179aab3`), and scores all 11,947 datasets in the 25 categories. The
 record is `community/runs/flow-linking-in-the-build-2026-11-15.json`. A flow "has a factor"
-in a method when the flow it is linked to has one there that is not zero.
+in a method when the flow it is linked to has one there that is not zero. Both ways give a
+flow that names a country its country's factor (184 flows under the mapping, 183 under the
+links).
 
 | | Mapping of sentier-mappings | Links of patch 0010 |
 |---|---:|---:|
@@ -466,8 +537,8 @@ in a method when the flow it is linked to has one there that is not zero.
   in at least one method, 164 of them in every method; 8 gain one.
 - **Those flows are in most supply chains.** 11,801 of the 11,947 datasets move by more than
   1 % in at least one category: particulate matter (11,446 datasets), freshwater
-  eutrophication (11,636), freshwater ecotoxicity (10,144) and land use (11,134). Nearly all
-  move downwards; in land use, 1,374 of the 11,134 move up. Acidification and terrestrial
+  eutrophication (11,636), freshwater ecotoxicity (10,144) and land use (11,132). Nearly all
+  move downwards; in land use, 1,374 of the 11,132 move up. Acidification and terrestrial
   eutrophication do not move for any dataset; climate change moves for 20.
 
 Why the 165 lose a factor:
@@ -493,11 +564,13 @@ is BAFU's chlorine to air.
 0. **The links of patch 0010 are not the build's linking yet.** 165 flows lose a factor
    (above). 92 of them need a source of factors in Brightway Flows, which is a change there.
    55 depend on which factors count for a flow outside EF 3.1: the build's own, as now, or
-   those of Brightway Flows' own implementation. The comparison of two builds
-   (`compare_builds.py`) reads the mapping and refuses a build of the second linking, and the
-   exports were not run with it, so `release` builds with the mapping only. The data file of
-   the second linking is derived from Brightway Flows 1.1.0 (ODbL); the permission recorded
-   for the crosswalk has not been asked for it.
+   those of Brightway Flows' own implementation. That is a decision for people. The whole
+   path runs under the second linking since 15 November 2026 (`release --linking
+   brightway-flows`): the comparison of two builds explains each score with the links that
+   were installed, whichever linking that was, and the exports are written and read back.
+   Nothing built with it is kept under a tag. The data file of the second linking is derived
+   from Brightway Flows 1.1.0 (ODbL); the permission recorded for the crosswalk has not been
+   asked for it.
 1. **The mapping does not know the corrected flow names.** The build does not need it to,
    because it links on the declared flow. A consumer that reads the patched copy without
    the provider release beside it does: the patched copy does not carry the declared name,
@@ -530,8 +603,12 @@ is BAFU's chlorine to air.
    published results, because the comparison did not know `EURwoCH`, the patched copy's
    spelling of `Europe without Switzerland`. They are joined now, and the run report counts
    them (`own_location_spellings_joined`).
-8. **Only global factors are installed**, and only EF 3.1. Uncertainty is carried into the
-   Brightway database but not into the files export.
+8. *(Closed in part on 15 November 2026.)* Only factors without a location were installed.
+   A flow that names a country now takes that country's factor ("Flows that name a
+   country"). What stays: a flow that names no country takes the factor without a location
+   whatever the location of its dataset, because nothing says where such an exchange takes
+   place; only EF 3.1 is installed; and uncertainty is carried into the Brightway database
+   but not into the files export.
 9. *(Closed.)* The build's workflow has run on GitHub's runners since 13 November 2026, in a
    fork: fifteen runs on BAFU's full release up to 15 November. In this repository it is not
    on `main` yet.

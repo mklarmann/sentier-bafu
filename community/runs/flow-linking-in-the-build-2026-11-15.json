@@ -2,36 +2,37 @@
  "date": "2026-11-15",
  "kind": "measurement of a build option; evidence for a decision, not an acceptance test",
  "question": "What changes when the build links BAFU's elementary flows through Brightway Flows, with the links of patch 0010, in place of the mapping of sentier-mappings?",
- "design": "BAFU:2026 v1 as the installer reads it (11,947 datasets, 293,747 elementary exchanges, 2,679 flows), built twice on the data the build uses, with only the linking changed, and scored in the 25 EF 3.1 categories of the build's methods (sentier-methods, factors without a location). Linking one: the mapping of sentier-mappings. Linking two: the crosswalk patch 0010 uses, with brightway-flows-targets-bafu-2026-v1.csv (Brightway Flows 1.1.0, https://doi.org/10.5281/zenodo.23554066): an amount is converted only where that release states the conversion; a flow outside EF 3.1 takes the build's factors of the one flow that Brightway Flows' own implementation of EF 3.1 names as their source, where the two are counted in one unit; no factor is read from Brightway Flows. A flow has a factor in a method when the flow it is linked to has one there that is not zero. A dataset moves when its score differs by more than 1 % of the larger of the two.",
+ "design": "BAFU:2026 v1 as the installer reads it (11,947 datasets, 293,747 elementary exchanges, 2,679 flows), built twice on the data the build uses, with only the linking changed, and scored in the 25 EF 3.1 categories of the build's methods (sentier-methods). Under either linking a flow that names a country takes that country's factor; the country is the one sentier-mappings states. Linking one: the mapping of sentier-mappings. Linking two: the crosswalk patch 0010 uses, with brightway-flows-targets-bafu-2026-v1.csv (Brightway Flows 1.1.0, https://doi.org/10.5281/zenodo.23554066): an amount is converted only where that release states the conversion; a flow outside EF 3.1 takes the build's factors of the one flow that Brightway Flows' own implementation of EF 3.1 names as their source, where the two are counted in one unit; no factor is read from Brightway Flows. A flow has a factor in a method when the flow it is linked to has one there that is not zero. A dataset moves when its score differs by more than 1 % of the larger of the two.",
  "data": [
+  {
+   "name": "sentier-inventory",
+   "commit": "cf54f557e88284400418f1e4db03487be451de9f",
+   "pinned_by": "this repository"
+  },
   {
    "name": "sentier-vocab",
    "commit": "51ba6be54c90ac9fdf78fbecc6b0f4cdb6718273",
-   "pinned_by": "sentier-brightway"
+   "pinned_by": "this repository"
   },
   {
    "name": "sentier-methods",
    "commit": "ba536459f320ec694ce778be6e632048a1c777dc",
-   "pinned_by": "sentier-brightway"
+   "pinned_by": "this repository"
   },
   {
    "name": "sentier-mappings",
    "commit": "179aab3047c982e8cfa40b318da8be4b3e057782",
-   "pinned_by": "this build"
-  },
-  {
-   "name": "sentier-inventory",
-   "commit": "cf54f557e88284400418f1e4db03487be451de9f",
-   "pinned_by": "sentier-brightway"
+   "pinned_by": "this repository"
   }
  ],
- "reproduce": "uv run --frozen --project brightway-installer --python 3.12 --extra testing python scripts/compare_flow_linkings.py --work output/linkings --out comparison.json",
+ "reproduce": "uv run --frozen --extra brightway python scripts/compare_flow_linkings.py --work output/linkings --out comparison.json",
  "report_of_each_linking": {
   "sentier-mappings": [
    "Installed bafu-2026: 11947 processes",
    "Installed ef-3.1-biosphere and 25 EF 3.1 methods",
    "Linked 2566/2679 bafu-2026 flows to EF 3.1 (95.8%); 284443/293747 biosphere exchanges (96.8%)",
    "  518 of the linked flows point at EF flows with no factor (nomenclature only, impact zero)",
+   "  184 of the linked flows name a country and take that country's factor where a method has one",
    "Unlinked flows kept in bafu-2026-residual (no EF 3.1 counterpart in the bridge):",
    "  economic issues: 5",
    "  emissions to air: 18",
@@ -49,6 +50,7 @@
    "  785 of the linked flows have no factor in any method (impact zero)",
    "  38 of the flows of EF 3.1 are not in the flow terms the methods come with; their name is the link's",
    "  2 not linked: the units differ and the release states no conversion (for example Gas, mine, off-gas, process, coal mining/m3 (m3 to sm3); Gas, mine, off-gas, process, coal mining/m3 (Nm3 to sm3))",
+   "  183 of the linked flows name a country and take that country's factor where a method has one",
    "  293636/293747 biosphere exchanges linked (100.0%)",
    "Unlinked flows kept in bafu-2026-residual:",
    "  resources: 2"
@@ -459,17 +461,17 @@
   },
   {
    "category": "land",
-   "moved_over_1_percent": 11134,
+   "moved_over_1_percent": 11132,
    "moved_over_10_percent": 8375,
-   "lower": 9760,
+   "lower": 9758,
    "higher": 1374
   },
   {
    "category": "water",
-   "moved_over_1_percent": 5224,
-   "moved_over_10_percent": 1666,
-   "lower": 5145,
-   "higher": 78
+   "moved_over_1_percent": 5335,
+   "moved_over_10_percent": 1698,
+   "lower": 5254,
+   "higher": 80
   },
   {
    "category": "energy",
@@ -490,7 +492,7 @@
   "The links reach more flows (2,677 of 2,679 against 2,566), and every conversion they need but two is stated by Brightway Flows 1.1.0 (192).",
   "Fewer flows end on a factor: 1,794 against 1,950. 165 flows (13,868 exchanges, 4.7 % of all) lose a factor in at least one method, 164 of them in every method; 8 gain one.",
   "Those flows are in most supply chains: 11,801 of 11,947 datasets move by more than 1 % in at least one category. Particulate matter, freshwater eutrophication, freshwater ecotoxicity and land use move for more than 10,000 datasets each.",
-  "Nearly all of them move downwards. Land use is the exception: 9,760 datasets go down and 1,374 go up.",
+  "Nearly all of them move downwards. Land use is the exception: 9,758 datasets go down and 1,374 go up.",
   "Acidification, terrestrial eutrophication and the biogenic and land-use parts of climate change do not move for any dataset. Climate change moves for 20.",
   "92 of the flows that lose a factor are outside EF 3.1 with no flow named as the source of factors (BAFU's land classes among them). For 55, Brightway Flows adopts or restates a factor from another implementation's list, which the build's methods do not hold. 13 end on an EF 3.1 flow without a factor there in the build's methods."
  ],
@@ -498,8 +500,8 @@
   "Says what differs, not which linking is right flow by flow. The classification of the differing flows is a separate piece of work.",
   "The build's methods are the reference for factors. With Brightway Flows' own factors the result would differ; that was not measured here.",
   "Measured on BAFU's release as shipped. The patched copy links on the flows BAFU declared, so its flows are the same.",
-  "The exports for LCA tools and the comparison of two builds were not run with the second linking.",
-  "A first run of this measurement, published for some hours on 15 November 2026, used the installer's own pin of the mapping (5ba4acd) and not the build's (179aab3). It gave 166 flows and 1,798 datasets in organic freshwater ecotoxicity where this run gives 165 and 671; the one entry that differs is BAFU's chlorine to air."
+  "A first run of this measurement, published for some hours on 15 November 2026, used the installer's own pin of the mapping (5ba4acd) and not the build's (179aab3). It gave 166 flows and 1,798 datasets in organic freshwater ecotoxicity where this run gives 165 and 671; the one entry that differs is BAFU's chlorine to air.",
+  "Measured a second time on 15 November 2026, after flows that name a country were given their country's factor under both linkings. Nothing changed for a flow. Two categories changed for datasets: land use moves for 11,132 datasets (11,134 before, 9,760 of them down) and water use for 5,335 (5,224 before). The numbers of this record are the second measurement's."
  ],
  "lost": [
   {

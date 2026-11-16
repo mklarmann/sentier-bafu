@@ -251,6 +251,11 @@ def blockers(summary: dict, manifest_core: dict, findings: set[str] | None = Non
 # --- What the build adds ----------------------------------------------------------------
 
 
+#: The build's own way of linking elementary flows. The other one (`build --linking
+#: brightway-flows`) is measured and can be run, and nothing built with it is kept under a tag.
+OWN_LINKING = "sentier-mappings"
+
+
 def build_section(folder: Path) -> dict | None:
     """One Brightway build: its database, its audit, and what it was built with."""
     record = load(folder / "build.json")
@@ -264,6 +269,8 @@ def build_section(folder: Path) -> dict | None:
         "database": record.get("databases", {}).get("inventory"),
         "provider_fingerprint": release.get("provider_tree_sha256"),
         "built_from_fingerprint": release.get("built_tree_sha256"),
+        # how elementary flows were linked to the flows of the methods
+        "linking": record.get("linking", OWN_LINKING),
         "tools": {
             name: record.get("tools", {}).get(name)
             for name in ("this repository", "sentier-importers")
@@ -456,6 +463,11 @@ def manifest(
             not_releasable.append(f"the {name} release has no audited Brightway database")
         elif audit["status"] != "passed" or (name == "patched" and audit["findings"]):
             not_releasable.append(f"the audit of the {name} build has errors or findings")
+        if build is not None and build["linking"] != OWN_LINKING:
+            not_releasable.append(
+                f"the {name} build links its elementary flows through {build['linking']}, "
+                f"which is not the build's own linking ({OWN_LINKING})"
+            )
     comparison = comparison_section(out / "comparison.json")
     if comparison is None or comparison["status"] != "passed":
         not_releasable.append("the comparison of the two builds did not pass")
@@ -624,13 +636,14 @@ def _check_build(shape: _Shape, build, where: str) -> None:
         "database",
         "provider_fingerprint",
         "built_from_fingerprint",
+        "linking",
         "tools",
         "data",
         "audit",
     )
     if not shape.keys(build, where, names, optional=True):
         return
-    for key in ("status", "label", "database"):
+    for key in ("status", "label", "database", "linking"):
         shape.text(build[key], f"{where}.{key}", 200, optional=True)
     shape.sha(build["provider_fingerprint"], f"{where}.provider_fingerprint", optional=True)
     shape.sha(build["built_from_fingerprint"], f"{where}.built_from_fingerprint", optional=True)

@@ -508,7 +508,11 @@ class BuildRecords(unittest.TestCase):
             "bafu-2026-v1-patched-residual",
         ):
             self.assertIn(words, step["description"])
-        self.assertNotIn("sentier-mappings", step["description"])
+        self.assertNotIn("sentier-mappings at", step["description"])
+        # either way, a flow that names a country takes that country's factor
+        for record in (self.record, linked):
+            said = build_release._build_steps(record, receipt, Path("inventory"))[0]
+            self.assertIn("takes that country's factor", said["description"])
 
     def test_the_mapping_is_the_default_and_the_other_linking_has_its_file(self):
         parser = build_release.arguments()
@@ -518,9 +522,11 @@ class BuildRecords(unittest.TestCase):
         self.assertEqual(chosen.linking, "brightway-flows")
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             parser.parse_args(["build", "release", "out", "--linking", "something-else"])
-        # `release` builds with the mapping: it has no such option
-        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
-            parser.parse_args(["release", "release", "out", "--linking", "brightway-flows"])
+        # the whole path takes the option too, and hands it to both builds
+        whole = parser.parse_args(["release", "release", "out"])
+        self.assertEqual(whole.linking, "sentier-mappings")
+        whole = parser.parse_args(["release", "release", "out", "--linking", "brightway-flows"])
+        self.assertEqual(whole.linking, "brightway-flows")
         # the file is committed, one row for each row of the crosswalk patch 0010 uses
         crosswalk = (
             build_release.REPOSITORY
@@ -532,7 +538,7 @@ class BuildRecords(unittest.TestCase):
             len(crosswalk.read_text().splitlines()),
         )
 
-    def test_the_comparison_refuses_a_build_of_the_other_linking(self):
+    def test_the_comparison_refuses_two_builds_of_different_linkings(self):
         with tempfile.TemporaryDirectory() as temp:
             mapped, linked = Path(temp) / "provider", Path(temp) / "patched"
             for folder, linking in ((mapped, "sentier-mappings"), (linked, "brightway-flows")):
@@ -549,7 +555,8 @@ class BuildRecords(unittest.TestCase):
                     arguments = ["compare", str(pair[0]), str(pair[1]), "--out", out]
                     code = build_release.main(arguments)
                 self.assertEqual(code, 1)
-                self.assertIn("was linked through brightway-flows", said.getvalue())
+                self.assertIn("through brightway-flows", said.getvalue())
+                self.assertIn("two builds of one linking", said.getvalue())
             self.assertFalse(Path(out).exists())
 
     def test_a_contribution_says_whether_somebody_authorised_it(self):

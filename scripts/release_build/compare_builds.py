@@ -391,10 +391,55 @@ def effective_factors(bridge, methods) -> dict[str, dict[str, float]]:
 
 
 def _target_name(entry, ef_names: dict[str, str]) -> str | None:
-    """The EF 3.1 flow's name, or its code where the pinned flow terms don't name it."""
+    """The name of the flow a link ends on, or its code where nothing names it."""
     if entry is None:
         return None
     return ef_names.get(entry.target_code, f"EF 3.1 flow {entry.target_code}")
+
+
+LINKINGS = ("sentier-mappings", "brightway-flows")
+FLOW_LINKS = "flow-links.csv"  # the file a build of the second linking keeps beside its record
+
+
+def linking_of(build: Path) -> str:
+    """How a build linked its elementary flows, from its own record."""
+    return (read_json(build / "build.json") or {}).get("linking", LINKINGS[0])
+
+
+def installed(build: Path):
+    """What a build installed, assembled again by the installer from the build's own data
+    root and with the build's own options: the link of every flow, the factors of every
+    method, and the name of every flow a link ends on.
+
+    A build made before 15 November 2026 has no record of its options: it was linked through
+    the mapping, and no flow took a country's factor.
+    """
+    import sentier_brightway
+
+    record = read_json(build / "build.json") or {}
+    install = record.get("install") or {}
+    database = (record.get("databases") or {}).get("inventory")
+    patched = bool(record.get("patched"))
+    result = sentier_brightway.assemble(
+        data_root=build / "data-root",
+        source=install.get("source") or database or sentier_brightway.DEFAULT_SOURCE,
+        flow_links=build / FLOW_LINKS if linking_of(build) == LINKINGS[1] else None,
+        flow_terms_of=install.get("flow_terms_of", "bafu-2026" if patched else None),
+        include_located=bool(install.get("located", False)),
+    )
+    methods = [
+        _Factors(method.method_id, tuple((key[1], value) for key, value in method.cfs))
+        for method in result.methods
+    ]
+    names = {code: node["name"] for (_, code), node in result.biosphere.items()}
+    return result.links, methods, names
+
+
+class _Factors:
+    """A method's factors by flow code, in the shape `effective_factors` reads."""
+
+    def __init__(self, method_id: str, cfs: tuple):
+        self.method_id, self.cfs = method_id, cfs
 
 
 def compare_flows(rows, bridge, effective, ef_names: dict[str, str]) -> dict:
@@ -610,10 +655,12 @@ def compare_scores(base_scores, cand_scores, seeds, consumers, names: dict[str, 
 
 
 def compare(baseline: Path, candidate: Path) -> dict:
-    from sentier_brightway.bridge import load_bridge
-    from sentier_brightway.flows import load_ef_flows
-    from sentier_brightway.methods import load_methods
-
+    if linking_of(baseline) != linking_of(candidate):
+        raise CompareError(
+            f"The two builds link their elementary flows differently ({linking_of(baseline)} "
+            f"and {linking_of(candidate)}): a difference between them would be the linking's, "
+            "not a step's. Compare two builds of one linking."
+        )
     base, cand = read_inventory(baseline), read_inventory(candidate)
     recorded = read_steps(candidate)
     steps = steps_of_the_candidate_alone(recorded, read_steps(baseline))
@@ -621,11 +668,8 @@ def compare(baseline: Path, candidate: Path) -> dict:
     layer = read_json(candidate / "layer-receipt.json")
     fields = step_fields(summary, layer)
     rows = compare_rows(base, cand, steps, fields, layer)
-    root = candidate / "data-root"
-    bridge, methods = load_bridge(root), load_methods(root)
+    bridge, methods, ef_names = installed(candidate)
     effective = effective_factors(bridge, methods)
-    ef_flows = load_ef_flows(root)
-    ef_names = dict(zip(ef_flows["code"], ef_flows["name"], strict=True))
     flows = compare_flows(rows["rows"], bridge, effective, ef_names)
     receipt = candidate / "adapter-receipt.json"
     observed = declared_flows(
@@ -660,6 +704,7 @@ def compare(baseline: Path, candidate: Path) -> dict:
     return {
         "status": "failed" if errors else "passed",
         "errors": errors,
+        "linking": linking_of(candidate),
         "what_a_step_can_explain": {
             "declared_in_the_comparison": sorted(STEP_FIELDS),
             "taken_from_the_run_summary": sorted(

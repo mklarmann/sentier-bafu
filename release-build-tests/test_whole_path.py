@@ -43,6 +43,12 @@ LABELS = REPOSITORY / "scripts" / "release_build" / "export_labels.toml"
 sys.path.insert(0, str(REPOSITORY / "scripts"))
 
 
+def build_release_flow_links() -> Path:
+    import build_release
+
+    return build_release.FLOW_LINKS
+
+
 def reuse() -> list[str]:
     options = []
     for flag, variable in (
@@ -78,11 +84,13 @@ class WholePath(unittest.TestCase):
         command += ["--published-results", str(cls.root / "no-such-workbook.xlsx")]
         cls.done = subprocess.run([*command, *reuse()], capture_output=True, text=True)
         cls.contribution = cls.out / "contributions" / LAYER.lower()
-        # the same made-up release once more, as shipped, linked through Brightway Flows
-        cls.linked = cls.root / "linked"
-        command = [sys.executable, str(ENTRY), "build", str(release), str(cls.linked)]
-        command += ["--no-patches", "--linking", "brightway-flows", "--sample", str(sample)]
+        # the whole path once more, linked through Brightway Flows (no contribution)
+        cls.linked_run = cls.root / "linked-run"
+        command = [sys.executable, str(ENTRY), "release", str(release), str(cls.linked_run)]
+        command += ["--sample", str(sample), "--labels", str(labels), "--no-layers"]
+        command += ["--partial-release", "--linking", "brightway-flows"]
         cls.linked_done = subprocess.run([*command, *reuse()], capture_output=True, text=True)
+        cls.linked = cls.linked_run / "provider"
 
     @classmethod
     def tearDownClass(cls):
@@ -155,12 +163,52 @@ class WholePath(unittest.TestCase):
         self.assertEqual({method for _, method in moved}, {FOSSILS})
         self.assertIn("syn-gas", {code for code, _ in moved})
 
-    def test_the_comparison_of_two_builds_refuses_the_other_linking(self):
+    def test_the_whole_path_runs_under_the_second_linking(self):
+        """Both builds, the comparison and the exports with their read-back: the same steps
+        as under the mapping, and nothing of it may be kept under a tag."""
+        done = self.linked_done
+        self.assertEqual(done.returncode, 0, done.stdout[-3000:] + done.stderr[-2000:])
+        manifest = json.loads((self.linked_run / "manifest.json").read_text())
+        self.assertEqual(manifest["status"], "completed")
+        self.assertEqual(
+            {step["name"]: step["status"] for step in manifest["steps"]},
+            dict.fromkeys(
+                ("provider build", "patched build", "written files", "patch run")
+                + ("comparison", "exports"),
+                "completed",
+            ),
+        )
+        for name in ("provider", "patched"):
+            self.assertEqual(manifest["brightway"][name]["linking"], "brightway-flows")
+            self.assertEqual(manifest["brightway"][name]["audit"]["status"], "passed")
+        blocked = [line for line in manifest["not_releasable"] if "own linking" in line]
+        self.assertEqual(len(blocked), 2)
+        # the comparison explains every difference with the links that were installed
+        comparison = json.loads((self.linked_run / "comparison.json").read_text())
+        self.assertEqual((comparison["status"], comparison["errors"]), ("passed", []))
+        self.assertEqual(comparison["linking"], "brightway-flows")
+        # the build keeps the file it was linked through, and names the one it was copied from
+        record = json.loads((self.linked_run / "patched" / "build.json").read_text())
+        kept = self.linked_run / "patched" / "flow-links.csv"
+        self.assertEqual(kept.read_bytes(), build_release_flow_links().read_bytes())
+        self.assertEqual(record["install"]["flow_links"]["file"], build_release_flow_links().name)
+        self.assertEqual(record["install"]["flow_terms_of"], "bafu-2026")
+        exports = json.loads(
+            (self.linked_run / "exports" / "patched" / "manifest.json").read_text()
+        )
+        self.assertEqual(exports["status"], "completed")
+        # under the mapping the same run is not held back for its linking
+        mapped = self.load("manifest.json")
+        self.assertEqual([line for line in mapped["not_releasable"] if "own linking" in line], [])
+        self.assertEqual(mapped["brightway"]["patched"]["linking"], "sentier-mappings")
+        self.assertEqual(self.load("comparison.json")["linking"], "sentier-mappings")
+
+    def test_the_comparison_refuses_two_builds_of_different_linkings(self):
         command = [sys.executable, str(ENTRY), "compare", str(self.out / "provider")]
         command += [str(self.linked), "--out", str(self.root / "refused.json")]
         done = subprocess.run(command, capture_output=True, text=True)
         self.assertEqual(done.returncode, 1)
-        self.assertIn("was linked through brightway-flows", done.stderr)
+        self.assertIn("through brightway-flows", done.stderr)
         self.assertFalse((self.root / "refused.json").exists())
 
     def test_the_measurement_of_the_two_linkings_runs_on_a_data_root(self):
