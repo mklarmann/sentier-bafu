@@ -19,7 +19,8 @@
   },
   "evidence": [
     "https://github.com/sentier-dev/sentier-models/pull/1#issuecomment-5811114747",
-    "https://github.com/sentier-dev/sentier-models/pull/2"
+    "https://github.com/sentier-dev/sentier-models/pull/2",
+    "https://github.com/sentier-dev/sentier-bafu/blob/main/community/runs/hackathon-checks-2026-10-21.json"
   ],
   "required_checks": [
     "content-roundtrip",
@@ -66,6 +67,36 @@
           "id": "forecast-held-out-validation",
           "status": "not-run",
           "evidence_url": "https://github.com/sentier-dev/sentier-bafu/blob/main/community/runs/hackathon-roundtrip.json"
+        }
+      ]
+    },
+    {
+      "baseline": {
+        "dataset": "BAFU/UVEK",
+        "release": "BAFU-2026-v1",
+        "import_repository": "https://github.com/sentier-dev/sentier-inventory",
+        "import_revision": "c5aee155f0778f02e68a67fc766e23222a11686a",
+        "input_hashes": {
+          "inventory-parquet-set-sha256": "c45bfac3ef75bad08eca3647cc23525ae86fbaf9a79dbe3fb76a16e4276be5e5"
+        }
+      },
+      "layer_revision": "a8c895d37b1ce5027733306eb95d60bb389cb31e",
+      "evidence_url": "https://github.com/sentier-dev/sentier-bafu/blob/main/community/runs/hackathon-checks-2026-10-21.json",
+      "checks": [
+        {
+          "id": "forecast-held-out-validation",
+          "status": "failed",
+          "evidence_url": "https://github.com/sentier-dev/sentier-bafu/blob/main/community/runs/hackathon-checks-2026-10-21.json"
+        },
+        {
+          "id": "units-and-mass-balance",
+          "status": "failed",
+          "evidence_url": "https://github.com/sentier-dev/sentier-bafu/blob/main/community/runs/hackathon-checks-2026-10-21.json"
+        },
+        {
+          "id": "score-parity",
+          "status": "not-run",
+          "evidence_url": "https://github.com/sentier-dev/sentier-bafu/blob/main/community/runs/hackathon-checks-2026-10-21.json"
         }
       ]
     }
