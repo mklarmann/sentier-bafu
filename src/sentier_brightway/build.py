@@ -389,6 +389,7 @@ def _coverage(
     dbs: Databases = _DEFAULT_DBS,
     source: str = "bafu-2026",
     located: Mapping[str, tuple[str, str]] | None = None,
+    located_by_method: Mapping[str, int] | None = None,
 ) -> Coverage:
     """Coverage over ``bio`` (the biosphere exchange rows) and the ``unmapped`` codes."""
     used = set(bio["flow"])
@@ -407,6 +408,7 @@ def _coverage(
         flows_located=sum(
             1 for code in used if code in bridge and bridge[code].target_code in (located or {})
         ),
+        located_by_method=tuple(sorted((located_by_method or {}).items())),
         exchange_rows=len(bio),
         exchange_rows_mapped=int(bio["flow"].isin(bridge.keys()).sum()),
         residual_by_compartment=tuple(sorted(counter.items())),
@@ -433,9 +435,11 @@ def build(
     (``located.locate``); ``include_located=False`` leaves every flow on the factor without
     a location."""
     nodes_of_countries: Mapping[str, tuple[str, str]] = {}
+    located_by_method: Mapping[str, int] = {}
     if include_located:
         found = locate(bridge, methods)
         bridge, methods, nodes_of_countries = found.bridge, found.methods, found.nodes
+        located_by_method = found.per_method
     bio = inventory.exchanges[inventory.exchanges["flow_type"] == "biosphere"]
     unmapped = set(bio["flow"]) - set(bridge.keys())
     units, conflicts = _bridge_units(bridge)
@@ -457,6 +461,7 @@ def build(
             dbs=dbs,
             source=inventory.source,
             located=nodes_of_countries,
+            located_by_method=located_by_method,
         ),
         links=bridge,
         source=inventory.source,
