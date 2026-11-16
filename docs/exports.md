@@ -131,6 +131,17 @@ and compartment. 206 of the 1,927 elementary flows in use in BAFU:2026 v1 share 
 another flow in the build's flow list (for example five flows `Waste Heat` to `air`); in
 the CSV each of them carries its code after its name, so that they stay different flows.
 
+**Letters the SimaPro file can't hold.** A SimaPro CSV file is written in Windows-1252, and
+the writer puts "?" for a character that encoding lacks: the flow would be read under
+another name than it has, and the read-back refuses the file. So a name is written as the
+encoding can hold it. A Greek letter is spelled out ("Γ-butyrolactone" is
+"Gamma-butyrolactone"; mu is the micro sign, which the encoding has), and a character that
+is another form of one the encoding has is written as that one ("CO₂" is "CO2"). The
+manifest lists each flow written so (`simapro.flows_with_a_letter_spelled_out`). A character
+that no rule writes fails the SimaPro format with the flow's name. No flow of BAFU:2026 v1
+needs this under the build's own linking; under the second linking one does. The other
+formats hold every name as the database has it.
+
 **Flows in use.** The build's flow databases hold 93,154 elementary flows; the inventory
 uses 1,927. The openLCA, ILCD and SimaPro files hold the flows in use. The Brightway
 package holds the databases whole.

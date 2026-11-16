@@ -254,6 +254,13 @@ simapro = "Resources"
 categories = ["land use"]
 simapro = "Resources"
 
+# Biotic resources of EF 3.1 (standing wood). The mapping of sentier-mappings links no flow of
+# BAFU to them; the links of Brightway Flows do (two flows, 237 exchanges), so a build of the
+# second linking holds them. SimaPro keeps biotic resources with the raw materials.
+[[compartment]]
+categories = ["biota"]
+simapro = "Resources"
+
 # BAFU's own compartments, on flows that have no EF 3.1 flow (the `-residual` database)
 [[compartment]]
 categories = ["emissions to air"]

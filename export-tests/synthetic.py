@@ -260,6 +260,21 @@ def with_ef_compartments(flows, inventory):
     )
 
 
+def with_letters_the_simapro_file_lacks(flows, inventory):
+    """Add emissions whose names have letters outside Windows-1252, as Brightway Flows has."""
+    flows["lactone"] = _flow("Γ-butyrolactone", ("emissions to water", "river"), "kilogram")
+    flows["hch"] = _flow("α-hexachlorocyclohexane", ("air",), "kilogram")
+    flows["co2-sub"] = _flow("CO₂ of a made-up kind", ("air",), "kilogram")
+    for position, code in enumerate(("lactone", "hch", "co2-sub")):
+        inventory["heat"]["_exchanges"].append(("biosphere", code, 0.125 * (position + 1)))
+
+
+def with_a_name_no_rule_writes(flows, inventory):
+    """Add an emission whose name has a character that no rule says how to write."""
+    flows["snow"] = _flow("Snow ☃, made up", ("air",), "kilogram")
+    inventory["heat"]["_exchanges"].append(("biosphere", "snow", 0.25))
+
+
 def with_an_undeclared_compartment(flows, inventory):
     """Add an emission into a compartment that no table names."""
     flows["glow"] = _flow("Light, at night", ("sky",), "square meter")

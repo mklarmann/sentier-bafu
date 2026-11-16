@@ -568,6 +568,14 @@ is BAFU's chlorine to air.
    path runs under the second linking since 15 November 2026 (`release --linking
    brightway-flows`): the comparison of two builds explains each score with the links that
    were installed, whichever linking that was, and the exports are written and read back.
+   On BAFU:2026 v1 the whole path passed under it on 16 November 2026: 188 exchanges
+   changed and none unexplained, and all five files read back and match. Two things had to
+   be said first, both in the SimaPro file. The EF 3.1 compartment `biota` (two flows of
+   standing wood) had no section; it is declared now, under Resources. And one flow of
+   Brightway Flows, "Γ-butyrolactone", has a letter that Windows-1252 lacks: the writer put
+   "?" for it and the read-back refused the file. Such a letter is spelled out now
+   ("Gamma-butyrolactone"), the manifest of the export lists each flow written so, and a
+   character that no rule writes stops the SimaPro file with its name.
    Nothing built with it is kept under a tag. The data file of the second linking is derived
    from Brightway Flows 1.1.0 (ODbL); the permission recorded for the crosswalk has not been
    asked for it.

@@ -74,6 +74,7 @@ import resource
 import sys
 import tempfile
 import time
+import unicodedata
 import uuid
 import zipfile
 from collections import Counter
@@ -254,6 +255,53 @@ def used_flows(nodes):
     return used
 
 
+SIMAPRO_ENCODING = "cp1252"  # Windows-1252: what a SimaPro CSV file is written in
+_GREEK = re.compile(r"GREEK (CAPITAL|SMALL) LETTER ([A-Z]+)")
+# the Greek letter mu is the micro sign the encoding has: the same glyph, and not "mu"
+_SAME_GLYPH = {"\u03bc": "\u00b5"}
+
+
+def simapro_text(text):
+    """A text as a SimaPro CSV file can hold it, and the characters of it that it can't.
+
+    The file is written in Windows-1252, and the writer puts "?" for a character that
+    encoding lacks: a flow would then be read under another name than it has. A Greek
+    letter is spelled out instead ("Γ-butyrolactone" is "Gamma-butyrolactone", "α" is
+    "alpha"; mu is the micro sign the encoding has), and a character that is another form of
+    one the encoding has is written as that one ("CO₂" is "CO2"). Any other is returned in
+    the second place, unchanged in the text: no rule says how to write it.
+    """
+    written, lost = [], []
+    for character in text:
+        try:
+            character.encode(SIMAPRO_ENCODING)
+            written.append(character)
+            continue
+        except UnicodeEncodeError:
+            pass
+        greek = _GREEK.fullmatch(unicodedata.name(character, ""))
+        plain = unicodedata.normalize("NFKD", character)
+        if character in _SAME_GLYPH:
+            written.append(_SAME_GLYPH[character])
+        elif greek:
+            word = greek[2].lower()
+            written.append(word.capitalize() if greek[1] == "CAPITAL" else word)
+        elif plain != character and _fits_simapro(plain):
+            written.append(plain)
+        else:
+            written.append(character)
+            lost.append(character)
+    return "".join(written), lost
+
+
+def _fits_simapro(text):
+    try:
+        text.encode(SIMAPRO_ENCODING)
+    except UnicodeEncodeError:
+        return False
+    return True
+
+
 def simapro_flows(nodes, labels):
     """`{flow key: (section, name, subcompartment)}` for the elementary flows in use.
 
@@ -261,12 +309,14 @@ def simapro_flows(nodes, labels):
     CSV writer's own rule applies (it knows `air`, `water`, `soil`, `natural resource`).
     A compartment neither knows stops the export: the writer would put it under air.
     SimaPro tells flows apart by name and compartment, so two flows that would be written
-    alike get their code appended and stay two flows in the file.
+    alike get their code appended and stay two flows in the file. A name is written as
+    the file's encoding can hold it (`simapro_text`); one that it can't hold stops the
+    export, because the writer would put "?" in its place.
     """
     writer = {name: section for section, name in SIMAPRO_COMPARTMENT.items()}
     writer |= {"resource": "Resources", "land": "Resources", "biotic": "Resources"}
     writer |= {"in ground": "Resources", "in water": "Resources", "in air": "Resources"}
-    rows, unknown = {}, Counter()
+    rows, unknown, unwritable = {}, Counter(), {}
     for key in used_flows(nodes):
         categories = tuple(str(c) for c in nodes[key].get("categories") or ())
         lowered = tuple(c.strip().lower() for c in categories)
@@ -279,18 +329,41 @@ def simapro_flows(nodes, labels):
             unknown[" / ".join(categories[:2]) or "(none)"] += 1
             continue
         sub = categories[-1] if len(categories) > depth else ""
-        rows[key] = (section, _clean(nodes[key].get("name")), _clean(sub))
+        (name, lost), (sub, lost_sub) = (
+            simapro_text(_clean(text)) for text in (nodes[key].get("name"), sub)
+        )
+        if lost or lost_sub:
+            unwritable[_clean(nodes[key].get("name"))] = sorted(set(lost + lost_sub))
+        rows[key] = (section, name, sub)
     if unknown:
         listed = ", ".join(f"{name!r} ({count} flows)" for name, count in sorted(unknown.items()))
         raise ExportError(
             f"No SimaPro section is declared for these compartments: {listed}. "
             f"Add them to {LABELS.name}."
         )
+    if unwritable:
+        listed = ", ".join(
+            f"{name!r} ({' '.join(f'U+{ord(c):04X}' for c in lost)})"
+            for name, lost in sorted(unwritable.items())[:10]
+        )
+        raise ExportError(
+            f"{len(unwritable)} elementary flow(s) have a name or subcompartment with a "
+            f"character a SimaPro CSV file (Windows-1252) can't hold, and no rule says how to "
+            f"write it: {listed}. Extend `simapro_text`."
+        )
     shared = Counter(rows.values())
     return {
         key: row if shared[row] == 1 else (row[0], f"{row[1]} | {key[1]}", row[2])
         for key, row in rows.items()
     }
+
+
+def simapro_spelled_out(nodes):
+    """The elementary flows in use whose name the SimaPro file holds in other letters than
+    the database: `[{"name", "written_as"}]`, by name."""
+    names = {_clean(nodes[key].get("name")) for key in used_flows(nodes)}
+    found = [(name, simapro_text(name)[0]) for name in sorted(names)]
+    return [{"name": name, "written_as": written} for name, written in found if written != name]
 
 
 def declared_unit_differences(nodes, labels):
@@ -1372,9 +1445,10 @@ def export_release(
         for row in differences
         if row["same_quantity"]
     )
-    flows = Counter()
+    flows, spelled_out = Counter(), []
     if formats["simapro"]["status"] != "not written" and stats.get("simapro") is not FAILED:
         flows = Counter(" | " in row[1] for row in simapro_flows(nodes, labels).values())
+        spelled_out = simapro_spelled_out(nodes)
     manifest = {
         "schema": SCHEMA,
         "status": "completed"
@@ -1426,8 +1500,10 @@ def export_release(
         },
         "simapro": {
             "flow_names": "elementary flows keep the Brightway names and subcompartments; "
-            "flows that share both carry their code",
+            "flows that share both carry their code; a letter that Windows-1252 lacks is "
+            "spelled out",
             "flows_named_with_their_code": flows[True],
+            "flows_with_a_letter_spelled_out": spelled_out,
             "product_naming": simapro_naming,
             "links": links,
             "written": None if stats.get("simapro") in (None, FAILED) else stats["simapro"],

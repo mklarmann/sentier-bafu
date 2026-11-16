@@ -885,6 +885,60 @@ def test_compartment_that_no_table_names_fails_simapro_and_leaves_the_others(tmp
         assert manifest["checks"][kind]["passed"]
 
 
+def test_a_letter_the_simapro_file_lacks_is_spelled_out_and_read_back(tmp_path):
+    manifest, out, databases = export(tmp_path, synthetic.with_letters_the_simapro_file_lacks)
+    assert manifest["status"] == "completed", manifest["checks"]
+    assert manifest["checks"]["simapro"]["passed"]
+    csv = step.read_simapro(path(out, manifest, "simapro"))
+    names = {row["name"] for row in csv["processes"][f"{INVENTORY}|heat"]["elementary"]}
+    assert {"Gamma-butyrolactone", "alpha-hexachlorocyclohexane", "CO2 of a made-up kind"} <= names
+    # no name of the file holds the "?" the writer puts for a character it can't encode
+    assert not [name for name in names if "?" in name]
+    assert manifest["simapro"]["flows_with_a_letter_spelled_out"] == [
+        {"name": "CO₂ of a made-up kind", "written_as": "CO2 of a made-up kind"},
+        {"name": "Γ-butyrolactone", "written_as": "Gamma-butyrolactone"},
+        {"name": "α-hexachlorocyclohexane", "written_as": "alpha-hexachlorocyclohexane"},
+    ]
+    # the other formats hold the name as the database has it
+    flow_id, _ = step.olca_ids(step.NAMESPACE)
+    flows = step.read_openlca(path(out, manifest, "openlca"))["flows"]
+    assert flows[flow_id((FLOWS, "lactone"))].name == "Γ-butyrolactone"
+
+
+def test_the_writer_alone_writes_a_question_mark_and_the_check_says_so(tmp_path):
+    from bw_interchange_export import export_simapro_csv
+
+    manifest, out, databases = export(tmp_path, synthetic.with_letters_the_simapro_file_lacks)
+    nodes, marks = step.all_nodes(databases), (CREDIT, "Modified Data")
+    export_simapro_csv(
+        path(out, manifest, "brightway"), tmp_path / "bare.csv", quiet=True, product_naming="linked"
+    )
+    assert "?-butyrolactone" in (tmp_path / "bare.csv").read_text(encoding="cp1252")
+    problems, _ = step.check_simapro(tmp_path / "bare.csv", nodes, marks, step.load_labels())
+    assert f"{(INVENTORY, 'heat')}: elementary flows differ from the database" in problems
+
+
+def test_a_name_that_no_rule_writes_fails_simapro_and_leaves_the_others(tmp_path):
+    manifest, out, _ = export(tmp_path, synthetic.with_a_name_no_rule_writes)
+    assert manifest["status"] == "failed"
+    entry = manifest["formats"]["simapro"]
+    assert (entry["status"], entry["stage"]) == ("failed", "write")
+    assert "1 elementary flow(s) have a name or subcompartment with a character" in entry["error"]
+    assert "'Snow ☃, made up' (U+2603)" in entry["error"]
+    assert not list(out.glob("*.csv"))
+    for kind in ("brightway", "openlca", "ilcd"):
+        assert manifest["formats"][kind]["status"] == "completed"
+
+
+def test_a_text_is_written_as_the_simapro_file_can_hold_it():
+    assert step.simapro_text("Γ-butyrolactone") == ("Gamma-butyrolactone", [])
+    # the Greek mu (U+03BC) is written as the micro sign (U+00B5), which the encoding has
+    assert step.simapro_text("β-HCH, 5 \u03bcg, Ω") == ("beta-HCH, 5 \u00b5g, Omega", [])
+    assert step.simapro_text("Äthan, 20 °C, 5 µm, café") == ("Äthan, 20 °C, 5 µm, café", [])
+    assert step.simapro_text("CO₂ and m³") == ("CO2 and m³", [])
+    assert step.simapro_text("Łódź ☃") == ("Łódź ☃", ["Ł", "ź", "☃"])
+
+
 # --- An activity with a second product -----------------------------------------------------
 
 
