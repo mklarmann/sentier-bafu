@@ -55,7 +55,8 @@ class Located:
 def locate(bridge: Mapping[str, BridgeEntry], methods: tuple[MethodSpec, ...]) -> Located:
     """Give each linked flow that names a country the target and the factors of that country.
 
-    Idempotent: a link that already ends on a located target is left as it is."""
+    A second pass changes nothing and reports the same: a link that already ends on the
+    target of a country is left as it is, and its target is among `nodes` again."""
     named = {
         (entry.target_code, entry.target_location)
         for entry in bridge.values()
@@ -63,6 +64,13 @@ def locate(bridge: Mapping[str, BridgeEntry], methods: tuple[MethodSpec, ...]) -
     }
     with_factor = sorted(pair for pair in named if any(pair in spec.located for spec in methods))
     nodes = {located_code(code, location): (code, location) for code, location in with_factor}
+    # what an earlier pass located: the code says which flow, the link which country
+    done = {
+        entry.target_code: (entry.target_code.rsplit(SEPARATOR, 1)[0], entry.target_location)
+        for entry in bridge.values()
+        if entry.target_location and SEPARATOR in entry.target_code
+    }
+    nodes |= done
 
     links: dict[str, BridgeEntry] = {}
     flows = flows_without = 0
@@ -73,6 +81,7 @@ def locate(bridge: Mapping[str, BridgeEntry], methods: tuple[MethodSpec, ...]) -
             flows += 1
         else:
             links[source] = entry
+            flows += entry.target_code in done
             flows_without += pair in named
     if not nodes:
         return Located(

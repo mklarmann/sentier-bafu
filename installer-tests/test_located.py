@@ -74,6 +74,7 @@ def test_two_flows_of_one_country_share_one_target_and_a_second_pass_changes_not
     assert len(once.nodes) == 1 and once.flows == 2
     twice = locate(once.bridge, once.methods)
     assert twice.bridge == once.bridge
+    assert (dict(twice.nodes), twice.flows, twice.flows_without) == (dict(once.nodes), 2, 0)
     assert [dict(m.cfs) for m in twice.methods] == [dict(m.cfs) for m in once.methods]
 
 
