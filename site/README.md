@@ -95,6 +95,8 @@ python3 scripts/shared_files.py check                                 # there: t
 - `take` writes the files as they are in that commit and records the commit, the sets and every file's checksum in the repository's own `site/shared.json`. A later `take` without `--set` takes the same sets again at a newer commit.
 - `check` belongs in the repository's checks. It fails when a copy was edited or a file of a shared folder was added by hand. So a change to a shared file can only be made here, and every repository gets it with its next `take`.
 - Here, `check` says whether every file a set names exists; the unit tests run it.
+- The first time, a repository has no `scripts/shared_files.py` of this kind yet. It copies the script once by hand (`git -C ../sentier-bafu show COMMIT:scripts/shared_files.py > scripts/shared_files.py`) and then takes its sets, which bring the script with them from then on. A repository that took the whole site before the sets had names takes the set `site` without being told.
+- Two things are the taking repository's own to settle: `docs/before-after.md` must not be ignored by its `.gitignore`, and a test of its own that lists its own scripts must no longer list `scripts/shared_files.py` among them.
 
 To change a shared file: change it here, with its test; then, in each repository that takes the set, `take` the new commit in a pull request of its own. The tests of that repository say whether the change fits it.
 
