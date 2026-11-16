@@ -4,6 +4,12 @@ This page is the same file in every Sentier dataset repository that uses the com
 says how to read a comparison, how it is counted, what the files hold and how a repository
 writes and shows them.
 
+**Where this tool lives.** Since 16 November 2026 its home is a repository of its own,
+[sentier-dev/sentier-diagnostics](https://github.com/sentier-dev/sentier-diagnostics), built
+on the needs of all the dataset repositories. What is described here is the version it
+starts from. Changes to the format are made there, not in a dataset repository; the last
+section lists what is known to be missing.
+
 A comparison answers one question: **what did a change to the data do to the results?** The
 same items are calculated twice, in the same indicators, and the two sets of results are
 set side by side. The two sides can be:
@@ -251,6 +257,25 @@ and its counts per class; the script finds the pair for the causes a reader tick
 
 ## What is not in it yet
 
+These are handed to sentier-diagnostics as they stand; none is fixed here.
+
+- **Must and may.** A stated claim is treated as "these values must move", and a claim that
+  was worked out as "these may move". A stated claim that only allows a move ("water use
+  may move, for any product") is therefore reported as unmet wherever nothing moved. A scope
+  entry has to say which it is.
+- **Items on one side only.** A result that is missing before or after is not compared, and
+  the file does not say how many such items there are.
+- **A threshold for what matters.** The one threshold separates the noise of two
+  calculations from a change. It does not say whether a change is large enough to matter.
+- **A move from zero.** Where the result before is zero a move has no relative size. An
+  entry with a largest move then never fits, and one without fits by its direction. No rule
+  is written for it.
+- **More than one reference**, and whether "closer to the reference" belongs on the page of
+  any step but the first.
+- **"Only the data differs"** is a fixed sentence of the page. It is not true where one
+  database is built in two ways.
+- **The script against the rules.** No test runs the page's script and compares it with the
+  Python rules; it was checked by hand.
 - **A reason for a single item**, beyond the item's `note`.
 - **A comparison of more than two states at once.** A review is a set of pairs; three states
   side by side on one page is not a thing the format describes.

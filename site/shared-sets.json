@@ -19,7 +19,7 @@
       ]
     },
     "before-after": {
-      "about": "Two sets of results over the same items, compared: the format and the counting, the six classes of a value against what was claimed, the page without a frame, its script and its styles, and how to read it. For a site whose frame is its own.",
+      "about": "Two sets of results over the same items, compared: the format and the counting, the six classes of a value against what was claimed, the page without a frame, its script and its styles, and how to read it. For a site whose frame is its own. Its home is sentier-dev/sentier-diagnostics since 16 November 2026: the format is changed there, and this set is the version that repository starts from.",
       "includes": [
         "run"
       ],
@@ -34,7 +34,7 @@
       "folders": []
     },
     "review": {
-      "about": "Reviewing a change: the index of builds, causes with their claims and the pairs that were compared, its page and its script. It brings the comparison with it.",
+      "about": "Reviewing a change: the index of builds, causes with their claims and the pairs that were compared, its page and its script. It brings the comparison with it. Its home is sentier-dev/sentier-diagnostics since 16 November 2026: the format is changed there, and this set is the version that repository starts from.",
       "includes": [
         "before-after"
       ],

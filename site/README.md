@@ -85,6 +85,8 @@ The shared files, which a sibling copies as they are:
 | `run` | The formats of what a run keeps of itself (`scripts/runrecord`), without a page. | A repository that only writes such files. |
 | `sharing` | `scripts/shared_files.py`. | Every repository that takes a set. |
 
+The comparison (the sets `before-after` and `review`) has a home of its own since 16 November 2026, [sentier-dev/sentier-diagnostics](https://github.com/sentier-dev/sentier-diagnostics). Its format is changed there and no longer here, and a repository that wants the comparison waits for what that repository gives out; the two sets stay in this list until this repository itself takes the comparison from there. For everything else the rule below holds.
+
 This repository is the source: a shared file is written and tested here. In a repository that takes a set, the files are copies and are never edited. Three commands do all of it:
 
 ```sh
