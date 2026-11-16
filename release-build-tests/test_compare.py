@@ -4,6 +4,7 @@ Synthetic tables only. The tests that need pandas are skipped where it isn't ins
 """
 
 import importlib.util
+import json
 import sys
 import unittest
 from collections import namedtuple
@@ -538,6 +539,100 @@ class Tables(unittest.TestCase):
         scores["methods"][0]["datasets_moved"] = 2
         with self.assertRaisesRegex(ValueError, "the comparison counted 2 moved of 3"):
             account()
+
+    def chain_inputs(self):
+        """What compare_scores gives the writers, on the synthetic tables."""
+        import pandas as pd
+
+        rows = compare.compare_rows(self.base, self.cand, self.steps)
+        seeds = compare.relevant_seeds(rows["rows"], self.effective, ["climate", "fossils"])
+        graph = compare.consumer_graph(self.base[1], self.cand[1])
+        index = pd.Index(["farm", "gas", "mix"], name="code")
+        before = pd.DataFrame(
+            {"climate": [300.0, 0.0, 2.0], "fossils": [5.0, 36.0, 72.0]}, index=index
+        )
+        after = pd.DataFrame(
+            {"climate": [1.0, 0.0, 2.0], "fossils": [0.1, 0.0, 72.0 * (1 + 1e-9)]}, index=index
+        )
+        names = {
+            "farm": {"name": "Fruit", "location": "CH"},
+            "gas": {"name": "Gas", "location": "NO"},
+        }
+        moved, reach = {}, {}
+        scores = compare.compare_scores(before, after, seeds, graph, names, moved, reach)
+        comparison = {
+            "scores": scores,
+            "rows": rows["summary"],
+            "builds": {"candidate": {"datasets": 3}},
+            "linked_on_the_declared_flow": {"exchanges": 2},
+            "elementary_flows": {"exchanges_that_lost_their_ef_3_1_flow": 0},
+        }
+        records = (
+            {"databases": {"inventory": "x-2026"}, "tools": {"this repository": "abc1234"}},
+            {"databases": {"inventory": "x-2026-patched"}, "release": {"name": "X:2026"}},
+        )
+        steps = {AMOUNT: {"kind": "patch", "description": "Correct the disposal."}}
+        units = {"farm": "kg", "gas": "MJ", "mix": "MJ"}
+        return comparison, records, (before.to_dict(), after.to_dict()), names, steps, reach, units
+
+    @unittest.skipUnless(
+        importlib.util.find_spec("sentier_diagnostics"), "needs sentier-diagnostics"
+    )
+    def test_the_comparison_is_written_as_a_chain_in_the_shared_format(self):
+        import tempfile
+
+        from release_build import diagnostics_account as account
+        from sentier_diagnostics import fileformat
+
+        comparison, records, scores, names, steps, reach, units = self.chain_inputs()
+        data = account.chain(
+            comparison, records, scores, names, {"climate": "kg CO2 eq"}, steps, reach, units
+        )
+        self.assertEqual(fileformat.errors(data), [])
+        self.assertEqual([s["id"] for s in data["states"]], ["before", "after"])
+        (step,) = data["steps"]
+        # the claim is the comparison's reach (farm in climate; farm, gas and mix in fossil
+        # resources), published as a count only
+        self.assertEqual((step["claim"]["reach"], step["claim"]["scope"][0]["items"]), (3, None))
+        climate = data["counts"]["steps"]["fixes"]["climate"]
+        self.assertEqual(climate["verdicts"]["as claimed"], 1)
+        self.assertEqual(climate["verdicts"]["not claimed"], 0)
+        # with a build of the world's factors, the countries' factors are a step of their own,
+        # claimed in the categories the install report names
+        with tempfile.TemporaryDirectory() as tmp:
+            world, provider = Path(tmp) / "world", Path(tmp) / "provider"
+            for folder in (world / "audit", provider / "logs"):
+                folder.mkdir(parents=True)
+            (world / "audit" / "scores.csv").write_text(
+                "code,climate,fossils\nfarm,300,5\ngas,0,36\nmix,1.5,72\n"
+            )
+            report = {"coverage": {"located_by_method": [["climate", 1], ["fossils", 0]]}}
+            (provider / "logs" / "install-report.json").write_text(json.dumps(report))
+            data = account.chain(
+                comparison, records, scores, names, {}, steps, reach, units,
+                world=world, candidate=provider,
+            )  # fmt: skip
+            self.assertEqual(fileformat.errors(data), [])
+            self.assertEqual([s["id"] for s in data["states"]], ["world", "before", "after"])
+            located = data["steps"][0]
+            self.assertEqual(located["claim"]["text"], "Climate may move; nothing else moves.")
+            self.assertEqual(located["claim"]["scope"][0]["indicators"], ["climate"])
+            # mix moved 1.5 -> 2 in climate: as claimed; nothing moved in fossils
+            self.assertEqual(
+                data["counts"]["steps"]["located-factors"]["climate"]["verdicts"]["as claimed"], 1
+            )
+            # an install report that does not say where the countries' factors are refuses
+            (provider / "logs" / "install-report.json").write_text(json.dumps({"coverage": {}}))
+            with self.assertRaisesRegex(account.ChainError, "located_by_method"):
+                account.chain(
+                    comparison, records, scores, names, {}, steps, reach, units,
+                    world=world, candidate=provider,
+                )  # fmt: skip
+        # a value that moved outside every reach where the comparison says all is explained
+        # stops the file: the two must agree
+        narrowed = {method: {} for method in reach}
+        with self.assertRaisesRegex(account.ChainError, "outside the reach of every step"):
+            account.chain(comparison, records, scores, names, {}, steps, narrowed, units)
 
     def test_a_contribution_is_compared_with_the_patched_copy_under_its_own_name(self):
         from release_build import before_after_account

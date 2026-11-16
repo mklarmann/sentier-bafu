@@ -122,6 +122,8 @@ def lines(name: str, out: Path) -> list[str]:
     try:
         if name == "provider build":
             return build(out / "provider")
+        if name == "world factors build":
+            return build(out / "world-factors")
         if name == "patched build":
             return patch_run(out / "patched" / "release-summary.json") + build(out / "patched")
         if name == "comparison":

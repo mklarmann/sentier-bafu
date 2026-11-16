@@ -354,7 +354,10 @@ class WholePathRecord(unittest.TestCase):
         self.assertEqual(
             steps["exports"]["reason"], "the patched build wrote no database to export"
         )
-        self.assertEqual(self.calls, ["provider-build", "patched-build"])
+        # the build with the world's factors runs beside the provider build, whatever the
+        # patched build does
+        self.assertEqual(self.calls, ["provider-build", "world-factors-build", "patched-build"])
+        self.assertEqual(steps["world factors build"]["status"], "completed")
         manifest = json.loads((self.root / "run" / "manifest.json").read_text())
         self.assertEqual(manifest["status"], "failed")
         self.assertIn("step patched build failed: the build wrote no record", manifest["problems"])

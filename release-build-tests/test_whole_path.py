@@ -113,6 +113,7 @@ class WholePath(unittest.TestCase):
             [step["name"] for step in steps],
             [
                 "provider build",
+                "world factors build",
                 "patched build",
                 "written files",
                 "patch run",
@@ -173,8 +174,8 @@ class WholePath(unittest.TestCase):
         self.assertEqual(
             {step["name"]: step["status"] for step in manifest["steps"]},
             dict.fromkeys(
-                ("provider build", "patched build", "written files", "patch run")
-                + ("comparison", "exports"),
+                ("provider build", "world factors build", "patched build", "written files")
+                + ("patch run", "comparison", "exports"),
                 "completed",
             ),
         )
@@ -340,6 +341,55 @@ class WholePath(unittest.TestCase):
         self.assertEqual(layer["kind"], "contribution")
         self.assertTrue(layer["claim"]["derived"])
         self.assertGreaterEqual(layer["claim"]["reach"], 1)
+
+    def check_diagnostics(self, *files):
+        """`sentier-diagnostics check`, in the project's environment, which holds the package."""
+        import build_release
+
+        venvs = os.environ.get("RELEASE_BUILD_VENVS")
+        tool = build_release.Project(Path(venvs) if venvs else None)
+        command = tool.command("python", "-m", "sentier_diagnostics", "check", *map(str, files))
+        done = subprocess.run(
+            command, capture_output=True, text=True, env={**os.environ, **tool.env()}
+        )
+        self.assertEqual(done.returncode, 0, done.stdout[-2000:] + done.stderr[-2000:])
+
+    def test_the_comparison_is_kept_as_a_chain_of_states_in_the_shared_format(self):
+        self.check_diagnostics(
+            self.out / "diagnostics.json", self.contribution / "diagnostics.json"
+        )
+        data = self.load("diagnostics.json")
+        self.assertEqual(self.load("results", "diagnostics.json"), data, "kept with what may leave")
+        # BAFU's release with the world's factors, with the countries' factors, the patched copy
+        self.assertEqual([s["id"] for s in data["states"]], ["world", "before", "after"])
+        located, fixes = data["steps"]
+        self.assertEqual((located["id"], fixes["id"]), ("located-factors", "fixes"))
+        # the claim of the countries' factors is read from the install report, not typed
+        categories = self.load("provider", "logs", "install-report.json")["coverage"][
+            "located_by_method"
+        ]
+        said = sorted({i for e in located["claim"]["scope"] for i in e["indicators"]})
+        self.assertEqual(said, sorted(m for m, n in categories if n))
+        self.assertEqual(self.load("world-factors", "build.json")["install"]["located"], False)
+        # the patches' claim is the comparison's reach, its list kept here
+        self.assertTrue(all(e["items"] is None for e in fixes["claim"]["scope"]))
+        comparison = self.load("comparison.json")
+        unexplained = sum(
+            m["moved_by_step"].get("unexplained", 0) for m in comparison["scores"]["methods"]
+        )
+        outside = sum(
+            b["verdicts"].get("not claimed", 0) for b in data["counts"]["steps"]["fixes"].values()
+        )
+        self.assertLessEqual(outside, unexplained)
+        # the patch that moves results moves them as claimed
+        moved = sum(
+            b["verdicts"].get("as claimed", 0) for b in data["counts"]["steps"]["fixes"].values()
+        )
+        self.assertGreater(moved, 0)
+        # the contribution's comparison is a chain of its own: the patched copy, then with it
+        own = json.loads((self.contribution / "diagnostics.json").read_text())
+        self.assertEqual(len(own["states"]), 2)
+        self.assertEqual(own["steps"][0]["kind"], "contribution")
 
     def test_the_builds_and_the_pairs_that_were_compared_are_kept_as_a_review(self):
         sys.path.insert(0, str(REPOSITORY / "scripts"))
@@ -660,8 +710,11 @@ class WholePath(unittest.TestCase):
                 f"{LAYER.lower()}-audit.json",
                 f"{LAYER.lower()}-before-after.json",
                 f"{LAYER.lower()}-comparison.json",
+                f"{LAYER.lower()}-diagnostics.json",
                 f"{LAYER.lower()}-exports-manifest.json",
                 "comparison.json",
+                # the same comparison as a chain of states, in the format of sentier-diagnostics
+                "diagnostics.json",
                 "exports-manifest.json",
                 "manifest.json",
                 "patch-run.md",
@@ -671,6 +724,7 @@ class WholePath(unittest.TestCase):
                 "review.json",
                 "run-summary.json",
                 "run.json",
+                "world-factors-audit.json",
             ],
         )
 

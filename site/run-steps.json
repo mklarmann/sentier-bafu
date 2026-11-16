@@ -11,6 +11,11 @@
       "title": "BAFU's release, as it is",
       "text": "BAFU's files are downloaded and checked against a known checksum. Nothing in them is changed. A Brightway database is built from them and checked. Every later step is measured against it."
     },
+    "world factors build": {
+      "short": "World factors",
+      "title": "BAFU's release, with the world's factors",
+      "text": "The same database is built once more, with every elementary flow on its world-wide factor, also a flow that names a country. The comparison then shows what the countries' own factors change, as a step of its own with its claim, and nothing changes silently."
+    },
     "patched build": {
       "short": "Changes applied",
       "title": "Import fixes and community patches",
