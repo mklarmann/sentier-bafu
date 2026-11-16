@@ -2,6 +2,13 @@
 # GitHub remains the canonical source repository.
 image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 
+# The repository root also holds the bafu-community-fixes package (Python >= 3.14,
+# `.python-version`). These jobs check the review workspace only: keep them on the
+# image's Python 3.12 and outside the package project, as the GitHub Documentation
+# workflow does. The package itself is tested by .github/workflows/ci.yml.
+variables:
+  UV_PYTHON: "3.12"
+
 stages: [test, deploy]
 
 validate-community:
@@ -10,12 +17,12 @@ validate-community:
     - python3 scripts/community.py check
     - python3 -m unittest discover -s community/tests
     - python3 scripts/build_checks.py community/templates/build-audit.json
-    - uv run --with pandas==2.2.3 --with pyarrow==19.0.1 python3 -m unittest discover -s tests
+    - uv run --no-project --with pandas==2.2.3 --with pyarrow==19.0.1 python3 -m unittest discover -s registry-tests
 
 publish-pages:
   stage: deploy
   script:
-    - uv run --with markdown==3.7 scripts/build_site.py --out public
+    - uv run --no-project --with markdown==3.7 scripts/build_site.py --out public
     - python3 scripts/check_site.py public
   pages:
     publish: public

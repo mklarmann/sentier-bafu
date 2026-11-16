@@ -27,8 +27,10 @@ Start with [the synthetic audit example](../community/templates/build-audit.json
 `audit_registry.py` reads the final parquet registry produced by sentier-brightway. It checks manifest counts, consumer/target identities, finite amounts and CFs, duplicate factors and core CO2/CH4/N2O air-flow coverage in the headline EF 3.1 climate method. It reports missing coverage for every method without assuming that every substance should receive a factor in every category. It emits counts and hashes, not inventory amounts or factor tables.
 
 ```sh
-uv run --with pandas==2.2.3 --with pyarrow==19.0.1 scripts/audit_registry.py path/to/export --out .local/new-audit.json
+uv run --no-project --python 3.12 --with pandas==2.2.3 --with pyarrow==19.0.1 scripts/audit_registry.py path/to/export --out .local/new-audit.json
 ```
+
+The usage line in the script's docstring omits `--no-project --python 3.12`; the script is left unchanged because the export audit pins its SHA-256. Use the command above.
 
 The [measured export audit](runs/bafu-export-audit.json) passed on the previously generated, pinned baseline: **11,947 processes; 11,947 production, 114,369 technosphere and 293,747 biosphere exchanges**. All 420,063 exchange rows were retained in this exported registry. No missing core-gas factors were found under the stated policy. The report records input source pins, script and artifact hashes and per-method coverage.
 

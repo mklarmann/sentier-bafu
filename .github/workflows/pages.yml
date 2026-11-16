@@ -20,10 +20,19 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
+        with:
+          # The integration receipt check reads both source histories (#19).
+          fetch-depth: 0
       - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           python-version: "3.12"
           enable-cache: false
+      - name: Check the integration receipt (#19)
+        # Checks the tree of the commit that last wrote the receipt, so the check
+        # stays meaningful after later changes land on main.
+        run: |
+          rev="$(git log -1 --format=%H -- docs/plans/bafu-community/integration-receipt.json)"
+          uv run --no-project python scripts/check_integration_receipt.py --rev "$rev"
       - name: Check contribution records
         run: |
           uv run --no-project python scripts/community.py check
