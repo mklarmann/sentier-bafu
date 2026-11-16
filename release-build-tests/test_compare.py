@@ -483,7 +483,15 @@ class Tables(unittest.TestCase):
         self.assertEqual(fossils["classes"], {"unchanged": 1, "as claimed": 2})
         self.assertEqual(farm["classes"], {"climate": "as claimed", "fossils": "as claimed"})
         self.assertEqual(farm["moved"], ["climate", "fossils"])
-        self.assertEqual(data["noise"]["measured"], False)
+        # noise is not measured, and the file claims nothing about it that was not measured
+        self.assertEqual(
+            data["noise"],
+            {
+                "measured": False,
+                "between": None,
+                "note": "Both builds were made in one run, on one machine.",
+            },
+        )
         self.assertEqual(data["rows"]["differ"], rows["summary"]["exchange_rows_changed"])
         self.assertEqual(len(data["notes"]), 2)
         # a page lists only so many datasets with their results, and says how many it left out

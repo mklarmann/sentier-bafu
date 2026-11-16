@@ -240,7 +240,8 @@ def account(
         },  # fmt: skip
         threshold=comparison["scores"]["tolerance"],
         floors=0.0,  # two builds of the same data: every difference above the threshold counts
-        noise={"note": "The threshold lies above what two builds of one state differ by."},
+        # no state is built twice, so nothing is said about how far two builds of one lie apart
+        noise={"note": "Both builds were made in one run, on one machine."},
         causes=causes,
         item_causes={
             code: [ids[name] for name in why if name in ids] for code, why in explained.items()
