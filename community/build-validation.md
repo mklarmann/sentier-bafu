@@ -48,3 +48,17 @@ The audit emits a **summary_sha256** over the dataset, scope, counts, changes, c
 - **Scenario or forecast:** hold scope fixed and record assumptions, uncertainty and held-out validation. A scenario is not automatically a correction of the provider's source dataset.
 
 Publish only permitted aggregate evidence and metadata. Inventories, licensed background files and confidential partner evidence stay local. A passing technical check is not partner consensus; [the review workflow](workflow.md) records those decisions separately.
+
+## Compare scores with BAFU's published results
+
+BAFU computed its published LCIA results in openLCA, with the EF 3.1 package shipped in its openLCA distribution. The current Sentier route (sentier-brightway with the sentier-mappings EF 3.1 bridge) uses the JRC's EF 3.1 factors. Matching BAFU's numbers is not a goal: the comparison attributes each difference to the route, BAFU's inventory, BAFU's workbook or a method difference, and the route is not changed to follow openLCA.
+
+The [score comparison](runs/sentier-brightway-backtest-2026-10-21.json) (21 October 2026) scored all 11,947 processes in 25 EF 3.1 categories against BAFU's `LCIA-Results.xlsx` (the June 2026 file). In 13 categories at least 99 % of processes are within ±1 %. Cancer toxicity (2.6 %), water use (22.7 %), ecotoxicity (71.8 %), marine eutrophication (88.5 %) and non-cancer toxicity (95.1 %) are not.
+
+The [attribution run](runs/openlca-attribution-2026-10-26.json) shows where that comes from. BAFU's own openLCA database, scored with the package it ships, reproduces BAFU's published values for 99.7–99.8 % of processes in every category. Using that package's number wherever both use the same flow changes none of the five; the differences come from which flow an exchange is assigned to.
+
+- **Method differences.** Unspecified chromium is characterised differently: the route uses EF's chromium flow (the Cr(VI) factors), as decided in sentier-mappings round 7. BAFU applies country-specific water factors, where the route installs global ones.
+- **In the route.** It leaves two water returns unlinked.
+- **In BAFU's files.** The FI gas electricity label error ([#28](https://github.com/sentier-dev/sentier-bafu/issues/28)); the swapped ecotoxicity sub-indicator columns of the June workbook ([#35](https://github.com/sentier-dev/sentier-bafu/issues/35)), which BAFU's corrected July workbook fixes; and ionising-radiation amounts that BAFU's ecoSpold states in Bq and its openLCA database in kBq (F12).
+
+Both runs read the June workbook. Re-run against BAFU's corrected July workbook (26 October), every result is unchanged; the July file differs only in the header labels of the two ecotoxicity sub-indicator columns, which are now correct (F17).

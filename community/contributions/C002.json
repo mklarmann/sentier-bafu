@@ -1,6 +1,6 @@
 {
   "id": "C002",
-  "title": "Integrate the BAFU mapping work with Chris Mutel and reproduce method-specific results",
+  "title": "Integrate the BAFU mapping work with Chris Mutel and compare method-specific results with BAFU's published ones",
   "status": "proposed",
   "baseline": {
     "dataset": "BAFU/UVEK",
@@ -46,7 +46,7 @@
     "baseline-and-run-pins",
     "unit-and-direction-application",
     "method-scoped-fallbacks",
-    "independent-lcia-reproduction",
+    "independent-lcia-comparison",
     "independent-review"
   ],
   "runs": [
@@ -88,7 +88,7 @@
           "evidence_url": "https://github.com/sentier-dev/sentier-bafu/blob/main/community/runs/mutel-mapping-audit.json"
         },
         {
-          "id": "independent-lcia-reproduction",
+          "id": "independent-lcia-comparison",
           "status": "not-run",
           "evidence_url": "https://github.com/sentier-dev/sentier-bafu/blob/main/community/runs/mutel-mapping-audit.json"
         },
