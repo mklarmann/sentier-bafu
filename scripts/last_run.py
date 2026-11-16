@@ -358,18 +358,20 @@ def said(record):
         return f"Last {name}: {record['state']}" + (
             f" ({record['note']})" if record.get("note") else ""
         )
-    have = [
-        what
-        for key, what in (("summary", "its own account"), ("transcript", "transcript"))
-        if record.get(key) is not None
-    ]
+    files = (
+        ("summary", "its own account"),
+        ("transcript", "transcript"),
+        ("before_after", "what it compared"),
+    )
+    have = [what for key, what in files if record.get(key) is not None]
+    have = ", ".join(have[:-1]) + (" and " if have[1:] else "") + "".join(have[-1:])
     if record.get("run") is None:
         started = record["local"].get("started")
-        return f"Last {name}: a run of {started} that was not on GitHub ({' and '.join(have)})"
+        return f"Last {name}: a run of {started} that was not on GitHub ({have})"
     run = record["run"]
     line = (
         f"Last {name}: run {run['id']} of {run.get('started')}, {run.get('conclusion')}; "
-        f"its record: {record['kept']}" + (f" ({' and '.join(have)})" if have else "")
+        f"its record: {record['kept']}" + (f" ({have})" if have else "")
     )
     of_tag = record.get("of_tag")
     if of_tag:

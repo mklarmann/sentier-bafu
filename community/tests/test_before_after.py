@@ -159,6 +159,9 @@ class RecordTests(unittest.TestCase):
         self.assertEqual(last_run.shape_errors(plain), [])
         self.assertIsNone(plain["before_after"])
         self.assertEqual(plain["kept"], "read")
+        # the build log says what was read of each
+        self.assertIn("(its own account, transcript and what it compared)", last_run.said(record))
+        self.assertIn("(its own account and transcript)", last_run.said(plain))
 
     def test_a_comparison_of_another_shape_is_left_out_and_the_run_is_still_shown(self):
         record = a_record(**{before_after.FILE: a_comparison(scores=[1, 2, 3])})
