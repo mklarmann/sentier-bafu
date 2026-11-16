@@ -72,6 +72,20 @@ methods (byte for byte), the same comparison, and the same ILCD and SimaPro file
 978 s on the same machine under load. What differs between two runs is listed in
 [Exports](exports.md).
 
+**The hash of all scores holds on one kind of machine only.** `scores_sha256` in the manifest
+is the hash of every score in full precision. Two builds of one state on the same hardware
+give the same hash (builds 15 and 16 on GitHub). On other hardware they do not: build 17
+ran on a runner that GitHub hosts on Azure, build 20 of 16 November 2026 on one it hosts on
+AWS, and the two hashes differ, though the state is the same. Of the 28 scores each audit
+samples, the two builds agree to 2.8e-7 of the score at worst. So an equal hash proves equal
+scores, and a different hash proves nothing: the audit names the machine under
+`software.platform`, and that is the first thing to look at. The comparison of the two
+builds of one run is not affected. Both are made on one machine, and it counts a score as
+moved only above 1e-6 of the larger of the two, which lies above what the two kinds of
+machine differ by in that sample. A sample of 28 is not all 298,675 scores: what two builds
+of one state differ by over all of them has not been measured, and `before-after.json` says
+of itself that noise was not measured.
+
 ## One run summary
 
 `bafu-fixes run --summary FILE.json` writes one record that every later step reads:
