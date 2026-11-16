@@ -1128,7 +1128,7 @@ class TwoRunsTests(unittest.TestCase):
         self.assertEqual(made["summary"]["tag"], "patched-2026-v1.1")
         self.assertEqual(made["transcript"]["lines"], TAG_LINES)
         self.assertEqual(record["transcript"]["lines"], LINES, "each run with the lines it printed itself")
-        self.assertEqual(set(made), {"run", "jobs", "kept", "kept_note", "summary", "transcript"})
+        self.assertEqual(set(made), {"run", "jobs", "kept", "kept_note", "summary", "transcript", "before_after"})
         self.assertIn("\nLast build made for a tag: run 1006 for patched-2026-v1.1, success; its record: read", last_run.said(record))
         self.assertNotIn("somebody", json.dumps(record))
         for _, url, headers in answers.requests:

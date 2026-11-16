@@ -380,6 +380,99 @@ class Tables(unittest.TestCase):
         self.assertEqual(result["unexplained_moves"], 1)
         self.assertEqual(result["methods"][0]["moved_by_step"], {AMOUNT: 1, "unexplained": 1})
 
+    def test_what_moved_is_written_for_the_site_dataset_by_dataset(self):
+        """`before-after.json`: the same counts as the comparison, every moved dataset with its
+        results in every method, the furthest first, and each step with what it changed."""
+        import pandas as pd
+        from release_build import before_after_account
+        from runrecord import before_after
+
+        rows = compare.compare_rows(self.base, self.cand, self.steps)
+        seeds = compare.relevant_seeds(rows["rows"], self.effective, ["climate", "fossils"])
+        graph = compare.consumer_graph(self.base[1], self.cand[1])
+        index = pd.Index(["farm", "gas", "mix"], name="code")
+        before = pd.DataFrame(
+            {"climate": [300.0, 0.0, 0.0], "fossils": [5.0, 36.0, 72.0]}, index=index
+        )
+        after = pd.DataFrame(
+            {"climate": [1.0, 0.0, 0.0], "fossils": [0.1, 0.0, 72.0 * (1 + 1e-9)]}, index=index
+        )
+        names = {
+            "farm": {"name": "Fruit", "location": "CH"},
+            "gas": {"name": "Gas", "location": "NO"},
+        }
+        moved = {}
+        scores = compare.compare_scores(before, after, seeds, graph, names, moved)
+        self.assertEqual(
+            moved, {"climate": {"farm": [AMOUNT]}, "fossils": {"farm": [AMOUNT], "gas": [NAMES]}}
+        )
+        comparison = {
+            "scores": scores,
+            "rows": rows["summary"],
+            "builds": {"candidate": {"datasets": 3}},
+            "linked_on_the_declared_flow": {"exchanges": 2},
+            "elementary_flows": {"exchanges_that_lost_their_ef_3_1_flow": 1},
+        }
+        records = (
+            {"patched": False, "databases": {"inventory": "x-2026"}},
+            {
+                "patched": True,
+                "databases": {"inventory": "x-2026-patched"},
+                "release": {"name": "X:2026"},
+            },
+        )
+        steps = {AMOUNT: {"kind": "patch", "description": "Correct the disposal. "}}
+
+        def account(**more):
+            return before_after_account.account(
+                comparison, records, (before.to_dict(), after.to_dict()), moved, names,
+                {"climate": "kg CO2 eq"}, steps, **more,
+            )  # fmt: skip
+
+        data = account()
+        self.assertEqual(before_after.shape_errors(data), [])
+        self.assertEqual(data["title"], "X:2026 and the patched copy")
+        self.assertEqual(
+            (data["before"]["label"], data["after"]["label"]), ("X:2026", "Patched copy")
+        )
+        self.assertIn("`x-2026`", data["before"]["about"])
+        self.assertEqual(
+            data["items"], {"one": "dataset", "many": "datasets", "compared": 3, "moved": 2}
+        )
+        climate, fossils = data["indicators"]
+        self.assertEqual((climate["unit"], climate["moved"]), ("kg CO2 eq", 1))
+        self.assertEqual((climate["lower"], climate["unexplained"]), (1, 0))
+        self.assertEqual((fossils["moved"], fossils["lower"], fossils["higher"]), (2, 2, 0))
+        self.assertEqual(sum(fossils["bands"]), 3)
+        # the furthest from no change first: a factor of 300 lies further than a lost score,
+        # which counts as a factor of 100
+        self.assertEqual([item["id"] for item in data["moved"]], ["farm", "gas"])
+        farm = data["moved"][0]
+        self.assertEqual((farm["name"], farm["place"], farm["causes"]), ("Fruit", "CH", [AMOUNT]))
+        self.assertEqual(farm["values"], {"climate": [300.0, 1.0], "fossils": [5.0, 0.1]})
+        causes = {cause["id"]: cause for cause in data["causes"]}
+        self.assertEqual(causes[AMOUNT]["kind"], "patch")
+        self.assertEqual(causes[AMOUNT]["title"], "Correct the disposal.")
+        amount = causes[AMOUNT]
+        self.assertEqual(
+            (amount["rows"], amount["changed"], amount["moved"]), (1, {"amount": 1}, 1)
+        )
+        # a row two steps explain together is listed under both names, and moved nothing
+        both = causes[f"location-codes + {LOCATION}"]
+        self.assertEqual((both["kind"], both["moved"]), ("two steps together", 0))
+        self.assertEqual(data["rows"]["differ"], rows["summary"]["exchange_rows_changed"])
+        self.assertEqual(len(data["notes"]), 2)
+        # a page lists only so many datasets with their results, and says how many it left out
+        short = account(listed=1)
+        self.assertEqual(
+            ([item["id"] for item in short["moved"]], short["moved_not_listed"]), (["farm"], 1)
+        )
+        self.assertEqual(short["items"]["moved"], 2)
+        # a count that is not the comparison's own stops the file from being written
+        scores["methods"][0]["datasets_moved"] = 2
+        with self.assertRaisesRegex(ValueError, "the comparison counted 2 moved of 3"):
+            account()
+
     def test_corrected_flows_are_listed_with_the_ef_flow_they_stay_on(self):
         receipt = {
             "source_observations": [

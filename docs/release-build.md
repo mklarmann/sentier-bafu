@@ -231,6 +231,13 @@ is printed. It writes every line with the seconds since the start, how the comma
 SHA-256 of the lines to `transcript.json`, which is kept beside the manifest: also when the run
 failed, and when it was stopped.
 
+The comparison of the two builds also writes `before-after.json`: which datasets' results
+moved, in which impact categories, from what to what, and which import fix or patch explains
+it (`scripts/release_build/before_after_account.py`). It is in the format every Sentier
+dataset site reads ([Before and after](before-after.md)), and the site gives it a page of its
+own that the comparison step of the walk leads to. It lists at most 200 datasets with their
+results, the ones that moved furthest first, and says how many it left out.
+
 The run also writes its own account for the site, `run.json`, from the manifest
 (`scripts/release_build/run_summary.py`): each step with its result, its time, its figures and
 its notes, what was in the run, and what stands in the way of using its result. The format is

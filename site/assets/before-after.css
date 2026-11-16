@@ -1,0 +1,82 @@
+/* The page of a comparison, before and after (scripts/sitebuild/beforeafter.py): two sets of
+   results over the same items. It is written with the tokens of a Sentier dataset site's
+   stylesheet (--index, --surface, --line, --wait, --fail, the sizes and the spaces) and is
+   loaded by that page only, so a site whose frame is its own can use it as it is.
+   A cell of the grid is after ÷ before; its colour says how far from 1 it lies (--d, 0 to 1)
+   and on which side. These tables keep their columns on a narrow screen and scroll sideways:
+   a row of 25 ratios cannot be stacked. */
+.wrap.ba-page { max-width: calc(104rem + 2 * var(--gutter)); }
+.ba-page .prose.wide > :is(h1, h2, p, ul, .ba-sides, .ba-figures) { max-width: 60rem; }
+.prose.wide > .ba-board { max-width: none; }
+.ba-board > :is(p, .ba-controls, .ba-static, .ba-detail) { max-width: 72rem; }
+.ba-figures { display: flex; flex-wrap: wrap; gap: var(--s4) var(--s6); margin-top: var(--s5); }
+.ba-figures > div { display: flex; flex-direction: column-reverse; min-width: 0; }
+.ba-figures dd { margin: 0; font-size: 1.75rem; font-weight: 800; line-height: 1.15; color: var(--index); font-variant-numeric: tabular-nums; }
+.ba-figures dt { margin-top: .15rem; font-size: var(--t-sm); color: var(--muted); }
+.ba-sides { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: var(--s4); margin-top: var(--s5); }
+.ba-side { font-size: var(--t-lg); font-weight: 800; line-height: 1.3; }
+.ba-table :is(th, td).num, .ba-grid :is(th, td).num { text-align: right; font-variant-numeric: tabular-nums; }
+.ba-table :is(th, td).num, .ba-grid td.num { white-space: nowrap; }
+.ba-table tbody th:first-child { min-width: 16rem; }
+.ba-table tbody th { background: none; text-transform: none; letter-spacing: 0; font-size: inherit; font-weight: 600; color: var(--ink); white-space: normal; border-top: 1px solid var(--line); border-radius: 0; }
+.ba-table tr.is-still :is(th, td) { color: var(--muted); font-weight: 400; }
+.ba-about { display: block; margin-top: .15rem; font-size: var(--t-sm); font-weight: 400; color: var(--muted); line-height: 1.45; max-width: 46rem; }
+.ba-strip { display: flex; width: 100%; min-width: 9rem; height: .75rem; border-radius: 3px; overflow: hidden; background: var(--paper-deep); }
+.ba-strip > span { min-width: 2px; }
+.ba-strip > .is-mid { background: var(--line-strong); }
+.ba-strip > .is-off { background: var(--index); }
+.ba-strip > .is-odd { background: var(--fail); }
+.ba-board { margin-top: var(--s4); }
+.ba-controls { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--s3) var(--s5); }
+.ba-controls .filter-row { flex: 1 1 24rem; max-width: 46rem; }
+.ba-count { font-size: var(--t-sm); color: var(--muted); }
+.ba-legend { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s4); margin-top: var(--s3); font-size: var(--t-sm); color: var(--muted); }
+.ba-key { display: inline-block; width: .9rem; height: .9rem; margin-right: .35rem; vertical-align: -.12em; border: 1px solid var(--line-strong); border-radius: 3px; }
+.ba-key.is-below, .ba-cell.is-below { background: color-mix(in srgb, var(--index) calc(var(--d, 1) * 45%), var(--surface)); }
+.ba-key.is-above, .ba-cell.is-above { background: color-mix(in srgb, var(--wait) calc(var(--d, 1) * 45%), var(--surface)); }
+.ba-key.is-opposite, .ba-cell.is-opposite { background: var(--fail-tint); }
+.ba-key.is-same { background: var(--surface); }
+.ba-key.is-before, .ba-bar.is-before { background: var(--line-strong); }
+.ba-key.is-after, .ba-bar.is-after { background: var(--index); }
+.ba-grid-wrap { max-height: min(42rem, 80vh); overflow: auto; margin-top: var(--s3); }
+.ba-grid { width: max-content; min-width: 100%; font-size: var(--t-sm); border-collapse: separate; border-spacing: 0; }
+.ba-grid :is(th, td) { padding: .4rem .5rem; }
+.ba-grid thead th { position: sticky; top: 0; z-index: 2; vertical-align: bottom; white-space: normal; text-transform: none; letter-spacing: 0; font-size: var(--t-xs); line-height: 1.25; width: 5.6rem; min-width: 5.6rem; max-width: 5.6rem; border-radius: 0; }
+.ba-grid thead th.ba-name { z-index: 3; text-align: left; }
+.ba-grid :is(th, td).ba-name { position: sticky; left: 0; width: 21rem; min-width: 13rem; max-width: 21rem; }
+.ba-grid tbody th.ba-name { z-index: 1; background: var(--surface); text-transform: none; letter-spacing: 0; font-size: inherit; font-weight: 600; color: var(--ink); white-space: normal; border-top: 1px solid var(--line); border-right: 1px solid var(--line); border-radius: 0; }
+.ba-grid abbr { text-decoration: none; }
+.ba-grid thead th { hyphens: auto; }
+.ba-name .linklike { text-align: left; font-weight: 600; }
+.ba-sort { border: 0; padding: 0; background: none; font: inherit; color: inherit; text-align: right; cursor: pointer; }
+.ba-sort:hover, th[aria-sort] .ba-sort { color: var(--index); text-decoration: underline; }
+.ba-why { display: block; margin-top: .1rem; font-size: var(--t-xs); font-weight: 400; color: var(--muted); }
+.ba-cell { border-left: 1px solid color-mix(in srgb, var(--line) 55%, transparent); }
+.ba-cell.is-same { color: var(--line-strong); }
+.ba-cell.is-opposite { color: var(--fail); font-weight: 700; }
+.ba-board.is-live .ba-grid tbody tr[data-i] { cursor: pointer; }
+.ba-grid tbody tr[aria-current="true"] th.ba-name { box-shadow: inset 4px 0 0 var(--index); }
+.ba-grid tr.empty td { padding: var(--s5); color: var(--muted); }
+.ba-more { margin-top: var(--s3); }
+.ba-detail { margin-top: var(--s5); padding: var(--s5); background: var(--surface); border: 1px solid var(--line); border-top: 4px solid var(--index); border-radius: var(--radius); }
+.ba-detail:focus { outline: none; }
+.ba-detail > * + * { margin-top: var(--s3); }
+.ba-detail-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--s4); }
+.ba-detail h3 { margin: 0; }
+.ba-detail h4 { margin-top: var(--s5); font-size: var(--t-md); }
+.ba-values { width: auto; min-width: min(100%, 48rem); }
+.ba-bars { width: 12rem; min-width: 8rem; vertical-align: middle; }
+.ba-bar { display: block; height: .4rem; min-width: 1px; border-radius: 2px; }
+.ba-bar + .ba-bar { margin-top: 2px; }
+.ba-bar.is-after.is-opposite { background: var(--fail); }
+.ba-static { margin-top: var(--s5); }
+.ba-item { border-top: 1px solid var(--line); padding-block: var(--s3); }
+.ba-item > summary { cursor: pointer; font-weight: 700; }
+@media (max-width: 39.99rem) {
+  table:is(.ba-table, .ba-grid) { display: table; }
+  :is(.ba-table, .ba-grid) thead { position: static; width: auto; height: auto; overflow: visible; clip-path: none; display: table-header-group; }
+  :is(.ba-table, .ba-grid) tbody { display: table-row-group; }
+  :is(.ba-table, .ba-grid) tr { display: table-row; padding: 0; }
+  :is(.ba-table, .ba-grid) :is(td, th) { display: table-cell; padding: .4rem .5rem; border-top: 1px solid var(--line); }
+  .ba-grid :is(th, td).ba-name { width: 11rem; min-width: 11rem; max-width: 11rem; }
+}

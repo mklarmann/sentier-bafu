@@ -2,6 +2,7 @@
 
     python3 scripts/last_run.py --repository owner/name --out FILE
     python3 scripts/last_run.py --local --summary run.json --transcript transcript.json --out FILE
+        (and --before-after before-after.json, where the run wrote one)
 
 Which workflow, and what it is called on the page, is said in `site/config.json`:
 
@@ -17,8 +18,10 @@ For that workflow of one repository this reads
 - GitHub's own record of the last run that has ended: its number, its commit, what started
   it, how it ended, and every step with its result. Anyone can read this.
 - what that run kept in its artifact: `run.json`, the run's own account of its steps
-  (`scripts/runrecord/summary.py`), and `transcript.json`, every line it printed
-  (`scripts/runrecord/transcript.py`). Reading an artifact needs a token (`actions: read`).
+  (`scripts/runrecord/summary.py`), `transcript.json`, every line it printed
+  (`scripts/runrecord/transcript.py`), and where the run compared results before and after a
+  change, `before-after.json` (`scripts/runrecord/before_after.py`). Reading an artifact needs
+  a token (`actions: read`).
 
 and returns one record. The site shows it as it is (`scripts/sitebuild/lastrun.py`): the last
 run, not the last run that worked. A run that failed is shown as failed, with the step and
@@ -59,7 +62,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import github_api  # noqa: E402
-from runrecord import summary, transcript  # noqa: E402
+from runrecord import before_after, summary, transcript  # noqa: E402
 
 FORMAT = "sentier/last-run/2"
 MAX_ARCHIVE = 30 * 1024 * 1024
@@ -69,6 +72,8 @@ KEPT = ("read", "none", "expired", "needs a token", "unreadable")
 FILES = {
     "summary": ("run.json", summary.shape_errors),
     "transcript": ("transcript.json", transcript.shape_errors),
+    # what the run changed in the results, where it compared them; a run need not hold one
+    "before_after": (before_after.FILE, before_after.shape_errors),
 }
 WORKFLOW_FILE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*\.ya?ml")
 PLAIN_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9 ._-]{0,79}")
@@ -234,36 +239,36 @@ def releases_of(github, tags):
 
 
 def kept_by(github, run_id, artifact_name, fetch=fetch_address):
-    """What a run kept: (kept, note, its own account, its transcript)."""
+    """What a run kept: (kept, note, its files by the keys of FILES, each parsed or None)."""
+    nothing = dict.fromkeys(FILES)
     listing = github.get(f"/actions/runs/{int(run_id)}/artifacts?per_page=100") or {}
     wanted = [a for a in listing.get("artifacts") or () if a.get("name") == artifact_name]
     if not wanted:
-        return "none", None, None, None
+        return "none", None, nothing
     artifact = wanted[0]
     if artifact.get("expired"):
-        return "expired", text(artifact.get("expires_at"), 30), None, None
+        return "expired", text(artifact.get("expires_at"), 30), nothing
     if int(artifact.get("size_in_bytes") or 0) > MAX_ARCHIVE:
-        return "unreadable", "the artifact is larger than a run's record can be", None, None
+        return "unreadable", "the artifact is larger than a run's record can be", nothing
     address = github.location(f"/actions/artifacts/{int(artifact['id'])}/zip")
     if address is None:
-        return "needs a token", None, None, None
+        return "needs a token", None, nothing
     found, problems = unpack(fetch(address))
     if found["summary"] is None and found["transcript"] is None:
-        return "unreadable", "; ".join(problems) or "it holds no record", None, None
-    return "read", "; ".join(problems) or None, found["summary"], found["transcript"]
+        return "unreadable", "; ".join(problems) or "it holds no record", nothing
+    return "read", "; ".join(problems) or None, found
 
 
 def one_run(github, run, artifact_name, fetch=fetch_address):
     """One run as a record holds it: GitHub's record of it, and what the run kept."""
     jobs = github.get(f"/actions/runs/{int(run['id'])}/jobs?per_page=100") or {}
-    kept, note, account, lines = kept_by(github, run["id"], artifact_name, fetch)
+    kept, note, files = kept_by(github, run["id"], artifact_name, fetch)
     return {
         "run": run_facts(run),
         "jobs": [job_facts(job) for job in jobs.get("jobs") or ()],
         "kept": kept,
         "kept_note": note,
-        "summary": account,
-        "transcript": lines,
+        **files,
     }
 
 
@@ -313,11 +318,14 @@ def fetch(repository, run, token=None, transport=None, fetch=fetch_address):
     )
 
 
-def local(account, lines, run=None, commit=None):
-    """The record of a run that did not happen on GitHub, from the two files it wrote.
-    `account` is its run.json, `lines` its transcript.json; both are checked. GitHub holds no
-    record of the run: the record has no `run`, and `local` says when the run was."""
+def local(account, lines, run=None, commit=None, compared=None):
+    """The record of a run that did not happen on GitHub, from the files it wrote.
+    `account` is its run.json, `lines` its transcript.json, `compared` its before-after.json
+    if it wrote one; each is checked. GitHub holds no record of the run: the record has no
+    `run`, and `local` says when the run was."""
     errors = summary.shape_errors(account) + transcript.shape_errors(lines)
+    if compared is not None:
+        errors += before_after.shape_errors(compared)
     if errors:
         raise ValueError(errors[0])
     if commit is not None and not re.fullmatch(r"[0-9a-f]{7,40}", commit):
@@ -335,6 +343,7 @@ def local(account, lines, run=None, commit=None):
         "kept_note": None,
         "summary": account,
         "transcript": lines,
+        "before_after": compared,
         "tagged": None,
         "releases": [],
         "of_tag": None,
@@ -484,6 +493,9 @@ def main(argv=None):
     parser.add_argument(
         "--transcript", type=Path, help="With --local: the transcript.json of the run"
     )
+    parser.add_argument(
+        "--before-after", type=Path, help="With --local: the before-after.json of the run, if any"
+    )
     parser.add_argument("--commit", help="With --local: the commit the run was made of")
     parser.add_argument("--out", type=Path, required=True, help="Where to write the record")
     args = parser.parse_args(argv)
@@ -498,7 +510,12 @@ def main(argv=None):
                 json.loads(path.read_text(encoding="utf-8"))
                 for path in (args.summary, args.transcript)
             ]
-            record = local(*read, run=run, commit=args.commit)
+            compared = (
+                json.loads(args.before_after.read_text(encoding="utf-8"))
+                if args.before_after
+                else None
+            )
+            record = local(*read, run=run, commit=args.commit, compared=compared)
         elif args.repository:
             record = fetch(args.repository, run, os.environ.get("GITHUB_TOKEN"))
         else:

@@ -35,6 +35,12 @@ import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from runrecord import before_after  # noqa: E402
+
+from release_build import before_after_account  # noqa: E402
+
 MOVE_TOLERANCE = 1e-6  # relative; the two builds are solved separately (noise is near 1e-7)
 LISTED = 50  # moved datasets listed per method in the output
 
@@ -586,7 +592,12 @@ def consumer_graph(*exchange_tables) -> dict[str, set[str]]:
     return consumers
 
 
-def compare_scores(base_scores, cand_scores, seeds, consumers, names: dict[str, dict]) -> dict:
+def compare_scores(
+    base_scores, cand_scores, seeds, consumers, names: dict[str, dict], moved_out=None
+) -> dict:
+    """Which scores moved, per method, and which step explains each. `moved_out`, a dict,
+    receives every moved dataset of every method with the steps that explain it
+    (`{method: {code: [steps]}}`): the result itself lists only the first of them."""
     import numpy as np
 
     if list(base_scores.columns) != list(cand_scores.columns):
@@ -610,6 +621,8 @@ def compare_scores(base_scores, cand_scores, seeds, consumers, names: dict[str, 
                 closures[key] = downstream(set(datasets), consumers)
             reach[step] = closures[key]
         attribution = attribute(moved, reach)
+        if moved_out is not None:
+            moved_out[method] = attribution
         counts = Counter(
             " + ".join(steps) if steps else "unexplained" for steps in attribution.values()
         )
@@ -654,7 +667,9 @@ def compare_scores(base_scores, cand_scores, seeds, consumers, names: dict[str, 
 # --- Putting it together ---------------------------------------------------------------
 
 
-def compare(baseline: Path, candidate: Path) -> dict:
+def compare(baseline: Path, candidate: Path, before_after_out: Path | None = None) -> dict:
+    """Everything the comparison found. With `before_after_out`, the part of it a reader of
+    the site asks for is written there as well, in the format the site reads."""
     if linking_of(baseline) != linking_of(candidate):
         raise CompareError(
             f"The two builds link their elementary flows differently ({linking_of(baseline)} "
@@ -684,8 +699,9 @@ def compare(baseline: Path, candidate: Path) -> dict:
     base_scores, cand_scores = read_scores(baseline), read_scores(candidate)
     seeds = relevant_seeds(rows["rows"], effective, list(base_scores.columns))
     names = cand[0].set_index("process_id")[["name", "location"]].to_dict("index")
+    moved: dict[str, dict] = {}
     scores = compare_scores(
-        base_scores, cand_scores, seeds, consumer_graph(base[1], cand[1]), names
+        base_scores, cand_scores, seeds, consumer_graph(base[1], cand[1]), names, moved
     )
     audits = {
         label: json.loads((build / "audit" / "audit.json").read_text())
@@ -701,7 +717,7 @@ def compare(baseline: Path, candidate: Path) -> dict:
     for key in ("exchange_rows_only_in_baseline", "exchange_rows_only_in_candidate"):
         if rows["summary"][key]:
             errors.append(f"{rows['summary'][key]} {key.replace('_', ' ')}")
-    return {
+    result = {
         "status": "failed" if errors else "passed",
         "errors": errors,
         "linking": linking_of(candidate),
@@ -737,6 +753,18 @@ def compare(baseline: Path, candidate: Path) -> dict:
         "scores": scores,
         "published_results": published_results(baseline, candidate),
     }
+    if before_after_out is not None:
+        account = before_after_account.account(
+            result,
+            (read_json(baseline / "build.json") or {}, read_json(candidate / "build.json") or {}),
+            (base_scores.to_dict(), cand_scores.to_dict()),
+            moved,
+            names,
+            {m["id"]: m.get("unit") for m in audits["candidate"].get("methods", [])},
+            {step["id"]: step for step in (summary or {}).get("steps", [])},
+        )
+        before_after.write(account, before_after_out)
+    return result
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -744,9 +772,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("baseline", type=Path, help="Build folder of the provider release")
     parser.add_argument("candidate", type=Path, help="Build folder of the patched copy")
     parser.add_argument("--out", type=Path, required=True, help="JSON file to write")
+    parser.add_argument(
+        "--before-after",
+        type=Path,
+        metavar="FILE",
+        help="Also write what moved, dataset by dataset, in the format the site shows "
+        "(scripts/runrecord/before_after.py)",
+    )
     args = parser.parse_args(argv)
     try:
-        result = compare(args.baseline, args.candidate)
+        result = compare(args.baseline, args.candidate, args.before_after)
     except CompareError as error:
         print(f"Comparison failed: {error}", file=sys.stderr)
         return 2

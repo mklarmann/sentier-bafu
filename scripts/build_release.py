@@ -75,6 +75,9 @@ LINKINGS = ("sentier-mappings", "brightway-flows")
 # The name under which a build of the second linking keeps the file it was linked through,
 # so that the comparison reads the same file (release_build/compare_builds.py)
 KEPT_FLOW_LINKS = "flow-links.csv"
+# What the comparison of two builds writes for the site, beside its own file
+# (scripts/runrecord/before_after.py)
+BEFORE_AFTER = "before-after.json"
 # Where sentier-importers' registry expects BAFU's release, below its data root
 IMPORTER_INPUT = Path("sources") / "bafu-2026" / "BAFU-2026 v1_ecoSpold v1.zip"
 IMPORTER_SOURCES = ("bafu-processes", "bafu-exchanges")
@@ -826,6 +829,8 @@ def compare(args: argparse.Namespace) -> int:
         *("python", str(HELPERS / "compare_builds.py")),
         *(str(args.baseline.resolve()), str(args.candidate.resolve())),
         *("--out", str(args.out.resolve())),
+        # what moved, dataset by dataset, in the format the site shows
+        *("--before-after", str(args.out.resolve().with_name(BEFORE_AFTER))),
     )
     done = subprocess.run(command, env={**os.environ, **project.env()})
     return done.returncode
@@ -1138,6 +1143,7 @@ def release(args: argparse.Namespace) -> int:
         "provider-audit.json": provider / "audit" / "audit.json",
         "patched-audit.json": patched / "audit" / "audit.json",
         "comparison.json": out / "comparison.json",
+        BEFORE_AFTER: out / BEFORE_AFTER,
         "exports-manifest.json": out / "exports" / "patched" / "manifest.json",
     }
     for _, contribution in contributions:

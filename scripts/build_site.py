@@ -28,7 +28,7 @@ import community  # noqa: E402
 import github_api  # noqa: E402
 import last_run  # noqa: E402
 import triage  # noqa: E402
-from sitebuild import contributions, data, findings, lastrun, overview, pages, prose, shell, status, theme  # noqa: E402
+from sitebuild import beforeafter, contributions, data, findings, lastrun, overview, pages, prose, shell, status, theme  # noqa: E402
 from sitebuild.text import esc, plural  # noqa: E402,F401
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -42,6 +42,7 @@ COUNT = re.compile(r"<!--\s*(?:generated:\s*)?count:([a-z:-]+)\s*-->")
 OPENING = {"last-run"}
 # The blocks that show a release build. A site none of whose pages asks for one reads no run.
 RUN_BLOCKS = re.compile(r"<!--\s*(?:generated:\s*)?(?:last-run|build-files)\s*-->")
+WALK_BLOCK = re.compile(r"<!--\s*(?:generated:\s*)?last-run\s*-->")
 OPENING_END = "<!-- end of the opening -->"
 SAFE_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 
@@ -128,6 +129,11 @@ class Site:
             for doc in self.docs for source in [doc["source"], *doc.get("also", [])]
             if (self.root / source).is_file()
         )
+        # The page that walks through the run: a page about what the run compared leads back to it.
+        self.walk_page = next(
+            (doc["page"] for doc in self.docs for source in [doc["source"], *doc.get("also", [])]
+             if (self.root / source).is_file() and WALK_BLOCK.search((self.root / source).read_text())), None)
+        self.compared = {}
         self.run = last_run.settings(self.config)
         self.last_run = self.run_reader = None
         if shows_run:
@@ -374,6 +380,28 @@ class Site:
         names.update({f'contributions/{c["id"]}.html': f'contribution {c["id"]}' for c in self.contributions})
         return names
 
+    def comparison_pages(self):
+        """A page for what each run of the record compared, before and after (`before-after.json`
+        of the run): `{ids of the run on the page: page}`. They are in no navigation: the step
+        of the walk through the run leads to them, and they lead back to it."""
+        record, found = self.last_run, {}
+        if not record or record.get("state") != "read":
+            return found
+        back = self.walk_page
+        runs = [("", record)] + ([(lastrun.TAG_IDS, record["of_tag"])] if record.get("of_tag") else [])
+        for ids, run in runs:
+            data = run.get("before_after")
+            if data is None:
+                continue
+            name = f"{ids}before-after.html"
+            step = lastrun.step_number(run, data.get("step"))
+            where = (f"{back}#{ids}run-step-{step}" if step else back) if back else None
+            label = f"Step {step} of the {lastrun.lower(lastrun.named(record))}" if step else "The run"
+            self.page(name, beforeafter.page(self, data, name, (where, label) if where else None, current=back))
+            self.write_json(f"api/v1/{ids}before-after.json", data)
+            found[ids] = name
+        return found
+
     def build(self):
         out = self.out
         # status.json marks a folder this build wrote before; only there may files be removed.
@@ -387,6 +415,8 @@ class Site:
         (out / ".nojekyll").touch()
 
         self.page("index.html", self.overview())
+        # The pages of what a run compared come first: the walk through the run leads to them.
+        self.compared = self.comparison_pages()
         for doc in self.docs:
             self.page(doc["page"], self.document(doc))
         for f in self.triage["findings"]:

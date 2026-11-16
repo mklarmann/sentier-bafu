@@ -40,14 +40,14 @@ try:
 except ModuleNotFoundError:  # the markdown package is a site-build dependency only
     build_site = None
 
-# What every dataset's repository has as the same files. site/README.md gives this list.
-SHARED = (
-    "scripts/build_site.py", "scripts/check_site.py", "scripts/community.py", "scripts/triage.py",
-    "scripts/intake.py", "scripts/sync.py", "scripts/github_api.py", "scripts/sitebuild",
-    "scripts/last_run.py", "scripts/runrecord",
-    "site/style.css", "site/assets/list.js", "site/assets/replay.js", "site/assets/download.js", "site/assets/nunito-latin.woff2",
-    "site/assets/OFL.txt", "site/assets/dds-logo.svg", "site/assets/favicon-32x32.png", "schema",
-)
+import shared_files  # noqa: E402
+
+# What every dataset's repository has as the same files: the set "site" of site/shared-sets.json,
+# which is the one list of them. site/README.md names them too, and a test compares.
+SETS = json.loads((ROOT / shared_files.SETS).read_text())["sets"]
+_FILES, _FOLDERS = shared_files.expand(SETS, ["site"])
+# a file that a smaller set names singly lies in a folder that this set shares whole
+SHARED = tuple(sorted(_FOLDERS | {f for f in _FILES if not any(shared_files.in_folder(f, d) for d in _FOLDERS)}))
 REPO = "https://github.com/sentier-dev/sentier-agribalyse"
 SITE = "https://sentier-dev.github.io/sentier-agribalyse/"
 AUBERGINE = "#5d4a66"
@@ -437,6 +437,14 @@ class Names(unittest.TestCase):
                 file.write_text(json.dumps(base | {key: bad}))
                 with self.subTest(key=key, bad=bad), self.assertRaises(ValueError):
                     community.load_config(tmp)
+
+    def test_every_shared_file_is_there_and_no_file_of_a_shared_folder_is_left_out(self):
+        self.assertEqual(shared_files.source_problems(ROOT), [])
+        # the folder of the templates is shared whole: a set that names single files of it
+        # (the page of a comparison, for a site with a frame of its own) names files it holds
+        for name, entry in SETS.items():
+            for file in entry["files"]:
+                self.assertTrue((ROOT / file).is_file(), f"{name}: {file}")
 
     def test_the_list_of_shared_files_is_the_one_the_site_readme_gives(self):
         told = (ROOT / "site/README.md").read_text().split("## A sibling site", 1)[1].split("\n## ", 1)[0]

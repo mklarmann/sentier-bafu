@@ -403,6 +403,27 @@ def steps_of(lines, names, closing=None):
     return found
 
 
+def step_number(record, name):
+    """Which step of a run has this name, counted from 1; None where none has."""
+    steps = (record.get("summary") or {}).get("steps") or ()
+    return next((n for n, step in enumerate(steps, 1) if step.get("name") == name), None)
+
+
+def compared_link(site, record, up, ids):
+    """Where a run compared results before and after a change: the link to the page of that
+    comparison, and the step it belongs to (None where the run names none of its steps)."""
+    data, page = record.get("before_after"), getattr(site, "compared", {}).get(ids)
+    if data is None or page is None:
+        return None, ""
+    moved, one, many = data["items"]["moved"], data["items"]["one"], data["items"]["many"]
+    said = f"{plural(moved, one, many)} moved" if moved else f"no {one} moved"
+    link = (
+        f'<p class="run-compared"><a class="button" href="{up}{esc(page)}">What changed, {esc(one)} by {esc(one)}</a>'
+        f'<span>{esc(said)}</span></p>'
+    )
+    return step_number(record, data.get("step")), link
+
+
 def figure(value):
     """A figure as the run states it: a count with its thousands apart, a text as it is."""
     return thousands(value) if isinstance(value, int) and not isinstance(value, bool) else str(value)
@@ -435,6 +456,9 @@ def showcase(site, record, up, title="The last run", ids=""):
         f'<p class="run-when">{run_line(site, record)}</p></div>'
     )
     below = '<dl class="run-answers">' + "".join(f"<div><dt>{label}</dt><dd>{value}</dd></div>" for label, value in answers) + "</dl>"
+    compared_step, compared = compared_link(site, record, up, ids)
+    if compared and compared_step is None:  # the comparison names no step of this run
+        below += compared
 
     files = offered(record)
     tabs, panels = "", ""
@@ -464,6 +488,7 @@ def showcase(site, record, up, title="The last run", ids=""):
             f'<h3>{esc(words["title"])}</h3>{about}{reason}'
             + (f'<dl class="run-figures">{shown}</dl>' if shown else "")
             + (f'<ul class="run-notes">{more}</ul>' if more else "")
+            + (compared if n == compared_step else "")
             + "</article>"
         )
 

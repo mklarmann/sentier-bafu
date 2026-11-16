@@ -301,6 +301,34 @@ class WholePath(unittest.TestCase):
             for code, value in expected["fossils"].items():
                 self.assertAlmostEqual(fossils[code], value, places=4, msg=(build, code))
 
+    def test_what_moved_is_kept_for_the_site_in_the_format_every_site_reads(self):
+        sys.path.insert(0, str(REPOSITORY / "scripts"))
+        from runrecord import before_after
+
+        data = self.load("before-after.json")
+        self.assertEqual(before_after.shape_errors(data), [])
+        self.assertEqual(
+            self.load("results", "before-after.json"), data, "kept with what may leave"
+        )
+        comparison = self.load("comparison.json")
+        self.assertEqual(data["step"], "comparison")
+        self.assertEqual(data["rows"]["differ"], comparison["rows"]["exchange_rows_changed"])
+        counted = {m["method"]: m["datasets_moved"] for m in comparison["scores"]["methods"]}
+        self.assertEqual({i["id"]: i["moved"] for i in data["indicators"]}, counted)
+        self.assertEqual(len(data["indicators"]), 25)
+        # the strawberry dataset that patch 0001 corrects, with its two climate results
+        berries = next(item for item in data["moved"] if AMOUNT in item["causes"])
+        before, after = berries["values"][CLIMATE]
+        self.assertAlmostEqual(before, self.scores("provider", CLIMATE)[berries["id"]], places=4)
+        self.assertAlmostEqual(after, self.scores("patched", CLIMATE)[berries["id"]], places=4)
+        self.assertNotEqual(before, after)
+        self.assertEqual(data["items"]["moved"], len(data["moved"]) + data["moved_not_listed"])
+        # the contribution's comparison has its own, beside its own comparison
+        own = json.loads((self.contribution / "before-after.json").read_text())
+        self.assertEqual(before_after.shape_errors(own), [])
+        self.assertIn("contribution", own["title"])
+        self.assertEqual(own["before"]["label"], "Patched copy")
+
     def test_renamed_and_moved_flows_stay_on_their_ef_flow(self):
         comparison = self.load("comparison.json")
         self.assertEqual(comparison["status"], "passed", comparison["errors"])
@@ -588,6 +616,8 @@ class WholePath(unittest.TestCase):
         self.assertEqual(
             sorted(path.name for path in (self.out / "results").iterdir()),
             [
+                # what moved, dataset by dataset: names, codes and single results, no exchange
+                "before-after.json",
                 f"{LAYER.lower()}-audit.json",
                 f"{LAYER.lower()}-comparison.json",
                 f"{LAYER.lower()}-exports-manifest.json",

@@ -69,9 +69,34 @@ The scripts in `scripts/`, the stylesheet and the two scripts of the pages are t
 
 The shared files, which a sibling copies as they are:
 
-- `scripts/build_site.py`, `scripts/check_site.py`, `scripts/community.py`, `scripts/triage.py`, `scripts/intake.py`, `scripts/sync.py`, `scripts/github_api.py`, `scripts/last_run.py` and the folders `scripts/sitebuild` and `scripts/runrecord`;
-- `site/style.css`, and of `site/assets`: `list.js`, `replay.js`, `download.js`, `nunito-latin.woff2`, `OFL.txt`, `dds-logo.svg`, `favicon-32x32.png`;
-- the folder `schema`.
+- `scripts/build_site.py`, `scripts/check_site.py`, `scripts/community.py`, `scripts/triage.py`, `scripts/intake.py`, `scripts/sync.py`, `scripts/github_api.py`, `scripts/last_run.py`, `scripts/shared_files.py` and the folders `scripts/sitebuild` and `scripts/runrecord`;
+- `site/style.css`, and of `site/assets`: `list.js`, `replay.js`, `download.js`, `before-after.js`, `before-after.css`, `nunito-latin.woff2`, `OFL.txt`, `dds-logo.svg`, `favicon-32x32.png`;
+- the folder `schema`, and `docs/before-after.md`.
+
+### Shared with the sibling repositories
+
+`site/shared-sets.json` is the one list of what is shared. It names the files in sets, so that a repository takes what fits it:
+
+| Set | What it is | Who takes it |
+|---|---|---|
+| `site` | Everything above: the records and their checks, the intake, the build, the stylesheet, the walk through a run, the page of a comparison. | A repository whose site is this one, with its own configuration and pages. |
+| `before-after` | The comparison of two sets of results alone: the format and the counting, the page without a frame, its script and styles, `docs/before-after.md`. | A repository whose site has a frame of its own. |
+| `run` | The formats of what a run keeps of itself (`scripts/runrecord`), without a page. | A repository that only writes such files. |
+| `sharing` | `scripts/shared_files.py`. | Every repository that takes a set. |
+
+This repository is the source: a shared file is written and tested here. In a repository that takes a set, the files are copies and are never edited. Three commands do all of it:
+
+```sh
+python3 scripts/shared_files.py sets                                  # here: what each set holds
+python3 scripts/shared_files.py take ../sentier-bafu --commit COMMIT --set before-after   # there: copy, and record in site/shared.json
+python3 scripts/shared_files.py check                                 # there: the copies are the recorded files
+```
+
+- `take` writes the files as they are in that commit and records the commit, the sets and every file's checksum in the repository's own `site/shared.json`. A later `take` without `--set` takes the same sets again at a newer commit.
+- `check` belongs in the repository's checks. It fails when a copy was edited or a file of a shared folder was added by hand. So a change to a shared file can only be made here, and every repository gets it with its next `take`.
+- Here, `check` says whether every file a set names exists; the unit tests run it.
+
+To change a shared file: change it here, with its test; then, in each repository that takes the set, `take` the new commit in a pull request of its own. The tests of that repository say whether the change fits it.
 
 Everything else is a repository's own: its configuration, its pages, its records, its issue forms and its workflows. `scripts/intake.py` reports the checks under the names that the repository's own `.github/workflows/checks.yml` gives its jobs.
 
@@ -91,6 +116,8 @@ Where the workflow keeps runs under a tag (`"tagged"`), the record also holds th
 A page asks for the walk with `<!-- generated: last-run -->`. The Site workflow reads the run with the token of its job (`actions: read`). A site shows a run only if one of its pages asks for it: without such a page the build reads no run, `"run"` is not needed, and `api/v1/last-run.json` is not written.
 
 A run that did not happen on GitHub can be shown as well: `python3 scripts/last_run.py --local --summary run.json --transcript transcript.json --out record.json` makes its record from the two files, and `scripts/build_site.py --last-run record.json` builds a site with it. The page marks it: "Not a run on GitHub". Whether a published site may show such a record is the repository's own rule; a workflow that never passes `--last-run` never does.
+
+**What a run compared.** A run that changes data can say what the change did to the results: it writes `before-after.json` into the same folder as `run.json`, in the format `scripts/runrecord/before_after.py` describes and checks. The build then writes a page for it, `before-after.html` (for the last run made for a tag, `tag-before-after.html`), and the step of the walk that the file names gets a button that leads there. The page is in no navigation and leads back to its step. It shows the file as it is: how many items moved in each indicator, what caused it, and the items that moved with their results before and after. [docs/before-after.md](../docs/before-after.md) says how to read it and how a run writes one. A run that wrote no such file has no such page.
 
 A finding names its datasets by number (`code`, a whole number). Where the datasets of a provider have no number, a finding lists none and says in `scope` what it is about.
 

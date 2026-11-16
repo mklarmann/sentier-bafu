@@ -960,6 +960,11 @@ html.run-has-full { overflow: hidden; }
   .prose .run.is-live pre.transcript { height: 19rem; }
   .run-term-id { display: none; }
 }
+/* the step of a run that compared results leads to the page of the comparison */
+.run-compared { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3); padding-top: var(--s3); }
+.run-compared span { font-size: var(--t-sm); color: var(--on-quiet, var(--muted)); }
+.run-stage .run-compared .button { background: #fff; border-color: #fff; color: var(--index-dark); }
+.run-stage .run-compared .button:hover { background: var(--index-tint); border-color: var(--index-tint); color: var(--index-dark); }
 @media print {
   .run-stage { background: none; color: #000; padding: 0; }
   .run-stage a, .prose .run-panel h3, .run-figures dd, .run-panel > p, .run-notes, .run-step, .run-figures dt, .run-tab-time { color: #000; }
