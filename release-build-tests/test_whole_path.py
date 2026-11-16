@@ -328,6 +328,45 @@ class WholePath(unittest.TestCase):
         self.assertEqual(before_after.shape_errors(own), [])
         self.assertIn("contribution", own["title"])
         self.assertEqual(own["before"]["label"], "Patched copy")
+        self.assertEqual(self.load("results", f"{LAYER.lower()}-before-after.json"), own)
+        # every value has a class, none moved outside what a step reaches, and the layer is a
+        # cause of its own with a claim that was worked out
+        for file in (data, own):
+            self.assertEqual(file["format"], before_after.FORMAT)
+            for indicator in file["indicators"]:
+                self.assertEqual(sum(indicator["classes"].values()), indicator["compared"])
+                self.assertNotIn(before_after.NOT_CLAIMED, indicator["classes"])
+        layer = next(cause for cause in own["causes"] if cause["id"] == LAYER)
+        self.assertEqual(layer["kind"], "contribution")
+        self.assertTrue(layer["claim"]["derived"])
+        self.assertGreaterEqual(layer["claim"]["reach"], 1)
+
+    def test_the_builds_and_the_pairs_that_were_compared_are_kept_as_a_review(self):
+        sys.path.insert(0, str(REPOSITORY / "scripts"))
+        from runrecord import review
+
+        index = self.load("review.json")
+        self.assertEqual(review.shape_errors(index), [])
+        self.assertEqual(self.load("results", "review.json"), index)
+        self.assertEqual(
+            [run["id"] for run in index["runs"]], ["provider", "patched", LAYER.lower()]
+        )
+        provider, patched, with_layer = index["runs"]
+        self.assertEqual(provider["contains"], [])
+        self.assertEqual(sorted(set(with_layer["contains"]) - set(patched["contains"])), [LAYER])
+        self.assertIn(AMOUNT, patched["contains"])
+        self.assertEqual(
+            [(pair["before"], pair["after"], pair["page"]) for pair in index["pairs"]],
+            [
+                ("provider", "patched", "before-after.html"),
+                ("patched", LAYER.lower(), f"{LAYER.lower()}-before-after.html"),
+            ],
+        )
+        # the layer alone is one pair apart from the patched copy, and a reader finds that pair
+        self.assertEqual(review.isolating(index, [LAYER])["pair"]["after"], LAYER.lower())
+        self.assertIsNone(review.isolating(index, [AMOUNT])["pair"])
+        for pair in index["pairs"]:
+            self.assertTrue(pair["classes"])
 
     def test_renamed_and_moved_flows_stay_on_their_ef_flow(self):
         comparison = self.load("comparison.json")
@@ -619,6 +658,7 @@ class WholePath(unittest.TestCase):
                 # what moved, dataset by dataset: names, codes and single results, no exchange
                 "before-after.json",
                 f"{LAYER.lower()}-audit.json",
+                f"{LAYER.lower()}-before-after.json",
                 f"{LAYER.lower()}-comparison.json",
                 f"{LAYER.lower()}-exports-manifest.json",
                 "comparison.json",
@@ -627,6 +667,8 @@ class WholePath(unittest.TestCase):
                 "patch-run.md",
                 "patched-audit.json",
                 "provider-audit.json",
+                # the builds of the run and the pairs of them that were compared
+                "review.json",
                 "run-summary.json",
                 "run.json",
             ],

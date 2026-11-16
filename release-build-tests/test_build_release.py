@@ -40,6 +40,38 @@ def options(**values) -> argparse.Namespace:
     return argparse.Namespace(**{**defaults, **values})
 
 
+class OlderPython(unittest.TestCase):
+    """The build and the export start on Python 3.12, and the formatter writes for 3.14."""
+
+    def test_no_script_catches_two_errors_without_parentheses(self):
+        import re
+
+        # every script: the site's and the records' start with the runner's own Python too
+        files = sorted((REPOSITORY / "scripts").rglob("*.py"))
+        self.assertGreater(len(files), 40)
+        clause = re.compile(r"^\s*except\s+[^(:\s][^:(]*,", re.MULTILINE)
+        for file in files:
+            found = clause.findall(file.read_text(encoding="utf-8"))
+            self.assertEqual(found, [], f"{file.name}: Python 3.12 can't read this clause")
+        self.assertTrue(clause.search("    except OSError, ValueError:\n"))
+        self.assertFalse(clause.search("    except (OSError, ValueError):\n"))
+        self.assertFalse(clause.search("    except OSError as error:\n"))
+
+    def test_the_build_script_is_read_by_python_3_12(self):
+        found = shutil.which("uv")
+        if not found:
+            self.skipTest("uv is not installed")
+        for script in ("build_release.py", "export_release.py"):
+            done = subprocess.run(
+                [found, "run", "--no-project", "--python", "3.12", "python", "-m", "py_compile"]
+                + [str(REPOSITORY / "scripts" / script)],
+                capture_output=True,
+                text=True,
+                env={k: v for k, v in __import__("os").environ.items() if k != "VIRTUAL_ENV"},
+            )
+            self.assertEqual(done.returncode, 0, done.stderr)
+
+
 class Plan(unittest.TestCase):
     def test_a_patched_build_is_named_as_patched(self):
         paths = build_release.plan(options())

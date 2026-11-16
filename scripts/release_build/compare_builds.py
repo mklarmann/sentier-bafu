@@ -593,11 +593,13 @@ def consumer_graph(*exchange_tables) -> dict[str, set[str]]:
 
 
 def compare_scores(
-    base_scores, cand_scores, seeds, consumers, names: dict[str, dict], moved_out=None
-) -> dict:
+    base_scores, cand_scores, seeds, consumers, names: dict[str, dict], moved_out=None,
+    reach_out=None,
+) -> dict:  # fmt: skip
     """Which scores moved, per method, and which step explains each. `moved_out`, a dict,
     receives every moved dataset of every method with the steps that explain it
-    (`{method: {code: [steps]}}`): the result itself lists only the first of them."""
+    (`{method: {code: [steps]}}`): the result itself lists only the first of them.
+    `reach_out` receives what each step can move (`{method: {step: datasets}}`)."""
     import numpy as np
 
     if list(base_scores.columns) != list(cand_scores.columns):
@@ -623,6 +625,8 @@ def compare_scores(
         attribution = attribute(moved, reach)
         if moved_out is not None:
             moved_out[method] = attribution
+        if reach_out is not None:
+            reach_out[method] = dict(reach)
         counts = Counter(
             " + ".join(steps) if steps else "unexplained" for steps in attribution.values()
         )
@@ -667,15 +671,36 @@ def compare_scores(
 # --- Putting it together ---------------------------------------------------------------
 
 
-def compare(baseline: Path, candidate: Path, before_after_out: Path | None = None) -> dict:
-    """Everything the comparison found. With `before_after_out`, the part of it a reader of
-    the site asks for is written there as well, in the format the site reads."""
+def located_of(build: Path) -> bool:
+    """Whether a build gave the flows that name a country that country's factor. A build made
+    before 15 November 2026 says nothing, and did not."""
+    return bool(
+        ((read_json(build / "build.json") or {}).get("install") or {}).get("located", False)
+    )
+
+
+def compare(baseline: Path, candidate: Path, account_out: list | None = None) -> dict:
+    """Everything the comparison found. `account_out`, a list, receives what the site's file
+    of the comparison is written from (`before_after_account.account`'s arguments after the
+    result), so that the result can be written before that file is tried."""
+    if located_of(baseline) != located_of(candidate):
+        raise CompareError(
+            "One of the two builds gave the flows that name a country that country's factor "
+            "and the other did not: a difference between them would be that rule's, not a "
+            "step's. Compare two builds made the same way."
+        )
     if linking_of(baseline) != linking_of(candidate):
         raise CompareError(
             f"The two builds link their elementary flows differently ({linking_of(baseline)} "
             f"and {linking_of(candidate)}): a difference between them would be the linking's, "
             "not a step's. Compare two builds of one linking."
         )
+    for build in (baseline, candidate):
+        if linking_of(build) == LINKINGS[1] and not (build / FLOW_LINKS).is_file():
+            raise CompareError(
+                f"{build} was linked through {LINKINGS[1]} and does not hold {FLOW_LINKS}, the "
+                "file it was linked through: it was built before a build kept that file."
+            )
     base, cand = read_inventory(baseline), read_inventory(candidate)
     recorded = read_steps(candidate)
     steps = steps_of_the_candidate_alone(recorded, read_steps(baseline))
@@ -700,8 +725,9 @@ def compare(baseline: Path, candidate: Path, before_after_out: Path | None = Non
     seeds = relevant_seeds(rows["rows"], effective, list(base_scores.columns))
     names = cand[0].set_index("process_id")[["name", "location"]].to_dict("index")
     moved: dict[str, dict] = {}
+    reach: dict[str, dict] = {}
     scores = compare_scores(
-        base_scores, cand_scores, seeds, consumer_graph(base[1], cand[1]), names, moved
+        base_scores, cand_scores, seeds, consumer_graph(base[1], cand[1]), names, moved, reach
     )
     audits = {
         label: json.loads((build / "audit" / "audit.json").read_text())
@@ -753,17 +779,22 @@ def compare(baseline: Path, candidate: Path, before_after_out: Path | None = Non
         "scores": scores,
         "published_results": published_results(baseline, candidate),
     }
-    if before_after_out is not None:
-        account = before_after_account.account(
-            result,
+    if account_out is not None:
+        steps = {step["id"]: step for step in (summary or {}).get("steps", [])}
+        if layer:  # a contribution's layer is a step of its own
+            about = (read_json(candidate / "build.json") or {}).get("contribution") or {}
+            steps.setdefault(
+                layer["step"], {"kind": "contribution", "description": about.get("title")}
+            )
+        account_out[:] = [
             (read_json(baseline / "build.json") or {}, read_json(candidate / "build.json") or {}),
             (base_scores.to_dict(), cand_scores.to_dict()),
             moved,
             names,
             {m["id"]: m.get("unit") for m in audits["candidate"].get("methods", [])},
-            {step["id"]: step for step in (summary or {}).get("steps", [])},
-        )
-        before_after.write(account, before_after_out)
+            steps,
+            reach,
+        ]
     return result
 
 
@@ -780,13 +811,23 @@ def main(argv: list[str] | None = None) -> int:
         "(scripts/runrecord/before_after.py)",
     )
     args = parser.parse_args(argv)
+    parts: list = []
     try:
-        result = compare(args.baseline, args.candidate, args.before_after)
-    except CompareError as error:
+        result = compare(args.baseline, args.candidate, parts if args.before_after else None)
+    except (CompareError, FileNotFoundError) as error:
         print(f"Comparison failed: {error}", file=sys.stderr)
         return 2
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(result, indent=2, allow_nan=False) + "\n")
+    if args.before_after:
+        # The comparison is the gate and is written first. The site's file of it is made
+        # from it afterwards: if that fails, the comparison stands and the line says why.
+        try:
+            before_after.write(before_after_account.account(result, *parts), args.before_after)
+        except ValueError as error:
+            args.before_after.unlink(missing_ok=True)
+            name = args.before_after.name
+            print(f"  {name} not written, the page of the comparison is not shown: {error}")
     climate = next(
         m for m in result["scores"]["methods"] if m["method"].endswith(":climate-change")
     )

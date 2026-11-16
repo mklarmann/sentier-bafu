@@ -401,11 +401,14 @@ class Tables(unittest.TestCase):
             "farm": {"name": "Fruit", "location": "CH"},
             "gas": {"name": "Gas", "location": "NO"},
         }
-        moved = {}
-        scores = compare.compare_scores(before, after, seeds, graph, names, moved)
+        moved, reach = {}, {}
+        scores = compare.compare_scores(before, after, seeds, graph, names, moved, reach)
         self.assertEqual(
             moved, {"climate": {"farm": [AMOUNT]}, "fossils": {"farm": [AMOUNT], "gas": [NAMES]}}
         )
+        # what each step can move: everything downstream of what it changed, per method
+        self.assertEqual(reach["climate"], {AMOUNT: {"farm"}})
+        self.assertEqual(reach["fossils"], {AMOUNT: {"farm"}, NAMES: {"gas", "mix"}})
         comparison = {
             "scores": scores,
             "rows": rows["summary"],
@@ -426,7 +429,7 @@ class Tables(unittest.TestCase):
         def account(**more):
             return before_after_account.account(
                 comparison, records, (before.to_dict(), after.to_dict()), moved, names,
-                {"climate": "kg CO2 eq"}, steps, **more,
+                {"climate": "kg CO2 eq"}, steps, reach, **more,
             )  # fmt: skip
 
         data = account()
@@ -457,9 +460,30 @@ class Tables(unittest.TestCase):
         self.assertEqual(
             (amount["rows"], amount["changed"], amount["moved"]), (1, {"amount": 1}, 1)
         )
-        # a row two steps explain together is listed under both names, and moved nothing
+        # a row two steps explain together is listed under both names. Such a pair has no
+        # reach of its own, so it has no count of what it moved and no claim: not "0", unknown
         both = causes[f"location-codes + {LOCATION}"]
-        self.assertEqual((both["kind"], both["moved"]), ("two steps together", 0))
+        self.assertEqual(
+            (both["kind"], both["moved"], both["claim"]), ("two steps together", None, None)
+        )
+        # each step's claim is worked out: how many datasets it reaches, and never which
+        self.assertEqual(
+            (amount["claim"]["derived"], amount["claim"]["reach"], amount["claim"]["scope"]),
+            (True, 1, []),
+        )
+        self.assertEqual(causes[NAMES]["claim"]["reach"], 2)
+        # a step that changed nothing a result depends on claims that nothing moves
+        nothing = before_after_account.derived_claim(LOCATION, reach)
+        self.assertEqual((nothing["derived"], nothing["reach"]), (True, 0))
+        self.assertIn("Nothing this step changed can move a result", nothing["text"])
+        # every value has a class; what moved inside a step's reach is as claimed, and "mix",
+        # which the names step reaches and which did not move, is unchanged: a reach that was
+        # worked out says what may move
+        self.assertEqual(climate["classes"], {"unchanged": 2, "as claimed": 1})
+        self.assertEqual(fossils["classes"], {"unchanged": 1, "as claimed": 2})
+        self.assertEqual(farm["classes"], {"climate": "as claimed", "fossils": "as claimed"})
+        self.assertEqual(farm["moved"], ["climate", "fossils"])
+        self.assertEqual(data["noise"]["measured"], False)
         self.assertEqual(data["rows"]["differ"], rows["summary"]["exchange_rows_changed"])
         self.assertEqual(len(data["notes"]), 2)
         # a page lists only so many datasets with their results, and says how many it left out
@@ -468,10 +492,59 @@ class Tables(unittest.TestCase):
             ([item["id"] for item in short["moved"]], short["moved_not_listed"]), (["farm"], 1)
         )
         self.assertEqual(short["items"]["moved"], 2)
+        # a name of any length, with a line break in it, is a name the format takes
+        long = dict(names) | {"farm": {"name": "Fruit\n" + "x" * 500, "location": "C\tH" * 40}}
+        written = before_after_account.account(
+            comparison, records, (before.to_dict(), after.to_dict()), moved, long,
+            {"climate": "kg CO2 eq"}, steps, reach,
+        )  # fmt: skip
+        self.assertEqual(before_after.shape_errors(written), [])
+        self.assertTrue(written["moved"][0]["name"].startswith("Fruit xxx"))
+        # a score that moved outside every step's reach is not claimed: what the comparison
+        # calls unexplained, and the two counts must agree
+        outside = after.copy()
+        outside.loc["mix", "climate"] = 9.0
+        moved_2, reach_2 = {}, {}
+        scores_2 = compare.compare_scores(before, outside, seeds, graph, names, moved_2, reach_2)
+        found = before_after_account.account(
+            comparison | {"scores": scores_2}, records, (before.to_dict(), outside.to_dict()),
+            moved_2, names, {"climate": "kg CO2 eq"}, steps, reach_2,
+        )  # fmt: skip
+        self.assertEqual(found["indicators"][0]["classes"]["not claimed"], 1)
+        self.assertEqual(found["indicators"][0]["unexplained"], 1)
+        mix = next(item for item in found["moved"] if item["id"] == "mix")
+        self.assertEqual((mix["classes"]["climate"], mix["causes"]), ("not claimed", []))
+        wider = reach_2 | {"climate": {AMOUNT: {"farm", "mix"}}}
+        with self.assertRaisesRegex(ValueError, "0 moved outside every step's reach"):
+            before_after_account.account(
+                comparison | {"scores": scores_2},
+                records,
+                (before.to_dict(), outside.to_dict()),
+                moved_2,
+                names,
+                {},
+                steps,
+                wider,
+            )
         # a count that is not the comparison's own stops the file from being written
         scores["methods"][0]["datasets_moved"] = 2
         with self.assertRaisesRegex(ValueError, "the comparison counted 2 moved of 3"):
             account()
+
+    def test_a_contribution_is_compared_with_the_patched_copy_under_its_own_name(self):
+        from release_build import before_after_account
+
+        patched = {"databases": {"inventory": "x-patched"}, "release": {"name": "X:2026"}}
+        with_layer = patched | {
+            "databases": {"inventory": "x-c7"},
+            "contribution": {"id": "C7", "standing": "not authorised", "step": "C7-sea"},
+        }
+        title, before, after = before_after_account.sides(patched, with_layer)
+        self.assertEqual(title, "The patched copy and contribution C7")
+        self.assertEqual((before[0], after[0]), ("Patched copy", "Contribution C7"))
+        self.assertIn("`x-patched`", before[1])
+        self.assertIn("`x-c7`", after[1])
+        self.assertIn("not authorised", after[1])
 
     def test_corrected_flows_are_listed_with_the_ef_flow_they_stay_on(self):
         receipt = {
@@ -540,6 +613,67 @@ class Tables(unittest.TestCase):
             result["declared_and_linked_units"],
             {"kWh for a dataset in MJ": 1, "p for a dataset in kg": 1},
         )
+
+
+class Guards(unittest.TestCase):
+    """Two builds are compared only when a difference between them can be a step's."""
+
+    def builds(self, tmp, first, second):
+        import json
+
+        made = []
+        for name, record in (("first", first), ("second", second)):
+            folder = Path(tmp) / name
+            folder.mkdir()
+            (folder / "build.json").write_text(json.dumps(record))
+            made.append(folder)
+        return made
+
+    def refused(self, first, second):
+        import contextlib
+        import io
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            one, other = self.builds(tmp, first, second)
+            with self.assertRaises(compare.CompareError) as raised:
+                compare.compare(one, other)
+            # and the command says so in one line, and writes no comparison
+            out, said = Path(tmp) / "comparison.json", io.StringIO()
+            with contextlib.redirect_stderr(said):
+                code = compare.main(
+                    [
+                        str(one),
+                        str(other),
+                        "--out",
+                        str(out),
+                        "--before-after",
+                        str(Path(tmp) / "b.json"),
+                    ]
+                )
+            self.assertEqual(
+                (code, out.exists(), (Path(tmp) / "b.json").exists()), (2, False, False)
+            )
+            self.assertIn("Comparison failed:", said.getvalue())
+            self.assertNotIn("Traceback", said.getvalue())
+        return str(raised.exception)
+
+    def test_a_build_with_the_countries_factors_is_not_compared_with_one_without(self):
+        why = self.refused({"install": {"located": True}}, {"install": {"located": False}})
+        self.assertIn("that country's factor", why)
+        # a build made before the rule says nothing, and did not apply it
+        self.assertFalse(compare.located_of(Path("/nowhere")))
+        self.assertIn("that country's factor", self.refused({"install": {"located": True}}, {}))
+
+    def test_two_builds_of_two_linkings_are_not_compared(self):
+        why = self.refused({"linking": compare.LINKINGS[0]}, {"linking": compare.LINKINGS[1]})
+        self.assertIn("Compare two builds of one linking", why)
+
+    def test_a_build_of_the_second_linking_without_its_file_says_so(self):
+        linked = {"linking": compare.LINKINGS[1], "install": {"located": True}}
+        why = self.refused(linked, linked)
+        self.assertIn(compare.FLOW_LINKS, why)
+        self.assertIn("before a build kept that file", why)
 
 
 class Published(unittest.TestCase):

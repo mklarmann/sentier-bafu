@@ -38,6 +38,7 @@ on:
       - "scripts/build_release.py"
       - "scripts/export_release.py"
       - "scripts/release_build/**"
+      - "scripts/runrecord/**"
       - "src/sentier_brightway/**"
       - "community/layers/**"
       - "pyproject.toml"

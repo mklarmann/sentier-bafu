@@ -61,7 +61,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from release_build import adapter, public_summary, release_manifest, run_summary, step_lines  # noqa: E402
+from release_build import (  # noqa: E402
+    adapter,
+    before_after_account,  # noqa: E402
+    public_summary,
+    release_manifest,
+    run_summary,
+    step_lines,
+)
 from release_build import layer as layer_file  # noqa: E402
 
 REPOSITORY = Path(__file__).resolve().parents[1]
@@ -78,6 +85,9 @@ KEPT_FLOW_LINKS = "flow-links.csv"
 # What the comparison of two builds writes for the site, beside its own file
 # (scripts/runrecord/before_after.py)
 BEFORE_AFTER = "before-after.json"
+# and, for a run that also built contributions, the builds and the pairs that were compared
+# (scripts/runrecord/review.py)
+REVIEW = "review.json"
 # Where sentier-importers' registry expects BAFU's release, below its data root
 IMPORTER_INPUT = Path("sources") / "bafu-2026" / "BAFU-2026 v1_ecoSpold v1.zip"
 IMPORTER_SOURCES = ("bafu-processes", "bafu-exchanges")
@@ -925,6 +935,46 @@ def export_command(folder: Path, destination: Path) -> list[str] | None:
     return [*command, "--labels", export["labels"], "--out", str(destination)]
 
 
+def review_of(out: Path, provider: Path, patched: Path, contributions, summary: Path) -> bool:
+    """Write the review of a run that built contributions beside the patched copy: the builds,
+    what each contains and the pairs that were compared. Whether it was written: a run
+    without a contribution compared one pair, and its comparison says all there is."""
+
+    def read(path):
+        # Two clauses, not one of two errors: the formatter writes such a clause without its
+        # parentheses, which Python 3.12 can't read, and this script runs on 3.12.
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError:
+            return None
+        try:
+            return json.loads(text)
+        except ValueError:
+            return None
+
+    builds = [
+        (
+            layer_file.step_id(layer).lower(),
+            read(
+                out / "contributions" / layer_file.step_id(layer).lower() / "build" / "build.json"
+            ),
+        )
+        for _, layer in contributions
+    ]
+    builds = [(name, record) for name, record in builds if record]
+    records = read(provider / "build.json"), read(patched / "build.json")
+    if not builds or not all(records):
+        return False
+    steps = {step["id"]: step for step in (read(summary) or {}).get("steps", [])}
+    try:
+        index = before_after_account.index(out, *records, builds, steps)
+        before_after_account.review.write(index, out / REVIEW)
+    except (ValueError, KeyError) as error:
+        print(f"The review of the run's builds was not written: {error}")
+        return False
+    return True
+
+
 def set_aside(keep: dict[str, Path], results: Path) -> list[str]:
     """Copy the files that may leave the machine into `results`; return what was held back.
 
@@ -1151,7 +1201,10 @@ def release(args: argparse.Namespace) -> int:
         folder = out / "contributions" / name
         keep[f"{name}-audit.json"] = folder / "build" / "audit" / "audit.json"
         keep[f"{name}-comparison.json"] = folder / "comparison.json"
+        keep[f"{name}-{BEFORE_AFTER}"] = folder / BEFORE_AFTER
         keep[f"{name}-exports-manifest.json"] = folder / "exports" / "manifest.json"
+    if review_of(out, provider, patched, contributions, summary):
+        keep[REVIEW] = out / REVIEW
     held_back = set_aside(keep, results)
     (out / "release.json").write_text(
         json.dumps({"status": data["status"], "steps": steps}, indent=2) + "\n"

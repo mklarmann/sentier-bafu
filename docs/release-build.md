@@ -238,6 +238,26 @@ dataset site reads ([Before and after](before-after.md)), and the site gives it 
 own that the comparison step of the walk leads to. It lists at most 200 datasets with their
 results, the ones that moved furthest first, and says how many it left out.
 
+Every step is a cause with a claim that is worked out, not stated: the datasets whose supply
+chain reaches what the step changed, in the impact categories the change can affect. The
+file says how many datasets a step reaches and not which. Each value then has a class: a
+score that moved inside a step's reach is "as claimed", and one that moved outside every
+reach is "not claimed", which is what the comparison calls unexplained and fails on. The
+file is written after `comparison.json`: if it can't be written, the comparison stands and
+the run says why the page is not shown. Noise is not measured, because no state is built
+twice; the file says so.
+
+A run that also builds contributions writes one such file for each, the patched copy
+against the patched copy with that contribution (`<contribution>-before-after.json`), and
+`review.json`: the builds of the run, what each contains, and the pairs that were compared.
+The site then has a page on which a reader picks a contribution and is shown the two builds
+that differ by exactly it.
+
+Two builds are compared only if a difference between them can be a step's: both linked their
+elementary flows the same way, both or neither gave the flows that name a country that
+country's factor, and a build of the second linking still holds the file it was linked
+through. Otherwise the comparison says which of these fails and writes nothing.
+
 The run also writes its own account for the site, `run.json`, from the manifest
 (`scripts/release_build/run_summary.py`): each step with its result, its time, its figures and
 its notes, what was in the run, and what stands in the way of using its result. The format is
