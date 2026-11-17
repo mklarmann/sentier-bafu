@@ -851,10 +851,16 @@ def main(argv: list[str] | None = None) -> int:
 
             processes = read_inventory(args.candidate)[0].set_index("process_id")
             item_units = {code: str(unit) for code, unit in processes["reference_unit"].items()}
+            # BAFU's sector of each dataset, the group a reader filters by
+            item_groups = {
+                code: str(sector).strip() or None
+                for code, sector in processes["sector"].items()
+                if isinstance(sector, str)
+            }
             records, scores, _moved, names, units, steps, reach = parts
             data = diagnostics_account.chain(
                 result, records, scores, names, units, steps, reach, item_units,
-                world=args.world_factors, candidate=args.baseline,
+                world=args.world_factors, candidate=args.baseline, item_groups=item_groups,
             )  # fmt: skip
             diagnostics_account.write(data, args.diagnostics)
         except Exception as error:  # noqa: BLE001 - whatever stops this file, the comparison stands

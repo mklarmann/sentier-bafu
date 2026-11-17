@@ -586,9 +586,13 @@ class Tables(unittest.TestCase):
 
         comparison, records, scores, names, steps, reach, units = self.chain_inputs()
         data = account.chain(
-            comparison, records, scores, names, {"climate": "kg CO2 eq"}, steps, reach, units
-        )
+            comparison, records, scores, names, {"climate": "kg CO2 eq"}, steps, reach, units,
+            item_groups={"farm": "agriculture", "gas": "fuels"},
+        )  # fmt: skip
         self.assertEqual(fileformat.errors(data), [])
+        # a dataset's sector is its group; one without a sector has none
+        groups = {item["id"]: item["group"] for item in data["items"]}
+        self.assertEqual(groups.get("farm"), "agriculture")
         self.assertEqual([s["id"] for s in data["states"]], ["before", "after"])
         (step,) = data["steps"]
         # the claim is the comparison's reach (farm in climate; farm, gas and mix in fossil

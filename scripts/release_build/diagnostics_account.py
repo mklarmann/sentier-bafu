@@ -106,10 +106,12 @@ def chain(
     world: Path | None = None,
     candidate: Path | None = None,
     listed: int = LISTED,
+    item_groups: dict[str, str | None] | None = None,
 ) -> dict:
     """The chain of one comparison, checked by sentier-diagnostics. `world` is the build of
     BAFU's release with the world's factors, `candidate` the build whose install report names
-    the categories of the countries' factors (the build of BAFU's release)."""
+    the categories of the countries' factors (the build of BAFU's release). `item_groups` is
+    each dataset's sector, by which a reader filters."""
     from sentier_diagnostics import chain as build_chain
     from sentier_diagnostics import claims
 
@@ -221,7 +223,7 @@ def chain(
             c: {
                 "name": (names.get(c) or {}).get("name") or c,
                 "place": (names.get(c) or {}).get("location"),
-                "group": None,
+                "group": (item_groups or {}).get(c) or None,
             }
             for c in codes
         },  # fmt: skip
