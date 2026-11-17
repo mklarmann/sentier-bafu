@@ -72,12 +72,12 @@
       "Findings"
     ],
     [
-      "feedback.html",
-      "Feedback to BAFU"
-    ],
-    [
       "contributions.html",
       "Contributions"
+    ],
+    [
+      "feedback.html",
+      "Feedback to BAFU"
     ],
     [
       "patch-and-build.html",
