@@ -30,7 +30,7 @@ def ilcd_key(document):
     return db, code
 
 
-def rewrite(path, prefix, render):
+def rewrite(path, renderers):
     # A new ZIP avoids duplicate member names and keeps the original intact on failure.
     path = Path(path)
     with tempfile.TemporaryDirectory(dir=path.parent) as tmp:
@@ -39,7 +39,8 @@ def rewrite(path, prefix, render):
             new.comment = old.comment
             for info in old.infolist():
                 data = old.read(info)
-                if info.filename.startswith(prefix) and not info.is_dir():
+                render = renderers.get(info.filename.rpartition("/")[0])
+                if render is not None and not info.is_dir():
                     data = render(data)
                 new.writestr(info, data)
         output.replace(path)
@@ -55,7 +56,7 @@ def magnitude(unit, target):
     return source.factor / native.factor
 
 
-def restore_rows(jsonld, ilcd, activities, flow_id, process_id, differences, unit_labels):
+def restore_rows(jsonld, ilcd, activities, nodes, flow_id, process_id, differences, unit_labels):
     """The shared writers supply the format metadata. Restore the source row semantics.
 
     JSON-LD folds self-inputs into net production and gives elementary exchanges one
@@ -65,6 +66,8 @@ def restore_rows(jsonld, ilcd, activities, flow_id, process_id, differences, uni
     from bw_interchange_export.openlca_export import _uncertainty
 
     by_process = {process_id(key): key for key in activities}
+    used_keys = {tuple(e["input"]) for proc in activities.values() for e in proc["exchanges"]}
+    flow_names = {flow_id(key): nodes[key]["name"] for key in used_keys}
 
     overrides = {(r["key"], r["position"]): r for r in differences}
     units = {}
@@ -137,6 +140,15 @@ def restore_rows(jsonld, ilcd, activities, flow_id, process_id, differences, uni
             process, ensure_ascii=False, separators=(",", ":"), allow_nan=False
         ).encode()
 
+    def flow_xml(data):
+        doc = ET.fromstring(data)
+        mapped = flow_names.get(doc.findtext(".//{*}UUID"))
+        name = doc.find(".//{*}dataSetInformation/{*}name/{*}baseName")
+        if mapped is None or name.text == mapped:
+            return data
+        name.text = mapped
+        return ET.tostring(doc, encoding="UTF-8", xml_declaration=True)
+
     def process_xml(data):
         doc = ET.fromstring(data)
         key = ilcd_key(doc)
@@ -149,6 +161,14 @@ def restore_rows(jsonld, ilcd, activities, flow_id, process_id, differences, uni
             ):
                 raise ValueError(f"{key}: cannot associate the ILCD exchange with its source")
             row.find("{*}exchangeDirection").text = direction(exchange).title()
+            ref = row.find("{*}referenceToFlowDataSet")
+            label = ref.find("{*}shortDescription")
+            if label is not None and label.text != flow_names[ref.get("refObjectId")]:
+                comment = row.find("{*}generalComment")
+                comment.text = (
+                    (comment.text or "") + "\nSource exchange name: " + (label.text or "")
+                )
+                label.text = flow_names[ref.get("refObjectId")]
             if change := overrides.get((key, pos)):
                 declared = unit_labels.get(change["declared_unit"], change["declared_unit"])
                 native = unit_labels.get(change["supplier_unit"], change["supplier_unit"])
@@ -161,8 +181,8 @@ def restore_rows(jsonld, ilcd, activities, flow_id, process_id, differences, uni
                 comment.text = (comment.text or "") + "\n" + unit_detail(change)
         return ET.tostring(doc, encoding="UTF-8", xml_declaration=True)
 
-    rewrite(jsonld, "processes/", process_json)
-    rewrite(ilcd, "ILCD/processes/", process_xml)
+    rewrite(jsonld, {"processes": process_json})
+    rewrite(ilcd, {"ILCD/processes": process_xml, "ILCD/flows": flow_xml})
 
 
 def check_ilcd(path, activities, flow_id, marks, nodes, unit_labels, differences):
@@ -210,6 +230,12 @@ def check_ilcd(path, activities, flow_id, marks, nodes, unit_labels, differences
         units = {}
         for doc in documents("flows"):
             fid = doc.findtext(".//{*}UUID")
+            if fid in expected_flows:
+                source = expected_flows[fid]
+                name = doc.findtext(".//{*}dataSetInformation/{*}name/{*}baseName")
+                kind = "Product flow" if source in activities else "Elementary flow"
+                if name != nodes[source]["name"] or doc.findtext(".//{*}typeOfDataSet") != kind:
+                    problems.append(f"{fid}: ILCD mapped flow name or type differs")
             index = doc.findtext(".//{*}referenceToReferenceFlowProperty")
             prop = doc.find(f'.//{{*}}flowProperty[@dataSetInternalID="{index}"]')
             if prop is None or float(prop.findtext("{*}meanValue")) != 1:

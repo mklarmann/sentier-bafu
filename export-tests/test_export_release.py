@@ -12,6 +12,7 @@ import json
 import math
 import uuid
 import zipfile
+from xml.etree import ElementTree
 
 import bw2data as bd
 import olca_schema as o
@@ -1048,6 +1049,33 @@ def test_both_readers_reject_a_wrong_side_even_when_the_amount_and_flow_match(ba
     for name, check in (("ilcd", step.check_ilcd), ("openlca", step.check_openlca)):
         problems = check(path(out, manifest, name), nodes, step.NAMESPACE, marks)
         assert len(problems) == 1 and "wheat" in problems[0]
+
+
+def test_ilcd_names_a_mapped_flow_and_retains_the_inventory_alias(tmp_path):
+    def alias(flows, inventory):
+        rows = inventory["wheat"]["_exchanges"]
+        for index, row in enumerate(rows):
+            if row[1] == "nitrate-water":
+                rows[index] = (*row, {"name": "Inventory label for nitrate"})
+
+    manifest, out, _ = export(tmp_path, alias)
+    flow_id, _ = step.olca_ids(step.NAMESPACE)
+    fid = flow_id((FLOWS, "nitrate-water"))
+    with zipfile.ZipFile(path(out, manifest, "ilcd")) as archive:
+        flow = ElementTree.fromstring(archive.read(f"ILCD/flows/{fid}.xml"))
+        assert flow.findtext(".//{*}name/{*}baseName") == "Nitrate"
+        for member in archive.namelist():
+            if member.startswith("ILCD/processes/"):
+                doc = ElementTree.fromstring(archive.read(member))
+                for row in doc.findall(".//{*}exchanges/{*}exchange"):
+                    ref = row.find("{*}referenceToFlowDataSet")
+                    if ref.get("refObjectId") == fid:
+                        assert ref.findtext("{*}shortDescription") == "Nitrate"
+                        assert "Source exchange name: Inventory label for nitrate" in row.findtext(
+                            "{*}generalComment"
+                        )
+                        return
+    pytest.fail("Missing nitrate exchange")
 
 
 def test_signed_exchange_uses_its_declared_side_in_both_formats(tmp_path):

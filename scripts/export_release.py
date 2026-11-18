@@ -1395,6 +1395,7 @@ def export_release(
                     files["openlca"],
                     files["ilcd"],
                     activities,
+                    nodes,
                     flow_id,
                     process_id,
                     other_quantity,
