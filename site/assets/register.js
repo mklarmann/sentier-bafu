@@ -22,7 +22,11 @@ document.querySelectorAll('[data-register]').forEach(function (register) {
   }
   function load() {
     const params = new URL(location.href).searchParams;
-    fields.forEach(field => { field.value = params.get(field.name) || ''; });
+    fields.forEach(field => {
+      const value = params.get(field.name) || '';
+      const previousStages = {'Needs a second measurement': 'Awaiting verification', 'Repeated, not yet reported': 'Verified, ready to report'};
+      field.value = field.name === 'stage' ? previousStages[value] || value : value;
+    });
     render();
   }
   function change() {

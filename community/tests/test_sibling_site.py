@@ -291,8 +291,8 @@ class SiblingSite(unittest.TestCase):
 
     def test_a_providers_name_takes_the_article_it_needs(self):
         self.assertEqual((community.with_article("BAFU"), community.with_article("ADEME")), ("A BAFU", "An ADEME"))
-        self.assertIn("An ADEME release covers the point.", self.pages["index.html"])
-        self.assertIn("An ADEME release covers this point", self.pages["about/data.html"])
+        self.assertIn("A published release or file from ADEME corrects the finding.", self.pages["index.html"])
+        self.assertIn("The record identifies the published ADEME release or file", self.pages["about/data.html"])
         for name, text in self.pages.items():
             self.assertNotIn("A ADEME", text, name)
 

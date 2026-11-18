@@ -14,7 +14,7 @@ def second_measurement_list(site, up="", limit=5):
     )
     return findings.rows(
         site, waiting, up, limit=limit, more=f"{up}findings.html?sort=waiting#stage-filed",
-        empty="No finding is waiting for a second measurement.",
+        empty="No finding is awaiting verification.",
     )
 
 
@@ -24,7 +24,7 @@ def ways(site, up=""):
     report = f"{site.repo}/issues/new?template={site.finding_form}"
     return (
         '<div class="ways">'
-        f'<div class="card"><h3>Repeat a measurement</h3><p>Take a finding that needs a second measurement, repeat it on '
+        f'<div class="card"><h3>Verify a finding</h3><p>Choose an open finding, check it on '
         f"{p}'s files and write in its discussion what you got. A different result is as useful as the same one.</p>"
         f'<a class="arrow" href="{up}take-part.html">How to take part</a></div>'
         '<div class="card"><h3>Report a finding</h3><p>Say which dataset and which release, what you measured and how. '
@@ -56,13 +56,19 @@ def overview(site):
         f'<div class="actions">{browse}{compare_link}</div>'
         f"{shell.lookup(site)}</section>"
     )
+    navigation = dict(site.config.get("nav", []))
+    workflow = "".join(
+        f'<li><a href="{esc(page)}">{esc(navigation[page])}</a><span>{esc(action)}</span></li>'
+        for page, action in site.config.get("review_workflow", [])
+    )
+    journey = f'<ol class="review-workflow" aria-label="Explore the review process">{workflow}</ol>' if workflow else ""
     steps = (
         '<section class="wrap section" aria-labelledby="how"><div class="section-head"><h2 id="how">How it works</h2></div>'
-        f"{status.path_with_counts(site)}</section>"
+        f"{journey}{status.path_with_counts(site)}</section>"
     )
     wanted = (
         '<section class="wrap section" aria-labelledby="help"><div class="section-head">'
-        '<h2 id="help">Needs a second measurement</h2></div>'
+        '<h2 id="help">Findings awaiting verification</h2></div>'
         + second_measurement_list(site) + "</section>"
     ) if waiting else ""
     recent = (
