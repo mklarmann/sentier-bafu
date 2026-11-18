@@ -322,6 +322,7 @@ class Site:
             "patch-table": (lambda: pages.patch_table(self, up), False),
             "last-run": (lambda: lastrun.last_run(self, up), False),
             "build-files": (lambda: lastrun.packages(self, up), False),
+            "verified-build-summary": (lambda: lastrun.verified_summary(self), False),
             "data-files": (lambda: pages.data_files(self, up), False),
             "lookup": (lambda: shell.lookup(self, up), False),
         }

@@ -486,12 +486,14 @@ def showcase(site, record, up, title="The last run", ids=""):
             f'<span class="run-tab-n">{n}</span><span class="run-tab-name">{esc(words["short"])}</span>'
             f'<span class="run-tab-time">{esc(time or step["status"])}</span>{bar}</a></li>'
         )
+        verified = verified_build(site, record) if name == "exports" else None
         shown = "".join(
             f'<div><dt>{esc(one["label"])}</dt><dd>{esc(figure(one["value"]))}</dd></div>' for one in step.get("figures") or ()
+            if not (verified and one["label"] == "read back the same")
         )
         reason = f'<p class="run-reason">{sentence(site, step["reason"], up)}</p>' if step.get("reason") else ""
         more = "".join(f"<li>{inline(site, note, up, files)}</li>" for note in step.get("notes") or ())
-        about = f'<p>{esc(words["text"])}</p>' if words.get("text") else ""
+        about = f'<p>{esc(verified["summary"] if verified else words["text"])}</p>' if verified or words.get("text") else ""
         panels += (
             f'<article class="run-panel" id="{ids}run-step-{n}" data-step="{n - 1}">'
             f'<p class="run-step">Step {n} of {total} · <span class="run-result is-{esc(state)}">{result}</span></p>'
@@ -702,6 +704,24 @@ def offered(record):
     }
 
 
+def verified_build(site, record):
+    """Only use the independent review for the tagged files the visitor can download."""
+    review = getattr(site, "config", {}).get("verified_build")
+    if not review or for_tag(record or {}) != review["tag"]:
+        return None
+    files = {name: f["sha256"] for name, f in offered(record).items()}
+    expected = review["files"]
+    reported = (record.get("summary") or {}).get("files") or []
+    if expected and files == expected and len(reported) == len(expected):
+        return review
+    return None
+
+
+def verified_summary(site):
+    review = verified_build(site, site.last_run)
+    return f'<p class="lead">{esc(review["summary"])}</p>' if review else ""
+
+
 def download(site, url, name, size, label, up=""):
     """A link to a file kept under a tag. Where the site hands its files out under terms
     (site/config.json "download"), the link leads to the terms and carries the file's address:
@@ -789,7 +809,8 @@ def packages(site, up=""):
                 f"{TAG['not read']}</p></div>")
     releases = record.get("releases") or []
     rows = package_rows(record)
-    # a file the table below offers is not listed a second time under its tag
+    verified = verified_build(site, record)
+    # a file the table offers is not listed a second time under its tag
     below = {row["url"] for row in rows if row["url"]}
     if releases:
         listed_ = '<ul class="plain releases">'
@@ -802,7 +823,7 @@ def packages(site, up=""):
                 + "".join(f'<br>{download(site, asset["url"], asset["name"], megabytes(asset["size"]), "<code>" + esc(asset["name"]) + "</code>", up) if asset.get("url") else "<code>" + esc(asset["name"]) + "</code>"}'
                           f' <span class="quiet">{megabytes(asset["size"])}</span>'
                           for asset in own)
-                + (f'<br><span class="quiet">{TAG["listed below"].format(files=plural(shared, "file"))}</span>' if shared else "")
+                + (f'<br><span class="quiet">{TAG["listed below"].format(files=plural(shared, "file"))}</span>' if shared and not verified else "")
                 + "</li>"
             )
         listed_ += "</ul>"
@@ -832,6 +853,10 @@ def packages(site, up=""):
             + "".join(f'<th role="columnheader" scope="col">{label}</th>' for label in head)
             + f'</tr></thead><tbody role="rowgroup">{lines}</tbody></table></div>'
         )
+    if verified:
+        formats = ' · '.join(esc(row['label']) for row in rows if row['label'] in ('openLCA', 'ILCD'))
+        note = f'<p id="verified-downloads"><strong>{formats}</strong><br>{esc(verified["downloads"])}</p>'
+        return f'<div class="packages" id="build-files" data-packages>{note}{table}{listed_}</div>'
     return f'<div class="packages" id="build-files" data-packages>{listed_}{table}</div>'
 
 

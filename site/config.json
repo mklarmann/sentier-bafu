@@ -68,6 +68,20 @@
   "description": "Users of the BAFU/UVEK life-cycle inventory database record measured findings here, repeat each other's measurements and report them to BAFU.",
   "sibling_name": "AGRIBALYSE preview",
   "sibling_url": "https://mklarmann.github.io/sentier-agribalyse/",
+  "verified_build": {
+    "tag": "patched-2026-11-18",
+    "files": {
+      "bafu-2026-v1-patched-ecospold1.zip": "6500c95bf72c5e1b5d9822bcb44bb8878a32d06bd8e1edd82ab50ea2ec4fcc23",
+      "bafu-2026-v1-patched-ilcd.zip": "d03199fc34c2c4505a31e1d28e09d3edd831b1d0713c40e82673e133d4fab255",
+      "bafu-2026-v1-patched-openlca.zip": "b3d635ed710e3b75e9b32adb861cab7abbf14c77a9596672444f936359944c88",
+      "bafu-2026-v1-patched-simapro.csv": "e26a63b415c95d664047f2b4684a45b7031303d66f1e67f7cc49cac6d43e78bb",
+      "bafu-2026-v1-patched.bw2package": "080cebbafc3dc176f0925dedf0ddf84e535bf6a8e90c6997087db1c337507d70"
+    },
+    "changed_scores": 75,
+    "summary": "Five export formats are available.",
+    "downloads": "We checked both downloads against the patched BAFU inventory. For every exchange, we checked the flow, amount, unit and whether it enters or leaves the process. Where the source identifies a supplier, we also checked that link.",
+    "comparison": "75 impact results changed. All 75 were in datasets and impact categories that the patches and import fixes could affect. This check allows changes of any size in either direction."
+  },
   "case_review": true,
   "inventory_quality": true,
   "nav_parents": {"findings.html": "cases.html", "contributions.html": "sources.html", "feedback.html": "sources.html"},

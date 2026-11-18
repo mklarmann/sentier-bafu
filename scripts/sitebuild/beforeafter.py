@@ -219,7 +219,7 @@ def verdict(totals, noise):
     return f'<p class="ba-verdict is-{kind}"><strong>{text}</strong> {more}{still}</p>'
 
 
-def classes_block(data):
+def classes_block(data, reviewed_verdict=""):
     """The six classes with their counts, and the sentence they add up to."""
     totals = class_totals(data)
     if totals is None:
@@ -232,7 +232,7 @@ def classes_block(data):
     return (
         '<h2 id="classes">What moved, against what was claimed</h2>'
         f"<p>Each value is one {esc(data['items']['one'])} in one {esc(words(data)[0])}.</p>"
-        f"{verdict(totals, data.get('noise'))}"
+        f"{reviewed_verdict or verdict(totals, data.get('noise'))}"
         f'<dl class="ba-classes">{cards}</dl>'
     )
 
@@ -537,7 +537,7 @@ def reading(data, word):
     )
 
 
-def body(data, back=None, said=plain, file=None, up="", details="", opening="", diagnostics="", cases=None):
+def body(data, back=None, said=plain, file=None, up="", details="", opening="", diagnostics="", cases=None, reviewed_verdict=""):
     """The page of one comparison, without a frame. `back` is `(address, label)` of where
     the reader came from, `said` how a text of the file is shown, `file` the address of the
     comparison as a file, `up` the way from the page to the folder that holds `assets/`,
@@ -570,7 +570,7 @@ def body(data, back=None, said=plain, file=None, up="", details="", opening="", 
     )
     measurements = (
         f"{variants(data)}{tally}{sides}{setting(data, said)}"
-        + classes_block(data)
+        + classes_block(data, reviewed_verdict)
         + causes_table(data, said)
         + indicators_table(data, said, word)
         + grid(data, word, details, cases)
@@ -588,7 +588,7 @@ def page(site, data, name, back=None, current=None, review_section="", diagnosti
     """The whole page of one comparison, in the frame of a site the shared build writes: a
     text of the file links the findings it names, as everywhere on such a site."""
     from . import shell
-    from .lastrun import inline
+    from .lastrun import inline, verified_build
 
     title = (data or diagnostics)["title"]
     head = f'<link rel="stylesheet" href="{STYLE}">'
@@ -626,8 +626,17 @@ def page(site, data, name, back=None, current=None, review_section="", diagnosti
         described = f'{title}: which {many} moved, in which {words(data)[1]}, and what caused it.'
         from .cases import comparison_cases
         cases = comparison_cases(site) if site.config.get("case_review") else None
+        record = getattr(site, "last_run", None) or {}
+        review = verified_build(site, record)
+        verdict_text = ""
+        totals = class_totals(data)
+        if (review and data == record.get("before_after") and totals
+                and totals[before_after.AS_CLAIMED] == review["changed_scores"]
+                and sum(i["moved"] for i in data["indicators"]) == review["changed_scores"]
+                and all(i["unexplained"] == 0 for i in data["indicators"])):
+            verdict_text = f'<p class="ba-verdict">{esc(review["comparison"])}</p>'
         inner = body(data, back, lambda text: inline(site, text, ""), f'api/v1/{name.removesuffix(".html")}.json',
-                     opening=opening, diagnostics=diagnostics_body, cases=cases)
+                     opening=opening, diagnostics=diagnostics_body, cases=cases, reviewed_verdict=verdict_text)
     else:
         crumb = f'<p class="crumb"><a href="{esc(back[0])}">{esc(back[1])}</a></p>' if back else ""
         inner = f'{crumb}<h1>{esc(title)}</h1>{opening}{diagnostics_body}'

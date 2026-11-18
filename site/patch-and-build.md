@@ -2,6 +2,8 @@
 
 Every change that is proposed here is applied to a copy of BAFU's release, checked and built on GitHub, where anyone can follow it. This is the last build, as it happened.
 
+<!-- generated: verified-build-summary -->
+
 ## Inventory quality
 
 <!-- generated: inventory-quality-summary -->
@@ -56,7 +58,7 @@ Everything is written to the folder `output/release-run`. That folder holds BAFU
 
 ## What works today
 
-**Works:** the import fixes and the community patches can be applied to the files of BAFU:2026 v1. The result is a patched copy of the release in BAFU's file format (ecoSpold v1), with a report of what each step changed. From that copy, one command of this repository builds a Brightway database, checks it, compares it with a database of BAFU's release, and writes files for Brightway, openLCA, ILCD and SimaPro, and the patched copy again as ecoSpold v1. Each file is read back. The files for Brightway, openLCA and SimaPro are compared with the database exchange by exchange. In the ILCD file the datasets are counted. The ecoSpold v1 files are compared with the files the patches were applied to: nothing differs but the label and the credit.
+**Works:** the import fixes and the community patches can be applied to the files of BAFU:2026 v1. The result is a patched copy of the release in BAFU's file format (ecoSpold v1), with a report of what each step changed. From that copy, one command of this repository builds a Brightway database, checks it, compares it with a database of BAFU's release, and writes files for Brightway, openLCA, ILCD and SimaPro, and the patched copy again as ecoSpold v1. Each file is read back. The ecoSpold v1 files are compared with the files the patches were applied to: nothing differs but the label and the credit.
 
 **Downloads:** from a tagged build, after a question that asks you to accept BAFU's Terms of Use. **Not checked yet:** no file has been opened in openLCA or in SimaPro; the checks read the files with separate programs.
 

@@ -716,6 +716,23 @@ class PageTests(unittest.TestCase):
         self.assertIsNone(unknown["releases"][0]["assets"][1]["sha256"])
         self.assertEqual(lastrun.offered(unknown), {})
 
+    def test_verified_text_only_follows_the_complete_reviewed_set_of_downloads(self):
+        expected = {f["name"]: f["sha256"] for f in a_record()["summary"]["files"]}
+        releases, _ = self.kept(a_record(), *expected)
+        record = a_record(releases=releases)
+        record["summary"]["tag"] = "patched-2026-v1.1"
+        site = a_site(record)
+        review = {"tag": record["summary"]["tag"], "files": expected, "summary": "Verified formats."}
+        site.config = {"verified_build": review}
+        self.assertIn(review["summary"], lastrun.verified_summary(site))
+        site.last_run = record | {"summary": record["summary"] | {"tag": "another-tag"}}
+        self.assertEqual(lastrun.verified_summary(site), "")
+        site.last_run = record
+        record["releases"][0]["assets"][1]["sha256"] = "f" * 64
+        self.assertEqual(lastrun.verified_summary(site), "")
+        review["files"] = {n: h for n, h in expected.items() if n in lastrun.offered(record)}
+        self.assertEqual(lastrun.verified_summary(site), "")
+
     def test_the_files_table_fits_the_text_and_a_tag_does_not_list_its_files_twice(self):
         record = a_record()
         files = [f["name"] for f in record["summary"]["files"]]
