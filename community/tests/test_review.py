@@ -404,7 +404,21 @@ class PageTests(unittest.TestCase):
                 self.assertIn('aria-current=', bar)
                 self.assertIn("Comparison &amp; diagnostics", bar)
             self.assertNotIn('<nav class="subnav"', (out / "findings.html").read_text())
+            self.assertNotIn('<nav class="subnav"', (out / "index.html").read_text())
             self.assertEqual(self.run_in("scripts/check_site.py", str(out)).returncode, 0)
+
+            config["build_navigation"]["on_home"] = True
+            config_file.write_text(json.dumps(config))
+            build_site.build(out, root=root, offline=True, last_run_snapshot=self.kept / "with.json")
+            home = (out / "index.html").read_text()
+            main = re.search(r'<nav class="nav".*?</nav>', home, re.S)[0]
+            bar = re.search(r'<nav class="subnav".*?</nav>', home, re.S)[0]
+            self.assertIn('<a href="index.html" aria-current="page">', main)
+            self.assertEqual(main.count("aria-current"), 1)
+            self.assertIn('aria-label="The run: its parts"', bar)
+            self.assertEqual(re.findall(r'href="([^"]+)"', bar), ["run.html", "before-after.html", "about/data.html"])
+            self.assertNotIn("aria-current", bar)
+            self.assertNotIn('<nav class="subnav"', (out / "findings.html").read_text())
 
     def test_private_diagnostics_cannot_enter_a_public_run_record(self):
         self.assertTrue(last_run.public_diagnostics_errors({"audience": "local"}))

@@ -53,16 +53,17 @@ def shell(site, title, body, current, up="", page=None, description=None, head="
     home = page == "index.html"
     full = c["home_title"] if home else f'{title} · {c["title_suffix"]}'
     described = description or c["description"]
-    section = site.build_sections.get(page)
+    section = None if home else site.build_sections.get(page)
     subnav = ""
     if section:
         current = site.walk_page
+    if section or (home and site.build_views and c["build_navigation"].get("on_home")):
         links = "".join(
             f'<a href="{up}{esc(href)}"'
-            + (' aria-current="page"' if href == page else ' aria-current="location"' if href == section else "")
+            + (' aria-current="page"' if section and href == page else ' aria-current="location"' if href == section else "")
             + f'>{esc(label)}</a>' for href, label in site.build_views.items()
         )
-        parent = dict(c["nav"])[current]
+        parent = dict(c["nav"])[site.walk_page]
         subnav = f'<nav class="subnav" aria-label="{esc(parent)}: its parts"><div class="wrap subnav-in">{links}</div></nav>'
     nav = "".join(
         f'<a href="{up}{href}"' + (' aria-current="page"' if href == current else "") + f">{esc(label)}</a>"
