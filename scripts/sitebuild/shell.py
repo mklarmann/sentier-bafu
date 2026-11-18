@@ -5,8 +5,18 @@ import json
 from . import theme
 from .text import day, esc, ext
 
-NAV_SCRIPT = ("<script>(function(){var a=document.querySelector('.nav [aria-current]');"
-              "if(a&&a.scrollIntoView)a.scrollIntoView({block:'nearest',inline:'center'});})();</script>")
+NAV_SCRIPT = """<script>
+(function () {
+  var current = document.querySelector('.nav [aria-current]');
+  if (current) current.scrollIntoView({block: 'nearest', inline: 'center'});
+  var views = document.querySelector('.subnav-in');
+  if (views) views.addEventListener('focusin', function (event) {
+    if (views.scrollWidth > views.clientWidth) {
+      event.target.scrollIntoView({block: 'nearest', inline: 'nearest'});
+    }
+  });
+})();
+</script>"""
 
 
 def build_views(site):
@@ -53,7 +63,7 @@ def shell(site, title, body, current, up="", page=None, description=None, head="
             + f'>{esc(label)}</a>' for href, label in site.build_views.items()
         )
         parent = dict(c["nav"])[current]
-        subnav = f'<nav class="subnav" aria-label="{esc(parent)}"><div class="wrap subnav-in">{links}</div></nav>'
+        subnav = f'<nav class="subnav" aria-label="{esc(parent)}: its parts"><div class="wrap subnav-in">{links}</div></nav>'
     nav = "".join(
         f'<a href="{up}{href}"' + (' aria-current="page"' if href == current else "") + f">{esc(label)}</a>"
         for href, label in c["nav"]

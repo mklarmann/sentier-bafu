@@ -38,7 +38,7 @@
   },
   "patched_page": "patch-and-build.html",
   "build_navigation": {
-    "comparison": "Comparison & diagnostics",
+    "comparison": "Comparison",
     "pages": {"about/checks.html": "Build checks"}
   },
   "download": {
@@ -85,7 +85,7 @@
     ],
     [
       "patch-and-build.html",
-      "Patch and build"
+      "Build"
     ],
     [
       "take-part.html",

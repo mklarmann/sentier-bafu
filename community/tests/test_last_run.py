@@ -1273,7 +1273,8 @@ class SiteTests(unittest.TestCase):
             old = (out / "patched-release.html").read_text()
             self.assertIn('http-equiv="refresh"', old)
             self.assertIn("patch-and-build.html", old)
-            self.assertIn('aria-current="page">Patch and build</a>', source)
+            self.assertIn('<a href="patch-and-build.html" aria-current="page">Build</a>', source)
+            self.assertIn('<a href="patch-and-build.html" aria-current="page">Overview</a>', source)
             self.assertIn("<title>Patch and build ·", source)
             self.assertIn('data-show-after="build-files"', source.split('aria-label="On this page"')[1])
             # the steps are told from the end, and each keeps its own number
