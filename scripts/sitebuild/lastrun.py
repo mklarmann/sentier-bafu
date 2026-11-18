@@ -414,14 +414,16 @@ def compared_link(site, record, up, ids):
     comparison, and the step it belongs to (None where the run names none of its steps)."""
     pages = getattr(site, "compared", {}).get(ids) or {}
     data, page = record.get("before_after"), pages.get("compared")
+    if data is None and (destination := page or pages.get("review")):
+        return None, f'<p class="run-compared"><a class="button" href="{up}{esc(destination)}">Compare results</a></p>'
     if data is None or page is None:
         return None, ""
     moved, one, many = data["items"]["moved"], data["items"]["one"], data["items"]["many"]
     said = f"{plural(moved, one, many)} moved" if moved else f"no {one} moved"
     # where the run compared several pairs of builds, the review of them stands beside it
-    review = (
-        f'<a class="button" href="{up}{esc(pages["review"])}">One cause at a time</a>' if pages.get("review") else ""
-    )
+    review = ""
+    if pages.get("review") and not pages["review"].startswith(page + "#"):
+        review = f'<a class="button" href="{up}{esc(pages["review"])}">One cause at a time</a>'
     link = (
         f'<p class="run-compared"><a class="button" href="{up}{esc(page)}">What changed, {esc(one)} by {esc(one)}</a>'
         f'{review}<span>{esc(said)}</span></p>'

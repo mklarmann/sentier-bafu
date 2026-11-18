@@ -19,6 +19,7 @@ import copy
 import html
 import json
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -376,6 +377,59 @@ class PageTests(unittest.TestCase):
         self.assertEqual(json.loads((self.out / "api/v1/review.json").read_text()), example.index())
         self.assertEqual(json.loads((self.out / f"api/v1/{PAIR}").read_text()), example.comparison())
         self.assertTrue((self.out / "assets/review.js").is_file())
+
+    def test_build_views_join_the_review_to_the_comparison_and_keep_old_addresses(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "repo"
+            shutil.copytree(self.root, root)
+            config_file = root / "site/config.json"
+            config = json.loads(config_file.read_text())
+            config["build_navigation"] = {
+                "comparison": "Comparison & diagnostics",
+                "pages": {"about/data.html": "Build evidence", "absent.html": "Missing view"},
+            }
+            config_file.write_text(json.dumps(config))
+            out = Path(tmp) / "site"
+            build_site.build(out, root=root, offline=True, last_run_snapshot=self.kept / "with.json")
+            comparison = (out / "before-after.html").read_text()
+            self.assertEqual(comparison.count("<h1>"), 1)
+            self.assertIn('id="review"', comparison)
+            self.assertIn('id="moved"', comparison)
+            self.assertIn('data-rv-cause', comparison)
+            self.assertIn('href="before-after.html#review"', (out / example.PAGE).read_text())
+            self.assertIn('url=before-after.html#review', (out / "review.html").read_text())
+            for name in ("before-after.html", "run.html", example.PAGE, "about/data.html"):
+                bar = re.search(r'<nav class="subnav".*?</nav>', (out / name).read_text(), re.S)[0]
+                self.assertNotIn("absent.html", bar)
+                self.assertIn('aria-current=', bar)
+                self.assertIn("Comparison &amp; diagnostics", bar)
+            self.assertNotIn('<nav class="subnav"', (out / "findings.html").read_text())
+            self.assertEqual(self.run_in("scripts/check_site.py", str(out)).returncode, 0)
+
+    def test_private_diagnostics_cannot_enter_a_public_run_record(self):
+        self.assertTrue(last_run.public_diagnostics_errors({"audience": "local"}))
+        self.assertTrue(last_run.public_diagnostics_errors({"audience": "public", "matrix": {"file": "matrix.json"}}))
+
+    def test_public_diagnostics_use_the_same_result_page(self):
+        try:
+            from sentier_diagnostics import example as diagnostics_example
+        except ImportError:
+            self.skipTest("the Pages diagnostics renderer is not installed")
+        with tempfile.TemporaryDirectory() as tmp:
+            record = json.loads((self.kept / "with.json").read_text())
+            record["diagnostics"] = diagnostics_example.build()
+            snapshot = Path(tmp) / "run.json"
+            snapshot.write_text(json.dumps(record))
+            out = Path(tmp) / "site"
+            build_site.build(out, offline=True, last_run_snapshot=snapshot)
+            page = (out / "before-after.html").read_text()
+            self.assertEqual(page.count(" data-sentier-diagnostics"), 1)
+            self.assertIn('<details class="ba-pair">', page)
+            self.assertIn('id="review"', page)
+            self.assertIn("before-after.html#diagnostics", (out / "diagnostics.html").read_text())
+            self.assertTrue((out / "assets/diagnostics.js").is_file())
+            self.assertFalse((out / "matrix.json").exists())
+            self.assertEqual(self.run_in("scripts/check_site.py", str(out)).returncode, 0)
 
     def test_the_walk_leads_to_the_review_and_every_page_leads_back(self):
         first = self.pages["run.html"].split('id="run-step-2"')[0]

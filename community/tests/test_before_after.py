@@ -224,6 +224,8 @@ class PageTests(unittest.TestCase):
 
     def test_the_site_passes_its_check_and_holds_the_comparison_as_a_file(self):
         self.assertEqual(self.run_in("scripts/check_site.py", str(self.out)).returncode, 0)
+        self.assertIn('href="before-after.html#moved"', (self.out / "index.html").read_text())
+        self.assertIn('id="moved"', self.page)
         self.assertEqual(json.loads((self.out / "api/v1/before-after.json").read_text()), a_comparison())
         self.assertTrue((self.out / "assets/before-after.js").is_file())
 
@@ -281,6 +283,7 @@ class PageTests(unittest.TestCase):
         out = self.site("without")
         self.assertFalse((out / "before-after.html").exists())
         self.assertFalse((out / "api/v1/before-after.json").exists())
+        self.assertNotIn('href="before-after.html#moved"', (out / "index.html").read_text())
         self.assertNotIn("before-after", (out / "run.html").read_text())
         self.assertEqual(self.run_in("scripts/check_site.py", str(out)).returncode, 0)
 

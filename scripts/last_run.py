@@ -69,6 +69,17 @@ MAX_ARCHIVE = 30 * 1024 * 1024
 MAX_FILE = before_after.MAX_BYTES  # the size a run's own writer refuses to exceed
 STATES = ("read", "no run", "not read", "unreadable")
 KEPT = ("read", "none", "expired", "needs a token", "unreadable")
+
+
+def public_diagnostics_errors(data):
+    """Pages accepts the public chain from the run, without a local results matrix."""
+    if not isinstance(data, dict) or data.get("audience") != "public" or data.get("matrix"):
+        return ["only a public diagnostics chain can be shown on the site"]
+    from sentier_diagnostics import fileformat
+
+    return fileformat.errors(data)
+
+
 FILES = {
     "summary": ("run.json", summary.shape_errors),
     "transcript": ("transcript.json", transcript.shape_errors),
@@ -76,6 +87,7 @@ FILES = {
     "before_after": (before_after.FILE, before_after.shape_errors),
     # where it compared several pairs of builds: which, and what each cause claims
     "review": (review.FILE, review.shape_errors),
+    "diagnostics": ("diagnostics.json", public_diagnostics_errors),
 }
 MAX_PAIRS = 40  # comparisons of a review that a record holds beside the run's own
 
@@ -311,6 +323,8 @@ def one_run(github, run, artifact_name, fetch=fetch_address):
     """One run as a record holds it: GitHub's record of it, and what the run kept."""
     jobs = github.get(f"/actions/runs/{int(run['id'])}/jobs?per_page=100") or {}
     kept, note, files = kept_by(github, run["id"], artifact_name, fetch)
+    if files.get("diagnostics") is None:
+        files.pop("diagnostics", None)
     return {
         "run": run_facts(run),
         "jobs": [job_facts(job) for job in jobs.get("jobs") or ()],
@@ -366,7 +380,9 @@ def fetch(repository, run, token=None, transport=None, fetch=fetch_address):
     )
 
 
-def local(account, lines, run=None, commit=None, compared=None, index=None, pairs=None):
+def local(
+    account, lines, run=None, commit=None, compared=None, index=None, pairs=None, diagnostics=None
+):
     """The record of a run that did not happen on GitHub, from the files it wrote.
     `account` is its run.json, `lines` its transcript.json, `compared` its before-after.json
     if it wrote one, `index` its review.json with `pairs`, the comparisons that names by
@@ -377,6 +393,8 @@ def local(account, lines, run=None, commit=None, compared=None, index=None, pair
         errors += checked(before_after.shape_errors, compared)
     if index is not None:
         errors += checked(review.shape_errors, index)
+    if diagnostics is not None:
+        errors += checked(public_diagnostics_errors, diagnostics)
     for data in (pairs or {}).values():
         errors += checked(before_after.shape_errors, data)
     if errors:
@@ -397,6 +415,7 @@ def local(account, lines, run=None, commit=None, compared=None, index=None, pair
         "summary": account,
         "transcript": lines,
         "before_after": compared,
+        **({"diagnostics": diagnostics} if diagnostics is not None else {}),
         "review": index,
         "pairs": dict(pairs or {}) if index is not None else {},
         "tagged": None,
@@ -563,6 +582,9 @@ def main(argv=None):
     )
     parser.add_argument("--summary", type=Path, help="With --local: the run.json of the run")
     parser.add_argument(
+        "--diagnostics", type=Path, help="With --local: the run's public diagnostics.json"
+    )
+    parser.add_argument(
         "--transcript", type=Path, help="With --local: the transcript.json of the run"
     )
     parser.add_argument(
@@ -602,7 +624,15 @@ def main(argv=None):
                 for page, name in pair_files(index).items():
                     pairs[page] = json.loads((args.review.parent / name).read_text("utf-8"))
             record = local(
-                *read, run=run, commit=args.commit, compared=compared, index=index, pairs=pairs
+                *read,
+                run=run,
+                commit=args.commit,
+                compared=compared,
+                index=index,
+                pairs=pairs,
+                diagnostics=json.loads(args.diagnostics.read_text(encoding="utf-8"))
+                if args.diagnostics
+                else None,
             )
         elif args.repository:
             record = fetch(args.repository, run, os.environ.get("GITHUB_TOKEN"))

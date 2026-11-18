@@ -37,6 +37,10 @@
     }
   },
   "patched_page": "patch-and-build.html",
+  "build_navigation": {
+    "comparison": "Comparison & diagnostics",
+    "pages": {"about/checks.html": "Build checks"}
+  },
   "download": {
     "title": "Before you download: BAFU's Terms of Use",
     "intro": "This file is part of a patched copy of BAFU's life cycle inventories: Modified Data, not BAFU's original data. Download it only if you accept BAFU's Terms of Use, and with them these three conditions:",

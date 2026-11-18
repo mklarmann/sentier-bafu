@@ -530,7 +530,7 @@ def reading(data, word):
     )
 
 
-def body(data, back=None, said=plain, file=None, up="", details=""):
+def body(data, back=None, said=plain, file=None, up="", details="", opening="", diagnostics=""):
     """The page of one comparison, without a frame. `back` is `(address, label)` of where
     the reader came from, `said` how a text of the file is shown, `file` the address of the
     comparison as a file, `up` the way from the page to the folder that holds `assets/`,
@@ -561,8 +561,7 @@ def body(data, back=None, said=plain, file=None, up="", details=""):
     as_file = (
         f'<p class="note">The same comparison as a file: <a href="{esc(file)}"><code>{esc(file)}</code></a>.</p>' if file else ""
     )
-    return (
-        f'{crumb}<p class="eyebrow">Before and after</p><h1>{esc(data["title"])}</h1>'
+    measurements = (
         f"{variants(data)}{tally}{sides}{setting(data, said)}"
         + classes_block(data)
         + causes_table(data, said)
@@ -573,17 +572,55 @@ def body(data, back=None, said=plain, file=None, up="", details=""):
         + as_file
         + f'<script src="{up}{SCRIPT}" defer></script>'
     )
+    if diagnostics:
+        measurements = f'<details class="ba-pair"><summary>Before-and-after measurements</summary>{measurements}</details>'
+    return f'{crumb}<p class="eyebrow">Before and after</p><h1>{esc(data["title"])}</h1>{opening}{diagnostics}{measurements}'
 
 
-def page(site, data, name, back=None, current=None):
+def page(site, data, name, back=None, current=None, review_section="", diagnostics=None):
     """The whole page of one comparison, in the frame of a site the shared build writes: a
     text of the file links the findings it names, as everywhere on such a site."""
     from . import shell
     from .lastrun import inline
 
-    inner = body(data, back, lambda text: inline(site, text, ""), f'api/v1/{name.removesuffix(".html")}.json')
-    framed = f'<div class="wrap page ba-page"><article class="prose wide">{inner}</article></div>'
-    many = data["items"]["many"]
-    described = f'{data["title"]}: which {many} moved, in which {words(data)[1]}, and what caused it.'
-    return shell.shell(site, data["title"], framed, current or name, page=name, description=described,
-                       head=f'<link rel="stylesheet" href="{STYLE}">')
+    title = (data or diagnostics)["title"]
+    head = f'<link rel="stylesheet" href="{STYLE}">'
+    jumps = []
+    diagnostics_body = ""
+    if diagnostics:
+        from importlib.metadata import distribution
+
+        from sentier_diagnostics import page as diagnostics_page
+
+        for asset, source in diagnostics_page.assets().items():
+            site.copy(source, "assets/" + asset)
+        package = distribution("sentier-diagnostics")
+        for notice in package.files or ():
+            if notice.name in ("LICENSE", "NOTICE") and notice.parent.name == "licenses":
+                site.copy(package.locate_file(notice), f"assets/diagnostics-{notice.name}.txt")
+        head += '<link rel="stylesheet" href="assets/diagnostics.css"><script src="assets/diagnostics.js" defer></script>'
+        diagnostics_body = '<section aria-labelledby="diagnostics"><h2 id="diagnostics">Diagnostics by build step</h2>'
+        diagnostics_body += diagnostics_page.body(diagnostics, title=False) + "</section>"
+        jumps.append(("diagnostics", "Build-step diagnostics"))
+    if data:
+        many = data["items"]["many"]
+        jumps.append(("moved", f"Changed {many}"))
+        if data.get("causes"):
+            jumps.append(("causes", "Causes"))
+        jumps.append(("indicators", f"By {words(data)[0]}"))
+    if review_section:
+        jumps.append(("review", "Review individual changes"))
+    opening = ""
+    if site.build_views and len(jumps) > 1:
+        links = "".join(f'<a href="#{anchor}">{esc(label)}</a>' for anchor, label in jumps)
+        opening = f'<nav class="ba-sections" aria-label="Comparison sections">{links}</nav>'
+    described = title
+    if data:
+        described = f'{title}: which {many} moved, in which {words(data)[1]}, and what caused it.'
+        inner = body(data, back, lambda text: inline(site, text, ""), f'api/v1/{name.removesuffix(".html")}.json',
+                     opening=opening, diagnostics=diagnostics_body)
+    else:
+        crumb = f'<p class="crumb"><a href="{esc(back[0])}">{esc(back[1])}</a></p>' if back else ""
+        inner = f'{crumb}<h1>{esc(title)}</h1>{opening}{diagnostics_body}'
+    framed = f'<div class="wrap page ba-page"><article class="prose wide">{inner}{review_section}</article></div>'
+    return shell.shell(site, title, framed, current or name, page=name, description=described, head=head)

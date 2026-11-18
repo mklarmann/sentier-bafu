@@ -30,7 +30,7 @@ def counts(classes):
     ) + "</span>"
 
 
-def body(data, back=None, said=plain, file=None, up=""):
+def body(data, back=None, said=plain, file=None, up="", embedded=False):
     """The page of one review, without a frame; the arguments are those of `beforeafter.body`."""
     runs = {run["id"]: run for run in data["runs"]}
     causes = {cause["id"]: cause for cause in data["causes"]}
@@ -87,30 +87,33 @@ def body(data, back=None, said=plain, file=None, up=""):
     crumb = f'<p class="crumb"><a href="{esc(back[0])}">{esc(back[1])}</a></p>' if back else ""
     notes = "".join(f"<li>{said(note)}</li>" for note in data.get("notes") or ())
     as_file = f'<p class="note">The same index as a file: <a href="{esc(file)}"><code>{esc(file)}</code></a>.</p>' if file else ""
+    title = f'<h2 id="review">{esc(data["title"])}</h2>' if embedded else f'<p class="eyebrow">Review</p><h1>{esc(data["title"])}</h1>'
+    h = "h3" if embedded else "h2"
+    notes_id = "review-notes" if embedded else "notes"
     return (
-        f'{crumb}<p class="eyebrow">Review</p><h1>{esc(data["title"])}</h1>'
+        f'{crumb}{title}'
         f'<p class="lead">A change is judged by two builds that differ by exactly it. '
         f'{capital(plural(len(data["runs"]), "build"))} and {plural(len(data["pairs"]), "comparison")} are here.</p>'
         '<div data-review>'
-        '<h2 id="choose">Choose what to review</h2>'
+        f'<{h} id="choose">Choose what to review</{h}>'
         '<p>Tick one cause or several. The page looks for two builds that differ by exactly your choice.</p>'
         f'<div class="rv-causes">{choose}</div>'
         '<div class="rv-found" data-rv-found hidden role="status" aria-live="polite"></div>'
         f'<script type="application/json" data-rv-data>{payload}</script></div>'
-        f'<h2 id="pairs">The comparisons</h2>{pairs}'
-        f'<h2 id="builds">The builds</h2><div class="ba-sides">{builds}</div>'
-        + (f'<h2 id="notes">Notes</h2><ul class="plain">{notes}</ul>' if notes else "")
+        f'<{h} id="pairs">The comparisons</{h}>{pairs}'
+        f'<{h} id="builds">The builds</{h}><div class="ba-sides">{builds}</div>'
+        + (f'<{h} id="{notes_id}">Notes</{h}><ul class="plain">{notes}</ul>' if notes else "")
         + as_file
         + f'<script src="{up}{SCRIPT}" defer></script>'
     )
 
 
-def page(site, data, name, back=None, current=None):
+def page(site, data, name, back=None, current=None, file=None):
     """The whole page of one review, in the frame of a site the shared build writes."""
     from . import shell
     from .lastrun import inline
 
-    inner = body(data, back, lambda text: inline(site, text, ""), f'api/v1/{name.removesuffix(".html")}.json')
+    inner = body(data, back, lambda text: inline(site, text, ""), file or f'api/v1/{name.removesuffix(".html")}.json')
     framed = f'<div class="wrap page ba-page"><article class="prose wide">{inner}</article></div>'
     return shell.shell(site, data["title"], framed, current or name, page=name,
                        description=f'{data["title"]}: the builds, what each contains, and the pairs that were compared.',

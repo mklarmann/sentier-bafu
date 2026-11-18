@@ -54,7 +54,9 @@ jobs:
         # that only a fork's branch has is then found. In the repository the site belongs
         # to, on its default branch, the two options change nothing.
         run: >-
-          uv run --no-project --python 3.12 --with markdown==3.7 python scripts/build_site.py
+          uv run --no-project --python 3.12 --with markdown==3.7
+          --with "sentier-diagnostics @ git+https://github.com/sentier-dev/sentier-diagnostics@d8dd120afb4837778d9ef51d3cb43be572216d0a"
+          python scripts/build_site.py
           --require-issues --built-by "$GITHUB_REPOSITORY"
           --source-repository "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" --source-ref "$GITHUB_REF_NAME"
       - name: Check links, assets and published file types

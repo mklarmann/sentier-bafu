@@ -142,6 +142,7 @@ class Site:
                 raise ValueError('a page shows the last run, and site/config.json has no "run" that says which workflow')
             self.run_reader = last_run
             self.last_run = last_run.load(self.built_by, self.run, last_run_snapshot, offline)
+        self.build_views, self.build_sections = shell.build_views(self)
         self.built = build_date()
         self.revision = revision(self.root)
         self.written = set()
@@ -384,17 +385,17 @@ class Site:
     def comparison_pages(self):
         """A page for what each run of the record compared, before and after (`before-after.json`
         of the run), and, where the run reviewed several pairs of builds, the page of that review
-        with a page for each pair: `{ids of the run on the page: {"compared", "review"}}`. They are
-        in no navigation: the step of the walk through the run leads to them, and they lead back."""
+        with access to each pair. The build step and the optional build navigation use
+        the resulting addresses."""
         record, found = self.last_run, {}
         if not record or record.get("state") != "read":
             return found
         back = self.walk_page
-        taken = {doc["page"] for doc in self.docs}
+        taken = {"index.html", *(doc["page"] for doc in self.docs)}
 
         def free(name):
             # a page of a run's comparison never stands in the place of a page of the site
-            if name in taken or name in self.pages:
+            if name in taken or self.out / name in self.written:
                 raise ValueError(f"What the run compared would be written over the page {name}")
             return name
 
@@ -406,23 +407,42 @@ class Site:
             where = (f"{back}#{ids}run-step-{step}" if step else back) if back else None
             label = f"Step {step} of the {lastrun.lower(lastrun.named(record))}" if step else "The run"
             walk = (where, label) if where else None
-            if data is not None:
-                name = free(f"{ids}before-after.html")
-                self.page(name, beforeafter.page(self, data, name, walk, current=back))
-                self.write_json(f"api/v1/{ids}before-after.json", data)
-                pages["compared"] = name
-            if index is None:
-                continue
-            # The pages of a review keep the names its index gives them, behind the run's ids.
-            named = {page: f"{ids}{page}" for page in run.get("pairs") or {}}
-            named["before-after.html"] = pages.get("compared")
-            shown = index | {"pairs": [pair | {"page": named.get(pair.get("page"))} for pair in index["pairs"]]}
-            name = free(f"{ids}review.html")
-            self.page(name, sitebuild_review.page(self, shown, name, walk, current=back))
-            self.write_json(f"api/v1/{ids}review.json", shown)
-            pages["review"] = name
+            diagnostics = run.get("diagnostics") if self.build_views else None
+            comparison = free(f"{ids}before-after.html") if data is not None or diagnostics is not None else None
+            embedded = ""
+            if index is not None:
+                named = {page: f"{ids}{page}" for page in run.get("pairs") or {}}
+                named["before-after.html"] = comparison
+                shown = index | {"pairs": [pair | {"page": named.get(pair.get("page"))} for pair in index["pairs"]]}
+                review_page = free(f"{ids}review.html")
+                review_json = f"api/v1/{ids}review.json"
+                self.write_json(review_json, shown)
+                if comparison and self.build_views:
+                    embedded = sitebuild_review.body(shown, said=lambda text: lastrun.inline(self, text, ""),
+                                                     file=review_json, embedded=True)
+                    self.write(review_page, shell.redirect(self, comparison, "the comparison review",
+                                                           fragments={"": "#review", "#notes": "#review-notes"}))
+                    pages["review"] = comparison + "#review"
+                elif self.build_views:
+                    primary = free(f"{ids}before-after.html")
+                    self.page(primary, sitebuild_review.page(self, shown, primary, walk, current=back,
+                                                             file=review_json))
+                    self.write(review_page, shell.redirect(self, primary, "the comparison review"))
+                    pages["review"] = primary
+                else:
+                    self.page(review_page, sitebuild_review.page(self, shown, review_page, walk, current=back))
+                    pages["review"] = review_page
+            if comparison:
+                self.page(comparison, beforeafter.page(self, data, comparison, walk, current=back,
+                                                       review_section=embedded, diagnostics=diagnostics))
+                if data is not None:
+                    self.write_json(f"api/v1/{ids}before-after.json", data)
+                if diagnostics:
+                    self.write(free(f"{ids}diagnostics.html"), shell.redirect(self, comparison, "build-step diagnostics",
+                                                                              fragments={"": "#diagnostics"}))
+                pages["compared"] = comparison
             for page, pair in (run.get("pairs") or {}).items():
-                self.page(free(named[page]), beforeafter.page(self, pair, named[page], (name, "The review"), current=back))
+                self.page(free(named[page]), beforeafter.page(self, pair, named[page], (pages["review"], "The review"), current=back))
                 self.write_json(f"api/v1/{named[page].removesuffix('.html')}.json", pair)
         return found
 
@@ -438,9 +458,9 @@ class Site:
         self.copy(self.root / "site/style.css", "style.css")
         (out / ".nojekyll").touch()
 
-        self.page("index.html", self.overview())
-        # The pages of what a run compared come first: the walk through the run leads to them.
+        # The overview and the walk through the run link to the comparison when it exists.
         self.compared = self.comparison_pages()
+        self.page("index.html", self.overview())
         for doc in self.docs:
             self.page(doc["page"], self.document(doc))
         for f in self.triage["findings"]:

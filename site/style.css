@@ -168,6 +168,12 @@ a.ext:not(.button) {
 }
 .nav a:hover { color: var(--index); border-bottom-color: var(--line); }
 .nav a[aria-current="page"] { color: var(--index); font-weight: 800; border-bottom-color: var(--index); }
+.subnav { border-bottom: 1px solid var(--line); background: var(--surface); }
+.subnav-in { display: flex; flex-wrap: wrap; gap: 0 var(--s5); }
+.subnav a { display: inline-flex; align-items: center; padding: .6rem 0; border-bottom: 2px solid transparent; font-size: var(--t-sm); font-weight: 700; text-decoration: none; color: var(--muted); }
+.subnav a:hover, .subnav a[aria-current] { color: var(--index); border-color: currentColor; }
+.ba-sections { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s5); margin-block: var(--s4); }
+@media print { .subnav { display: none; } }
 .repo { align-self: center; flex: none; font-size: var(--t-sm); font-weight: 600; white-space: nowrap; text-decoration: none; }
 .repo:hover { text-decoration: underline; }
 @media (max-width: 67.99rem) {
