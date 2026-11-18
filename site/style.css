@@ -983,3 +983,11 @@ html.run-has-full { overflow: hidden; }
   .run-term-tools, .run-play, .run-progress, .run-clock, .run-switch { display: none; }
   .run-tabs { display: none; }
 }
+
+/* Source and case registers share their search and table layout. */
+.prose.wide > [data-register] { max-width: none; }
+[data-register] .filter-row { align-items: end; }
+[data-register] .table-wrap { margin-top: .75rem; }
+[data-register] td:first-child { width: 55%; }
+[data-register] tr[hidden], [data-register] form[hidden] { display: none; }
+.ba-controls select { max-width: min(32rem, 100%); }

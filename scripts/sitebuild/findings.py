@@ -1,5 +1,7 @@
 """A finding as a row of a list, the findings list with its index, and the finding page."""
 
+from urllib.parse import urlencode
+
 import community
 
 from . import status
@@ -308,10 +310,12 @@ def panel(site, f, up):
     return f'<dl class="panel">{rows_}</dl>' if rows_ else ""
 
 
-def finding_page(site, f):
+def finding_page(site, f, case_panel=""):
     """The page of one finding: header, tracker, discussion beside, then answer, facts and text."""
     up, p, rid = "../", site.provider, esc(f["id"])
     config = site.records_config
+    listing, label_plural = ("cases.html", "Cases") if case_panel else ("findings.html", "Findings")
+    folder = "cases" if case_panel else "findings"
 
     def text(value, inline=False):
         return record_text(site, value, inline=inline, up=up, link_ids=True, own=f["id"])
@@ -342,7 +346,7 @@ def finding_page(site, f):
     source = f'{site.source_repo}/blob/{site.ref}/{f["path"]}'
     main = (
         answer_block(site, f, up)
-        + panel(site, f, up)
+        + case_panel + panel(site, f, up)
         + "<h2>What was observed</h2>" + text(f["observation"])
         + (f"<h2>What it affects</h2>{text(f['exposure'])}" if f["exposure"].strip() else "")
         + (f"<h2>How it was checked</h2>{text(f['method'])}" if f["method"].strip() else "")
@@ -354,10 +358,13 @@ def finding_page(site, f):
         f'<a href="{up}api/v1/findings/{rid}.json">this finding as JSON</a></p>'
     )
     label = site.label(f["stage"])
+    stage_page = (f'{listing}?{urlencode({"stage": label})}' if case_panel else f'findings.html#stage-{f["stage"]}')
+    if not case_panel and site.config.get("case_review"):
+        main = f'<p><a href="../cases/{rid}.html">Open review case {rid}</a></p>' + main
     body = (
         '<div class="wrap page">'
-        f'<header class="record-head"><nav class="crumb" aria-label="Breadcrumb"><a href="{up}findings.html">Findings</a> '
-        f'<span aria-hidden="true">/</span> <a href="{up}findings.html#stage-{esc(f["stage"])}">{esc(label)}</a> '
+        f'<header class="record-head"><nav class="crumb" aria-label="Breadcrumb"><a href="{up}{listing}">{label_plural}</a> '
+        f'<span aria-hidden="true">/</span> <a href="{up}{esc(stage_page)}">{esc(label)}</a> '
         f'<span aria-hidden="true">/</span> <span aria-current="page">{rid}</span></nav>'
         f'<h1 dir="auto">{esc(f["title"])}</h1><dl class="facts">{facts}</dl></header>'
         + status.finding_tracker(site, f, up)
@@ -366,8 +373,9 @@ def finding_page(site, f):
     )
     names = community.release_names(f, config) if f["releases"] else ""
     description = f'{f["id"]}: {f["title"]}. Status: {label}.' + (f" {names}." if names else "")
+    title = f'{f["id"]} · {f["title"]}'
     return site.shell(
-        f'{f["id"]} · {f["title"]}', body, "findings.html", up=up, page=f'findings/{f["id"]}.html',
+        ("Case " + title) if case_panel else title, body, listing, up=up, page=f'{folder}/{f["id"]}.html',
         description=description,
         head=f'<link rel="alternate" type="application/json" href="{up}api/v1/findings/{rid}.json">',
     )

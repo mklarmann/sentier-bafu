@@ -1272,7 +1272,7 @@ class SiteTests(unittest.TestCase):
             self.assertLess(source.index('data-run'), columns)
             self.assertLess(columns, source.index('aria-label="On this page"'))
             listed = __import__("re").findall(r'<li><a href="#([a-z0-9-]+)">', source.split('class="toc-list"')[1].split("</ul>")[0])
-            self.assertEqual(listed[0], "builds-and-tags")
+            self.assertEqual(listed[:2], ["inventory-quality", "builds-and-tags"])
             self.assertEqual(listed[-1], "bafus-release")
             self.assertNotIn("the-last-run", listed)
             self.assertEqual(source.count("<h1"), 1)

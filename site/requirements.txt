@@ -1,0 +1,2 @@
+markdown==3.7
+sentier-diagnostics @ git+https://github.com/sentier-dev/sentier-diagnostics@43a9efb049baedbd0931647abeebcd076688ad7e

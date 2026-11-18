@@ -70,7 +70,7 @@ The scripts in `scripts/`, the stylesheet and the two scripts of the pages are t
 The shared files, which a sibling copies as they are:
 
 - `scripts/build_site.py`, `scripts/check_site.py`, `scripts/community.py`, `scripts/triage.py`, `scripts/intake.py`, `scripts/sync.py`, `scripts/github_api.py`, `scripts/last_run.py`, `scripts/shared_files.py` and the folders `scripts/sitebuild` and `scripts/runrecord`;
-- `site/style.css`, and of `site/assets`: `list.js`, `replay.js`, `download.js`, `before-after.js`, `before-after.css`, `review.js`, `nunito-latin.woff2`, `OFL.txt`, `dds-logo.svg`, `favicon-32x32.png`;
+- `site/style.css`, and of `site/assets`: `list.js`, `register.js`, `replay.js`, `download.js`, `before-after.js`, `before-after.css`, `review.js`, `nunito-latin.woff2`, `OFL.txt`, `dds-logo.svg`, `favicon-32x32.png`;
 - the folder `schema`, and `docs/before-after.md`.
 
 ### Shared with the sibling repositories

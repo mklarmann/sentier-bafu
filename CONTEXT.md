@@ -26,6 +26,12 @@ nothing beyond its own record.
 **Tagged build**: The build a maintainer marks with a tag as the one others
 should use. Its manifest is kept under the tag. _Avoid_: release, version.
 
+**Source**: Material contributed to the workspace, such as a report, provider response,
+database or inventory. Several cases can cite the same source.
+
+**Case**: One numbered finding under review, together with its sources, recorded decisions
+and any community patches that answer it. Its finding number follows it into the patch registry.
+
 **Finding**: A reproducible observation, including an unresolved question or a
 withdrawn interpretation. A finding can exist without a patch.
 

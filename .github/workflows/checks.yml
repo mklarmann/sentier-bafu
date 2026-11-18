@@ -55,7 +55,7 @@ jobs:
       - name: Check the records
         run: uv run --no-project --python 3.12 python scripts/community.py check
       - name: Run the unit tests
-        run: uv run --no-project --python 3.12 --with markdown==3.7 --with pyyaml==6.0.2 python -m unittest discover -s community/tests
+        run: uv run --no-project --python 3.12 --with-requirements site/requirements.txt --with pyyaml==6.0.2 python -m unittest discover -s community/tests
       - name: Check the build audit template
         run: uv run --no-project --python 3.12 python scripts/build_checks.py community/templates/build-audit.json
       - name: Run the tests of the export audit

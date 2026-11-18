@@ -63,6 +63,7 @@
         "scripts/last_run.py",
         "site/style.css",
         "site/assets/list.js",
+        "site/assets/register.js",
         "site/assets/replay.js",
         "site/assets/download.js",
         "site/assets/nunito-latin.woff2",

@@ -2,6 +2,12 @@
 
 Every change that is proposed here is applied to a copy of BAFU's release, checked and built on GitHub, where anyone can follow it. This is the last build, as it happened.
 
+## Inventory quality
+
+<!-- generated: inventory-quality-summary -->
+
+[Filter review cases](cases.md) to see the source, patch status and measured results for a single observation.
+
 <!-- generated: last-run -->
 
 ## Builds and tags

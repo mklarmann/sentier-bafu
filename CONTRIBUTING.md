@@ -18,7 +18,7 @@ The checks use three environments. All of them need [uv](https://docs.astral.sh/
 
 ```sh
 uv run --no-project --python 3.12 python scripts/community.py check
-uv run --no-project --python 3.12 --with markdown==3.7 --with pyyaml==6.0.2 python -m unittest discover -s community/tests
+uv run --no-project --python 3.12 --with-requirements site/requirements.txt --with pyyaml==6.0.2 python -m unittest discover -s community/tests
 uv run --no-project --python 3.12 python scripts/build_checks.py community/templates/build-audit.json
 uv run --no-project --python 3.12 --with pandas==2.2.3 --with pyarrow==19.0.1 python -m unittest discover -s registry-tests
 uv run --no-project --python 3.12 --with markdown==3.7 python scripts/build_site.py --offline --out _site

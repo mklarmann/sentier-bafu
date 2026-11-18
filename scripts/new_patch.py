@@ -153,7 +153,9 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("name", help="Short name in lower case with dashes: storage-pump-wind")
     finding = parser.add_mutually_exclusive_group(required=True)
-    finding.add_argument("--finding", metavar="ID", help="The finding the patch answers: F14")
+    finding.add_argument(
+        "--finding", "--case", metavar="ID", help="The finding the patch answers: F14"
+    )
     finding.add_argument(
         "--no-finding", action="store_true", help="The patch answers no recorded finding"
     )
