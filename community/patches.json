@@ -113,6 +113,39 @@
       "author": "Claude Code",
       "authorised_by": "Chris Mutel",
       "url": "https://github.com/sentier-dev/sentier-bafu/blob/main/src/bafu_community_fixes/patches/p0011_flag_aggregated.py"
+    },
+    {
+      "id": "0012",
+      "slug": "electricity-reference-unit",
+      "description": "Label two power plant datasets per kWh, the unit their inventories are modelled in.",
+      "findings": [
+        "F13"
+      ],
+      "author": "Claude Code",
+      "authorised_by": null,
+      "url": "https://github.com/sentier-dev/sentier-bafu/blob/main/src/bafu_community_fixes/patches/p0012_electricity_reference_unit.py"
+    },
+    {
+      "id": "0013",
+      "slug": "natural-gas-input-units",
+      "description": "Relabel 40 natural-gas inputs in 29 datasets with the supplier unit Nm3.",
+      "findings": [
+        "F15"
+      ],
+      "author": "OpenAI Codex",
+      "authorised_by": null,
+      "url": "https://github.com/sentier-dev/sentier-bafu/blob/main/src/bafu_community_fixes/patches/p0013_natural_gas_input_units.py"
+    },
+    {
+      "id": "0014",
+      "slug": "production-mix-input-locations",
+      "description": "State the ENTSO-E supplier location on ten electricity production-mix inputs.",
+      "findings": [
+        "F16"
+      ],
+      "author": "OpenAI Codex",
+      "authorised_by": null,
+      "url": "https://github.com/sentier-dev/sentier-bafu/blob/main/src/bafu_community_fixes/patches/p0014_production_mix_input_locations.py"
     }
   ]
 }

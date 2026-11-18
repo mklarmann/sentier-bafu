@@ -19,7 +19,8 @@ def _product(dataset):
 
 def _as_in_the_release(dataset, unit="MJ"):
     """The fixture dataset with the number, name and unit label of the Finnish gas plant."""
-    dataset.number = NUMBER
+    dataset.number = _product(dataset).number = NUMBER
+    dataset.meta_information.process_information.geography.location = "FI"
     dataset.reference_function.name = _product(dataset).name = DATASETS[NUMBER]
     dataset.reference_function.unit = _product(dataset).unit = unit
     return [(e.name, e.mean_value, e.unit) for e in dataset.exchanges if e is not _product(dataset)]
@@ -53,16 +54,15 @@ def test_electricity_reference_unit_leaves_other_datasets_alone(db, dataset):
     assert dataset.reference_function.unit == "MJ"
 
 
-def test_electricity_reference_unit_stops_on_unexpected_data(db, dataset):
+def test_electricity_reference_unit_leaves_an_already_corrected_pair_alone(db, dataset):
     _as_in_the_release(dataset, unit="kWh")  # as if BAFU had corrected the label
-    with pytest.raises(ValueError, match="expected the reference function in MJ, found kWh"):
-        apply_patch(db, _patch())
+    assert apply_patch(db, _patch()) == []
 
 
 def test_electricity_reference_unit_stops_when_only_the_product_differs(db, dataset):
     _as_in_the_release(dataset)
     _product(dataset).unit = "kWh"
-    with pytest.raises(ValueError, match="expected the product in MJ, found kWh"):
+    with pytest.raises(ValueError, match="unexpected units"):
         apply_patch(db, _patch())
 
 

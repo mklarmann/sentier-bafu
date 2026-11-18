@@ -40,10 +40,10 @@ def electricity_reference_unit(db: Database) -> None:
     it by 3.6 as long as the label says MJ; with the label corrected, the input and its
     supplier agree and nothing is converted.
 
-    BAFU has not confirmed this finding. If a dataset doesn't have the expected name or the
-    unit MJ, the patch stops: the data has changed (perhaps BAFU already corrected it), and
-    the patch needs a review. Datasets that aren't in the input are skipped.
+    An already corrected dataset is left as it stands. A change of identity or a
+    disagreement between the two unit labels needs review.
     """
+    changes = []
     for dataset in db:
         if dataset.number not in DATASETS:
             continue
@@ -58,9 +58,17 @@ def electricity_reference_unit(db: Database) -> None:
                 f"Dataset {dataset.number}: expected one reference product, found {len(products)}"
             )
         function, product = dataset.reference_function, products[0]
-        for what, unit in (("reference function", function.unit), ("product", product.unit)):
-            if unit != LABELLED:
-                raise ValueError(
-                    f"Dataset {dataset.number}: expected the {what} in {LABELLED}, found {unit}"
-                )
+        if (
+            dataset.location != {401085: "FI", 316743: "IN"}[dataset.number]
+            or product.number != dataset.number
+            or product.name != dataset.name
+        ):
+            raise ValueError(f"Dataset {dataset.number}: unexpected reference product or geography")
+        if function.unit != product.unit or function.unit not in (LABELLED, MODELLED):
+            raise ValueError(
+                f"Dataset {dataset.number}: unexpected units {function.unit!r} and {product.unit!r}"
+            )
+        if function.unit == LABELLED:
+            changes.append((function, product))
+    for function, product in changes:
         function.unit = product.unit = MODELLED
