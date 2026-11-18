@@ -43,7 +43,8 @@ def build_views(site):
         if page in documents:
             views[page] = label
             sections[page] = page
-    return views, sections
+    order = [site.walk_page, *config.get("order", []), *views]
+    return {page: views[page] for page in order if page in views}, sections
 
 
 def shell(site, title, body, current, up="", page=None, description=None, head=""):

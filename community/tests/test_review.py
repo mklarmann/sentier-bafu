@@ -407,7 +407,7 @@ class PageTests(unittest.TestCase):
             self.assertNotIn('<nav class="subnav"', (out / "index.html").read_text())
             self.assertEqual(self.run_in("scripts/check_site.py", str(out)).returncode, 0)
 
-            config["build_navigation"]["on_home"] = True
+            config["build_navigation"].update(on_home=True, order=["absent.html", "about/data.html", "run.html"])
             config_file.write_text(json.dumps(config))
             build_site.build(out, root=root, offline=True, last_run_snapshot=self.kept / "with.json")
             home = (out / "index.html").read_text()
@@ -416,7 +416,7 @@ class PageTests(unittest.TestCase):
             self.assertIn('<a href="index.html" aria-current="page">', main)
             self.assertEqual(main.count("aria-current"), 1)
             self.assertIn('aria-label="The run: its parts"', bar)
-            self.assertEqual(re.findall(r'href="([^"]+)"', bar), ["run.html", "before-after.html", "about/data.html"])
+            self.assertEqual(re.findall(r'href="([^"]+)"', bar), ["run.html", "about/data.html", "before-after.html"])
             self.assertNotIn("aria-current", bar)
             self.assertNotIn('<nav class="subnav"', (out / "findings.html").read_text())
 
