@@ -184,6 +184,7 @@ EXCHANGE_FIELDS = (
     "flow",
     "flow_name",
     "flow_type",
+    "direction",
     "amount",
     "unit",
     "uncertainty_type",
@@ -311,7 +312,7 @@ def _exchanges_by_process(
     """One column-wise pass over the exchange frame; far cheaper than per-row ``iterrows``."""
     grouped: dict[str, list[dict]] = defaultdict(list)
     columns = [_column(exchanges, name) for name in EXCHANGE_FIELDS]
-    for pid, flow, name, ftype, amount, unit, utype, loc, scale, mn, mx in zip(
+    for pid, flow, name, ftype, direction, amount, unit, utype, loc, scale, mn, mx in zip(
         *columns, strict=True
     ):
         key, etype, target_unit, factor = _link(pid, flow, ftype, bridge, dbs)
@@ -320,6 +321,8 @@ def _exchanges_by_process(
             {
                 "input": key,
                 "type": etype,
+                # Brightway uses the same exchange type for emissions and resource inputs.
+                "source_direction": direction,
                 "amount": scaled,
                 "unit": normalize_unit(unit if target_unit is None else target_unit),
                 "name": str(name),

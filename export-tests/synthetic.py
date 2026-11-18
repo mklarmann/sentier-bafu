@@ -311,6 +311,7 @@ def databases(*variants):
                 "input": (INVENTORY, code),
                 "amount": node.pop("_production"),
                 "type": "production",
+                "source_direction": "output",
                 "unit": node["unit"],
             }
         ]
@@ -318,6 +319,10 @@ def databases(*variants):
             database = FLOWS if kind == "biosphere" else INVENTORY
             unit = (flows if kind == "biosphere" else inventory)[target]["unit"]
             exchange = {"input": (database, target), "amount": amount, "type": kind, "unit": unit}
+            resource = kind == "biosphere" and flows[target]["type"] == "natural resource"
+            exchange["source_direction"] = (
+                "input" if kind == "technosphere" or resource else "output"
+            )
             exchanges.append(exchange | (extra[0] if extra else {}))
         data[(INVENTORY, code)] = node | {"exchanges": exchanges}
     return {

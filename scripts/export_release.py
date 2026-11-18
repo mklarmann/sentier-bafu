@@ -40,10 +40,9 @@ person, because the files may be handed on. The list of modifications comes from
 Modified Data and that was built from the files that summary describes.
 
 Unit and compartment labels come from a declared table (`release_build/export_labels.toml`).
-A label is a name: no amount is converted. A technosphere input whose declared unit is
-another quantity or magnitude than its supplier's unit is written with the amount the
-database holds, in the supplier's unit, with the declared unit in the exchange's comment,
-and is listed in the manifest with the finding it belongs to.
+JSON-LD keeps the declared exchange unit. ILCD uses the native flow unit and converts
+a differing magnitude within its dimension, preserving the declared quantity in the row's
+comment. SimaPro uses the database's interpretation when a supplier unit differs.
 
 Every file is read back after writing (`olca_schema`, `bw_simapro_csv`, `bw2io`) and
 compared with the database: same datasets, exchanges, amounts and units, links intact,
@@ -76,14 +75,14 @@ import tempfile
 import time
 import unicodedata
 import uuid
-import zipfile
 from collections import Counter
+from functools import cache
 from importlib import metadata
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from release_build import ecospold_export, public_summary  # noqa: E402
+from release_build import ecospold_export, interchange_rows, public_summary  # noqa: E402
 from release_build import labels as label_table  # noqa: E402
 
 SCHEMA = "sentier-bafu/export-manifest/2"
@@ -870,9 +869,11 @@ def olca_ids(namespace):
     """The ids the JSON-LD writer mints: `uuid5` of the database and code."""
     seed = uuid.uuid5(uuid.NAMESPACE_URL, namespace)
 
+    @cache
     def flow(key):
         return str(uuid.uuid5(seed, f"{key[0]}|{key[1]}"))
 
+    @cache
     def process(key):
         return str(uuid.uuid5(seed, f"proc|{key[0]}|{key[1]}"))
 
@@ -884,10 +885,12 @@ def read_openlca(path):
     from olca_schema import zipio
 
     with zipio.ZipReader(str(path)) as reader:
+        groups = list(reader.read_each(o.UnitGroup))
         return {
             "flows": {f.id: f for f in reader.read_each(o.Flow)},
             "processes": {p.id: p for p in reader.read_each(o.Process)},
-            "units": {u.id: u for g in reader.read_each(o.UnitGroup) for u in g.units},
+            "units": {u.id: u for g in groups for u in g.units},
+            "group_of_unit": {u.id: g.id for g in groups for u in g.units},
             "properties": {p.id: p for p in reader.read_each(o.FlowProperty)},
             "locations": {loc.id: loc for loc in reader.read_each(o.Location)},
             "categories": {c.id: c for c in reader.read_each(o.ImpactCategory)},
@@ -909,8 +912,11 @@ def check_openlca(path, nodes, namespace, marks, unit_labels=None, differences=(
     flows, processes = archive["flows"], archive["processes"]
     problems = []
 
-    def unit(node):
-        return unit_labels.get(node.get("unit"), node.get("unit"))
+    from bw_ilcd.units import resolve_unit
+
+    for unit in archive["units"].values():
+        if not _same(unit.conversion_factor, resolve_unit(unit.name).factor):
+            problems.append(f"{unit.name}: conversion factor differs")
 
     activities = {key: node for key, node in nodes.items() if not is_elementary(node)}
     written_nodes = {**activities, **{key: nodes[key] for key in used_flows(nodes)}}
@@ -951,12 +957,19 @@ def check_openlca(path, nodes, namespace, marks, unit_labels=None, differences=(
         expected = Counter()
         for exchange in node.get("exchanges", ()):
             target = tuple(exchange["input"])
-            if target == key:
-                continue  # folded into the reference amount
-            provider = None
-            if exchange["type"] == "technosphere" and not is_elementary(nodes[target]):
-                provider = process_id(target)
-            expected[(flow_id(target), unit(nodes[target]), provider, exchange["amount"])] += 1
+            reference = exchange["type"] == "production" and target == key
+            provider = process_id(target) if exchange["type"] == "technosphere" else None
+            declared = exchange.get("unit") or nodes[target]["unit"]
+            expected[
+                (
+                    flow_id(target),
+                    unit_labels.get(declared, declared),
+                    provider,
+                    reference,
+                    interchange_rows.direction(exchange) == "input",
+                    exchange["amount"],
+                )
+            ] += 1
         written = Counter()
         for exchange in process.exchanges:
             refs = (
@@ -967,20 +980,29 @@ def check_openlca(path, nodes, namespace, marks, unit_labels=None, differences=(
             )
             if not all(refs):
                 problems.append(f"{key}: an exchange refers to something not in the archive")
-            row = (exchange.flow.id, archive["units"][exchange.unit.id].name)
-            if exchange.is_quantitative_reference:
-                if row != (flow_id(key), unit(node)):
-                    problems.append(f"{key}: reference exchange is {row}")
-                if not _same(exchange.amount, net_production(key, node)):
-                    problems.append(f"{key}: reference amount {exchange.amount}")
                 continue
+            prop = archive["properties"][exchange.flow_property.id]
+            flow = flows[exchange.flow.id]
+            if prop.unit_group.id != archive["group_of_unit"][exchange.unit.id] or not any(
+                p.flow_property.id == prop.id for p in flow.flow_properties
+            ):
+                problems.append(f"{key}: exchange unit or property does not belong to its flow")
+            row = (exchange.flow.id, archive["units"][exchange.unit.id].name)
             provider = exchange.default_provider.id if exchange.default_provider else None
-            written[(*row, provider, exchange.amount)] += 1
+            written[
+                (
+                    *row,
+                    provider,
+                    bool(exchange.is_quantitative_reference),
+                    bool(exchange.is_input),
+                    exchange.amount,
+                )
+            ] += 1
             if (key, exchange.flow.id) in noted and "Declared unit" not in (
                 exchange.description or ""
             ):
                 problems.append(f"{key}: an exchange lacks the note of its declared unit")
-        if _amounts(written) != _amounts(expected):
+        if written != expected:
             problems.append(f"{key}: exchanges differ from the database")
     return problems
 
@@ -1113,19 +1135,12 @@ def check_simapro(path, nodes, marks, labels=NO_LABELS):
     return problems, counts
 
 
-def check_ilcd(path, activities, marks):
-    """The ILCD package is only counted and searched for the credit, not compared."""
-    problems = []
-    with zipfile.ZipFile(path) as archive:
-        members = [n for n in archive.namelist() if n.startswith("ILCD/processes/")]
-        if len(members) != activities:
-            problems.append(f"{len(members)} process datasets instead of {activities}")
-        for member in members:
-            text = archive.read(member).decode("utf-8")
-            if any(mark not in text for mark in marks):
-                problems.append(f"{member}: lacks the credit or the label")
-                break
-    return problems
+def check_ilcd(path, nodes, namespace, marks, unit_labels=None, differences=()):
+    activities = {key: node for key, node in nodes.items() if not is_elementary(node)}
+    flow_id, _ = olca_ids(namespace)
+    return interchange_rows.check_ilcd(
+        path, activities, flow_id, marks, nodes, unit_labels or {}, differences
+    )
 
 
 # --- The step ----------------------------------------------------------------------
@@ -1359,7 +1374,7 @@ def export_release(
             with tempfile.TemporaryDirectory() as scratch:
                 no_methods = Path(scratch) / "methods.json"
                 no_methods.write_text("{}")
-                return write_openlca(
+                stats = write_openlca(
                     files["brightway"],
                     methods or no_methods,
                     files["openlca"],
@@ -1375,6 +1390,17 @@ def export_release(
                     ),
                     stamp=summary.get("finished"),
                 )
+                flow_id, process_id = olca_ids(namespace)
+                interchange_rows.restore_rows(
+                    files["openlca"],
+                    files["ilcd"],
+                    activities,
+                    flow_id,
+                    process_id,
+                    other_quantity,
+                    openlca_labels,
+                )
+                return stats
 
         stats["openlca"] = attempt(("openlca", "ilcd"), "write", openlca)
         if stats["openlca"] is not FAILED:
@@ -1384,7 +1410,12 @@ def export_release(
                     files["openlca"], nodes, namespace, marks, openlca_labels, other_quantity
                 ),
             )
-            read_back("ilcd", lambda: check_ilcd(files["ilcd"], len(activities), marks))
+            read_back(
+                "ilcd",
+                lambda: check_ilcd(
+                    files["ilcd"], nodes, namespace, marks, openlca_labels, other_quantity
+                ),
+            )
 
         def simapro():
             return write_simapro(
@@ -1477,7 +1508,9 @@ def export_release(
         "labels": {
             "file": labels["file"],
             "sha256": labels["sha256"],
-            "amounts_converted": 0,
+            "amounts_converted": len(other_quantity)
+            if formats["ilcd"]["status"] == "completed"
+            else 0,
             "openlca_units": openlca_labels,
             "simapro_units": simapro_labels,
             "datasets_by_unit": dict(
@@ -1496,6 +1529,11 @@ def export_release(
             "unit_labels": openlca_labels,
             "elementary_flows": "the flows in use; the Brightway package holds the whole list",
             "last_change": summary.get("finished"),
+            "declared_units": (
+                "JSON-LD uses the declared exchange unit. "
+                "ILCD expresses the quantity in the native flow unit."
+            ),
+            "ilcd_native_unit_conversions": len(other_quantity),
             "written": None if stats.get("openlca") in (None, FAILED) else stats["openlca"],
         },
         "simapro": {
@@ -1642,8 +1680,8 @@ def main(argv=None):
             print(f"  {problem}")
     for row in manifest["declared_units"]["another_quantity_written_as_built"]:
         print(
-            f"declared {row['declared_unit']}, supplier in {row['supplier_unit']}, written as "
-            f"built: {row['dataset_name']} ({row['dataset_location']}) takes "
+            f"declared {row['declared_unit']}, supplier in {row['supplier_unit']}: "
+            f"{row['dataset_name']} ({row['dataset_location']}) takes "
             f"{row['supplier_name']} ({row['supplier_location']}); "
             f"finding {row['finding'] or 'none recorded'}"
         )

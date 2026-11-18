@@ -367,7 +367,7 @@ def test_files_written_without_provenance_are_found_out(base, tmp_path):
     assert "header lacks 'Modified Data'" in simapro
     assert f"literature reference lacks {CREDIT!r}" in simapro
     assert sum("comment lacks 'Modified Data'" in p for p in simapro) == 9
-    assert step.check_ilcd(bare["ilcd.zip"], 9, marks) != []
+    assert step.check_ilcd(bare["ilcd.zip"], nodes, step.NAMESPACE, marks) != []
     assert step.check_bw2package(bare["bare.bw2package"], databases, marks) == [
         f"{name}: metadata lacks {mark!r}" for name in (FLOWS, INVENTORY) for mark in marks
     ]
@@ -531,15 +531,18 @@ def test_units_and_amounts_are_written_as_they_are(base):
     }
 
 
-def test_activity_modelled_per_1000_kg_with_a_loss_exports_its_net_production(base):
+def test_openlca_preserves_self_consumption_while_simapro_uses_net_production(base):
     manifest, out, _ = base
     _, process_id = step.olca_ids(step.NAMESPACE)
     flour = step.read_openlca(path(out, manifest, "openlca"))["processes"][
         process_id((INVENTORY, "flour"))
     ]
     (reference,) = [e for e in flour.exchanges if e.is_quantitative_reference]
-    assert reference.amount == 980.0
-    assert len(flour.exchanges) == 4  # the 20 kg of its own product are not written again
+    assert reference.amount == 1000.0
+    assert len(flour.exchanges) == 5
+    assert any(
+        e.is_input and e.flow.id == reference.flow.id and e.amount == 20.0 for e in flour.exchanges
+    )
     csv = step.read_simapro(path(out, manifest, "simapro"))
     assert csv["processes"][f"{INVENTORY}|flour"]["products"][0]["amount"] == 980.0
 
@@ -708,7 +711,7 @@ def test_writer_refuses_a_declared_unit_of_another_quantity(tmp_path):
         )  # fmt: skip
 
 
-def test_declared_unit_of_another_quantity_is_written_as_built_and_listed(tmp_path):
+def test_declared_unit_is_preserved_in_openlca_and_reconciled_to_ilcd_native_unit(tmp_path):
     labels = step.load_labels()
     labels["differences"] = [
         {
@@ -748,13 +751,9 @@ def test_declared_unit_of_another_quantity_is_written_as_built_and_listed(tmp_pa
     archive = step.read_openlca(path(out, manifest, "openlca"))
     supply = archive["processes"][process_id((INVENTORY, "supply"))]
     (edge,) = [e for e in supply.exchanges if e.flow.id == flow_id((INVENTORY, "plant"))]
-    assert (edge.amount, archive["units"][edge.unit.id].name) == (0.0157, "megajoule")
-    assert edge.description == (
-        "Declared unit in the provider release: kilowatt hour. The supplying dataset's unit "
-        "is megajoule. The amount is written as the Brightway build uses it and is not "
-        "converted. Finding F99."
-    )
-    # SimaPro: the same.
+    assert (edge.amount, archive["units"][edge.unit.id].name) == (0.0157, "kilowatt hour")
+    assert "0.0157 kilowatt hour" in edge.description and "Finding F99" in edge.description
+    # SimaPro follows the Brightway interpretation.
     csv = step.read_simapro(path(out, manifest, "simapro"))
     (row,) = [r for r in csv["processes"][f"{INVENTORY}|supply"]["inputs"] if r["amount"] == 0.0157]
     assert row["unit"] == "MJ" and "Declared unit in the provider release" in row["comment"]
@@ -771,9 +770,8 @@ def test_declared_unit_of_another_quantity_is_written_as_built_and_listed(tmp_pa
     name, _ = project(synthetic.with_a_declared_unit_of_another_quantity)
     expected = recompute.brightway(name, INVENTORY, CLIMATE)
     assert math.isclose(expected["supply"], 0.0157 * 0.15 + 0.9843 * 0.4798, rel_tol=1e-6)
-    assert close(
-        recompute.openlca(path(out, manifest, "openlca"), nodes, step.NAMESPACE, CLIMATE), expected
-    )
+    exported = recompute.openlca(path(out, manifest, "openlca"), nodes, step.NAMESPACE, CLIMATE)
+    assert math.isclose(exported["supply"], 0.0157 * 3.6 * 0.15 + 0.9843 * 0.4798, rel_tol=1e-6)
     assert close(recompute.simapro(path(out, manifest, "simapro"), nodes, CLIMATE), expected)
 
 
@@ -1039,7 +1037,42 @@ def test_elementary_flows_get_minted_ids_and_brightway_names_today(base):
     }
 
 
-@pytest.mark.xfail(strict=True, reason="JSON-LD writer: every elementary exchange is an input")
+def test_both_readers_reject_a_wrong_side_even_when_the_amount_and_flow_match(base):
+    manifest, out, databases = base
+    nodes = copy.deepcopy(step.all_nodes(databases))
+    wheat = nodes[(INVENTORY, "wheat")]
+    exchange = next(e for e in wheat["exchanges"] if tuple(e["input"]) == (FLOWS, "water-river"))
+    assert exchange["source_direction"] == "input"
+    exchange["source_direction"] = "output"
+    marks = (CREDIT, "Modified Data")
+    for name, check in (("ilcd", step.check_ilcd), ("openlca", step.check_openlca)):
+        problems = check(path(out, manifest, name), nodes, step.NAMESPACE, marks)
+        assert len(problems) == 1 and "wheat" in problems[0]
+
+
+def test_signed_exchange_uses_its_declared_side_in_both_formats(tmp_path):
+    def add_rows(flows, inventory):
+        inventory["wheat"]["_exchanges"].extend(
+            [
+                ("biosphere", "water-river", -0.125, {"source_direction": "input"}),
+                ("biosphere", "water-river", -0.125, {"source_direction": "output"}),
+            ]
+        )
+
+    manifest, out, databases = export(tmp_path, add_rows)
+    assert manifest["checks"]["ilcd"]["passed"] and manifest["checks"]["openlca"]["passed"]
+    flow_id, process_id = step.olca_ids(step.NAMESPACE)
+    proc = step.read_openlca(path(out, manifest, "openlca"))["processes"][
+        process_id((INVENTORY, "wheat"))
+    ]
+    written = [
+        x.is_input
+        for x in proc.exchanges
+        if x.amount == -0.125 and x.flow.id == flow_id((FLOWS, "water-river"))
+    ]
+    assert sorted(written) == [False, True]
+
+
 def test_openlca_emissions_are_outputs_and_resources_inputs(base):
     manifest, out, databases = base
     flow_id, _ = step.olca_ids(step.NAMESPACE)
