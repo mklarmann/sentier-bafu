@@ -544,6 +544,13 @@ class PageTests(unittest.TestCase):
         self.assertEqual(sorted(set(own) - set(words)), [], "every step of the run has its words")
         self.assertNotIn("tagged", words, "no words for a step that is none")
 
+    def test_the_overall_run_can_fail_after_every_step_completed(self):
+        record = a_record()
+        record["summary"].update(status="failed", blocking=["Acceptance threshold exceeded."])
+        _, _, text = shown(record)
+        self.assertIn("All 6 steps completed. The overall run failed.", text)
+        self.assertNotIn("Failed: none", text)
+
     def test_a_run_that_failed_is_shown_as_failed_with_the_step_and_the_reason(self):
         record = a_record(a_manifest(failed="patched build"), conclusion="failure", failed_step="Run the whole path")
         markup, _, text = shown(record)

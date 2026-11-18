@@ -303,6 +303,9 @@ def worked(record):
     if account["status"] == "completed":
         return "no", (f"<strong>No.</strong> The {plural(len(done), 'step')} of the run completed, "
                       f"but GitHub records that the run {ended}{at}.")
+    if steps and len(done) == len(steps):
+        reason = " See what blocked the build below." if account.get("blocking") else ""
+        return "no", f"<strong>No.</strong> All {plural(len(done), 'step')} completed. The overall run failed.{reason}"
     failed = [s for s in wrong if s["status"] == "failed"]
     names = ", ".join(f"<strong>{esc(s['name'])}</strong>" for s in failed) or "none"
     return "no", (f"<strong>No.</strong> {len(done)} of {len(steps)} steps completed. "
