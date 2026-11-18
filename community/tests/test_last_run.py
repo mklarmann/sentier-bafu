@@ -512,6 +512,20 @@ class PageTests(unittest.TestCase):
         self.assertNotIn("No.", text)
         self.assertNotIn("It did not work", text)
 
+    def test_completed_local_stages_show_the_unmet_requirement_in_the_heading(self):
+        record = a_record()
+        record.update(run=None, local={"started": "2026-11-18T12:00:00Z", "seconds": 12})
+        record["summary"].update(status="failed", blocking=["reference target of 99%"])
+        markup, _, text = shown(record)
+        heading = markup.split('<div class="run-top">', 1)[1].split('<p class="run-when">', 1)[0]
+        self.assertIn("All stages completed", heading)
+        self.assertIn("Reference target of 99%", heading)
+        self.assertNotIn("It did not work", text)
+        self.assertNotIn("It worked", text)
+
+        record["summary"]["steps"][-1].update(status="failed", reason="write failed")
+        self.assertIn("It did not work", shown(record)[2])
+
     def test_a_run_without_a_tag_ends_with_its_own_last_step(self):
         """A reader took a seventh step, "not a release" and then "not asked for", for something
         that failed or was left undone. A run that was not made for a tag has the steps the run
@@ -548,7 +562,8 @@ class PageTests(unittest.TestCase):
         record = a_record()
         record["summary"].update(status="failed", blocking=["Acceptance threshold exceeded."])
         _, _, text = shown(record)
-        self.assertIn("All 6 steps completed. The overall run failed.", text)
+        self.assertIn("All 6 stages completed. The run recorded an unmet requirement.", text)
+        self.assertIn("Acceptance threshold exceeded.", text)
         self.assertNotIn("Failed: none", text)
 
     def test_a_run_that_failed_is_shown_as_failed_with_the_step_and_the_reason(self):
