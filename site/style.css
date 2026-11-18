@@ -991,3 +991,6 @@ html.run-has-full { overflow: hidden; }
 [data-register] td:first-child { width: 55%; }
 [data-register] tr[hidden], [data-register] form[hidden] { display: none; }
 .ba-controls select { max-width: min(32rem, 100%); }
+
+.build-cases { margin-block: var(--s4); }
+.build-cases > summary { cursor: pointer; font-weight: 700; color: var(--index); }

@@ -67,7 +67,11 @@ def detail(site):
         check_rows += (f'<tr><th scope="row">{label}</th><td>{why}</td>'
                        + "".join(f'<td>{counts.get(s, 0):,}</td>' for s in ("pass", "warn", "fail", "absent", "not_applicable"))
                        + '</tr>')
-    return (intro + f'<div class="tally"><div><strong>{q["mean"]:.2f} / 1</strong> Average score</div>'
+    record = site.last_run or {}
+    tag = (record.get("summary") or {}).get("tag") or "Untagged build"
+    identity = (f'<p><a href="{esc(site.walk_page)}">{esc(tag)}</a> · '
+                f'ecoSpold archive <code>{esc(q["archive_sha256"][:12])}</code></p>')
+    return (intro + identity + f'<div class="tally"><div><strong>{q["mean"]:.2f} / 1</strong> Average score</div>'
             f'<div><strong>{q["graded"]:,} of {q["datasets"]:,}</strong> Datasets graded</div></div>'
             '<h2>Grades across the build</h2><div class="table-wrap"><table><thead><tr><th>Grade</th><th>Datasets</th></tr>'
             f'</thead><tbody>{band_rows}</tbody></table></div>'

@@ -6,7 +6,7 @@ Every change that is proposed here is applied to a copy of BAFU's release, check
 
 <!-- generated: inventory-quality-summary -->
 
-[Filter review cases](cases.md) to see the source, patch status and measured results for a single observation.
+<!-- generated: build-case-register -->
 
 <!-- generated: last-run -->
 

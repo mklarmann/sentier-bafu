@@ -11,7 +11,9 @@ document.querySelectorAll('[data-register]').forEach(function (register) {
     let matches = 0;
     for (const row of rows) {
       const text = (row.textContent + ' ' + row.dataset.search).toLowerCase();
-      row.hidden = !text.includes(query) || fields.some(field =>
+      const exactCase = noun === 'case' && /^f[1-9][0-9]*$/.test(query);
+      const matchesText = exactCase ? row.dataset.case.toLowerCase() === query : text.includes(query);
+      row.hidden = !matchesText || fields.some(field =>
         field.name !== 'q' && field.value && row.dataset[field.name] !== field.value);
       if (!row.hidden) matches++;
     }

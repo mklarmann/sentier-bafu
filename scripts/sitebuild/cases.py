@@ -101,11 +101,17 @@ def case_list(site):
         ids = ", ".join(p["id"] for p in f["patches"]) or "—"
         lookup = " ".join([str(d["code"]) + " " + d["name"] + " " + d["location"] for d in f["datasets"]]
                           + [patch_key(p) for p in f["patches"]] + [s["id"] for s in case_sources(site, rid)])
-        rows.append((dict(stage=stage, patch=patch, search=lookup),
+        rows.append(({"case": rid, "stage": stage, "patch": patch, "search": lookup},
                      [f'<a href="cases/{rid}.html">{rid} · {esc(f["title"])}</a>', esc(stage), esc(ids)]))
     return table("case", ["Case", "Triage status", "Community patch"],
                  {"stage": ("Triage status", [r[0]["stage"] for r in rows]),
                   "patch": ("Patch", [r[0]["patch"] for r in rows])}, rows)
+
+
+def build_register(site):
+    count = plural(len(site.by_id), "case")
+    return (f'<details class="build-cases"><summary>Filter {count} by dataset, triage status or patch</summary>'
+            + case_list(site) + '<p><a href="cases.html">Open the full case register</a></p></details>')
 
 
 def case_panel(site, f):

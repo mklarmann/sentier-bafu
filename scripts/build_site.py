@@ -310,6 +310,7 @@ class Site:
             "source-register": (lambda: cases.source_list(self), True),
             "inventory-quality": (lambda: quality.detail(self), True),
             "inventory-quality-summary": (lambda: quality.overview(self), False),
+            "build-case-register": (lambda: cases.build_register(self), False),
             "case-register": (lambda: cases.case_list(self), True),
             "findings-list": (lambda: findings.findings_list(self, up), True),
             "contributions-list": (lambda: contributions.contributions_list(self, up), True),
