@@ -1,0 +1,40 @@
+{
+  "schema": "sentier-bafu/contribution-layer/1",
+  "contribution": "C004",
+  "name": "offshore-wind-402599",
+  "database": "bafu-2026-v1-c004-offshore-wind-402599",
+  "title": "402599 · 150 MW offshore wind farm, 5 MW turbines",
+  "authored_by": "OpenAI Codex",
+  "authorised_by": null,
+  "references": [
+    "https://github.com/sentier-dev/sentier-bafu/issues/29"
+  ],
+  "release": {
+    "fingerprint": "d17ae05d88a3909e994c17a76addbb8e027b5ebbbde174a9ec57ca0ddac303ca"
+  },
+  "changes": [
+    {
+      "kind": "supplier-substitution",
+      "dataset": {
+        "code": "729a0dd2-5a2b-3b5e-8960-df2240b7629f",
+        "name": "Electricity mix, operation storage pumps, ENTSO, 2020, at plant",
+        "location": "CH"
+      },
+      "replaced_supplier": {
+        "code": "79a7b7d6-d0eb-48f2-bae7-da98facdae0f",
+        "name": "Electricity, at 100MW wind farm, onshore, 2.3MW turbines",
+        "location": "RER"
+      },
+      "new_supplier": {
+        "code": "7fed9d35-290b-3514-9d8e-95dd9d71d7f2",
+        "name": "Electricity, at 150MW wind farm, offshore, 5MW turbines",
+        "location": "RER"
+      },
+      "exchange": {
+        "position": 46,
+        "amount": 0.0058202,
+        "location": "OCE"
+      }
+    }
+  ]
+}

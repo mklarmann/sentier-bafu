@@ -31,7 +31,8 @@ A dataset is named by its code (the part of its file name after `process_`) toge
 its name and location, and the build stops if the release has another name or location under
 that code: the layer was written for other data. `exchange.position` (the place of the input
 among the dataset's exchanges, from 0) is only needed when the dataset takes the replaced
-supplier more than once and not all of those inputs change.
+supplier more than once and not all of those inputs change. Its optional `amount` and
+`location` guard against selecting another input of that supplier if the order changes.
 
 One kind of change exists, `supplier-substitution`: the input keeps its amount and its unit
 and is taken from another dataset. The new supplier must be in the release and have the unit
@@ -54,6 +55,7 @@ tables needs pyarrow, so that part runs in the sentier-importers environment.
 import argparse
 import hashlib
 import json
+import math
 import re
 from pathlib import Path
 
@@ -175,7 +177,17 @@ def validate(layer: dict) -> dict:
             position = exchange.get("position") if isinstance(exchange, dict) else None
             if not isinstance(position, int) or isinstance(position, bool) or position < 0:
                 raise LayerError(f"{where}: `exchange.position` counts the exchanges from 0")
-            entry["exchange"] = {"position": position}
+            selector = {"position": position}
+            if "amount" in exchange:
+                amount = exchange["amount"]
+                if type(amount) not in (int, float) or not math.isfinite(amount):
+                    raise LayerError(f"{where}: `exchange.amount` must be a finite number")
+                selector["amount"] = amount
+            if "location" in exchange:
+                if not isinstance(exchange["location"], str) or not exchange["location"].strip():
+                    raise LayerError(f"{where}: `exchange.location` must be a location code")
+                selector["location"] = exchange["location"]
+            entry["exchange"] = selector
         checked.append(entry)
     _check_order(checked)
     return {
@@ -280,6 +292,12 @@ def substitute(processes: dict[str, dict], exchanges: list[dict], layer: dict) -
                 raise LayerError(
                     f"{where}: exchange {position} of {consumer} is not an input of {old}"
                 )
+            target = exchanges[rows[position]]
+            for field in ("amount", "location"):
+                if field in change["exchange"] and target[field] != change["exchange"][field]:
+                    raise LayerError(
+                        f"{where}: exchange {position} of {consumer} has another {field}"
+                    )
             targets = [rows[position]]
         elif not taking:
             raise LayerError(f"{where}: {consumer} has no input of {old}; nothing to substitute")

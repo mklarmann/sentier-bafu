@@ -1,0 +1,40 @@
+{
+  "schema": "sentier-bafu/contribution-layer/1",
+  "contribution": "C004",
+  "name": "offshore-wind-396070",
+  "database": "bafu-2026-v1-c004-offshore-wind-396070",
+  "title": "396070 · 740 MW offshore wind farm, 10 MW turbines",
+  "authored_by": "OpenAI Codex",
+  "authorised_by": null,
+  "references": [
+    "https://github.com/sentier-dev/sentier-bafu/issues/29"
+  ],
+  "release": {
+    "fingerprint": "d17ae05d88a3909e994c17a76addbb8e027b5ebbbde174a9ec57ca0ddac303ca"
+  },
+  "changes": [
+    {
+      "kind": "supplier-substitution",
+      "dataset": {
+        "code": "729a0dd2-5a2b-3b5e-8960-df2240b7629f",
+        "name": "Electricity mix, operation storage pumps, ENTSO, 2020, at plant",
+        "location": "CH"
+      },
+      "replaced_supplier": {
+        "code": "79a7b7d6-d0eb-48f2-bae7-da98facdae0f",
+        "name": "Electricity, at 100MW wind farm, onshore, 2.3MW turbines",
+        "location": "RER"
+      },
+      "new_supplier": {
+        "code": "ddfac649-b18a-36e8-87be-b909a40d2b6d",
+        "name": "Electricity, at 740MW wind farm, offshore, 10MW turbines",
+        "location": "RER"
+      },
+      "exchange": {
+        "position": 46,
+        "amount": 0.0058202,
+        "location": "OCE"
+      }
+    }
+  ]
+}

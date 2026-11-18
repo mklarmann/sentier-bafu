@@ -250,6 +250,22 @@ class Substituting(unittest.TestCase):
         with self.assertRaisesRegex(layer.LayerError, "exchange 2 of crop is not an input of mix"):
             layer.substitute(PROCESSES, exchanges(), layer.validate(data))
 
+    def test_position_alone_can_point_to_another_input_of_the_same_supplier(self):
+        data = made()
+        source = exchanges()[3]
+        selector = {key: source[key] for key in ("amount", "location")}
+        data["changes"][0]["exchange"] = {"position": 3, **selector}
+        checked = layer.validate(data)
+        changed = layer.substitute(PROCESSES, exchanges(), checked)
+        self.assertEqual([r["position"] for r in changed], [3])
+        for field, other in (("amount", 0.0058202), ("location", "OCE")):
+            rows = exchanges()
+            rows[3][field] = other
+            before = copy.deepcopy(rows)
+            with self.assertRaisesRegex(layer.LayerError, "another " + field):
+                layer.substitute(PROCESSES, rows, checked)
+            self.assertEqual(rows, before)
+
     def test_a_layer_written_for_other_data_stops(self):
         def stops(message, processes=PROCESSES, rows=None, **changes):
             data = made()
