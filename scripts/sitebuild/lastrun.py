@@ -27,6 +27,7 @@ on GitHub is shown marked as such.
 """
 
 import datetime
+import hashlib
 import json
 import re
 
@@ -715,6 +716,30 @@ def verified_build(site, record):
     if expected and files == expected and len(reported) == len(expected):
         return review
     return None
+
+
+def add_reviewed_steps(site, record):
+    """Attach a reviewed public measurement only to the precise comparison it reproduces."""
+    from last_run import public_diagnostics_errors
+
+    review = verified_build(site, record) or {}
+    source = review.get("step_diagnostics")
+    pair = record.get("before_after")
+    if not source or not pair:
+        return
+    content = json.dumps(pair, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
+    if hashlib.sha256(content).hexdigest() != source["comparison_sha256"]:
+        return
+    data = json.loads((site.root / source["snapshot"]).read_bytes())
+    errors = public_diagnostics_errors(data)
+    if errors:
+        raise ValueError("Invalid reviewed step measurements: " + ", ".join(errors))
+    allowed = {row["id"] for row in pair["moved"]}
+    if ({item["id"] for item in data["items"]} != allowed
+            or data["items_count"]["all"] != pair["items"]["compared"]
+            or [i["id"] for i in data["indicators"]] != [i["id"] for i in pair["indicators"]]):
+        raise ValueError("Reviewed step measurements do not cover the published comparison")
+    record["diagnostics"] = data
 
 
 def verified_summary(site):

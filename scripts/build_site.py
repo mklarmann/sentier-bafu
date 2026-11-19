@@ -142,6 +142,10 @@ class Site:
                 raise ValueError('a page shows the last run, and site/config.json has no "run" that says which workflow')
             self.run_reader = last_run
             self.last_run = last_run.load(self.built_by, self.run, last_run_snapshot, offline)
+            if self.last_run:
+                for record in (self.last_run, self.last_run.get("of_tag")):
+                    if record and not record.get("diagnostics"):
+                        lastrun.add_reviewed_steps(self, record)
         self.quality = quality.measure(self, inventory_archive, measure_inventory and not offline) if self.config.get("inventory_quality") else None
         self.build_views, self.build_sections = shell.build_views(self)
         self.built = build_date()

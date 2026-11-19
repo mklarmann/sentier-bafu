@@ -77,6 +77,10 @@
       "bafu-2026-v1-patched-simapro.csv": "e26a63b415c95d664047f2b4684a45b7031303d66f1e67f7cc49cac6d43e78bb",
       "bafu-2026-v1-patched.bw2package": "080cebbafc3dc176f0925dedf0ddf84e535bf6a8e90c6997087db1c337507d70"
     },
+    "step_diagnostics": {
+      "snapshot": "site/snapshots/patched-2026-11-18-steps.json",
+      "comparison_sha256": "e4d2fd35a8fd76cb752a9630a76f33cacec3a02024662faf5182fca0ef58d90e"
+    },
     "changed_scores": 75,
     "checked_formats": ["openLCA", "ILCD"],
     "summary": "Five export formats are available.",

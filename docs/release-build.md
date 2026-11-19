@@ -213,6 +213,26 @@ through it and holds back a kept file that still names who confirmed otherwise, 
 request workflow uploads the public form of its two summaries, and both job summaries read
 their input through it.
 
+## Reproduce the published step comparison
+
+Use the provider and patched builds from the same tagged comparison. For the intermediate
+builds, apply all import fixes with every patch skipped in `s00`. In `s01`, use
+`build --only` with the first registered patch. Continue in order, adding one patch
+per build until the next state is the tagged patched copy. Keep each build record,
+patch summary and audit, including its full `scores.csv`, on the build machine.
+
+```sh
+uv run --no-project --python 3.12 --with-requirements site/requirements.txt --with pyarrow \
+  python scripts/release_build/step_diagnostics.py RELEASE_OUTPUT INTERMEDIATE_BUILDS steps.json \
+  --source-url https://github.com/mklarmann/sentier-bafu/blob/patched-2026-11-18
+```
+
+The generator checks the source fingerprint, patch order, audit and score checksums,
+dataset identifiers, indicators and endpoint values. It calculates totals across all
+datasets and publishes individual rows only for the examples in the tagged comparison.
+The site attaches the reviewed snapshot only when the tag, export checksums and
+before-and-after record match. A build with its own diagnostics uses that record directly.
+
 ## In CI
 
 [Automation](automation.md) describes every workflow of the repository. These two run the

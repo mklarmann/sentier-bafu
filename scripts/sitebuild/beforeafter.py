@@ -584,7 +584,7 @@ def body(data, back=None, said=plain, file=None, up="", details="", opening="", 
     if diagnostics:
         measurements = f'<details class="ba-pair"><summary>Before-and-after measurements</summary>{measurements}</details>'
     if external_case:
-        return f'{opening}{dataset_table}{diagnostics}{measurements}'
+        return f'{opening}{diagnostics}{dataset_table}{measurements}'
     return f'{crumb}<p class="eyebrow">Before and after</p><h1>{esc(data["title"])}</h1>{opening}{diagnostics}{measurements}'
 
 
@@ -613,7 +613,7 @@ def page(site, data, name, back=None, current=None, review_section="", diagnosti
                 site.copy(package.locate_file(notice), f"assets/diagnostics-{notice.name}.txt")
         head += '<link rel="stylesheet" href="assets/diagnostics.css"><script src="assets/diagnostics.js" defer></script>'
         scope = "Whole-build diagnostics by build step" if use_selector else "Diagnostics by build step"
-        diagnostics_body = f'<section aria-labelledby="diagnostics"><h2 id="diagnostics">{scope}</h2>'
+        diagnostics_body = f'<section class="ba-diagnostics" aria-labelledby="diagnostics"><h2 id="diagnostics">{scope}</h2>'
         diagnostics_body += diagnostics_page.body(diagnostics, title=False) + "</section>"
         jumps.append(("diagnostics", "Build-step diagnostics"))
     if data:
