@@ -13,6 +13,7 @@ from xml.etree.ElementTree import Element
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 from sitebuild import cases
+import frozen
 
 try:
     from release_build.inventory_quality import assess, declares_spread
@@ -26,10 +27,10 @@ class CaseRecords(unittest.TestCase):
         import build_site
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp)
-            site = build_site.Site(out, offline=True)
+            site = build_site.Site(out, offline=True, root=frozen.repository())
             site.build()
             rid = "F1"
-            native = json.loads((ROOT / "community/findings/0/F1.json").read_text())
+            native = json.loads((site.root / "community/findings/0/F1.json").read_text())
             self.assertEqual(json.loads((out / "api/v1/cases/F1.json").read_text()), native)
             record = next(r for r in json.loads((out / "api/v1/cases.json").read_text())["cases"] if r["id"] == rid)
             self.assertIn("0001-strawberry-polyethylene-disposal", record["patches"])
@@ -46,7 +47,7 @@ class CaseRecords(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp)
-            site = build_site.Site(out, offline=True)
+            site = build_site.Site(out, offline=True, root=frozen.repository())
             site.build()
             for path, tab, current in (("cases.html", "cases.html", "page"),
                                        ("feedback.html", "feedback.html", "page"),

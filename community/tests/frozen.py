@@ -1,7 +1,7 @@
 """The frozen records that tests of rules read: see fixtures/frozen/README.md.
 
     RECORDS       a small tree with the frozen records: community/findings, community/patches.json,
-                  community/contributions, community/recommendations and site/config.json
+                  community/contributions, community/recommendations, community/sources.json and site/config.json
     workspace(t)  a copy of RECORDS at `t`, to change one thing and look at the whole
     repository()  a copy of this repository with the frozen records in place of its own, for
                   tests that build the site; made once per test run
@@ -18,7 +18,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 RECORDS = Path(__file__).resolve().parent / "fixtures/frozen"
 # What the frozen tree replaces in a copy of the repository.
-REPLACED = ("community/findings", "community/contributions", "community/recommendations", "community/patches.json")
+REPLACED = ("community/findings", "community/contributions", "community/recommendations",
+            "community/patches.json", "community/sources.json")
 # The keys of site/config.json that belong to the records; the rest describes the site's pages.
 RECORD_KEYS = ("dataset", "provider", "releases", "repository", "site_url")
 _made = {}

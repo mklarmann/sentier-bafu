@@ -72,6 +72,13 @@ def a_new_finding(copy):
     path.parent.mkdir(parents=True, exist_ok=True)
     community.write_record(path, record)
 
+    # The new source belongs to this case. Tests using older records must read their own sources.
+    path = copy / "community/sources.json"
+    sources = json.loads(path.read_text()) if path.exists() else []
+    sources.append({"id": f"evidence-{number}", "kind": "Measurement", "title": "Example measurement",
+                    "url": record["reported"]["url"], "cases": [record["id"]]})
+    path.write_text(json.dumps(sources, indent=2) + "\n")
+
 
 def next_step(copy):
     """Every finding takes the next step of its path."""
