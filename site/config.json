@@ -84,6 +84,7 @@
     "comparison": "75 impact results changed. All 75 were in datasets and impact categories that the patches and import fixes could affect. This check allows changes of any size in either direction."
   },
   "case_review": true,
+  "comparison_page": {},
   "inventory_quality": true,
   "inventory_page": "inventory.html",
   "nav_parents": {

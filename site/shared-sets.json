@@ -64,6 +64,8 @@
         "site/style.css",
         "site/assets/list.js",
         "site/assets/register.js",
+        "site/assets/comparison.css",
+        "site/assets/comparison.js",
         "site/assets/replay.js",
         "site/assets/download.js",
         "site/assets/nunito-latin.woff2",
