@@ -61,6 +61,7 @@ The scripts in `scripts/`, the stylesheet and the two scripts of the pages are t
 | `dataset_code_pattern` | what a dataset number looks like, as a pattern (`^[0-9]{6}$`): the findings list then looks a number up exactly and leads to the dataset's page | datasets have no number to look up |
 | `lookup_example` | the example in the lookup field | `F1` |
 | `finding_label`, `finding_form` | the label of an issue that is a finding, and the file name of its form in `.github/ISSUE_TEMPLATE/`. The form's field for the release is headed "*provider* release it was observed in" | `finding`, `data-finding.yml` |
+| `finding_submission_url` | Optional public HTTPS intake address for findings when the project uses a different submission route. The homepage and dataset pages use this URL as given. | omit to use the issue template |
 | `older_numbering_until`, `older_numbering_note` | the last finding number of an older numbering, and a sentence about it for the table of findings | this repository's number; a sibling sets `0` |
 | `ledger_notes` | sentences for the head of the table of findings (`ledger.md`) | none |
 | `download` | how a file of a build is handed out: `{title, intro, points, more, accept, cancel, page, anchor, free}`. A link to a file then asks first: it leads to `page#anchor`, and `assets/download.js` shows these words in a dialog and hands out the file only when the reader accepts. `free` names files that hold no data (a manifest), linked as they are. See "The walk through a run" | a file is linked as it is |
