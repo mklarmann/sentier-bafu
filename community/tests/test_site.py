@@ -686,6 +686,15 @@ class SiteTests(unittest.TestCase):
         expected = {base + p.relative_to(self.out).as_posix() for p in self.real_pages()}
         self.assertEqual(listed, expected)
 
+    def test_project_can_choose_its_finding_intake(self):
+        from sitebuild import overview, pages
+        site = build_site.Site(self.out, root=DATA, offline=True)
+        self.assertIn("&dataset=example%20dataset", site.finding_submission("example dataset"))
+        site.config["finding_submission_url"] = "https://example.org/intake?kind=finding"
+        self.assertIn('href="https://example.org/intake?kind=finding"', overview.ways(site))
+        code, entry = next(iter(site.datasets.items()))
+        self.assertIn('href="https://example.org/intake?kind=finding"', pages.dataset_page(site, code, entry))
+
     def test_every_old_address_leads_to_a_page(self):
         old = {"import.html", "contribute.html", "testing.html", "terms.html", "application.html", "hackathon.html",
                "mapping-review.html", "consensus.html"}
