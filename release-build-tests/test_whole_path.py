@@ -478,10 +478,16 @@ class WholePath(unittest.TestCase):
         self.assertEqual(manifest["label"], "Modified Data")
         self.assertEqual(manifest["counts"]["activities"], 8)
         self.assertEqual(manifest["counts"]["datasets_matched_to_the_record"], 8)
-        self.assertEqual(manifest["labels"]["amounts_converted"], 0)
+        # The tomato process declares 0.5 kWh of heat. ILCD expresses it in its supplier's MJ.
+        self.assertEqual(manifest["labels"]["amounts_converted"], 1)
+        self.assertEqual(manifest["openlca"]["ilcd_native_unit_conversions"], 1)
         (row,) = manifest["declared_units"]["another_quantity_written_as_built"]
         self.assertEqual(
-            (row["dataset"], row["finding"], row["amount_as_built"]), ("syn-tomatoes", "F900", 0.5)
+            (row["dataset"], row["supplier"], row["finding"]), ("syn-tomatoes", "syn-old", "F900")
+        )
+        self.assertEqual(
+            (row["amount_as_built"], row["declared_unit"], row["supplier_unit"]),
+            (0.5, "kilowatt hour", "megajoule"),
         )
         names = {entry["name"] for entry in manifest["files"].values()}
         self.assertEqual(
