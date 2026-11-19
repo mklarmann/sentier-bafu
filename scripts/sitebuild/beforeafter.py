@@ -489,7 +489,7 @@ def grid(data, word, details="", cases=None, external_case=False):
     return (
         f'<h2 id="moved">The {esc(many)} that moved</h2>'
         f'<p>Each cell is the result after, divided by the result before, for that {esc(one)} and {esc(word[0])}: '
-        f"1 is no change, 0.5 is half, 2 is double. {shown}</p>"
+        f"1 is no change, 0.5 is half, 2 is double. <span data-ba-listed>{shown}</span></p>"
         '<div class="ba-board" data-before-after>'
         '<div class="ba-controls" hidden><div class="filter-row">'
         '<label class="field grow"><span>Name</span><input type="search" data-ba-filter placeholder="Filter by name" autocomplete="off" spellcheck="false"></label>'
@@ -588,7 +588,7 @@ def body(data, back=None, said=plain, file=None, up="", details="", opening="", 
     return f'{crumb}<p class="eyebrow">Before and after</p><h1>{esc(data["title"])}</h1>{opening}{diagnostics}{measurements}'
 
 
-def page(site, data, name, back=None, current=None, review_section="", diagnostics=None):
+def page(site, data, name, back=None, current=None, review_section="", diagnostics=None, case_sets=None):
     """The whole page of one comparison, in the frame of a site the shared build writes: a
     text of the file links the findings it names, as everywhere on such a site."""
     from . import shell
@@ -614,7 +614,16 @@ def page(site, data, name, back=None, current=None, review_section="", diagnosti
         head += '<link rel="stylesheet" href="assets/diagnostics.css"><script src="assets/diagnostics.js" defer></script>'
         scope = "Whole-build diagnostics by build step" if use_selector else "Diagnostics by build step"
         diagnostics_body = f'<section class="ba-diagnostics" aria-labelledby="diagnostics"><h2 id="diagnostics">{scope}</h2>'
-        diagnostics_body += diagnostics_page.body(diagnostics, title=False) + "</section>"
+        if use_selector:
+            diagnostics_body += '<p><a href="#review-cases" data-pick-cases>Select review cases together</a></p>'
+        options = {}
+        if case_sets:
+            from .comparison import step_selector
+            options["score_table_identity"] = "Score table SHA-256"
+            diagnostics_body += ('<button class="button" type="button" data-combine-steps hidden>Combine steps</button>'
+                                 + step_selector(case_sets))
+            head += '<script src="assets/step-sets.js" defer></script>'
+        diagnostics_body += diagnostics_page.body(diagnostics, title=False, **options) + "</section>"
         jumps.append(("diagnostics", "Build-step diagnostics"))
     if data:
         many = data["items"]["many"]
@@ -652,7 +661,7 @@ def page(site, data, name, back=None, current=None, review_section="", diagnosti
         from .comparison import opening as comparison_opening
         title = "Comparison"
         head += '<link rel="stylesheet" href="assets/comparison.css"><script src="assets/comparison.js" defer></script>'
-        top = comparison_opening(site, data, diagnostics, back, config, lambda text: inline(site, text, ""))
+        top = comparison_opening(site, data, diagnostics, back, config, lambda text: inline(site, text, ""), case_sets)
         framed = (f'<div class="sentier-comparison wrap page">{top}</div>'
                   f'<div class="wrap ba-page"><article class="prose wide">{inner}{review_section}</article></div>')
     return shell.shell(site, title, framed, current or name, page=name, description=described, head=head)

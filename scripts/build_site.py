@@ -455,8 +455,12 @@ class Site:
                     self.page(review_page, sitebuild_review.page(self, shown, review_page, walk, current=back))
                     pages["review"] = review_page
             if comparison:
+                from sitebuild.comparison import measured_sets
+                case_sets = measured_sets(self, run, data, diagnostics) if comparison == "before-after.html" else None
+                if case_sets:
+                    self.write_json("api/v1/case-comparisons.json", case_sets)
                 self.page(comparison, beforeafter.page(self, data, comparison, walk, current=back,
-                                                       review_section=embedded, diagnostics=diagnostics))
+                                                       review_section=embedded, diagnostics=diagnostics, case_sets=case_sets))
                 if data is not None:
                     self.write_json(f"api/v1/{ids}before-after.json", data)
                 if diagnostics:

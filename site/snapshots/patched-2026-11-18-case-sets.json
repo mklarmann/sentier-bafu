@@ -1,0 +1,844 @@
+{
+  "format": "sentier-bafu/case-comparisons/1",
+  "source_sha256": "d17ae05d88a3909e994c17a76addbb8e027b5ebbbde174a9ec57ca0ddac303ca",
+  "step_snapshot_sha256": "2d03333083e89d0b5efa5da4642a86ab489b29362e7d42e4a318d31812f69d1e",
+  "base": "After import fixes",
+  "datasets": 11947,
+  "indicators": [
+    "ef-3.1:acidification",
+    "ef-3.1:climate-change",
+    "ef-3.1:climate-change-biogenic",
+    "ef-3.1:climate-change-fossil",
+    "ef-3.1:climate-change-land-use-and-land-use-change",
+    "ef-3.1:ef-particulate-matter",
+    "ef-3.1:ecotoxicity-freshwater",
+    "ef-3.1:ecotoxicity-freshwater-inorganics",
+    "ef-3.1:ecotoxicity-freshwater-organics",
+    "ef-3.1:eutrophication-marine",
+    "ef-3.1:eutrophication-freshwater",
+    "ef-3.1:eutrophication-terrestrial",
+    "ef-3.1:human-toxicity-cancer",
+    "ef-3.1:human-toxicity-cancer-inorganics",
+    "ef-3.1:human-toxicity-cancer-organics",
+    "ef-3.1:human-toxicity-non-cancer",
+    "ef-3.1:human-toxicity-non-cancer-inorganics",
+    "ef-3.1:human-toxicity-non-cancer-organics",
+    "ef-3.1:ionising-radiation-human-health",
+    "ef-3.1:land-use",
+    "ef-3.1:ozone-depletion",
+    "ef-3.1:photochemical-ozone-formation-human-health",
+    "ef-3.1:resource-use-fossils",
+    "ef-3.1:resource-use-minerals-and-metals",
+    "ef-3.1:water-use"
+  ],
+  "indicator_labels": {
+    "ef-3.1:acidification": {
+      "name": "Acidification",
+      "unit": "mol H+ eq"
+    },
+    "ef-3.1:climate-change": {
+      "name": "Climate change",
+      "unit": "kg CO2 eq"
+    },
+    "ef-3.1:climate-change-biogenic": {
+      "name": "Climate change, biogenic",
+      "unit": "kg CO2 eq"
+    },
+    "ef-3.1:climate-change-fossil": {
+      "name": "Climate change, fossil",
+      "unit": "kg CO2 eq"
+    },
+    "ef-3.1:climate-change-land-use-and-land-use-change": {
+      "name": "Climate change, land use and land use change",
+      "unit": "kg CO2 eq"
+    },
+    "ef-3.1:ef-particulate-matter": {
+      "name": "Particulate matter",
+      "unit": "disease incidence"
+    },
+    "ef-3.1:ecotoxicity-freshwater": {
+      "name": "Ecotoxicity, freshwater",
+      "unit": "CTUe"
+    },
+    "ef-3.1:ecotoxicity-freshwater-inorganics": {
+      "name": "Ecotoxicity, freshwater, inorganics",
+      "unit": "CTUe"
+    },
+    "ef-3.1:ecotoxicity-freshwater-organics": {
+      "name": "Ecotoxicity, freshwater, organics",
+      "unit": "CTUe"
+    },
+    "ef-3.1:eutrophication-marine": {
+      "name": "Eutrophication, marine",
+      "unit": "kg N eq"
+    },
+    "ef-3.1:eutrophication-freshwater": {
+      "name": "Eutrophication, freshwater",
+      "unit": "kg P eq"
+    },
+    "ef-3.1:eutrophication-terrestrial": {
+      "name": "Eutrophication, terrestrial",
+      "unit": "mol N eq"
+    },
+    "ef-3.1:human-toxicity-cancer": {
+      "name": "Human toxicity, cancer",
+      "unit": "CTUh"
+    },
+    "ef-3.1:human-toxicity-cancer-inorganics": {
+      "name": "Human toxicity, cancer, inorganics",
+      "unit": "CTUh"
+    },
+    "ef-3.1:human-toxicity-cancer-organics": {
+      "name": "Human toxicity, cancer, organics",
+      "unit": "CTUh"
+    },
+    "ef-3.1:human-toxicity-non-cancer": {
+      "name": "Human toxicity, non-cancer",
+      "unit": "CTUh"
+    },
+    "ef-3.1:human-toxicity-non-cancer-inorganics": {
+      "name": "Human toxicity, non-cancer, inorganics",
+      "unit": "CTUh"
+    },
+    "ef-3.1:human-toxicity-non-cancer-organics": {
+      "name": "Human toxicity, non-cancer, organics",
+      "unit": "CTUh"
+    },
+    "ef-3.1:ionising-radiation-human-health": {
+      "name": "Ionising radiation, human health",
+      "unit": "kBq U-235 eq"
+    },
+    "ef-3.1:land-use": {
+      "name": "Land use",
+      "unit": "Pt"
+    },
+    "ef-3.1:ozone-depletion": {
+      "name": "Ozone depletion",
+      "unit": "kg CFC-11 eq"
+    },
+    "ef-3.1:photochemical-ozone-formation-human-health": {
+      "name": "Photochemical ozone formation, human health",
+      "unit": "kg NMVOC eq"
+    },
+    "ef-3.1:resource-use-fossils": {
+      "name": "Resource use, fossils",
+      "unit": "MJ"
+    },
+    "ef-3.1:resource-use-minerals-and-metals": {
+      "name": "Resource use, minerals and metals",
+      "unit": "kg Sb eq"
+    },
+    "ef-3.1:water-use": {
+      "name": "Water use",
+      "unit": "m3 world eq deprived"
+    }
+  },
+  "listed_datasets": {
+    "c2d0c99c-d28a-3b78-aad3-f4790f49c412": {
+      "name": "Strawberries, conventional, unheated plastic tunnel",
+      "place": "ES"
+    },
+    "82b2cf7c-b0b3-387c-b26f-781a572e7467": {
+      "name": "Strawberries, conventional, unheated plastic tunnel",
+      "place": "CH"
+    },
+    "f9a7fbd2-f755-3292-b3d0-b6e486e9f677": {
+      "name": "Strawberries, organic, unheated plastic tunnel",
+      "place": "CH"
+    }
+  },
+  "cases": {
+    "F1": [
+      "0001-strawberry-polyethylene-disposal"
+    ],
+    "F3": [
+      "0002-supplier-locations"
+    ],
+    "F11": [
+      "0003-flag-not-maintained"
+    ],
+    "F8": [
+      "0011-flag-aggregated"
+    ]
+  },
+  "builds": [
+    {
+      "patches": [],
+      "inventory_sha256": "a671e70210e8a57f9ec315dbe03cffb85e71c48c67e05aadf04ba3462fb652c7",
+      "score_sha256": "da214b359a677abffccb0189e473506733230652f4de336671105fd1c553ef00",
+      "datasets_edited": 0,
+      "edits": 0
+    },
+    {
+      "patches": [
+        "0001-strawberry-polyethylene-disposal"
+      ],
+      "inventory_sha256": "9eafd5efcb53f13e00c86831cba7b9eba1f07a79a39d1e4dc5c191e791f55bfc",
+      "score_sha256": "d0983ce5b399de42e515858b7ff3491ba348bcca2c882af96b13272c4b29c59b",
+      "datasets_edited": 3,
+      "edits": 3
+    },
+    {
+      "patches": [
+        "0002-supplier-locations"
+      ],
+      "inventory_sha256": "689ba37c78d3bffb382d58802272c15c0c21401b7dadbecd3c96395efe41abaf",
+      "score_sha256": "da214b359a677abffccb0189e473506733230652f4de336671105fd1c553ef00",
+      "datasets_edited": 25,
+      "edits": 25
+    },
+    {
+      "patches": [
+        "0003-flag-not-maintained"
+      ],
+      "inventory_sha256": "0b863ae799019f2230e4dd93ba7a638080f166858d438cf8b6256579ede5606b",
+      "score_sha256": "da214b359a677abffccb0189e473506733230652f4de336671105fd1c553ef00",
+      "datasets_edited": 1289,
+      "edits": 1289
+    },
+    {
+      "patches": [
+        "0011-flag-aggregated"
+      ],
+      "inventory_sha256": "543d3937ef96c99b1b15cff887305a7adcfcbd236c34d7c2892553353edfe67d",
+      "score_sha256": "da214b359a677abffccb0189e473506733230652f4de336671105fd1c553ef00",
+      "datasets_edited": 40,
+      "edits": 40
+    },
+    {
+      "patches": [
+        "0001-strawberry-polyethylene-disposal",
+        "0002-supplier-locations"
+      ],
+      "inventory_sha256": "442e0ca5aff168ba4a7554482a89a94f798b079c1f5206be086fc5a02deb0115",
+      "score_sha256": "d0983ce5b399de42e515858b7ff3491ba348bcca2c882af96b13272c4b29c59b",
+      "datasets_edited": 28,
+      "edits": 28
+    },
+    {
+      "patches": [
+        "0001-strawberry-polyethylene-disposal",
+        "0003-flag-not-maintained"
+      ],
+      "inventory_sha256": "bcad557d26826dc7b68a7c27cbb5a04325b7d132c4b1860c6dcabbd148e28a7d",
+      "score_sha256": "d0983ce5b399de42e515858b7ff3491ba348bcca2c882af96b13272c4b29c59b",
+      "datasets_edited": 1292,
+      "edits": 1292
+    },
+    {
+      "patches": [
+        "0001-strawberry-polyethylene-disposal",
+        "0011-flag-aggregated"
+      ],
+      "inventory_sha256": "acc312dae860834865e2307c81a0c7ef995d09f455a627bef0d0322638347542",
+      "score_sha256": "d0983ce5b399de42e515858b7ff3491ba348bcca2c882af96b13272c4b29c59b",
+      "datasets_edited": 43,
+      "edits": 43
+    },
+    {
+      "patches": [
+        "0002-supplier-locations",
+        "0003-flag-not-maintained"
+      ],
+      "inventory_sha256": "806bb40aa8e6401c1b8ebba85d9e4daaf34996efcf9d270ed79d60270543c3b7",
+      "score_sha256": "da214b359a677abffccb0189e473506733230652f4de336671105fd1c553ef00",
+      "datasets_edited": 1314,
+      "edits": 1314
+    },
+    {
+      "patches": [
+        "0002-supplier-locations",
+        "0011-flag-aggregated"
+      ],
+      "inventory_sha256": "4aa3c2501ed6faae37611684e896543f83a8a0f2b014eaf3f7a34758de489830",
+      "score_sha256": "da214b359a677abffccb0189e473506733230652f4de336671105fd1c553ef00",
+      "datasets_edited": 65,
+      "edits": 65
+    },
+    {
+      "patches": [
+        "0003-flag-not-maintained",
+        "0011-flag-aggregated"
+      ],
+      "inventory_sha256": "e999742961ee8246fd36fc74dff647da070954d69849df02dc3ef768bd1dbd29",
+      "score_sha256": "da214b359a677abffccb0189e473506733230652f4de336671105fd1c553ef00",
+      "datasets_edited": 1324,
+      "edits": 1329
+    },
+    {
+      "patches": [
+        "0001-strawberry-polyethylene-disposal",
+        "0002-supplier-locations",
+        "0003-flag-not-maintained"
+      ],
+      "inventory_sha256": "55d265819dca964cde21b5c3af8f1e1269e9d02a539d27f990f42f065b61ac9d",
+      "score_sha256": "d0983ce5b399de42e515858b7ff3491ba348bcca2c882af96b13272c4b29c59b",
+      "datasets_edited": 1317,
+      "edits": 1317
+    },
+    {
+      "patches": [
+        "0001-strawberry-polyethylene-disposal",
+        "0002-supplier-locations",
+        "0011-flag-aggregated"
+      ],
+      "inventory_sha256": "506f5dee8285e399c5be7accf043639c9815ab05d46d01e8978f1d0495f5b231",
+      "score_sha256": "d0983ce5b399de42e515858b7ff3491ba348bcca2c882af96b13272c4b29c59b",
+      "datasets_edited": 68,
+      "edits": 68
+    },
+    {
+      "patches": [
+        "0001-strawberry-polyethylene-disposal",
+        "0003-flag-not-maintained",
+        "0011-flag-aggregated"
+      ],
+      "inventory_sha256": "5c63a7e09574649af726eb36bdd5ad68be5c8cc739f41d068674900ef5c0e577",
+      "score_sha256": "d0983ce5b399de42e515858b7ff3491ba348bcca2c882af96b13272c4b29c59b",
+      "datasets_edited": 1327,
+      "edits": 1332
+    },
+    {
+      "patches": [
+        "0002-supplier-locations",
+        "0003-flag-not-maintained",
+        "0011-flag-aggregated"
+      ],
+      "inventory_sha256": "41f8d583cd882add175cff646b38bcca0eb5310e87fc7a8a8f59711d9d90e64d",
+      "score_sha256": "da214b359a677abffccb0189e473506733230652f4de336671105fd1c553ef00",
+      "datasets_edited": 1349,
+      "edits": 1354
+    },
+    {
+      "patches": [
+        "0001-strawberry-polyethylene-disposal",
+        "0002-supplier-locations",
+        "0003-flag-not-maintained",
+        "0011-flag-aggregated"
+      ],
+      "inventory_sha256": "a0adbb31e23cc890a105ecfe7d683578c4bdabbcb3d7220e714fb74c5486c886",
+      "score_sha256": "d0983ce5b399de42e515858b7ff3491ba348bcca2c882af96b13272c4b29c59b",
+      "datasets_edited": 1352,
+      "edits": 1357
+    }
+  ],
+  "outcomes": {
+    "da214b359a677abffccb0189e473506733230652f4de336671105fd1c553ef00": {
+      "by_indicator": {
+        "ef-3.1:acidification": 0,
+        "ef-3.1:climate-change": 0,
+        "ef-3.1:climate-change-biogenic": 0,
+        "ef-3.1:climate-change-fossil": 0,
+        "ef-3.1:climate-change-land-use-and-land-use-change": 0,
+        "ef-3.1:ef-particulate-matter": 0,
+        "ef-3.1:ecotoxicity-freshwater": 0,
+        "ef-3.1:ecotoxicity-freshwater-inorganics": 0,
+        "ef-3.1:ecotoxicity-freshwater-organics": 0,
+        "ef-3.1:eutrophication-marine": 0,
+        "ef-3.1:eutrophication-freshwater": 0,
+        "ef-3.1:eutrophication-terrestrial": 0,
+        "ef-3.1:human-toxicity-cancer": 0,
+        "ef-3.1:human-toxicity-cancer-inorganics": 0,
+        "ef-3.1:human-toxicity-cancer-organics": 0,
+        "ef-3.1:human-toxicity-non-cancer": 0,
+        "ef-3.1:human-toxicity-non-cancer-inorganics": 0,
+        "ef-3.1:human-toxicity-non-cancer-organics": 0,
+        "ef-3.1:ionising-radiation-human-health": 0,
+        "ef-3.1:land-use": 0,
+        "ef-3.1:ozone-depletion": 0,
+        "ef-3.1:photochemical-ozone-formation-human-health": 0,
+        "ef-3.1:resource-use-fossils": 0,
+        "ef-3.1:resource-use-minerals-and-metals": 0,
+        "ef-3.1:water-use": 0
+      },
+      "changed_datasets": 0,
+      "rows": {}
+    },
+    "d0983ce5b399de42e515858b7ff3491ba348bcca2c882af96b13272c4b29c59b": {
+      "by_indicator": {
+        "ef-3.1:acidification": 3,
+        "ef-3.1:climate-change": 3,
+        "ef-3.1:climate-change-biogenic": 3,
+        "ef-3.1:climate-change-fossil": 3,
+        "ef-3.1:climate-change-land-use-and-land-use-change": 3,
+        "ef-3.1:ef-particulate-matter": 3,
+        "ef-3.1:ecotoxicity-freshwater": 3,
+        "ef-3.1:ecotoxicity-freshwater-inorganics": 3,
+        "ef-3.1:ecotoxicity-freshwater-organics": 3,
+        "ef-3.1:eutrophication-marine": 3,
+        "ef-3.1:eutrophication-freshwater": 3,
+        "ef-3.1:eutrophication-terrestrial": 3,
+        "ef-3.1:human-toxicity-cancer": 3,
+        "ef-3.1:human-toxicity-cancer-inorganics": 3,
+        "ef-3.1:human-toxicity-cancer-organics": 3,
+        "ef-3.1:human-toxicity-non-cancer": 3,
+        "ef-3.1:human-toxicity-non-cancer-inorganics": 3,
+        "ef-3.1:human-toxicity-non-cancer-organics": 3,
+        "ef-3.1:ionising-radiation-human-health": 3,
+        "ef-3.1:land-use": 3,
+        "ef-3.1:ozone-depletion": 3,
+        "ef-3.1:photochemical-ozone-formation-human-health": 3,
+        "ef-3.1:resource-use-fossils": 3,
+        "ef-3.1:resource-use-minerals-and-metals": 3,
+        "ef-3.1:water-use": 3
+      },
+      "changed_datasets": 3,
+      "rows": {
+        "82b2cf7c-b0b3-387c-b26f-781a572e7467": {
+          "moved": [
+            "ef-3.1:acidification",
+            "ef-3.1:climate-change",
+            "ef-3.1:climate-change-biogenic",
+            "ef-3.1:climate-change-fossil",
+            "ef-3.1:climate-change-land-use-and-land-use-change",
+            "ef-3.1:ef-particulate-matter",
+            "ef-3.1:ecotoxicity-freshwater",
+            "ef-3.1:ecotoxicity-freshwater-inorganics",
+            "ef-3.1:ecotoxicity-freshwater-organics",
+            "ef-3.1:eutrophication-marine",
+            "ef-3.1:eutrophication-freshwater",
+            "ef-3.1:eutrophication-terrestrial",
+            "ef-3.1:human-toxicity-cancer",
+            "ef-3.1:human-toxicity-cancer-inorganics",
+            "ef-3.1:human-toxicity-cancer-organics",
+            "ef-3.1:human-toxicity-non-cancer",
+            "ef-3.1:human-toxicity-non-cancer-inorganics",
+            "ef-3.1:human-toxicity-non-cancer-organics",
+            "ef-3.1:ionising-radiation-human-health",
+            "ef-3.1:land-use",
+            "ef-3.1:ozone-depletion",
+            "ef-3.1:photochemical-ozone-formation-human-health",
+            "ef-3.1:resource-use-fossils",
+            "ef-3.1:resource-use-minerals-and-metals",
+            "ef-3.1:water-use"
+          ],
+          "values": {
+            "ef-3.1:acidification": [
+              0.00969295743295447,
+              0.0029012469400762717
+            ],
+            "ef-3.1:climate-change": [
+              55.46555336354861,
+              0.7829760094469653
+            ],
+            "ef-3.1:climate-change-biogenic": [
+              0.001726207590193919,
+              0.001223581049557212
+            ],
+            "ef-3.1:climate-change-fossil": [
+              55.46361519757408,
+              0.7816009642951931
+            ],
+            "ef-3.1:climate-change-land-use-and-land-use-change": [
+              0.00021195838435819064,
+              0.00015146410221526953
+            ],
+            "ef-3.1:ef-particulate-matter": [
+              5.911676096694669e-08,
+              3.203399017780038e-08
+            ],
+            "ef-3.1:ecotoxicity-freshwater": [
+              17.842155602964095,
+              7.010059804115701
+            ],
+            "ef-3.1:ecotoxicity-freshwater-inorganics": [
+              16.79678268800042,
+              6.0077453394948535
+            ],
+            "ef-3.1:ecotoxicity-freshwater-organics": [
+              1.0453729149636737,
+              1.0023144646208482
+            ],
+            "ef-3.1:eutrophication-marine": [
+              0.0052663401755425575,
+              0.001706056330802404
+            ],
+            "ef-3.1:eutrophication-freshwater": [
+              0.00020055853960285094,
+              0.00014297136260346238
+            ],
+            "ef-3.1:eutrophication-terrestrial": [
+              0.04693698599918852,
+              0.010598278184755842
+            ],
+            "ef-3.1:human-toxicity-cancer": [
+              5.107520959321185e-09,
+              3.3807013530822496e-09
+            ],
+            "ef-3.1:human-toxicity-cancer-inorganics": [
+              2.218386637827046e-09,
+              5.506458187153569e-10
+            ],
+            "ef-3.1:human-toxicity-cancer-organics": [
+              2.889134321494141e-09,
+              2.830055534366894e-09
+            ],
+            "ef-3.1:human-toxicity-non-cancer": [
+              9.198768752126063e-08,
+              9.112832102541112e-09
+            ],
+            "ef-3.1:human-toxicity-non-cancer-inorganics": [
+              9.147319060653409e-08,
+              8.78139709718166e-09
+            ],
+            "ef-3.1:human-toxicity-non-cancer-organics": [
+              5.144969147265417e-10,
+              3.3143500535945193e-10
+            ],
+            "ef-3.1:ionising-radiation-human-health": [
+              0.13573258194919346,
+              0.09094623907596187
+            ],
+            "ef-3.1:land-use": [
+              3.3077614392205366,
+              1.8923168370547134
+            ],
+            "ef-3.1:ozone-depletion": [
+              5.839237296934591e-08,
+              3.700738648034806e-08
+            ],
+            "ef-3.1:photochemical-ozone-formation-human-health": [
+              0.01090053848984774,
+              0.0018802133045216333
+            ],
+            "ef-3.1:resource-use-fossils": [
+              17.23053340009747,
+              9.745602693918325
+            ],
+            "ef-3.1:resource-use-minerals-and-metals": [
+              2.5446178765465673e-06,
+              1.9330657992567233e-06
+            ],
+            "ef-3.1:water-use": [
+              -660.0522647740328,
+              -660.5381854340756
+            ]
+          }
+        },
+        "c2d0c99c-d28a-3b78-aad3-f4790f49c412": {
+          "moved": [
+            "ef-3.1:acidification",
+            "ef-3.1:climate-change",
+            "ef-3.1:climate-change-biogenic",
+            "ef-3.1:climate-change-fossil",
+            "ef-3.1:climate-change-land-use-and-land-use-change",
+            "ef-3.1:ef-particulate-matter",
+            "ef-3.1:ecotoxicity-freshwater",
+            "ef-3.1:ecotoxicity-freshwater-inorganics",
+            "ef-3.1:ecotoxicity-freshwater-organics",
+            "ef-3.1:eutrophication-marine",
+            "ef-3.1:eutrophication-freshwater",
+            "ef-3.1:eutrophication-terrestrial",
+            "ef-3.1:human-toxicity-cancer",
+            "ef-3.1:human-toxicity-cancer-inorganics",
+            "ef-3.1:human-toxicity-cancer-organics",
+            "ef-3.1:human-toxicity-non-cancer",
+            "ef-3.1:human-toxicity-non-cancer-inorganics",
+            "ef-3.1:human-toxicity-non-cancer-organics",
+            "ef-3.1:ionising-radiation-human-health",
+            "ef-3.1:land-use",
+            "ef-3.1:ozone-depletion",
+            "ef-3.1:photochemical-ozone-formation-human-health",
+            "ef-3.1:resource-use-fossils",
+            "ef-3.1:resource-use-minerals-and-metals",
+            "ef-3.1:water-use"
+          ],
+          "values": {
+            "ef-3.1:acidification": [
+              0.04986680435834513,
+              0.002358133951369694
+            ],
+            "ef-3.1:climate-change": [
+              383.16861539811237,
+              0.6587090580064392
+            ],
+            "ef-3.1:climate-change-biogenic": [
+              0.004568240180064736,
+              0.0010523190167661472
+            ],
+            "ef-3.1:climate-change-fossil": [
+              383.1634439133328,
+              0.6574766577323251
+            ],
+            "ef-3.1:climate-change-land-use-and-land-use-change": [
+              0.0006032445996088147,
+              0.00018008125734793573
+            ],
+            "ef-3.1:ef-particulate-matter": [
+              2.178956094631749e-07,
+              2.8449013870147778e-08
+            ],
+            "ef-3.1:ecotoxicity-freshwater": [
+              80.40443920397863,
+              4.63288361957884
+            ],
+            "ef-3.1:ecotoxicity-freshwater-inorganics": [
+              79.90663949758044,
+              4.436281929161676
+            ],
+            "ef-3.1:ecotoxicity-freshwater-organics": [
+              0.4977997063981898,
+              0.1966016904171654
+            ],
+            "ef-3.1:eutrophication-marine": [
+              0.025699709344265634,
+              0.0007951802256578249
+            ],
+            "ef-3.1:eutrophication-freshwater": [
+              0.0005623114774841595,
+              0.0001594836162846916
+            ],
+            "ef-3.1:eutrophication-terrestrial": [
+              0.2617232428517553,
+              0.007530474420065637
+            ],
+            "ef-3.1:human-toxicity-cancer": [
+              1.4371503636000264e-08,
+              2.2922338244947685e-09
+            ],
+            "ef-3.1:human-toxicity-cancer-inorganics": [
+              1.2299263286789262e-08,
+              6.332552932919729e-10
+            ],
+            "ef-3.1:human-toxicity-cancer-organics": [
+              2.0722403492110037e-09,
+              1.6589785312027966e-09
+            ],
+            "ef-3.1:human-toxicity-non-cancer": [
+              5.959021441050479e-07,
+              1.6184531694695245e-08
+            ],
+            "ef-3.1:human-toxicity-non-cancer-inorganics": [
+              5.942132427412266e-07,
+              1.5776166055315098e-08
+            ],
+            "ef-3.1:human-toxicity-non-cancer-organics": [
+              1.6889013638213435e-09,
+              4.083656393801437e-10
+            ],
+            "ef-3.1:ionising-radiation-human-health": [
+              0.41965404979604515,
+              0.10636925879541193
+            ],
+            "ef-3.1:land-use": [
+              11.404279076015992,
+              1.5031074706976018
+            ],
+            "ef-3.1:ozone-depletion": [
+              1.789417057946456e-07,
+              2.9351661308978493e-08
+            ],
+            "ef-3.1:photochemical-ozone-formation-human-health": [
+              0.06495039744257099,
+              0.0018523521647621976
+            ],
+            "ef-3.1:resource-use-fossils": [
+              60.59128321048116,
+              8.233470504566064
+            ],
+            "ef-3.1:resource-use-minerals-and-metals": [
+              9.493974925575154e-06,
+              5.216109120321753e-06
+            ],
+            "ef-3.1:water-use": [
+              -599707.0966514178,
+              -599710.4957133338
+            ]
+          }
+        },
+        "f9a7fbd2-f755-3292-b3d0-b6e486e9f677": {
+          "moved": [
+            "ef-3.1:acidification",
+            "ef-3.1:climate-change",
+            "ef-3.1:climate-change-biogenic",
+            "ef-3.1:climate-change-fossil",
+            "ef-3.1:climate-change-land-use-and-land-use-change",
+            "ef-3.1:ef-particulate-matter",
+            "ef-3.1:ecotoxicity-freshwater",
+            "ef-3.1:ecotoxicity-freshwater-inorganics",
+            "ef-3.1:ecotoxicity-freshwater-organics",
+            "ef-3.1:eutrophication-marine",
+            "ef-3.1:eutrophication-freshwater",
+            "ef-3.1:eutrophication-terrestrial",
+            "ef-3.1:human-toxicity-cancer",
+            "ef-3.1:human-toxicity-cancer-inorganics",
+            "ef-3.1:human-toxicity-cancer-organics",
+            "ef-3.1:human-toxicity-non-cancer",
+            "ef-3.1:human-toxicity-non-cancer-inorganics",
+            "ef-3.1:human-toxicity-non-cancer-organics",
+            "ef-3.1:ionising-radiation-human-health",
+            "ef-3.1:land-use",
+            "ef-3.1:ozone-depletion",
+            "ef-3.1:photochemical-ozone-formation-human-health",
+            "ef-3.1:resource-use-fossils",
+            "ef-3.1:resource-use-minerals-and-metals",
+            "ef-3.1:water-use"
+          ],
+          "values": {
+            "ef-3.1:acidification": [
+              0.019374445849766015,
+              0.01258273587994188
+            ],
+            "ef-3.1:climate-change": [
+              55.51115945445171,
+              0.8285863116520925
+            ],
+            "ef-3.1:climate-change-biogenic": [
+              0.0017798996430668634,
+              0.0012772731411392348
+            ],
+            "ef-3.1:climate-change-fossil": [
+              55.50919379861962,
+              0.8271837765993899
+            ],
+            "ef-3.1:climate-change-land-use-and-land-use-change": [
+              0.00018575618904759548,
+              0.00012526191156355665
+            ],
+            "ef-3.1:ef-particulate-matter": [
+              1.2420531075855756e-07,
+              9.712254205515285e-08
+            ],
+            "ef-3.1:ecotoxicity-freshwater": [
+              14.308046015647772,
+              3.4759510510180514
+            ],
+            "ef-3.1:ecotoxicity-freshwater-inorganics": [
+              14.051076640193179,
+              3.262040122590197
+            ],
+            "ef-3.1:ecotoxicity-freshwater-organics": [
+              0.25696937545459436,
+              0.21391092842785492
+            ],
+            "ef-3.1:eutrophication-marine": [
+              0.00657469005188816,
+              0.003014406481338276
+            ],
+            "ef-3.1:eutrophication-freshwater": [
+              0.0002325314112884025,
+              0.00017494423872400962
+            ],
+            "ef-3.1:eutrophication-terrestrial": [
+              0.09015488206178111,
+              0.05381617704592308
+            ],
+            "ef-3.1:human-toxicity-cancer": [
+              5.674201489497404e-09,
+              3.947382016247059e-09
+            ],
+            "ef-3.1:human-toxicity-cancer-inorganics": [
+              2.325334106730283e-09,
+              6.575934160573154e-10
+            ],
+            "ef-3.1:human-toxicity-cancer-organics": [
+              3.3488673827671224e-09,
+              3.2897886001897453e-09
+            ],
+            "ef-3.1:human-toxicity-non-cancer": [
+              9.010989662511489e-08,
+              7.235047588886199e-09
+            ],
+            "ef-3.1:human-toxicity-non-cancer-inorganics": [
+              8.970346137616516e-08,
+              7.011674235205269e-09
+            ],
+            "ef-3.1:human-toxicity-non-cancer-organics": [
+              4.0643524894976246e-10,
+              2.2337335368092905e-10
+            ],
+            "ef-3.1:ionising-radiation-human-health": [
+              0.13901697524487847,
+              0.09423063582080426
+            ],
+            "ef-3.1:land-use": [
+              3.3371449427699025,
+              1.9217004496125611
+            ],
+            "ef-3.1:ozone-depletion": [
+              5.999294237869468e-08,
+              3.8607957536631576e-08
+            ],
+            "ef-3.1:photochemical-ozone-formation-human-health": [
+              0.010764456622739036,
+              0.0017441321321006295
+            ],
+            "ef-3.1:resource-use-fossils": [
+              17.763536824712645,
+              10.278606694974942
+            ],
+            "ef-3.1:resource-use-minerals-and-metals": [
+              2.461408059957527e-06,
+              1.8498560297655097e-06
+            ],
+            "ef-3.1:water-use": [
+              0.6191549036691721,
+              0.13323428104890075
+            ]
+          }
+        }
+      }
+    }
+  },
+  "step_sets": {
+    "steps": [
+      {
+        "id": "import-fixes",
+        "label": "Import fixes"
+      },
+      {
+        "id": "0001-strawberry-polyethylene-disposal",
+        "label": "Strawberry polyethylene disposal"
+      },
+      {
+        "id": "0002-supplier-locations",
+        "label": "Supplier locations"
+      },
+      {
+        "id": "0003-flag-not-maintained",
+        "label": "Flag not maintained"
+      },
+      {
+        "id": "0004-flow-cas-numbers-added",
+        "label": "Flow CAS numbers added"
+      },
+      {
+        "id": "0005-flow-cas-numbers-replaced",
+        "label": "Flow CAS numbers replaced"
+      },
+      {
+        "id": "0006-flow-cas-numbers-removed",
+        "label": "Flow CAS numbers removed"
+      },
+      {
+        "id": "0007-flow-names",
+        "label": "Flow names"
+      },
+      {
+        "id": "0008-flow-compartments",
+        "label": "Flow compartments"
+      },
+      {
+        "id": "0009-consistent-cas-numbers",
+        "label": "Consistent CAS numbers"
+      },
+      {
+        "id": "0010-brightway-flows-links",
+        "label": "Brightway Flows links"
+      },
+      {
+        "id": "0011-flag-aggregated",
+        "label": "Flag aggregated"
+      }
+    ],
+    "required": "import-fixes",
+    "effective": [
+      "0001-strawberry-polyethylene-disposal"
+    ],
+    "outcomes": {
+      "": "da214b359a677abffccb0189e473506733230652f4de336671105fd1c553ef00",
+      "0001-strawberry-polyethylene-disposal": "d0983ce5b399de42e515858b7ff3491ba348bcca2c882af96b13272c4b29c59b"
+    },
+    "evidence_sha256": "052a89abbb2cf6c8923dd8084c0973c33792815452b77983ff21450afba1590f"
+  }
+}

@@ -79,7 +79,11 @@
     },
     "step_diagnostics": {
       "snapshot": "site/snapshots/patched-2026-11-18-steps.json",
-      "comparison_sha256": "e4d2fd35a8fd76cb752a9630a76f33cacec3a02024662faf5182fca0ef58d90e"
+      "comparison_sha256": "e4d2fd35a8fd76cb752a9630a76f33cacec3a02024662faf5182fca0ef58d90e",
+      "case_sets": {
+        "snapshot": "site/snapshots/patched-2026-11-18-case-sets.json",
+        "sha256": "f88c3a469fa7bfd93a16ec19aa76453ad738bb1838bec82e8a039f12f4d99961"
+      }
     },
     "changed_scores": 75,
     "checked_formats": ["openLCA", "ILCD"],
