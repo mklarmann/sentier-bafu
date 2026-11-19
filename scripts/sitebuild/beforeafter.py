@@ -618,6 +618,7 @@ def page(site, data, name, back=None, current=None, review_section="", diagnosti
     config = site.config.get("comparison_page") if name == "before-after.html" and site.config.get("case_review") else None
     use_selector = config is not None
     diagnostics_body = ""
+    comparison_note = ""
     if diagnostics:
         from importlib.metadata import distribution
 
@@ -632,7 +633,12 @@ def page(site, data, name, back=None, current=None, review_section="", diagnosti
         head += '<link rel="stylesheet" href="assets/diagnostics.css"><script src="assets/diagnostics.js" defer></script>'
         scope = "Whole-build diagnostics by build step" if use_selector else "Diagnostics by build step"
         diagnostics_body = f'<section class="ba-diagnostics" aria-labelledby="diagnostics"><h2 id="diagnostics">{scope}</h2>'
-        diagnostics_body += diagnostics_page.body(diagnostics, title=False, **published_scores(site, diagnostics, config)) + "</section>"
+        scores = published_scores(site, diagnostics, config)
+        diagnostics_body += diagnostics_page.body(diagnostics, title=False, **scores) + "</section>"
+        if scores and (source := config["public_scores"].get("note")):
+            from . import prose
+            note, _ = prose.render(site, (site.root / source).read_text(encoding="utf-8"), source)
+            comparison_note = f'<section class="comparison-note prose">{note}</section>'
         jumps.append(("diagnostics", "Build-step diagnostics"))
     if data:
         many = data["items"]["many"]
@@ -662,6 +668,6 @@ def page(site, data, name, back=None, current=None, review_section="", diagnosti
         title = "Comparison"
         head += '<link rel="stylesheet" href="assets/comparison.css"><script src="assets/comparison.js" defer></script>'
         top = comparison_opening(site, data, diagnostics, back, config, lambda text: inline(site, text, ""))
-        framed = (f'<div class="sentier-comparison wrap page">{top}</div>'
+        framed = (f'<div class="sentier-comparison wrap page">{top}{comparison_note}</div>'
                   f'<div class="wrap ba-page"><article class="prose wide">{inner}{review_section}</article></div>')
     return shell.shell(site, title, framed, current or name, page=name, description=described, head=head)
