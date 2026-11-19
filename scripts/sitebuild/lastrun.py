@@ -854,8 +854,9 @@ def packages(site, up=""):
             + f'</tr></thead><tbody role="rowgroup">{lines}</tbody></table></div>'
         )
     if verified:
-        formats = ' · '.join(esc(row['label']) for row in rows if row['label'] in ('openLCA', 'ILCD'))
-        note = f'<p id="verified-downloads"><strong>{formats}</strong><br>{esc(verified["downloads"])}</p>'
+        formats = ' · '.join(esc(row['label']) for row in rows if row['label'] in verified.get('checked_formats', ()))
+        heading = f'<strong>{formats}</strong><br>' if formats else ''
+        note = f'<p id="verified-downloads">{heading}{esc(verified["downloads"])}</p>'
         return f'<div class="packages" id="build-files" data-packages>{note}{table}{listed_}</div>'
     return f'<div class="packages" id="build-files" data-packages>{listed_}{table}</div>'
 

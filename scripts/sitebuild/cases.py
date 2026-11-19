@@ -20,7 +20,8 @@ def register(site):
 
     for f in site.by_id.values():
         rid = f["id"]
-        add(f"report-{rid}", "Finding", f["title"], f"findings/{rid}.html", [rid])
+        source_url = (f["reported"] or {}).get("url") or f"findings/{rid}.html"
+        add(f"report-{rid}", "Finding", f["title"], source_url, [rid])
         if f["answer"]:
             add(f"answer-{rid}", "Provider feedback", f'{site.provider} response to {rid}',
                 f["answer"]["url"], [rid])

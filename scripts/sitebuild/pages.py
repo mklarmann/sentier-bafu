@@ -2,12 +2,12 @@
 page per provider release and per dataset, what changed (page and feed), housekeeping for
 maintainers; and the generated blocks a prose page can ask for (patch table, data files)."""
 
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 from xml.sax.saxutils import escape as xml
 
 import community
 
-from . import findings, shell
+from . import findings, shell, status
 from .prose import record_text
 from .text import day, day_text, esc, ext, link_label, plural, thousands
 
@@ -53,11 +53,12 @@ def event_words(site, event):
 def change_lines(site, events, up=""):
     """Dated steps, newest first: the date, what happened, and the finding's title."""
     lines = ""
+    folder = "cases" if site.config.get("case_review") else "findings"
     for event in events:
         before, after = event_words(site, event)
         rid = esc(event["id"])
         lines += (
-            f'<li>{day(event["date"])}<span class="change-what">{esc(before)}<a href="{up}findings/{rid}.html">{rid}</a>{esc(after)}'
+            f'<li>{day(event["date"])}<span class="change-what">{esc(before)}<a href="{up}{folder}/{rid}.html">{rid}</a>{esc(after)}'
             f'<span class="quiet"> · {esc(site.by_id[event["id"]]["title"])}</span></span></li>'
         )
     return f'<ul class="changes">{lines}</ul>' if lines else '<p class="list-none">Nothing is recorded yet.</p>'
@@ -147,12 +148,14 @@ def feedback_lists(site, up=""):
         for anchor, title, found, _, _, _ in groups
     ) + "</ul>"
     out = tally
+    cases = site.config.get("case_review", False)
     for anchor, title, found, key, extra, empty in groups:
         out += f'<h2 id="{anchor}">{title}</h2>'
         if anchor == "answered" and undated:
             out += (f"<p>For {thousands(undated)} of the findings that {p} has answered or that are resolved, "
                     "the date they were reported is not recorded.</p>")
-        out += findings.rows(site, found, up, limit=CAP, more=f"{up}findings.html#stage-{key}", empty=empty, extra=extra)
+        more = status.stage_url(site, key, up)
+        out += findings.rows(site, found, up, limit=CAP, more=more, empty=empty, extra=extra, cases=cases)
     reports = batches(site)
     out += '<h2 id="reports">Reports by date</h2>'
     if reports:
@@ -175,15 +178,17 @@ def batch_page(site, batch, entry):
     answered = [f for f in found if f["answer"] and f["stage"] != "sent"]
     rest = [f for f in found if f not in waiting and f not in answered]
     when = day(entry["date"], long=True)
+    cases = site.config.get("case_review", False)
+    parent = f'<a href="{up}cases.html">Cases</a> <span aria-hidden="true">/</span> ' if cases else ""
     body = (
-        f'<nav class="crumb" aria-label="Breadcrumb"><a href="{up}feedback.html">Feedback to {p}</a> '
+        f'<nav class="crumb" aria-label="Breadcrumb">{parent}<a href="{up}feedback.html">Feedback to {p}</a> '
         f'<span aria-hidden="true">/</span> <span aria-current="page">{esc(batch)}</span></nav>'
         f"<h1>Report to {p} of {when}</h1>"
         f"<p>{plural(len(found), 'finding was', 'findings were')} reported to {p} together on {when}. "
         f"{p} decides what it changes. Where the report is recorded: {ext(entry['url'], esc(link_label(entry['url'], site.repo)))}.</p>"
-        + (f'<h2 id="awaiting">No answer yet</h2>{findings.rows(site, waiting, up)}' if waiting else "")
-        + (f'<h2 id="answered">Answered by {p}</h2>{findings.rows(site, answered, up, extra=answer_line(site, up))}' if answered else "")
-        + (f'<h2 id="other">Resolved or closed without a recorded answer</h2>{findings.rows(site, rest, up)}' if rest else "")
+        + (f'<h2 id="awaiting">No answer yet</h2>{findings.rows(site, waiting, up, cases=cases)}' if waiting else "")
+        + (f'<h2 id="answered">Answered by {p}</h2>{findings.rows(site, answered, up, extra=answer_line(site, up), cases=cases)}' if answered else "")
+        + (f'<h2 id="other">Resolved or closed without a recorded answer</h2>{findings.rows(site, rest, up, cases=cases)}' if rest else "")
     )
     return shell.generated_page(
         site, f"Report to {site.provider} of {day_text(entry['date'])}", body, f"feedback/{batch}.html",
@@ -198,6 +203,8 @@ def batch_page(site, batch, entry):
 def release_page(site, rid, entry):
     """What is known about one provider release, by status."""
     up, p, name = "../", esc(site.provider), esc(entry["name"])
+    cases = site.config.get("case_review", False)
+    register, label = ("sources.html", "Sources") if cases else ("findings.html", "Findings")
     observed = [site.by_id[i] for i in entry["findings"]]
     here = [site.by_id[i] for i in entry["corrected"]]
     groups = []
@@ -217,10 +224,12 @@ def release_page(site, rid, entry):
     for key, title, found in groups:
         newest = sorted(found, key=lambda f: (f["changed"] or "", community.finding_number(f)), reverse=True)
         stage = "fixed" if key.startswith("fixed") else key
+        more = (f"{up}cases.html?{urlencode({'q': 'release-' + rid, 'stage': site.label(stage)})}"
+                if cases else f"{up}findings.html?release={quote(rid)}#stage-{stage}")
         sections += f'<h2 id="status-{key}">{esc(title)}</h2>' + findings.rows(
-            site, newest, up, limit=CAP, more=f"{up}findings.html?release={quote(rid)}#stage-{stage}")
+            site, newest, up, limit=CAP, more=more, cases=cases)
     body = (
-        f'<nav class="crumb" aria-label="Breadcrumb"><a href="{up}findings.html">Findings</a> '
+        f'<nav class="crumb" aria-label="Breadcrumb"><a href="{up}{register}">{label}</a> '
         f'<span aria-hidden="true">/</span> <span aria-current="page">{name}</span></nav>'
         f"<h1>Known in {name}</h1>"
         f"<p>{plural(len(observed), 'finding was', 'findings were')} observed in {name}"
@@ -233,7 +242,7 @@ def release_page(site, rid, entry):
         + (summary + sections if groups else '<p class="list-none">No finding names this release.</p>')
     )
     return shell.generated_page(
-        site, f"Known in {entry['name']}", body, f"releases/{rid}.html", current="findings.html", up=up,
+        site, f"Known in {entry['name']}", body, f"releases/{rid}.html", current=register, up=up,
         description=f"The findings observed in {entry['name']}, by status, and the findings resolved in it.",
     )
 
@@ -244,12 +253,14 @@ def release_page(site, rid, entry):
 def dataset_page(site, code, entry):
     """What the findings say about one dataset. A code is listed as soon as a finding names it."""
     up, p = "../", esc(site.provider)
+    cases = site.config.get("case_review", False)
+    register, label = ("sources.html", "Sources") if cases else ("findings.html", "Findings")
     title = f'{code} {entry["name"]} ({entry["location"]})'
     sections = ""
     for role, heading in ROLE_HEADINGS:
         found = [site.by_id[x["id"]] for x in entry["findings"] if x["role"] == role and x["id"] in site.by_id]
         if found:
-            sections += f"<h2>{heading}</h2>" + findings.rows(site, found, up)
+            sections += f"<h2>{heading}</h2>" + findings.rows(site, found, up, cases=cases)
     by_id = {x["id"]: x for x in (site.patches or {}).get("patches", [])}
     patches = "".join(
         f'<li>{ext(by_id[pid]["url"], "Patch " + esc(pid))}: '
@@ -263,17 +274,18 @@ def dataset_page(site, code, entry):
                      + f"A patch is not {p}'s correction.</p>")
     report = f"{site.repo}/issues/new?template={site.finding_form}&dataset={quote(title)}"
     body = (
-        f'<nav class="crumb" aria-label="Breadcrumb"><a href="{up}findings.html">Findings</a> '
+        f'<nav class="crumb" aria-label="Breadcrumb"><a href="{up}{register}">{label}</a> '
         f'<span aria-hidden="true">/</span> <span aria-current="page">Dataset {code}</span></nav>'
         f'<p class="eyebrow">Dataset {code}</p><h1 dir="auto">{esc(entry["name"])} ({esc(entry["location"])})</h1>'
         f"<p>What the findings say about dataset {code} of the {esc(site.dataset)} database. "
         "Only what someone has reported is listed: a dataset without a finding is not thereby free of errors.</p>"
         + sections
         + f'<p class="actions">{ext(report, "Report something about this dataset", "button ext")}'
-        f'<a class="arrow" href="{up}findings.html">All findings</a></p>'
+        + (f'<a class="arrow" href="{up}cases.html">Case register</a></p>' if cases else
+           f'<a class="arrow" href="{up}findings.html">All findings</a></p>')
     )
     return shell.generated_page(
-        site, f"Dataset {title}", body, f"datasets/{code}.html", current="findings.html", up=up,
+        site, f"Dataset {title}", body, f"datasets/{code}.html", current=register, up=up,
         description=f'Findings on dataset {title} of the {site.dataset} database.',
         head=f'<link rel="alternate" type="application/json" href="{up}api/v1/datasets.json">',
     )

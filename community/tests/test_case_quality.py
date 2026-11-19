@@ -39,6 +39,40 @@ class CaseRecords(unittest.TestCase):
             self.assertIn("No matching inventory archive", (out / "quality.html").read_text())
 
 
+    def test_cases_navigation_connects_feedback_reports_and_source_datasets(self):
+        import build_site
+        from sitebuild import pages
+        from test_site import parse
+
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp)
+            site = build_site.Site(out, offline=True)
+            site.build()
+            for path, tab, current in (("cases.html", "cases.html", "page"),
+                                       ("feedback.html", "feedback.html", "page"),
+                                       ("cases/F1.html", "../cases.html", "location")):
+                page = parse(out / path)
+                active = page.find("nav", "subnav").find("a", aria_current=current)
+                self.assertEqual(active.attrs["href"], tab)
+                self.assertTrue(page.find("nav", "nav").find("a", aria_current="page").attrs["href"].endswith("cases.html"))
+            home = parse(out / "index.html")
+            self.assertEqual(home.find("form", "lookup").attrs["action"], "cases.html")
+            self.assertTrue(all(a.attrs["href"].startswith("cases/") for a in home.find_all("a", "record-title")))
+            self.assertEqual(cases.sources(site)["report-F1"]["url"], site.by_id["F1"]["reported"]["url"])
+            for path in ("datasets/188725.html", "releases/2026-v1.html"):
+                page = parse(out / path)
+                self.assertEqual(page.find("nav", "nav").find("a", aria_current="page").attrs["href"], "../sources.html")
+                self.assertIn("../cases/F1.html", [a.attrs["href"] for a in page.find_all("a", "record-title")])
+            feedback = parse(out / "feedback.html")
+            links = [a.attrs["href"] for a in feedback.find_all("a", "record-title")]
+            self.assertIn("cases/F1.html", links)
+            self.assertTrue(all(link.startswith("cases/") for link in links))
+            report = pages.batch_page(site, "example", {"date":"2026-11-19",
+                "url":"https://example.org/report", "findings":[site.by_id["F1"]]})
+            self.assertIn('href="../feedback.html" aria-current="location"', report)
+            self.assertIn('class="record-title" href="../cases/F1.html"', report)
+
+
 @unittest.skipIf(assess is None, "the inventory measurement dependencies are installed by Pages")
 class InventoryQuality(unittest.TestCase):
     def test_uncertainty_needs_a_nonzero_spread(self):

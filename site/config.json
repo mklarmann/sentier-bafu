@@ -78,13 +78,17 @@
       "bafu-2026-v1-patched.bw2package": "080cebbafc3dc176f0925dedf0ddf84e535bf6a8e90c6997087db1c337507d70"
     },
     "changed_scores": 75,
+    "checked_formats": ["openLCA", "ILCD"],
     "summary": "Five export formats are available.",
     "downloads": "We checked both downloads against the patched BAFU inventory. For every exchange, we checked the flow, amount, unit and whether it enters or leaves the process. Where the source identifies a supplier, we also checked that link.",
     "comparison": "75 impact results changed. All 75 were in datasets and impact categories that the patches and import fixes could affect. This check allows changes of any size in either direction."
   },
   "case_review": true,
   "inventory_quality": true,
-  "nav_parents": {"findings.html": "cases.html", "contributions.html": "sources.html", "feedback.html": "sources.html"},
+  "nav_parents": {"findings.html": "cases.html", "contributions.html": "sources.html", "feedback.html": "cases.html"},
+  "section_navigation": {
+    "cases.html": {"cases.html": "Case register", "feedback.html": "Feedback to BAFU"}
+  },
   "nav": [
     ["index.html", "Overview"],
     ["sources.html", "Sources"],

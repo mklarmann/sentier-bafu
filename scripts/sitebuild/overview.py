@@ -13,8 +13,8 @@ def second_measurement_list(site, up="", limit=5):
         key=lambda f: (f["waiting_since"] or "9999", f["id"]),
     )
     return findings.rows(
-        site, waiting, up, limit=limit, more=f"{up}findings.html?sort=waiting#stage-filed",
-        empty="No finding is waiting for a second measurement.",
+        site, waiting, up, limit=limit, more=status.stage_url(site, "filed", up, "?sort=waiting"),
+        empty="No finding is waiting for a second measurement.", cases=bool(site.config.get("case_review")),
     )
 
 

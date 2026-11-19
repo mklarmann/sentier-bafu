@@ -9,6 +9,8 @@ A step is shown as done only when the record holds its evidence (triage.steps). 
 without evidence that a later step has passed says "not recorded".
 """
 
+from urllib.parse import urlencode
+
 import community
 
 from .text import day, esc, thousands
@@ -156,6 +158,13 @@ def chips(site, counts, href="#stage-{}", label="Filter by status"):
     return out + "</div>"
 
 
+def stage_url(site, stage, up="", legacy_query=""):
+    """Open this triage status in the register offered by the site."""
+    if site.config.get("case_review"):
+        return f"{up}cases.html?{urlencode({'stage': site.label(stage)})}"
+    return f"{up}findings.html{legacy_query}#stage-{stage}"
+
+
 def path_with_counts(site, up=""):
     """The five steps with the number of findings that wait after each; each number is a
     link to those findings. Then the two statuses off the path."""
@@ -166,7 +175,7 @@ def path_with_counts(site, up=""):
         n = counts.get(stage, 0)
         caption = esc((one if n == 1 else many).format(p=p))
         box = f'<span class="path-desc">{esc(text.format(p=p, a_p=community.with_article(p)))}</span>' + (
-            f'<a class="path-count{" help" if stage == "filed" else ""}" href="{up}findings.html#stage-{stage}">'
+            f'<a class="path-count{" help" if stage == "filed" else ""}" href="{esc(stage_url(site, stage, up))}">'
             f"<strong>{thousands(n)}</strong> <span>{caption}</span></a>"
             if n else f'<span class="path-count none"><strong>0</strong> <span>{caption}</span></span>'
         )
@@ -175,7 +184,7 @@ def path_with_counts(site, up=""):
 
     def off(n, key, words):
         text = f"<strong>{thousands(n)}</strong> {words}"
-        return f'<a href="{up}findings.html#stage-{key}">{text}</a>' if n else text
+        return f'<a href="{esc(stage_url(site, key, up))}">{text}</a>' if n else text
 
     return (
         f'<div class="card pipeline">{path(steps, "How it works", "counts")}'

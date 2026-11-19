@@ -54,21 +54,28 @@ def shell(site, title, body, current, up="", page=None, description=None, head="
     home = page == "index.html"
     full = c["home_title"] if home else f'{title} · {c["title_suffix"]}'
     described = description or c["description"]
-    section = None if home else site.build_sections.get(page)
-    current = c.get("nav_parents", {}).get(current, current)
+    owner = c.get("nav_parents", {}).get(current, current)
+    views = c.get("section_navigation", {}).get(owner, {})
+    section = current if current in views else owner
+    build_section = site.build_sections.get(page) if not home else None
+    if build_section or (home and site.build_views and c["build_navigation"].get("on_home")):
+        views, section = site.build_views, build_section
+        nav_parent = site.walk_page
+        if build_section:
+            owner = site.walk_page
+    else:
+        nav_parent = owner
     subnav = ""
-    if section:
-        current = site.walk_page
-    if section or (home and site.build_views and c["build_navigation"].get("on_home")):
+    if views:
         links = "".join(
             f'<a href="{up}{esc(href)}"'
             + (' aria-current="page"' if section and href == page else ' aria-current="location"' if href == section else "")
-            + f'>{esc(label)}</a>' for href, label in site.build_views.items()
+            + f'>{esc(label)}</a>' for href, label in views.items()
         )
-        parent = dict(c["nav"])[site.walk_page]
+        parent = dict(c["nav"])[nav_parent]
         subnav = f'<nav class="subnav" aria-label="{esc(parent)}: its parts"><div class="wrap subnav-in">{links}</div></nav>'
     nav = "".join(
-        f'<a href="{up}{href}"' + (' aria-current="page"' if href == current else "") + f">{esc(label)}</a>"
+        f'<a href="{up}{href}"' + (' aria-current="page"' if href == owner else "") + f">{esc(label)}</a>"
         for href, label in c["nav"]
     )
     footer = "".join(f'<a href="{up}{href}">{esc(label)}</a>' for href, label in c["footer"])
@@ -147,8 +154,9 @@ def lookup(site, up="", field="lookup"):
     """The lookup field: a dataset code (where the datasets have one), a finding number or a
     word, answered by the findings list."""
     what = "a dataset code, a finding number or a word" if site.code_pattern else "a finding number or a word"
+    register = "cases.html" if site.config.get("case_review") else "findings.html"
     return (
-        f'<form class="lookup" action="{up}findings.html" method="get" role="search">'
+        f'<form class="lookup" action="{up}{register}" method="get" role="search">'
         f'<label for="{field}">Look up {what}</label>'
         f'<div class="lookup-row"><input id="{field}" name="q" type="search" placeholder="For example {esc(site.lookup_example)}" '
         'autocomplete="off" spellcheck="false"><button class="button" type="submit">Look up</button></div></form>'

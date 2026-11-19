@@ -49,15 +49,16 @@ def thread_cell(site, f):
     return f'<div class="record-thread"><span class="thread-line">{link}{said}</span>{changed}</div>'
 
 
-def finding_row(site, f, up="", extra=""):
+def finding_row(site, f, up="", extra="", *, cases=False):
     """One finding as a row: number, what it is, where it stands, where it is discussed.
     The title is the only link to the finding; the discussion link stays its own target."""
     rid = esc(f["id"])
+    folder = "cases" if cases else "findings"
     releases = community.release_names(f, site.records_config) if f["releases"] else ""
     return (
         f'<li class="record" data-stage="{esc(f["stage"])}">'
         f'<span class="record-id">{rid}</span>'
-        f'<div class="record-main"><a class="record-title" href="{up}findings/{rid}.html" dir="auto">{esc(f["title"])}</a>'
+        f'<div class="record-main"><a class="record-title" href="{up}{folder}/{rid}.html" dir="auto">{esc(f["title"])}</a>'
         f'<p class="record-meta"><span class="meta-what">{esc(shorten(concerns_text(site, f)))}</span>'
         + (f'\u00a0· <span class="meta-release">{esc(releases)}</span>' if releases else "")
         + f"</p>{extra}</div>"
@@ -65,16 +66,17 @@ def finding_row(site, f, up="", extra=""):
     )
 
 
-def rows(site, findings, up="", limit=None, more="", empty="", extra=None):
+def rows(site, findings, up="", limit=None, more="", empty="", extra=None, *, cases=False):
     """A list of findings as rows. Above `limit` the rest is one link to the filtered list."""
     if not findings:
         return f'<p class="list-none">{empty}</p>' if empty else ""
     shown = findings[:limit] if limit else findings
     out = '<ul class="records">' + "".join(
-        finding_row(site, f, up, extra(f) if extra else "") for f in shown
+        finding_row(site, f, up, extra(f) if extra else "", cases=cases) for f in shown
     ) + "</ul>"
     if limit and len(findings) > limit and more:
-        out += f'<p class="list-more"><a class="arrow" href="{more}">All {thousands(len(findings))} in the findings list</a></p>'
+        listing = "case register" if cases else "findings list"
+        out += f'<p class="list-more"><a class="arrow" href="{esc(more)}">All {thousands(len(findings))} in the {listing}</a></p>'
     return out
 
 

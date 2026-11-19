@@ -14,6 +14,7 @@ import tempfile
 import unittest
 from html.parser import HTMLParser
 from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
 from xml.etree import ElementTree
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -357,7 +358,7 @@ class SiteTests(unittest.TestCase):
                 page = self.out / f"datasets/{d['code']}.html"
                 self.assertTrue(page.is_file(), (f["id"], d["code"]))
                 links = {a.attrs.get("href") for a in parse(page).find_all("a")}
-                self.assertIn(f"../findings/{f['id']}.html", links, (f["id"], d["code"]))
+                self.assertIn(f"../cases/{f['id']}.html", links, (f["id"], d["code"]))
         # A dataset a finding only names (not its subject) is found too: F13 relabels 316743.
         self.assertIn("316743", (self.out / "datasets/316743.html").read_text())
 
@@ -365,7 +366,7 @@ class SiteTests(unittest.TestCase):
         for release in self.config["releases"]:
             page = parse(self.out / f"releases/{release['id']}.html")
             listed = {a.attrs["href"] for a in page.find_all("a", "record-title")}
-            expected = {f"../findings/{f['id']}.html" for f in self.findings if release["id"] in f["releases"]}
+            expected = {f"../cases/{f['id']}.html" for f in self.findings if release["id"] in f["releases"]}
             self.assertEqual(listed, expected, release["id"])
             self.assertIn(release["name"], page.find("h1").text())
 
@@ -441,10 +442,13 @@ class SiteTests(unittest.TestCase):
             number = int(box.find("strong").text().replace(",", ""))
             href = box.attrs.get("href", "")
             if href:
-                shown[href.split("#stage-")[1]] = number
+                target = urlsplit(href)
+                self.assertEqual(target.path, "cases.html")
+                shown[parse_qs(target.query)["stage"][0]] = number
             else:
                 self.assertEqual(number, 0)
-        self.assertEqual(shown, {k: v for k, v in counts.items() if k in community.OPEN_STAGES or k == "fixed"})
+        self.assertEqual(shown, {community.status_label(k, "BAFU"): v for k, v in counts.items()
+                                 if k in community.OPEN_STAGES or k == "fixed"})
 
     def test_the_overview_claims_nothing_the_records_do_not_show(self):
         text = squash(parse(self.out / "index.html").find("main").text())
@@ -711,7 +715,7 @@ class SiteTests(unittest.TestCase):
         self.assertTrue(local)
         for address in local:
             self.assertTrue(address.startswith(prefix), address)
-        self.assertEqual(page.find("form").attrs["action"], prefix + "findings.html")
+        self.assertEqual(page.find("form").attrs["action"], prefix + "cases.html")
         self.assertEqual(page.find("input").attrs["name"], "q")
 
     # ---- prose pages
@@ -1068,7 +1072,7 @@ class ScaleTests(unittest.TestCase):
             self.assertLess((self.out / name).stat().st_size, 600_000, name)
         release = parse(self.out / "releases/2026-v1.html")
         more = [a.attrs["href"] for a in release.find_all("a", "arrow")]
-        self.assertIn("../findings.html?release=2026-v1#stage-filed", more)
+        self.assertIn("../cases.html?q=release-2026-v1&stage=Needs+a+second+measurement", more)
         tally = {a.attrs["href"]: int(a.find("strong").text().replace(",", "")) for a in release.find("ul", "tally").find_all("a")}
         observed = [f for f in self.findings if "2026-v1" in f["releases"]]
         self.assertEqual(tally["#status-filed"], sum(community.stage(f) == "filed" for f in observed))

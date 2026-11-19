@@ -19,4 +19,4 @@ Some findings have a community patch. A community patch changes a copy of BAFU's
 
 ## Where the evidence is
 
-Each finding has its own page. The page says what was observed and where the finding is discussed. The [findings](findings.md) page lists them all, and [take part](take-part.md) explains how to repeat a measurement.
+Each finding has its own page. The page says what was observed and where the finding is discussed. The [case register](cases.md) lists them all, and [take part](take-part.md) explains how to repeat a measurement.
