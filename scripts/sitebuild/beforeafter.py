@@ -632,7 +632,10 @@ def page(site, data, name, back=None, current=None, review_section="", diagnosti
                 site.copy(package.locate_file(notice), f"assets/diagnostics-{notice.name}.txt")
         head += '<link rel="stylesheet" href="assets/diagnostics.css"><script src="assets/diagnostics.js" defer></script>'
         scope = "Whole-build diagnostics by build step" if use_selector else "Diagnostics by build step"
-        diagnostics_body = f'<section class="ba-diagnostics" aria-labelledby="diagnostics"><h2 id="diagnostics">{scope}</h2>'
+        # Native fragment targets bring same-page step links into view while the
+        # diagnostics widget reads the fragment to select the requested step.
+        step_targets = "".join(f'<span id="sd.step={esc(step["id"])}"></span>' for step in diagnostics["steps"])
+        diagnostics_body = f'<section class="ba-diagnostics" aria-labelledby="diagnostics">{step_targets}<h2 id="diagnostics">{scope}</h2>'
         scores = published_scores(site, diagnostics, config)
         diagnostics_body += diagnostics_page.body(diagnostics, title=False, **scores) + "</section>"
         if scores and (source := config["public_scores"].get("note")):

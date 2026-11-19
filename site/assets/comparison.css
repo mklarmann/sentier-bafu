@@ -117,3 +117,4 @@
 .sentier-comparison .comparison-note > :first-child { margin-top: 0; scroll-margin-top: 9rem; }
 .sentier-comparison .comparison-note > :last-child { margin-bottom: 0; }
 .sentier-comparison .comparison-note p { max-width: 85ch; }
+.ba-diagnostics > [id^="sd.step="] { display: block; scroll-margin-top: 9rem; }
