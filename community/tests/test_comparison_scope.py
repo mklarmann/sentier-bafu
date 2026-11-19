@@ -19,9 +19,11 @@ class ComparisonScopeTests(unittest.TestCase):
             "counts": {"total": {"test": {"classes": {"agrees": 3, "differs": 1}}}},
         }
         html = comparison.opening(site, None, diagnostics, ("build.html#run", "Run"),
-                                  {"headline_indicator": "test"}, str)
+                                  {"headline_indicator": "test", "reference_url": "reference.html",
+                                   "reference_label": "Published reference results"}, str)
         self.assertIn('href="build.html">Build</a>', html)
         self.assertIn('href="build.html#run">Build record', html)
+        self.assertIn('href="reference.html">Published reference results</a>', html)
         self.assertIn("4 products", html)
         self.assertIn("Agrees 3 · Differs 1", html)
 
