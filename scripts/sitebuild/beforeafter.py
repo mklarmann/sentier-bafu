@@ -603,7 +603,7 @@ def published_scores(site, diagnostics, config):
     path = site.root / "site/assets" / name
     if hashlib.sha256(path.read_bytes()).hexdigest() != asset["sha256"]:
         raise ValueError("The published scores differ from the reviewed table")
-    return {"base": "assets/", "matrix": name}
+    return {"base": "assets/", "matrix": name, "score_summary": True}
 
 
 def page(site, data, name, back=None, current=None, review_section="", diagnostics=None):
