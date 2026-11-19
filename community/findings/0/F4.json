@@ -1,0 +1,37 @@
+{
+  "schema": 2,
+  "id": "F4",
+  "issue": null,
+  "title": "Elementary exchanges absent from the flow list",
+  "kind": "defect",
+  "datasets": [],
+  "scope": "whole release",
+  "releases": [],
+  "observation": "The claim that ~7.6 % of elementary exchanges were absent from the flow list was an artefact of an earlier donor-seeded import; re-measured, one flow name is absent. Counted by name and compartment instead, 8 exchanges have no row in the 2025 flow list: see F31.",
+  "exposure": "",
+  "method": "Withdrawn after re-measurement: an artefact of an earlier donor-seeded import.",
+  "reported": {
+    "by": "mklarmann",
+    "date": "2026-09-25",
+    "url": "https://gitlab.com/eos-lci/lci-bafu-catalog/-/issues/4"
+  },
+  "repeated": null,
+  "sent": null,
+  "answer": null,
+  "fixed_in": null,
+  "closed": {
+    "as": "withdrawn",
+    "date": "2026-09-27",
+    "reason": "The count was an artefact of an earlier donor-seeded import; re-measured, one flow name is absent.",
+    "url": "https://gitlab.com/eos-lci/lci-bafu-catalog/-/issues/4"
+  },
+  "related": [
+    "F31"
+  ],
+  "threads": [
+    "https://gitlab.com/eos-lci/lci-bafu-catalog/-/issues/4"
+  ],
+  "next": null,
+  "retained": [],
+  "notes": ""
+}

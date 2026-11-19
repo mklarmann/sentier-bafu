@@ -1,0 +1,49 @@
+{
+  "schema": 2,
+  "id": "F10",
+  "issue": 3,
+  "title": "Straw-bale disposal 196588: flagged as cumulative but carries no flows",
+  "kind": "defect",
+  "datasets": [
+    {
+      "code": 196588,
+      "name": "Disposal, rectangular straw bale",
+      "location": "CH"
+    }
+  ],
+  "scope": "",
+  "releases": [
+    "2026-v1"
+  ],
+  "observation": "Flagged type=2 but carries only its production exchange — a cumulative LCI with no flows; the two straw-bale siblings carry 1,656 flows each.",
+  "exposure": "",
+  "method": "Counted on the release files; not covered by patch 0011, because the dataset is already type 2.",
+  "reported": {
+    "by": "mklarmann",
+    "date": "2026-10-07",
+    "url": "https://github.com/sentier-dev/sentier-bafu/issues/3"
+  },
+  "repeated": null,
+  "sent": null,
+  "answer": null,
+  "fixed_in": null,
+  "closed": null,
+  "related": [
+    "F8"
+  ],
+  "threads": [
+    "https://gitlab.com/eos-lci/lci-bafu-catalog/-/issues/11"
+  ],
+  "next": {
+    "action": "Ask BAFU for the missing cumulative flows or the dataset's retirement.",
+    "role": "maintainer"
+  },
+  "retained": [
+    {
+      "kind": "ask",
+      "text": "Ask BAFU what 196588 is, in the next batch.",
+      "evidence_url": "https://github.com/sentier-dev/sentier-bafu/issues/3"
+    }
+  ],
+  "notes": ""
+}

@@ -1,0 +1,41 @@
+{
+  "schema": 2,
+  "id": "F9",
+  "issue": 9,
+  "title": "CEM II B-LL cement: lorry transport 4.3E-4 tkm/kg against 2.0E-2 in the cited report",
+  "kind": "defect",
+  "datasets": [
+    {
+      "code": 286952,
+      "name": "CEM II, B-LL cement, at plant",
+      "location": "CH"
+    }
+  ],
+  "scope": "",
+  "releases": [
+    "2026-v1"
+  ],
+  "observation": "Lorry transport 4.345E-4 tkm/kg in the dataset; the cited 2020 cement/concrete report's table prints 2.00E-2 tkm for CEM II/B-LL (rail 1.50E-4 in both). Found by comparing the dataset with its report.",
+  "exposure": "",
+  "method": "Dataset compared with its cited report table; report text not reproduced (Terms of Use clause 4).",
+  "reported": {
+    "by": "mklarmann",
+    "date": "2026-10-07",
+    "url": "https://github.com/sentier-dev/sentier-bafu/issues/9"
+  },
+  "repeated": null,
+  "sent": null,
+  "answer": null,
+  "fixed_in": null,
+  "closed": null,
+  "related": [],
+  "threads": [
+    "https://gitlab.com/eos-lci/lci-bafu-catalog/-/issues/12"
+  ],
+  "next": {
+    "action": "Send to BAFU with the next batch: which value, dataset or report, is intended?",
+    "role": "maintainer"
+  },
+  "retained": [],
+  "notes": ""
+}

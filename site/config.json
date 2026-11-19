@@ -1,57 +1,216 @@
 {
-  "dataset": "BAFU / UVEK",
+  "dataset": "BAFU/UVEK",
   "provider": "BAFU",
+  "index": {
+    "color": "#3e5c76",
+    "dark": "#2e4558",
+    "soft": "#849aae",
+    "tint": "#dce3e9"
+  },
+  "releases": [
+    {
+      "id": "2025-v2",
+      "name": "BAFU:2025 v2"
+    },
+    {
+      "id": "2026-v1",
+      "name": "BAFU:2026 v1",
+      "archive_sha256": "cbaeed4ae79c0be98709c854211cd72725d4f22f8b9b3fe334b7f343fca152f5"
+    }
+  ],
+  "older_numbering_until": 47,
+  "older_numbering_note": "F1 to F32 follow an older numbering shared with the [lci-bafu-catalog ledger](https://gitlab.com/eos-lci/lci-bafu-catalog/-/blob/main/docs/bafu_findings.md).",
+  "dataset_code_pattern": "^[0-9]{6}$",
+  "lookup_example": "188725 or F3",
+  "finding_label": "bafu-finding",
+  "finding_form": "bafu-data-finding.yml",
+  "ledger_notes": [
+    "Dataset values and names are quoted; text from the LCI reports is never pasted (Terms of Use clause 4)."
+  ],
+  "run": {
+    "name": "Build",
+    "workflow": "release-build.yml",
+    "artifact": "release-build-results",
+    "tagged": {
+      "job": "Keep",
+      "tags": "patched-"
+    }
+  },
+  "patched_page": "patch-and-build.html",
+  "build_navigation": {
+    "comparison": "Comparison",
+    "on_home": false,
+    "order": ["quality.html", "before-after.html", "about/checks.html"],
+    "pages": {"quality.html": "Inventory quality", "about/checks.html": "Build checks"}
+  },
+  "download": {
+    "title": "Before you download: BAFU's Terms of Use",
+    "intro": "This file is part of a patched copy of BAFU's life cycle inventories: Modified Data, not BAFU's original data. Download it only if you accept BAFU's Terms of Use, and with them these three conditions:",
+    "points": [
+      "Credit the source: “Life Cycle Inventory database of the Swiss Federal Administration, BAFU:2026”.",
+      "Keep the label Modified Data and the record of modifications with the data.",
+      "Pass it on only under terms substantially equivalent to BAFU's, and never sell it."
+    ],
+    "more": "BAFU's terms, and what they ask of a copy",
+    "accept": "Accept and download",
+    "cancel": "Cancel",
+    "page": "about/terms.html",
+    "anchor": "downloads-from-this-site",
+    "free": [
+      "manifest.json"
+    ]
+  },
   "repository": "https://github.com/sentier-dev/sentier-bafu",
+  "site_url": "https://sentier-dev.github.io/sentier-bafu/",
   "source_ref": "main",
-  "description": "The public Sentier workspace for BAFU/UVEK imports, partner contributions, application tests, reviewed consensus and recommendations to BAFU.",
+  "home_title": "BAFU/UVEK inventory database: community findings · Sentier",
+  "title_suffix": "BAFU/UVEK findings · Sentier",
+  "description": "Users of the BAFU/UVEK life-cycle inventory database record measured findings here, repeat each other's measurements and report them to BAFU.",
   "sibling_name": "AGRIBALYSE preview",
   "sibling_url": "https://mklarmann.github.io/sentier-agribalyse/",
-  "validation_note": "Importer fixes and application checks are tracked in issues and pull requests. Candidate method reproduction and community review remain open.",
+  "verified_build": {
+    "tag": "patched-2026-11-18",
+    "files": {
+      "bafu-2026-v1-patched-ecospold1.zip": "6500c95bf72c5e1b5d9822bcb44bb8878a32d06bd8e1edd82ab50ea2ec4fcc23",
+      "bafu-2026-v1-patched-ilcd.zip": "d03199fc34c2c4505a31e1d28e09d3edd831b1d0713c40e82673e133d4fab255",
+      "bafu-2026-v1-patched-openlca.zip": "b3d635ed710e3b75e9b32adb861cab7abbf14c77a9596672444f936359944c88",
+      "bafu-2026-v1-patched-simapro.csv": "e26a63b415c95d664047f2b4684a45b7031303d66f1e67f7cc49cac6d43e78bb",
+      "bafu-2026-v1-patched.bw2package": "080cebbafc3dc176f0925dedf0ddf84e535bf6a8e90c6997087db1c337507d70"
+    },
+    "step_diagnostics": {
+      "snapshot": "site/snapshots/patched-2026-11-18-steps.json",
+      "comparison_sha256": "e4d2fd35a8fd76cb752a9630a76f33cacec3a02024662faf5182fca0ef58d90e",
+      "case_sets": {
+        "snapshot": "site/snapshots/patched-2026-11-18-case-sets.json",
+        "sha256": "f88c3a469fa7bfd93a16ec19aa76453ad738bb1838bec82e8a039f12f4d99961"
+      }
+    },
+    "changed_scores": 75,
+    "checked_formats": ["openLCA", "ILCD"],
+    "summary": "Five export formats are available.",
+    "downloads": "We checked both downloads against the patched BAFU inventory. For every exchange, we checked the flow, amount, unit and whether it enters or leaves the process. Where the source identifies a supplier, we also checked that link.",
+    "comparison": "75 impact results changed. All 75 were in datasets and impact categories that the patches and import fixes could affect. This check allows changes of any size in either direction."
+  },
+  "case_review": true,
+  "comparison_page": {"score_summary": true},
+  "inventory_quality": true,
+  "inventory_page": "inventory.html",
+  "nav_parents": {
+    "findings.html": "cases.html", "contributions.html": "cases.html", "feedback.html": "cases.html",
+    "about/data.html": "sources.html", "about/terms.html": "sources.html", "housekeeping.html": "take-part.html"
+  },
+  "section_navigation": {
+    "sources.html": {"sources.html": "Source register", "about/terms.html": "Data and terms", "about/data.html": "Data (JSON)"},
+    "cases.html": {"cases.html": "Case register", "feedback.html": "Feedback to BAFU", "contributions.html": "Contribution reviews"},
+    "take-part.html": {"take-part.html": "Contribute", "housekeeping.html": "For maintainers"}
+  },
+  "nav": [
+    ["index.html", "Overview"],
+    ["inventory.html", "BAFU inventory"],
+    ["sources.html", "Sources"],
+    ["cases.html", "Cases"],
+    ["patch-and-build.html", "Build"],
+    ["take-part.html", "Contribute"]
+  ],
+  "footer": [
+    [
+      "about/terms.html",
+      "Data and terms"
+    ],
+    [
+      "about/checks.html",
+      "How builds are checked"
+    ],
+    [
+      "about/data.html",
+      "Data (JSON)"
+    ],
+    [
+      "housekeeping.html",
+      "Housekeeping"
+    ]
+  ],
   "documents": [
+    {"title": "BAFU inventory", "source": "site/inventory.md", "page": "inventory.html", "description": "BAFU inventory releases and datasets cited in cases."},
+    {"title": "Sources", "source": "site/sources.md", "page": "sources.html", "description": "Public inputs and the cases that cite them."},
+    {"title": "Cases", "source": "site/cases.md", "page": "cases.html", "description": "Filter the cases, review their evidence and follow each correction into the build."},
+    {"title": "Inventory quality", "source": "site/quality.md", "page": "quality.html", "description": "Measured quality of the inventories in the patched build."},
     {
-      "title": "Import & use",
-      "source": "site/import.md",
-      "page": "import.html"
+      "title": "Findings",
+      "source": "site/findings.md",
+      "page": "findings.html",
+      "description": "Measured observations about BAFU's inventory data. Each finding has a status, a record and a public place where it is discussed."
     },
     {
-      "title": "Evidence & testing",
-      "source": "community/build-validation.md",
-      "page": "testing.html"
+      "title": "Feedback to BAFU",
+      "source": "site/feedback.md",
+      "page": "feedback.html",
+      "description": "What was reported to BAFU and when, what BAFU answered, what is resolved, and what is ready to be reported."
     },
     {
-      "title": "Findings ledger",
-      "source": "community/findings.md",
-      "page": "findings.html"
+      "title": "Contributions",
+      "source": "site/contributions.md",
+      "page": "contributions.html",
+      "description": "Proposals that go beyond a single finding: mappings, models, rebuilt inventories and method variants, each with its checks and reviewers."
+    },
+    {
+      "title": "Patch and build",
+      "source": "site/patch-and-build.md",
+      "page": "patch-and-build.html",
+      "also": [
+        "site/import.md"
+      ],
+      "description": "How a change is applied to a copy of BAFU's release: the last build, step by step and line for line, what stands in the way of its use, and how to run it yourself."
     },
     {
       "title": "Contribute",
-      "source": "community/README.md",
-      "page": "contribute.html"
+      "source": "site/take-part.md",
+      "page": "take-part.html",
+      "description": "Report a finding, repeat a measurement or propose a contribution. Everything is discussed in public on GitHub."
     },
     {
-      "title": "Apply a candidate layer",
-      "source": "community/application-and-testing.md",
-      "page": "application.html"
-    },
-    {
-      "title": "Consensus & recommendations",
-      "source": "community/workflow.md",
-      "page": "consensus.html"
-    },
-    {
-      "title": "Hackathon evidence",
-      "source": "community/hackathon-assessment.md",
-      "page": "hackathon.html"
-    },
-    {
-      "title": "Mapping integration",
-      "source": "community/mutel-mapping-review.md",
-      "page": "mapping-review.html"
-    },
-    {
-      "title": "Data & attribution",
+      "title": "Data and terms",
       "source": "docs/terms-of-use.md",
-      "page": "terms.html"
+      "page": "about/terms.html",
+      "description": "A short reading of BAFU's Terms of Use for people who work with the data here. It is not legal advice."
+    },
+    {
+      "title": "How builds are checked",
+      "source": "community/build-validation.md",
+      "page": "about/checks.html",
+      "description": "What was measured about the import of BAFU's release: row accounting, factor coverage and a score comparison with BAFU's published results."
+    },
+    {
+      "title": "Data (JSON)",
+      "source": "site/data.md",
+      "page": "about/data.html",
+      "description": "The findings, datasets and contributions of this site as JSON files for other tools, with their schemas and a feed of changes."
     }
-  ]
+  ],
+  "assessments": {
+    "C001": [
+      "community/hackathon-assessment.md",
+      "community/application-and-testing.md"
+    ],
+    "C002": [
+      "community/mutel-mapping-review.md"
+    ]
+  },
+  "redirects": {
+    "import.html": "patch-and-build.html",
+    "patched-release.html": "patch-and-build.html",
+    "contribute.html": "take-part.html",
+    "testing.html": "about/checks.html",
+    "terms.html": "about/terms.html",
+    "application.html": "contributions/C001.html",
+    "hackathon.html": "contributions/C001.html",
+    "mapping-review.html": "contributions/C002.html",
+    "consensus.html": "contributions.html",
+    "findings/index.html": "findings.html",
+    "contributions/index.html": "contributions.html",
+    "datasets/index.html": "findings.html",
+    "releases/index.html": "findings.html",
+    "feedback/index.html": "feedback.html",
+    "about/index.html": "about/data.html"
+  }
 }

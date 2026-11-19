@@ -1,0 +1,19 @@
+# The one tool the build takes from another repository. sentier-importers is a checkout
+# pinned by commit: `build_release.py` refuses a checkout at another commit or with local
+# changes. Change the pin together with a measured run.
+
+[tools.sentier-importers]
+repository = "https://github.com/sentier-dev/sentier-importers"
+commit = "28b28edd152a507f4ad02d3fde715223ea7d25e5"
+python = "3.12"
+
+# Everything else is this repository's own and is pinned where it lives:
+#
+# - the patch tool and the Brightway installer (`src/bafu_community_fixes`,
+#   `src/sentier_brightway`) run in this repository's locked environment (`uv.lock`), with
+#   the `brightway` extra; a build records this repository's commit;
+# - the elementary flow terms, the EF 3.1 methods and the BAFU to EF 3.1 mapping are pinned
+#   by commit and SHA-256 in `src/sentier_brightway/sources.toml`. The build takes those
+#   files and replaces only the inventory. The mapping is at sentier-mappings `179aab3`,
+#   which holds the correction of BAFU's Chlorine to air (high population) onto EF 3.1
+#   chlorine (sentier-mappings #22, 12 November 2026).

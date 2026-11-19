@@ -1,0 +1,82 @@
+{
+  "note": "What this repository shares with the other Sentier dataset repositories, in sets. A file is written and tested here; elsewhere it is a copy that is never edited. `python3 scripts/shared_files.py take` copies the sets a repository asks for and records them in its own site/shared.json; `check` compares. site/README.md, 'Shared with the sibling repositories', says how.",
+  "sets": {
+    "sharing": {
+      "about": "The script that takes the shared files and checks them. Every repository that takes a set has it.",
+      "files": [
+        "scripts/shared_files.py"
+      ],
+      "folders": []
+    },
+    "run": {
+      "about": "What a run keeps of itself: its lines, its own account, what it compared and what it reviewed. The formats and their checks, without a page.",
+      "files": [],
+      "folders": [
+        "scripts/runrecord"
+      ],
+      "includes": [
+        "sharing"
+      ]
+    },
+    "before-after": {
+      "about": "Two sets of results over the same items, compared: the format and the counting, the six classes of a value against what was claimed, the page without a frame, its script and its styles, and how to read it. For a site whose frame is its own. Its home is sentier-dev/sentier-diagnostics since 16 November 2026: the format is changed there, and this set is the version that repository starts from.",
+      "includes": [
+        "run"
+      ],
+      "files": [
+        "scripts/sitebuild/__init__.py",
+        "scripts/sitebuild/text.py",
+        "scripts/sitebuild/beforeafter.py",
+        "site/assets/before-after.js",
+        "site/assets/before-after.css",
+        "docs/before-after.md"
+      ],
+      "folders": []
+    },
+    "review": {
+      "about": "Reviewing a change: the index of builds, causes with their claims and the pairs that were compared, its page and its script. It brings the comparison with it. Its home is sentier-dev/sentier-diagnostics since 16 November 2026: the format is changed there, and this set is the version that repository starts from.",
+      "includes": [
+        "before-after"
+      ],
+      "files": [
+        "scripts/sitebuild/review.py",
+        "site/assets/review.js"
+      ],
+      "folders": []
+    },
+    "site": {
+      "about": "The whole site of a dataset repository: the records and their checks, the intake, the build, the stylesheet, the walk through a run and the page of a comparison.",
+      "includes": [
+        "sharing",
+        "run",
+        "before-after",
+        "review"
+      ],
+      "files": [
+        "scripts/build_site.py",
+        "scripts/check_site.py",
+        "scripts/community.py",
+        "scripts/triage.py",
+        "scripts/intake.py",
+        "scripts/sync.py",
+        "scripts/github_api.py",
+        "scripts/last_run.py",
+        "site/style.css",
+        "site/assets/list.js",
+        "site/assets/register.js",
+        "site/assets/comparison.css",
+        "site/assets/comparison.js",
+        "site/assets/replay.js",
+        "site/assets/download.js",
+        "site/assets/nunito-latin.woff2",
+        "site/assets/OFL.txt",
+        "site/assets/dds-logo.svg",
+        "site/assets/favicon-32x32.png"
+      ],
+      "folders": [
+        "scripts/sitebuild",
+        "schema"
+      ]
+    }
+  }
+}

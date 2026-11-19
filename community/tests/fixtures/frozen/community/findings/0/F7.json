@@ -1,0 +1,35 @@
+{
+  "schema": 2,
+  "id": "F7",
+  "issue": null,
+  "title": "LCIA workbook: ecotoxicity total differs from its parts by more than 5 % on 33 rows; 110 datasets score zero",
+  "kind": "defect",
+  "datasets": [],
+  "scope": "published LCIA workbook 2026 v1",
+  "releases": [
+    "2026-v1"
+  ],
+  "observation": "33 rows where the ecotoxicity total differs from inorganics + organics by more than 5 % (worst 23.4 %); 110 datasets score zero in every category.",
+  "exposure": "",
+  "method": "Measured on the published LCIA workbook only; inventories not recomputed.",
+  "reported": {
+    "by": "mklarmann",
+    "date": "2026-09-25",
+    "url": "https://gitlab.com/eos-lci/lci-bafu-catalog/-/issues/7"
+  },
+  "repeated": null,
+  "sent": null,
+  "answer": null,
+  "fixed_in": null,
+  "closed": null,
+  "related": [],
+  "threads": [
+    "https://gitlab.com/eos-lci/lci-bafu-catalog/-/issues/7"
+  ],
+  "next": {
+    "action": "Recompute the 33 ecotoxicity rows from an independent score run before sending to BAFU.",
+    "role": "reviewer"
+  },
+  "retained": [],
+  "notes": ""
+}

@@ -1,0 +1,42 @@
+name: BAFU's release
+description: >-
+  Install the patch tool and make BAFU's release available to it: the tool's own
+  download folder is restored from the cache, and whatever is missing the tool
+  downloads and checks against the SHA-256 it knows. Used by every job that reads
+  the release, so that the steps exist once and one download serves all of them.
+
+outputs:
+  sha256:
+    description: SHA-256 of the release's archive, as the patch tool knows it
+    value: ${{ steps.release.outputs.sha256 }}
+  cache:
+    description: The folder the patch tool keeps the release in
+    value: ${{ steps.release.outputs.cache }}
+
+runs:
+  using: composite
+  steps:
+    - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+      with:
+        enable-cache: false
+    - name: Install the patch tool
+      shell: bash
+      run: uv sync --locked
+    - name: Identify BAFU's release
+      id: release
+      shell: bash
+      # The tool knows the release, its checksum and where it keeps the download.
+      run: |
+        uv run --no-sync python - >> "$GITHUB_OUTPUT" <<'PYTHON'
+        from bafu_community_fixes.download import CHECKSUMS, LATEST_RELEASE, cache_dir
+
+        print(f"sha256={CHECKSUMS[LATEST_RELEASE]}")
+        print(f"cache={cache_dir()}")
+        PYTHON
+    - name: Reuse the downloaded release
+      # A cache is not an artifact: it has no download link. It holds the files
+      # anyone gets from the release's own address.
+      uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+      with:
+        path: ${{ steps.release.outputs.cache }}
+        key: bafu-release-${{ steps.release.outputs.sha256 }}

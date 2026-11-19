@@ -15,8 +15,22 @@ determines which, rather than its position in the pipeline.
 **Community patch**: An identified, ordered correction applied to the imported
 dataset with author, rationale and provenance.
 
-**Patched release**: Output of a named provider release and selected community
-patches. Its processing history accompanies its use.
+**Patched copy**: Output of a named provider release and selected community
+patches. Its processing history accompanies its use. _Avoid_: release, patched
+release, publication: a release is the provider's.
+
+**Build**: One run of the whole path on a provider release, and what it makes:
+the patched copy, its checks and its files for LCA tools. A build claims
+nothing beyond its own record.
+
+**Tagged build**: The build a maintainer marks with a tag as the one others
+should use. Its manifest is kept under the tag. _Avoid_: release, version.
+
+**Source**: Material contributed to the workspace, such as a report, provider response,
+database or inventory. Several cases can cite the same source.
+
+**Case**: One numbered finding under review, together with its sources, recorded decisions
+and any community patches that answer it. Its finding number follows it into the patch registry.
 
 **Finding**: A reproducible observation, including an unresolved question or a
 withdrawn interpretation. A finding can exist without a patch.
@@ -35,7 +49,7 @@ Flows. Correspondence strength alone does not establish a quantity conversion.
 _Avoid_: "Consensus Flows" as the project's name; the project is Brightway Flows.
 
 **Community authorisation**: A named person's recorded approval to include a
-patch in a community release. _Avoid_: provider approval, scientific consensus.
+patch in the patched copy. _Avoid_: provider approval, scientific consensus.
 
 **Provider confirmation**: An attributed statement from BAFU about a finding or
 correction, with its evidence and date. It does not establish release adoption.

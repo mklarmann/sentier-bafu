@@ -3,8 +3,12 @@ status: proposed
 ---
 # Keep elementary-flow decisions in Brightway Flows
 
-The community pipeline already consumes pinned Brightway Flows corrections
-and a crosswalk. Keep that as the common identity authority and contribute
+The community pipeline already consumes Brightway Flows corrections, pinned
+to commit `19d6cc6`, and a crosswalk from release 1.0.0
+([10.5281/zenodo.22857950](https://doi.org/10.5281/zenodo.22857950)). Release
+1.1.0 followed on 21 October 2026
+([10.5281/zenodo.23554066](https://doi.org/10.5281/zenodo.23554066)); moving
+to it is a reviewed upstream refresh. Keep that as the common identity authority and contribute
 reusable elementary-flow corrections upstream. BAFU-specific inventory patches
 stay here; consumer method policy stays with its consumer. A second local
 identity matcher would recreate the disagreements this work is meant to resolve.

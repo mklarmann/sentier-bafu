@@ -1,0 +1,115 @@
+{
+ "date": "2026-11-15",
+ "kind": "measurement of a change to the build; evidence for the change, not an acceptance test",
+ "question": "What changes when a flow of BAFU that names a country (Water, CH) takes that country's characterisation factor, in place of the factor without a location?",
+ "design": "BAFU:2026 v1 as the installer reads it (11,947 datasets, 293,747 elementary exchanges, 2,679 flows), built twice on the pinned data, with only this changed, and scored in the 25 EF 3.1 categories. The country a flow names is the one the mapping of sentier-mappings states for it (target.location); the factors of single countries are those of sentier-methods. A flow is linked to the flow of its country where at least one method has a factor of that country for it; it then takes that factor in every method that has one and the factor without a location in every other method. A flow that names no country is not touched, whatever the location of its dataset. A dataset moves when its score differs by more than 1 % of the larger of the two. Both builds were also compared with BAFU's corrected LCIA results workbook (July 2026), which is not in this repository.",
+ "data": [
+  {
+   "name": "sentier-inventory",
+   "commit": "cf54f557e88284400418f1e4db03487be451de9f",
+   "pinned_by": "this repository"
+  },
+  {
+   "name": "sentier-vocab",
+   "commit": "51ba6be54c90ac9fdf78fbecc6b0f4cdb6718273",
+   "pinned_by": "this repository"
+  },
+  {
+   "name": "sentier-methods",
+   "commit": "ba536459f320ec694ce778be6e632048a1c777dc",
+   "pinned_by": "this repository"
+  },
+  {
+   "name": "sentier-mappings",
+   "commit": "179aab3047c982e8cfa40b318da8be4b3e057782",
+   "pinned_by": "this repository"
+  }
+ ],
+ "reproduce": "uv run --frozen --extra brightway python scripts/compare_located_factors.py --work output/located --out comparison.json --published-results WORKBOOK",
+ "flows": {
+  "flows_the_inventory_uses": 2679,
+  "flows_that_name_a_country": 238,
+  "of_which_take_a_factor_of_their_country": 184,
+  "their_exchanges": 4251,
+  "countries": 74,
+  "targets_of_a_country": 183,
+  "targets_with_the_methods_own_factor_of_the_country": {
+   "ef-3.1:land-use": 2,
+   "ef-3.1:water-use": 181
+  },
+  "name_a_country_no_method_has_a_factor_for": 54
+ },
+ "scores": {
+  "datasets": 11947,
+  "moved_in_any_category_over_1_percent": 5197,
+  "categories_in_which_a_dataset_moves": [
+   {
+    "category": "land",
+    "method": "ef-3.1:land-use",
+    "moved_over_1_percent": 5,
+    "moved_over_10_percent": 5,
+    "lower": 0,
+    "higher": 5
+   },
+   {
+    "category": "water",
+    "method": "ef-3.1:water-use",
+    "moved_over_1_percent": 5197,
+    "moved_over_10_percent": 854,
+    "lower": 5146,
+    "higher": 50
+   }
+  ]
+ },
+ "against_published_results": {
+  "with the factors of countries": {
+   "datasets_joined": 11947,
+   "categories": {
+    "land": {
+     "compared": 11786,
+     "within_1_percent": 99.05,
+     "within_5_percent": 99.42,
+     "median_difference_percent": 0.0248
+    },
+    "water": {
+     "compared": 11771,
+     "within_1_percent": 53.84,
+     "within_5_percent": 79.52,
+     "median_difference_percent": 0.8645
+    }
+   }
+  },
+  "with the factors without a location only": {
+   "datasets_joined": 11947,
+   "categories": {
+    "land": {
+     "compared": 11786,
+     "within_1_percent": 99.09,
+     "within_5_percent": 99.47,
+     "median_difference_percent": 0.0248
+    },
+    "water": {
+     "compared": 11720,
+     "within_1_percent": 30.94,
+     "within_5_percent": 65.45,
+     "median_difference_percent": 2.2016
+    }
+   }
+  }
+ },
+ "findings": [
+  "238 of BAFU's 2,679 elementary flows name a country. 184 of them (4,251 exchanges, 74 countries) have a factor of their country in some method and are linked to the flow of that country: 183 such flows of a country, 181 with the country's factor in water use and 2 in land use.",
+  "54 flows name a country for which no method has a factor of that country. They stay on the flow without a location: 47 are water emitted to air and 7 water to the ocean, which EF 3.1 does not characterise.",
+  "Water use moves by more than 1 % for 5,197 of the 11,947 datasets, and by more than 10 % for 854. 5,146 go down and 50 go up.",
+  "Land use moves for 5 datasets, all upwards and by more than 10 %. No other category moves for any dataset.",
+  "Against BAFU's published results, water use comes closer: 53.84 % of the datasets within 1 % (30.94 % before), 79.52 % within 5 % (65.45 %), median difference +0.86 % (+2.20 %).",
+  "Land use moves away from BAFU's published results for the five datasets: 99.05 % within 1 % against 99.09 %. For the two flows of rail land in Switzerland, BAFU's results follow the factor without a location."
+ ],
+ "limits": [
+  "Matching BAFU's published results is not a goal. They are used here as a second reading of what a flow that names a country means; in water use they agree with the change, in land use they do not.",
+  "The country is taken from the mapping, which read it from the flow's name. A flow whose name ends like a country code and means something else would be wrong there, not here.",
+  "Measured on BAFU's release as shipped. The patched copy links on the flows BAFU declared, so its flows are the same.",
+  "Says nothing on a factor by the location of a dataset: no flow without a country in its name was given one, and none is given one by the build."
+ ],
+ "measured_by": "agent-run measurement; the script and its inputs are public and pinned. The workbook of BAFU's results is BAFU's publication and is not in this repository"
+}

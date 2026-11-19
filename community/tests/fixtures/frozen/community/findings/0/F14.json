@@ -1,0 +1,84 @@
+{
+  "schema": 2,
+  "id": "F14",
+  "issue": 29,
+  "title": "Storage-pump electricity mix: wind input declared OCE, supplier exists only as RER",
+  "kind": "defect",
+  "datasets": [
+    {
+      "code": 584039,
+      "name": "Electricity mix, operation storage pumps, ENTSO, 2020, at plant",
+      "location": "CH"
+    },
+    {
+      "code": 535960,
+      "name": "Electricity, at 100MW wind farm, onshore, 2.3MW turbines",
+      "location": "RER",
+      "role": "named"
+    },
+    {
+      "code": 539240,
+      "name": "xx Electricity, at wind power plant 2MW, offshore",
+      "location": "OCE",
+      "role": "named"
+    },
+    {
+      "code": 402599,
+      "name": "Electricity, at 150MW wind farm, offshore, 5MW turbines",
+      "location": "RER",
+      "role": "named"
+    },
+    {
+      "code": 396070,
+      "name": "Electricity, at 740MW wind farm, offshore, 10MW turbines",
+      "location": "RER",
+      "role": "named"
+    },
+    {
+      "code": 555490,
+      "name": "Electricity, at 1005MW wind farm, offshore, 15MW turbines",
+      "location": "RER",
+      "role": "named"
+    }
+  ],
+  "scope": "",
+  "releases": [
+    "2026-v1"
+  ],
+  "observation": "One wind input (0.0058202 kWh/kWh, comment `Wind Offshore / DE`) declares location OCE with supplier number 535960, the only wind-farm provider (onshore, RER). OCE exists as a geography, but the only wind dataset there is retired (`xx Electricity, at wind power plant 2MW, offshore`, 539240); current offshore wind farms exist at RER (402599, 396070, 555490). Relabelling as RER links the edge but keeps an onshore stand-in for offshore wind.",
+  "exposure": "",
+  "method": "Re-measured on the release files on 2026-10-21.",
+  "reported": {
+    "by": "tngTUDOR",
+    "date": "2026-10-14",
+    "url": "https://github.com/sentier-dev/sentier-bafu/issues/29"
+  },
+  "repeated": {
+    "by": "mklarmann",
+    "date": "2026-10-21",
+    "url": "https://github.com/sentier-dev/sentier-bafu/issues/29#issuecomment-6308092117",
+    "result": "reproduced"
+  },
+  "sent": null,
+  "answer": null,
+  "fixed_in": null,
+  "closed": null,
+  "related": [
+    "F3"
+  ],
+  "threads": [
+    "https://github.com/sentier-dev/sentier-bafu/issues/8"
+  ],
+  "next": {
+    "action": "Send to BAFU with the next batch: should the offshore share link to a current offshore wind farm at RER (402599, 396070, 555490) rather than to the onshore one?",
+    "role": "maintainer"
+  },
+  "retained": [
+    {
+      "kind": "earlier-interpretation",
+      "text": "Filed fix: change the location from OCE to RER. The exchange comment shows offshore wind, so the relabel would keep an onshore stand-in.",
+      "evidence_url": "https://github.com/sentier-dev/sentier-bafu/issues/29"
+    }
+  ],
+  "notes": ""
+}
