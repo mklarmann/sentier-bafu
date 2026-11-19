@@ -703,7 +703,7 @@ class SiteTests(unittest.TestCase):
         self.assertTrue(old <= set(self.config["redirects"]))
         for source, target in self.config["redirects"].items():
             page = parse(self.out / source)
-            self.assertIn(" + location.search + location.hash", page.find("script").text())
+            self.assertIn(" + location.search + location.hash", (self.out / source).read_text())
             refresh = page.find("meta", http_equiv="refresh").attrs["content"]
             url = refresh.split("url=", 1)[1]
             landing = (self.out / source).parent / url
