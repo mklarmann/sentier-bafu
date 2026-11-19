@@ -616,7 +616,7 @@ def page(site, data, name, back=None, current=None, review_section="", diagnosti
         diagnostics_body = f'<section class="ba-diagnostics" aria-labelledby="diagnostics"><h2 id="diagnostics">{scope}</h2>'
         if use_selector:
             diagnostics_body += '<p><a href="#review-cases" data-pick-cases>Select review cases together</a></p>'
-        options = {}
+        options = {"score_summary": True} if config and config.get("score_summary") else {}
         if case_sets:
             from .comparison import step_selector
             options["score_table_identity"] = "Score table SHA-256"
