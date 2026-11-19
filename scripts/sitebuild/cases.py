@@ -93,6 +93,18 @@ def source_list(site):
     return table("source", ["Source", "Kind", "Cases"], {"kind": ("Source kind", [s["kind"] for s in sources(site).values()])}, rows)
 
 
+def dataset_list(site):
+    """Search the dataset metadata already cited publicly in cases."""
+    rows = []
+    for code, item in sorted(site.datasets.items(), key=lambda entry: (entry[1]["name"].casefold(), entry[0])):
+        name, location = item["name"], item["location"]
+        links = ", ".join(case_link(f["id"]) for f in item["findings"])
+        dataset = f'<a href="datasets/{int(code)}.html">{esc(name)}</a>'
+        rows.append(({"location": location, "search": str(code)}, [dataset, esc(str(code)), esc(location), links]))
+    locations = [item["location"] for item in site.datasets.values()]
+    return table("dataset", ["Dataset", "Code", "Location", "Cases"], {"location": ("Location", locations)}, rows)
+
+
 def case_list(site):
     rows = []
     for f in findings.recent(site):

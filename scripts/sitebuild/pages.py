@@ -255,6 +255,9 @@ def dataset_page(site, code, entry):
     up, p = "../", esc(site.provider)
     cases = site.config.get("case_review", False)
     register, label = ("sources.html", "Sources") if cases else ("findings.html", "Findings")
+    inventory = site.config.get("inventory_page")
+    if inventory:
+        register, label = inventory, dict(site.config["nav"])[inventory]
     title = f'{code} {entry["name"]} ({entry["location"]})'
     sections = ""
     for role, heading in ROLE_HEADINGS:
@@ -274,7 +277,7 @@ def dataset_page(site, code, entry):
                      + f"A patch is not {p}'s correction.</p>")
     report = f"{site.repo}/issues/new?template={site.finding_form}&dataset={quote(title)}"
     body = (
-        f'<nav class="crumb" aria-label="Breadcrumb"><a href="{up}{register}">{label}</a> '
+        f'<nav class="crumb" aria-label="Breadcrumb"><a href="{up}{esc(register)}">{esc(label)}</a> '
         f'<span aria-hidden="true">/</span> <span aria-current="page">Dataset {code}</span></nav>'
         f'<p class="eyebrow">Dataset {code}</p><h1 dir="auto">{esc(entry["name"])} ({esc(entry["location"])})</h1>'
         f"<p>What the findings say about dataset {code} of the {esc(site.dataset)} database. "

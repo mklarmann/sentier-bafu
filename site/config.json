@@ -39,7 +39,7 @@
   "patched_page": "patch-and-build.html",
   "build_navigation": {
     "comparison": "Comparison",
-    "on_home": true,
+    "on_home": false,
     "order": ["quality.html", "before-after.html", "about/checks.html"],
     "pages": {"quality.html": "Inventory quality", "about/checks.html": "Build checks"}
   },
@@ -85,16 +85,23 @@
   },
   "case_review": true,
   "inventory_quality": true,
-  "nav_parents": {"findings.html": "cases.html", "contributions.html": "sources.html", "feedback.html": "cases.html"},
+  "inventory_page": "inventory.html",
+  "nav_parents": {
+    "findings.html": "cases.html", "contributions.html": "cases.html", "feedback.html": "cases.html",
+    "about/data.html": "sources.html", "about/terms.html": "sources.html", "housekeeping.html": "take-part.html"
+  },
   "section_navigation": {
-    "cases.html": {"cases.html": "Case register", "feedback.html": "Feedback to BAFU"}
+    "sources.html": {"sources.html": "Source register", "about/terms.html": "Data and terms", "about/data.html": "Data (JSON)"},
+    "cases.html": {"cases.html": "Case register", "feedback.html": "Feedback to BAFU", "contributions.html": "Contribution reviews"},
+    "take-part.html": {"take-part.html": "Contribute", "housekeeping.html": "For maintainers"}
   },
   "nav": [
     ["index.html", "Overview"],
+    ["inventory.html", "BAFU inventory"],
     ["sources.html", "Sources"],
     ["cases.html", "Cases"],
     ["patch-and-build.html", "Build"],
-    ["take-part.html", "Take part"]
+    ["take-part.html", "Contribute"]
   ],
   "footer": [
     [
@@ -115,6 +122,7 @@
     ]
   ],
   "documents": [
+    {"title": "BAFU inventory", "source": "site/inventory.md", "page": "inventory.html", "description": "BAFU inventory releases and datasets cited in cases."},
     {"title": "Sources", "source": "site/sources.md", "page": "sources.html", "description": "Public inputs and the cases that cite them."},
     {"title": "Cases", "source": "site/cases.md", "page": "cases.html", "description": "Filter the cases, review their evidence and follow each correction into the build."},
     {"title": "Inventory quality", "source": "site/quality.md", "page": "quality.html", "description": "Measured quality of the inventories in the patched build."},
@@ -146,7 +154,7 @@
       "description": "How a change is applied to a copy of BAFU's release: the last build, step by step and line for line, what stands in the way of its use, and how to run it yourself."
     },
     {
-      "title": "Take part",
+      "title": "Contribute",
       "source": "site/take-part.md",
       "page": "take-part.html",
       "description": "Report a finding, repeat a measurement or propose a contribution. Everything is discussed in public on GitHub."

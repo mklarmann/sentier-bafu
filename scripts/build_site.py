@@ -311,6 +311,7 @@ class Site:
             "inventory-quality": (lambda: quality.detail(self), True),
             "inventory-quality-summary": (lambda: quality.overview(self), False),
             "build-case-register": (lambda: cases.build_register(self), False),
+            "case-datasets": (lambda: cases.dataset_list(self), True),
             "case-register": (lambda: cases.case_list(self), True),
             "findings-list": (lambda: findings.findings_list(self, up), True),
             "contributions-list": (lambda: contributions.contributions_list(self, up), True),

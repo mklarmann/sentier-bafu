@@ -1,6 +1,8 @@
-# Take part
+# Contribute
 
 You can repeat a measurement, report a finding or propose a contribution. Reports and comments are written on GitHub, in public. Reading needs no account. Writing needs a free GitHub account.
+
+[Submit material for review](sources.md#submit-material) · [Feedback to BAFU](feedback.md)
 
 ## Repeat a measurement
 
@@ -8,7 +10,7 @@ This is the most useful help. Before a finding is reported to BAFU, a second per
 
 <!-- generated: second-measurement-list -->
 
-1. Choose a finding with the status "Needs a second measurement", from the list above or from the [findings](findings.md) list. Its page says what was observed and links to the place where the finding is discussed. This is usually a GitHub issue.
+1. Choose a finding with the status "Needs a second measurement", from the list above or from the [case register](cases.md). Its page says what was observed and links to the place where the finding is discussed. This is usually a GitHub issue.
 2. Repeat the measurement on BAFU's release files, as you received them. Do not measure on a database that the files were imported into, or on a patched copy: an import or a patch can change the data.
 3. Write what you got as a comment in that discussion: the value with its unit, the file and the release you looked at, and how you got the value. A different result is as useful as the same one.
 4. A maintainer then adds your second measurement to the finding's record. The record is public. It holds your GitHub user name, the date and a link to your comment.

@@ -56,12 +56,18 @@ class CaseRecords(unittest.TestCase):
                 self.assertEqual(active.attrs["href"], tab)
                 self.assertTrue(page.find("nav", "nav").find("a", aria_current="page").attrs["href"].endswith("cases.html"))
             home = parse(out / "index.html")
+            self.assertEqual([link.text() for link in home.find("nav", "nav").find_all("a")],
+                             ["Overview", "BAFU inventory", "Sources", "Cases", "Build", "Contribute"])
+            inventory = parse(out / "inventory.html")
+            datasets = inventory.find("section", data_register="dataset")
+            self.assertEqual(len(datasets.find("tbody").find_all("tr")), len(site.datasets))
+            self.assertIn("datasets/188725.html", [a.attrs["href"] for a in datasets.find_all("a")])
             self.assertEqual(home.find("form", "lookup").attrs["action"], "cases.html")
             self.assertTrue(all(a.attrs["href"].startswith("cases/") for a in home.find_all("a", "record-title")))
             self.assertEqual(cases.sources(site)["report-F1"]["url"], site.by_id["F1"]["reported"]["url"])
-            for path in ("datasets/188725.html", "releases/2026-v1.html"):
+            for path, owner in (("datasets/188725.html", "../inventory.html"), ("releases/2026-v1.html", "../sources.html")):
                 page = parse(out / path)
-                self.assertEqual(page.find("nav", "nav").find("a", aria_current="page").attrs["href"], "../sources.html")
+                self.assertEqual(page.find("nav", "nav").find("a", aria_current="page").attrs["href"], owner)
                 self.assertIn("../cases/F1.html", [a.attrs["href"] for a in page.find_all("a", "record-title")])
             feedback = parse(out / "feedback.html")
             links = [a.attrs["href"] for a in feedback.find_all("a", "record-title")]

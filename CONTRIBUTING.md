@@ -1,8 +1,12 @@
 # Contributing
 
-This file is for people who change this repository: its records, its site or its scripts. To report a finding, repeat a measurement or propose a contribution, start on the site's [Take part](https://sentier-dev.github.io/sentier-bafu/take-part.html) page.
+This file is for people who change this repository: its records, its site or its scripts. To report a finding, repeat a measurement or propose a contribution, start on the site's [Contribute](https://sentier-dev.github.io/sentier-bafu/take-part.html) page.
 
 Open an issue or a pull request. For a contribution, name the BAFU release and the exact version of what you propose, and give public evidence, the steps to apply it beside BAFU's release, the results of the checks and the positions of the people involved. Start from the templates in [`community/templates/`](community/templates/). Keep objections on record.
+
+The [Sources register](site/sources.md) collects the public material behind a case. Before adding another source, look for an existing report, database or inventory and reuse its identifier. For additional public evidence, add its title, kind, public URL and related case identifiers to `community/sources.json`. The register links each source to every case that cites it.
+
+Use the [case register](site/cases.md) to find the numbered observation. Record the independent measurement and provider response in the finding record, with their dates and public evidence. Carry that finding number into any proposed patch and its checks. The [contribution workflow](community/workflow.md) describes how to record review and authorisation. The [feedback page](site/feedback.md) reads the recorded reporting dates and answers.
 
 ## Check a change
 
