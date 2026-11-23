@@ -131,7 +131,7 @@ class PlanTests(unittest.TestCase):
 
     def test_each_step_of_the_path_changes_one_label_and_says_so_once(self):
         labels = sync.expected_labels("filed", "BAFU")
-        words = ["second-person repeated the measurement on 22 November 2026 and reproduced it",
+        words = ["second-person verified the issue on 22 November 2026 and found the same",
                  "Reported to BAFU on 25 November 2026, in batch 2026-11",
                  "BAFU answered on 1 December 2026 (confirmed;",
                  "The correction was checked in BAFU:2026 v1 on 20 December 2026"]

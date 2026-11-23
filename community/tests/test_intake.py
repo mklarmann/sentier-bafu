@@ -277,7 +277,7 @@ class FormTests(unittest.TestCase):
         self.assertEqual(record["reported"], {"by": "reporter", "date": "2026-11-20", "url": f"{REPO}/issues/48"})
         self.assertEqual((record["scope"], record["exposure"], record["notes"]), ("", "", ""))
         self.assertEqual(record["next"]["role"], "reviewer")
-        self.assertIn("A second person repeats the measurement on BAFU's release files", record["next"]["action"])
+        self.assertIn("A second person verifies the issue in BAFU's release files", record["next"]["action"])
         self.assertEqual(community.stage(record), "filed")
         self.assertEqual(community.validate_finding(record, "community/findings/0/F48.json"), [])
         self.assertEqual(outcome["notes"], [])
@@ -662,7 +662,7 @@ class PlanTests(Workspace):
             planned = self.plan(commented(issue(41), "/repeated reproduced", {"login": login, "type": "User"}),
                                 "issue_comment")
             self.assertEqual((planned["action"], planned["why"]), ("reply", "reporter"))
-            self.assertIn("Thank you for measuring again.", planned["comment"])
+            self.assertIn("Thank you for checking.", planned["comment"])
             self.assertIn("someone other than the person who reported", planned["comment"])
             self.assertEqual(planned["add_labels"], [])
 
