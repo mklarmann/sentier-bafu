@@ -65,7 +65,7 @@
   "source_ref": "main",
   "home_title": "BAFU/UVEK inventory database: community findings · Sentier",
   "title_suffix": "BAFU/UVEK findings · Sentier",
-  "description": "Users of the BAFU/UVEK life-cycle inventory database record measured findings here, repeat each other's measurements and report them to BAFU.",
+  "description": "Users of the BAFU/UVEK life-cycle inventory database record their findings here, verify each other's and report them to BAFU.",
   "sibling_name": "AGRIBALYSE preview",
   "sibling_url": "https://mklarmann.github.io/sentier-agribalyse/",
   "verified_build": {

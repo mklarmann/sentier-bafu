@@ -50,8 +50,8 @@ def overview(site):
     opening = (
         f'<section class="wrap hero"><p class="eyebrow">{d} life-cycle inventory database</p>'
         f"<h1>Feedback on {p}'s inventory data, from the people who use it</h1>"
-        f'<p class="lead">Users of the {d} life-cycle inventory database record here what they find in the data, check '
-        f"each other's measurements and report the findings to {p}. The aim is a better database for everyone. "
+        f'<p class="lead">Users of the {d} life-cycle inventory database record here what they find in the data, verify '
+        f"each other's findings and report them to {p}. The aim is a better database for everyone. "
         f"{p} decides what it changes.</p>"
         f'<div class="actions">{browse}{compare_link}</div>'
         f"{shell.lookup(site)}</section>"

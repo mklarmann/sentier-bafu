@@ -455,7 +455,7 @@ class SiteTests(unittest.TestCase):
         for claim in ("repeated by a second person", "Every finding has", "each with evidence and named reviewers",
                       "apply the corrections", "Together", "next release", "promise", " will "):
             self.assertNotIn(claim, text)
-        self.assertIn("check each other's measurements and report the findings to BAFU", text)
+        self.assertIn("verify each other's findings and report them to BAFU", text)
         self.assertIn("The aim is a better database for everyone. BAFU decides what it changes.", text)
         # Each thing is said once.
         self.assertEqual(text.count("BAFU decides what it changes"), 1)
