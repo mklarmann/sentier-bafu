@@ -39,7 +39,7 @@ except ModuleNotFoundError:
 try:
     import build_site
     from sitebuild import findings as findings_pages
-    from sitebuild import prose
+    from sitebuild import prose, status as site_status
 except ModuleNotFoundError:  # the markdown package is a site-build dependency only
     build_site = None
 spec = importlib.util.spec_from_file_location("check_site", ROOT / "scripts/check_site.py")
@@ -402,7 +402,7 @@ class SiteTests(unittest.TestCase):
         self.assertIn(202096, codes[19])   # an affected consumer
 
     def test_status_is_shown_in_words_never_as_a_key(self):
-        labels = {s["label"] for s in community.statuses("BAFU")}
+        labels = {site_status.display_label(s["key"], "BAFU") for s in community.STATUSES}
         listing = parse(self.out / "findings.html").find("ul", id="list")
         rows = listing.find_all("li", "record")
         self.assertTrue(rows)
@@ -414,7 +414,7 @@ class SiteTests(unittest.TestCase):
         for f in self.findings:
             page = parse(self.out / f"findings/{f['id']}.html")
             line = squash(page.find("p", "stage-line").text())
-            self.assertTrue(line.startswith(community.status_label(community.stage(f), "BAFU") + "."), f["id"])
+            self.assertTrue(line.startswith(site_status.display_label(community.stage(f), "BAFU") + "."), f["id"])
             self.assertNotIn("not-a-defect", page.find("main").text(), f["id"])
 
     def test_a_tracker_never_shows_a_step_as_done_without_evidence(self):
@@ -447,7 +447,7 @@ class SiteTests(unittest.TestCase):
                 shown[parse_qs(target.query)["stage"][0]] = number
             else:
                 self.assertEqual(number, 0)
-        self.assertEqual(shown, {community.status_label(k, "BAFU"): v for k, v in counts.items()
+        self.assertEqual(shown, {site_status.display_label(k, "BAFU"): v for k, v in counts.items()
                                  if k in community.OPEN_STAGES or k == "fixed"})
 
     def test_the_overview_claims_nothing_the_records_do_not_show(self):
@@ -455,14 +455,14 @@ class SiteTests(unittest.TestCase):
         for claim in ("repeated by a second person", "Every finding has", "each with evidence and named reviewers",
                       "apply the corrections", "Together", "next release", "promise", " will "):
             self.assertNotIn(claim, text)
-        self.assertIn("verify each other's findings and report them to BAFU", text)
+        self.assertIn("check each other's measurements and report the findings to BAFU", text)
         self.assertIn("The aim is a better database for everyone. BAFU decides what it changes.", text)
         # Each thing is said once.
         self.assertEqual(text.count("BAFU decides what it changes"), 1)
         self.assertEqual(text.count("A different result is as useful as the same one"), 1)
 
     def test_the_path_has_the_same_five_steps_wherever_it_appears(self):
-        steps = ["Found", "Verified", "Reported to BAFU", "Answered by BAFU", "Resolved"]
+        steps = ["Identify", "Verify", "Reported to BAFU", "Answered by BAFU", "Resolved"]
 
         def names(page, cls):
             return [squash(n.children[0] if isinstance(n.children[0], str) else n.text())
@@ -474,9 +474,9 @@ class SiteTests(unittest.TestCase):
         self.assertEqual(community.status_label("fixed", "BAFU"), "Resolved")
         index = parse(self.out / "index.html").find("main")
         sentences = [squash(n.text()) for n in index.find_all("span", "path-desc")]
-        self.assertEqual(sentences, ["Someone finds an issue in BAFU's files.", "A second person verifies it.",
-                                     "The finding is reported to BAFU.", "BAFU answers.", "A new BAFU release addresses it."])
-        self.assertEqual(index.find("h2", id="how").text(), "How a case moves")
+        self.assertEqual(sentences, ["Record what you found in the original files.", "Someone else checks the finding on the same release.",
+                                     "The finding is reported to BAFU.", "BAFU answers.", "A published release or file from BAFU corrects the finding."])
+        self.assertEqual(index.find("h2", id="how").text(), "How it works")
 
     def test_no_generated_page_frames_the_path_by_a_release_or_says_what_bafu_will_do(self):
         pages = [self.out / name for name in ("index.html", "changes.html", "housekeeping.html", "404.html")]
@@ -573,8 +573,8 @@ class SiteTests(unittest.TestCase):
         self.assertEqual([a.attrs["href"] for a in primary], [f"{REPO}/issues/8"])
         # A finding that waits for a second measurement asks for one.
         waiting = parse(self.out / "findings/F19.html").find("main").text()
-        self.assertIn("Can you verify this issue?", waiting)
-        self.assertNotIn("Can you verify this issue?", page.find("main").text())
+        self.assertIn("Verify this finding", waiting)
+        self.assertNotIn("Verify this finding", page.find("main").text())
 
     def test_bafus_answer_is_set_apart_and_marked_as_a_summary(self):
         answer = parse(self.out / "findings/F1.html").find("section", "answer")
@@ -785,8 +785,8 @@ class SiteTests(unittest.TestCase):
             # The status vocabulary names every status with the sentence that explains it.
             (root / "site/data.md").write_text("# X\n\n<!-- generated: status-vocabulary -->\n")
             words = parse(site.document(next(d for d in site.docs if d["source"] == "site/data.md"))).find("dl", "vocabulary")
-            self.assertEqual([squash(dt.text()) for dt in words.find_all("dt")], [x["label"] for x in community.statuses("BAFU")])
-            self.assertEqual([squash(dd.text()) for dd in words.find_all("dd")], [x["description"] for x in community.statuses("BAFU")])
+            self.assertEqual([squash(dt.text()) for dt in words.find_all("dt")], [site.label(x["key"]) for x in community.STATUSES])
+            self.assertEqual([squash(dd.text()) for dd in words.find_all("dd")], [site_status.description(x["key"], "BAFU") for x in community.STATUSES])
             (root / "site/data.md").write_text("# X\n\n<!-- count:no-such-number -->\n")
             with self.assertRaises(ValueError):
                 site.document(next(d for d in site.docs if d["source"] == "site/data.md"))
@@ -1082,7 +1082,7 @@ class ScaleTests(unittest.TestCase):
             self.assertLess((self.out / name).stat().st_size, 600_000, name)
         release = parse(self.out / "releases/2026-v1.html")
         more = [a.attrs["href"] for a in release.find_all("a", "arrow")]
-        self.assertIn("../cases.html?q=release-2026-v1&stage=Needs+verifying", more)
+        self.assertIn("../cases.html?q=release-2026-v1&stage=Awaiting+verification", more)
         tally = {a.attrs["href"]: int(a.find("strong").text().replace(",", "")) for a in release.find("ul", "tally").find_all("a")}
         observed = [f for f in self.findings if "2026-v1" in f["releases"]]
         self.assertEqual(tally["#status-filed"], sum(community.stage(f) == "filed" for f in observed))

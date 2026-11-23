@@ -1,5 +1,5 @@
 """The overview: what happens here and why, the five steps with their counts, what needs a
-verifying now, what changed recently, the ways to take part, the patched copy.
+verification now, what changed recently, the ways to take part, the patched copy.
 Each thing is said once."""
 
 from . import findings, pages, shell, status
@@ -7,14 +7,14 @@ from .text import esc, ext
 
 
 def second_measurement_list(site, up="", limit=5):
-    """The findings that need verifying, the longest waiting first."""
+    """The findings awaiting verification, the longest waiting first."""
     waiting = sorted(
         (f for f in site.triage["findings"] if f["stage"] == "filed"),
         key=lambda f: (f["waiting_since"] or "9999", f["id"]),
     )
     return findings.rows(
         site, waiting, up, limit=limit, more=status.stage_url(site, "filed", up, "?sort=waiting"),
-        empty="No finding is waiting to be verified.", cases=bool(site.config.get("case_review")),
+        empty="No finding is awaiting verification.", cases=bool(site.config.get("case_review")),
     )
 
 
@@ -24,8 +24,8 @@ def ways(site, up=""):
     report = site.finding_submission()
     return (
         '<div class="ways">'
-        f'<div class="card"><h3>Verify an issue</h3><p>Take a finding that needs verifying, check it in '
-        f"{p}'s files and write in its discussion what you found. A different result is as useful as the same one.</p>"
+        f'<div class="card"><h3>Verify a finding</h3><p>Choose an open finding, check it on '
+        f"{p}'s files and write in its discussion what you got. A different result is as useful as the same one.</p>"
         f'<a class="arrow" href="{up}take-part.html">How to take part</a></div>'
         '<div class="card"><h3>Report a finding</h3><p>Say which dataset and which release, what you found and how. '
         f'Reporting needs a free GitHub account.</p>{ext(report, "Report a finding")}</div>'
@@ -50,19 +50,25 @@ def overview(site):
     opening = (
         f'<section class="wrap hero"><p class="eyebrow">{d} life-cycle inventory database</p>'
         f"<h1>Feedback on {p}'s inventory data, from the people who use it</h1>"
-        f'<p class="lead">Users of the {d} life-cycle inventory database record here what they find in the data, verify '
-        f"each other's findings and report them to {p}. The aim is a better database for everyone. "
+        f'<p class="lead">Users of the {d} life-cycle inventory database record here what they find in the data, check '
+        f"each other's measurements and report the findings to {p}. The aim is a better database for everyone. "
         f"{p} decides what it changes.</p>"
         f'<div class="actions">{browse}{compare_link}</div>'
         f"{shell.lookup(site)}</section>"
     )
+    navigation = dict(site.config.get("nav", []))
+    workflow = "".join(
+        f'<li><a href="{esc(page)}">{esc(navigation[page])}</a><span>{esc(action)}</span></li>'
+        for page, action in site.config.get("review_workflow", [])
+    )
+    journey = f'<ol class="review-workflow" aria-label="Explore the review process">{workflow}</ol>' if workflow else ""
     steps = (
-        '<section class="wrap section" aria-labelledby="how"><div class="section-head"><h2 id="how">How a case moves</h2></div>'
-        f"{status.path_with_counts(site)}</section>"
+        '<section class="wrap section" aria-labelledby="how"><div class="section-head"><h2 id="how">How it works</h2></div>'
+        f"{journey}{status.path_with_counts(site)}</section>"
     )
     wanted = (
         '<section class="wrap section" aria-labelledby="help"><div class="section-head">'
-        '<h2 id="help">Needs verifying</h2></div>'
+        '<h2 id="help">Findings awaiting verification</h2></div>'
         + second_measurement_list(site) + "</section>"
     ) if waiting else ""
     recent = (

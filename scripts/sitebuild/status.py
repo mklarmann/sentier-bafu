@@ -17,19 +17,19 @@ from .text import day, esc, thousands
 
 # (evidence key, name of the step, what happens). {p} is the provider's name, {a_p} the name
 # with its article ("A ..." or "An ...").
-# The feedback is continuous: the path ends when a new release of the provider addresses it,
+# The feedback is continuous: the path ends when a release of the provider covers the point,
 # and nothing here frames it as waiting for a release.
 STEPS = (
-    ("reported", "Found", "Someone finds an issue in {p}'s files."),
-    ("repeated", "Verified", "A second person verifies it."),
+    ("reported", "Identify", "Record what you found in the original files."),
+    ("repeated", "Verify", "Someone else checks the finding on the same release."),
     ("sent", "Reported to {p}", "The finding is reported to {p}."),
     ("answer", "Answered by {p}", "{p} answers."),
-    ("fixed_in", "Resolved", "A new {p} release addresses it."),
+    ("fixed_in", "Resolved", "A published release or file from {p} corrects the finding."),
 )
 # The status of the findings that wait after each step, and the words under their count.
 AFTER = {
-    "reported": ("filed", "needs verifying", "need verifying"),
-    "repeated": ("confirmed", "verified, not yet reported", "verified, not yet reported"),
+    "reported": ("filed", "awaiting verification", "awaiting verification"),
+    "repeated": ("confirmed", "verified, ready to report", "verified, ready to report"),
     "sent": ("sent", "reported, no answer yet", "reported, no answer yet"),
     "answer": ("answered", "answered by {p}", "answered by {p}"),
     "fixed_in": ("fixed", "resolved", "resolved"),
@@ -53,16 +53,33 @@ TYPICAL = {
     "fixed": ("done", "done", "done", "done", "done"),
 }
 OFF = '<span class="meter off" aria-hidden="true"></span>'
-# The two statuses off the path, each with its own mark: an i for information, a struck box for withdrawn.
-OFF_MARK = {
-    "not-a-defect": '<span class="meter off info" aria-hidden="true"></span>',
-    "withdrawn": '<span class="meter off gone" aria-hidden="true"></span>',
-}
-
-
-def off_mark(key):
-    return OFF_MARK.get(key, OFF)
 CONTRIBUTION_STATES = ("proposed", "testing", "reviewing", "accepted")
+
+
+def display_label(stage, provider):
+    if stage == "filed":
+        return "Awaiting verification"
+    if stage == "confirmed":
+        return "Verified, ready to report"
+    return community.status_label(stage, provider)
+
+
+def description(stage, provider):
+    if stage == "filed":
+        return f"A second person can verify this finding on {provider}'s original files."
+    if stage == "confirmed":
+        return f"A second person checked this finding and found the same; it has not been reported to {provider} yet."
+    if stage == "fixed":
+        return f"The record identifies the published {provider} release or file that corrects this finding."
+    if stage == "withdrawn":
+        return "The finding did not hold when it was checked again; it stays listed so that nobody reports it a second time."
+    return community.status_description(stage, provider)
+
+
+def marker(key):
+    if key in TYPICAL:
+        return meter(TYPICAL[key])
+    return f'<span class="off-mark {esc(key)}" aria-hidden="true"></span>'
 
 
 def meter(states):
@@ -131,7 +148,7 @@ def finding_tracker(site, f, up=""):
         f'<section class="tracker{" is-off" if off else ""}" aria-label="Where this finding stands">'
         + path(steps, "The path of this finding")
         + f'<p class="stage-line"><strong>{esc(site.label(f["stage"]))}.</strong> '
-        f'{esc(community.status_description(f["stage"], p))}</p></section>'
+        f'{esc(description(f["stage"], p))}</p></section>'
     )
 
 
@@ -140,7 +157,7 @@ def status_cell(site, f):
     label = esc(site.label(f["stage"]))
     if f["closed"]:
         return (f'<div class="record-stage off"><span class="stage-label">{label}</span>'
-                f'<span class="stage-sub">{off_mark(f["stage"])}<span class="tag">off the path</span></span></div>')
+                f'<span class="stage-sub">{marker(f["stage"])}<span class="tag">off the path</span></span></div>')
     tags = ""
     if f["answer"]:
         tags += f'<span class="tag">{esc(community.OUTCOMES[f["answer"]["outcome"]]["label"].lower())}</span>'
@@ -159,10 +176,10 @@ def chips(site, counts, href="#stage-{}", label="Filter by status"):
         key, n = status["key"], counts.get(status["key"], 0)
         if key == "not-a-defect":
             out += '<span class="chips-gap">Off the path</span>'
-        mark = meter(TYPICAL[key]) if key in TYPICAL else off_mark(key)
+        mark = marker(key)
         out += (
             f'<a class="chip{"" if n else " none"}" href="{href.format(key)}" data-filter="{key}">'
-            f'{mark}{esc(status["label"])} <b>{thousands(n)}</b></a>'
+            f'{mark}{esc(site.label(status["key"]))} <b>{thousands(n)}</b></a>'
         )
     return out + "</div>"
 
@@ -192,19 +209,13 @@ def path_with_counts(site, up=""):
     info, gone = counts.get("not-a-defect", 0), counts.get("withdrawn", 0)
 
     def off(n, key, words):
-        text = f"{off_mark(key)}<strong>{thousands(n)}</strong> {words}"
-        return f'<a href="{esc(stage_url(site, key, up))}">{text}</a>' if n else text
+        text = f"<strong>{thousands(n)}</strong> {words}"
+        return marker(key) + " " + (f'<a href="{esc(stage_url(site, key, up))}">{text}</a>' if n else text)
 
-    tabs = dict(site.config.get("nav", []))
-    register = "cases.html" if "cases.html" in tabs else "findings.html"
-    where = (
-        f'<p class="path-tabs">Every case is on the <a href="{up}{register}">{esc(tabs[register])}</a> tab. '
-        f'<a href="{up}take-part.html">{esc(tabs["take-part.html"])}</a> says how to report or verify one.</p>'
-    ) if register in tabs and "take-part.html" in tabs else ""
     return (
-        f'<div class="card pipeline">{path(steps, "How a case moves", "counts")}'
+        f'<div class="card pipeline">{path(steps, "How it works", "counts")}'
         f'<p class="path-off"><span>Off the path</span> {off(info, "not-a-defect", "for information")} · '
-        f'{off(gone, "withdrawn", "withdrawn")}</p>{where}</div>'
+        f'{off(gone, "withdrawn", "withdrawn")}</p></div>'
     )
 
 
@@ -212,8 +223,8 @@ def vocabulary(site):
     """Every status with its meter and the one sentence that is true of every finding that has it."""
     rows = ""
     for status in community.statuses(site.provider):
-        mark = meter(TYPICAL[status["key"]]) if status["key"] in TYPICAL else off_mark(status["key"])
-        rows += f'<div><dt>{mark}{esc(status["label"])}</dt><dd>{esc(status["description"])}</dd></div>'
+        mark = marker(status["key"])
+        rows += f'<div><dt>{mark}{esc(site.label(status["key"]))}</dt><dd>{esc(description(status["key"], site.provider))}</dd></div>'
     return f'<dl class="panel vocabulary">{rows}</dl>'
 
 

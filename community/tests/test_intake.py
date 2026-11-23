@@ -224,7 +224,7 @@ class SavedIssueTests(unittest.TestCase):
         for name in ("repeated", "sent", "answer", "fixed_in", "closed"):
             self.assertIsNone(record[name])
         self.assertEqual(community.stage(record), "filed")
-        self.assertEqual(community.status_label(community.stage(record), "BAFU"), "Needs verifying")
+        self.assertEqual(community.status_label(community.stage(record), "BAFU"), "Needs a second measurement")
         self.assertEqual(community.validate_finding(record, community.record_path(record)), [])
         self.assertEqual(record["scope"], "389238 Production, washing machine, V-ZUG (CH, hr; `a` in BAFU:2025 v2)")
         self.assertIn("1,653 of 1,654 are identical", record["observation"])

@@ -15,8 +15,8 @@ body:
         **What happens next**
 
         1. A record of your finding is proposed as a pull request. Its number is the number of this issue: issue 48 is finding F48.
-        2. A maintainer reads the record and merges it. The finding is then listed on the site with the status "Needs verifying".
-        3. A second person verifies the issue in BAFU's release files and comments here, beginning with the line `/repeated reproduced` or `/repeated not-reproduced`.
+        2. A maintainer reads the record and merges it. The finding is then listed on the site with the status "Awaiting verification".
+        3. A second person verifies the finding on BAFU's release files and comments here, beginning with the line `/repeated reproduced` or `/repeated not-reproduced`.
         4. Findings are reported to BAFU together. BAFU decides what it changes; its answer is recorded here.
   - type: dropdown
     id: kind

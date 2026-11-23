@@ -31,7 +31,7 @@ REPO = "https://github.com/sentier-dev/sentier-bafu"
 CONFIG = community.load_config(frozen.RECORDS)
 RECORDED = json.loads((FIXTURES / "issues-bafu-finding.json").read_text())
 LABELS = json.loads((FIXTURES / "labels.json").read_text())
-FILED = "status: needs verifying"
+FILED = "status: needs a second measurement"
 
 
 def finding(number=48, **changes):
@@ -70,7 +70,7 @@ class LabelTests(unittest.TestCase):
     def test_a_label_says_the_status_in_the_words_of_the_site(self):
         self.assertEqual(
             [sync.label_for(status["key"], "BAFU") for status in community.STATUSES],
-            ["status: needs verifying", "status: verified not yet reported", "status: reported to BAFU",
+            ["status: needs a second measurement", "status: repeated not yet reported", "status: reported to BAFU",
              "status: answered by BAFU", "status: resolved", "status: for information", "status: withdrawn"],
         )
         self.assertEqual(sync.label_for("sent", "ADEME"), "status: reported to ADEME")
@@ -126,7 +126,7 @@ class PlanTests(unittest.TestCase):
         self.assertEqual(entry["marker"], "sync: F48=filed")
         self.assertIsNone(entry["close"])
         self.assertIn("/repeated reproduced", entry["comment"])
-        self.assertIn("status **Needs verifying**", entry["comment"])
+        self.assertIn("status **Needs a second measurement**", entry["comment"])
         self.assertIn("https://sentier-dev.github.io/sentier-bafu/findings/F48.html", entry["comment"])
 
     def test_each_step_of_the_path_changes_one_label_and_says_so_once(self):
@@ -170,7 +170,7 @@ class PlanTests(unittest.TestCase):
     def test_a_closed_issue_whose_finding_is_still_on_its_way_is_for_a_person(self):
         entry = self.one(finding(), sync.expected_labels("filed", "BAFU"), "closed")
         self.assertEqual((entry["add"], entry["remove"], entry["announce"], entry["close"]), ([], [], False, None))
-        self.assertIn("#48 is closed, but F48 is still on its way (Needs verifying)", entry["person"][0])
+        self.assertIn("#48 is closed, but F48 is still on its way (Needs a second measurement)", entry["person"][0])
 
     def test_a_label_set_by_hand_is_put_right_without_a_comment_when_the_status_is_unchanged(self):
         right = sync.expected_labels("sent", "BAFU")
@@ -194,11 +194,11 @@ class PlanTests(unittest.TestCase):
         self.assertIsNone(entry["comment"])
 
     def test_labels_are_told_apart_without_regard_to_case_as_github_does(self):
-        labels = {"bafu-finding", "Help Wanted", "Status: Needs Verifying"}
+        labels = {"bafu-finding", "Help Wanted", "Status: Needs a second measurement"}
         self.assertEqual(self.plan([finding()], {48: issue(labels)}), [])
-        entry = self.one(finding(**PATH[2]), {"bafu-finding", "Help Wanted", "STATUS: NEEDS VERIFYING"})
+        entry = self.one(finding(**PATH[2]), {"bafu-finding", "Help Wanted", "STATUS: NEEDS A SECOND MEASUREMENT"})
         self.assertEqual(entry["add"], ["status: reported to BAFU"])
-        self.assertEqual(entry["remove"], ["Help Wanted", "STATUS: NEEDS VERIFYING"])
+        self.assertEqual(entry["remove"], ["Help Wanted", "STATUS: NEEDS A SECOND MEASUREMENT"])
         self.assertTrue(entry["announce"])
         existing = {"Status: Withdrawn": {"name": "Status: Withdrawn", "description": "x"}}
         create, describe = sync.label_changes(existing, "BAFU")
@@ -569,8 +569,8 @@ class StalenessTests(unittest.TestCase):
         self.assertEqual(differences, [], "waiting is no difference: nothing is written for it")
         text = sync.report(differences, findings, issues, CONFIG, today=self.TODAY)
         self.assertIn("Waiting longer than the threshold of their status: 2.", text)
-        self.assertLess(text.index("F49: Verified, not yet reported since 2026-09-10 (112 days; threshold 30)"),
-                        text.index("F48: Needs verifying since 2026-11-20 (41 days; threshold 30)"))
+        self.assertLess(text.index("F49: Repeated, not yet reported since 2026-09-10 (112 days; threshold 30)"),
+                        text.index("F48: Needs a second measurement since 2026-11-20 (41 days; threshold 30)"))
 
 
 if __name__ == "__main__":

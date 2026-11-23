@@ -199,7 +199,7 @@ class Site:
         return f"{url}&dataset={quote(dataset)}" if dataset else url
 
     def label(self, stage):
-        return community.status_label(stage, self.provider)
+        return status.display_label(stage, self.provider)
 
     def release_name(self, rid):
         names = {r["id"]: r["name"] for r in self.records_config["releases"]}

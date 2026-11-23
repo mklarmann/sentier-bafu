@@ -112,6 +112,13 @@
     ["patch-and-build.html", "Build"],
     ["take-part.html", "Contribute"]
   ],
+  "review_workflow": [
+    ["inventory.html", "Find a dataset by name, code or location."],
+    ["sources.html", "Find the release, report or contribution behind an observation."],
+    ["cases.html", "Follow the evidence and the review decision."],
+    ["patch-and-build.html", "Check what a patch changes in the inventory and its results."],
+    ["take-part.html", "Report a finding, verify one or propose a change."]
+  ],
   "footer": [
     [
       "about/terms.html",

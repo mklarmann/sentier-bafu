@@ -153,7 +153,7 @@ Example, the title of F2: `Refrigerant R134a: HFC, HCFC and CFC emissions exactl
 
 ### Next step
 
-One or two sentences that start with what happens next, for example: "A second person verifies the issue in BAFU's release files. Then the finding is reported to BAFU." Name no label and no internal state.
+One or two sentences that start with what happens next, for example: "A second person verifies the finding on BAFU's release files. Then the finding is reported to BAFU." Name no label and no internal state.
 
 ### Title of a contribution
 
@@ -170,14 +170,14 @@ A noun phrase that names the thing proposed, at most 90 characters. No verb of i
 
 | For | Write |
 |---|---|
-| Where a finding stands | its **status**, in the words the site shows, such as "Needs verifying" |
+| Where a finding stands | its **status**, in the words the site shows, such as "Awaiting verification" |
 | A community change to the files | a **community patch** ("patch 0001") |
 | A preparation that every reader of the files needs | an **import fix** |
 | What BAFU publishes to put something right | a **correction** ("corrected by BAFU") |
 | The whole | **the database** (first mention: the BAFU/UVEK life-cycle inventory database) |
 | One process in it | a **dataset** |
 | A release | **BAFU:2026 v1** |
-| Checking a finding again | a **verification**; to **verify the issue** (not "measurement": an issue in a database is already there) |
+| Checking a finding again | a **verification**; to **verify the finding** (not "measurement": an issue in a database is already there) |
 | Telling BAFU | to **report to BAFU** |
 | What BAFU said | **BAFU's answer** |
 

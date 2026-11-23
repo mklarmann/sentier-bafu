@@ -318,12 +318,14 @@ select { /* drawn here, so that Safari does not fall back to its small native co
 .meter i.help { background: var(--wait); border-color: var(--wait); }
 .meter i.fail { background: var(--fail); border-color: var(--fail); }
 .meter i.gap { border-color: var(--index); background: linear-gradient(var(--index), var(--index)) center / 55% 1.5px no-repeat; }
+.off-mark { display: inline-block; font: 700 1rem/1 sans-serif; }
+.off-mark.not-a-defect::before { content: "ⓘ"; }
+.off-mark.withdrawn::before { content: "⊖"; }
+.review-workflow { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(13rem,100%),1fr)); padding: 0; margin: 0 0 var(--s5); gap: var(--s4); list-style: none; }
+.review-workflow li { padding: var(--s3) var(--s4); border-left: 3px solid var(--index-soft); }
+.review-workflow a { font-weight: 800; }
+.review-workflow span { display: block; color: var(--muted); margin-top: var(--s1); }
 .meter.off { width: .875rem; height: .4375rem; border: 1.5px dashed var(--line-strong); border-radius: 2px; }
-.meter.off.info { width: .75rem; height: .75rem; border-style: solid; border-radius: 50%; display: inline-grid; place-items: center; font-size: .5625rem; font-weight: 800; line-height: 1; color: var(--muted); }
-.meter.off.info::after { content: "i"; }
-.meter.off.gone { border-style: solid; background: linear-gradient(to top right, transparent calc(50% - .75px), var(--line-strong) calc(50% - .75px), var(--line-strong) calc(50% + .75px), transparent calc(50% + .75px)); }
-.path-off .meter { margin-right: var(--s1, .25rem); }
-.path-tabs { margin-top: var(--s3); font-size: var(--t-sm); color: var(--muted); }
 .tag { font-size: var(--t-xs); font-weight: 700; color: var(--muted); white-space: nowrap; }
 
 /* path: the tracker. Across from 40rem, down below. */
