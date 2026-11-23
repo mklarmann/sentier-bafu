@@ -455,14 +455,14 @@ class SiteTests(unittest.TestCase):
         for claim in ("repeated by a second person", "Every finding has", "each with evidence and named reviewers",
                       "apply the corrections", "Together", "next release", "promise", " will "):
             self.assertNotIn(claim, text)
-        self.assertIn("check each other's measurements and report the findings to BAFU", text)
+        self.assertIn("verify each other's findings and report them to BAFU", text)
         self.assertIn("The aim is a better database for everyone. BAFU decides what it changes.", text)
         # Each thing is said once.
         self.assertEqual(text.count("BAFU decides what it changes"), 1)
         self.assertEqual(text.count("A different result is as useful as the same one"), 1)
 
     def test_the_path_has_the_same_five_steps_wherever_it_appears(self):
-        steps = ["Measured", "Repeated", "Reported to BAFU", "Answered by BAFU", "Resolved"]
+        steps = ["Found", "Verified", "Reported to BAFU", "Answered by BAFU", "Resolved"]
 
         def names(page, cls):
             return [squash(n.children[0] if isinstance(n.children[0], str) else n.text())
@@ -474,9 +474,9 @@ class SiteTests(unittest.TestCase):
         self.assertEqual(community.status_label("fixed", "BAFU"), "Resolved")
         index = parse(self.out / "index.html").find("main")
         sentences = [squash(n.text()) for n in index.find_all("span", "path-desc")]
-        self.assertEqual(sentences, ["Someone measures it on BAFU's files.", "A second person repeats the measurement.",
-                                     "The finding is reported to BAFU.", "BAFU answers.", "A BAFU release covers the point."])
-        self.assertEqual(index.find("h2", id="how").text(), "How it works")
+        self.assertEqual(sentences, ["Someone finds an issue in BAFU's files.", "A second person verifies it.",
+                                     "The finding is reported to BAFU.", "BAFU answers.", "A new BAFU release addresses it."])
+        self.assertEqual(index.find("h2", id="how").text(), "How a case moves")
 
     def test_no_generated_page_frames_the_path_by_a_release_or_says_what_bafu_will_do(self):
         pages = [self.out / name for name in ("index.html", "changes.html", "housekeeping.html", "404.html")]
@@ -573,8 +573,8 @@ class SiteTests(unittest.TestCase):
         self.assertEqual([a.attrs["href"] for a in primary], [f"{REPO}/issues/8"])
         # A finding that waits for a second measurement asks for one.
         waiting = parse(self.out / "findings/F19.html").find("main").text()
-        self.assertIn("Can you repeat this measurement?", waiting)
-        self.assertNotIn("Can you repeat this measurement?", page.find("main").text())
+        self.assertIn("Can you verify this issue?", waiting)
+        self.assertNotIn("Can you verify this issue?", page.find("main").text())
 
     def test_bafus_answer_is_set_apart_and_marked_as_a_summary(self):
         answer = parse(self.out / "findings/F1.html").find("section", "answer")
@@ -1082,7 +1082,7 @@ class ScaleTests(unittest.TestCase):
             self.assertLess((self.out / name).stat().st_size, 600_000, name)
         release = parse(self.out / "releases/2026-v1.html")
         more = [a.attrs["href"] for a in release.find_all("a", "arrow")]
-        self.assertIn("../cases.html?q=release-2026-v1&stage=Needs+a+second+measurement", more)
+        self.assertIn("../cases.html?q=release-2026-v1&stage=Needs+verifying", more)
         tally = {a.attrs["href"]: int(a.find("strong").text().replace(",", "")) for a in release.find("ul", "tally").find_all("a")}
         observed = [f for f in self.findings if "2026-v1" in f["releases"]]
         self.assertEqual(tally["#status-filed"], sum(community.stage(f) == "filed" for f in observed))

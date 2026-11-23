@@ -17,19 +17,19 @@ from .text import day, esc, thousands
 
 # (evidence key, name of the step, what happens). {p} is the provider's name, {a_p} the name
 # with its article ("A ..." or "An ...").
-# The feedback is continuous: the path ends when a release of the provider covers the point,
+# The feedback is continuous: the path ends when a new release of the provider addresses it,
 # and nothing here frames it as waiting for a release.
 STEPS = (
-    ("reported", "Measured", "Someone measures it on {p}'s files."),
-    ("repeated", "Repeated", "A second person repeats the measurement."),
+    ("reported", "Found", "Someone finds an issue in {p}'s files."),
+    ("repeated", "Verified", "A second person verifies it."),
     ("sent", "Reported to {p}", "The finding is reported to {p}."),
     ("answer", "Answered by {p}", "{p} answers."),
-    ("fixed_in", "Resolved", "{a_p} release covers the point."),
+    ("fixed_in", "Resolved", "A new {p} release addresses it."),
 )
 # The status of the findings that wait after each step, and the words under their count.
 AFTER = {
-    "reported": ("filed", "needs a second measurement", "need a second measurement"),
-    "repeated": ("confirmed", "repeated, not yet reported", "repeated, not yet reported"),
+    "reported": ("filed", "needs verifying", "need verifying"),
+    "repeated": ("confirmed", "verified, not yet reported", "verified, not yet reported"),
     "sent": ("sent", "reported, no answer yet", "reported, no answer yet"),
     "answer": ("answered", "answered by {p}", "answered by {p}"),
     "fixed_in": ("fixed", "resolved", "resolved"),
@@ -53,6 +53,15 @@ TYPICAL = {
     "fixed": ("done", "done", "done", "done", "done"),
 }
 OFF = '<span class="meter off" aria-hidden="true"></span>'
+# The two statuses off the path, each with its own mark: an i for information, a struck box for withdrawn.
+OFF_MARK = {
+    "not-a-defect": '<span class="meter off info" aria-hidden="true"></span>',
+    "withdrawn": '<span class="meter off gone" aria-hidden="true"></span>',
+}
+
+
+def off_mark(key):
+    return OFF_MARK.get(key, OFF)
 CONTRIBUTION_STATES = ("proposed", "testing", "reviewing", "accepted")
 
 
@@ -131,7 +140,7 @@ def status_cell(site, f):
     label = esc(site.label(f["stage"]))
     if f["closed"]:
         return (f'<div class="record-stage off"><span class="stage-label">{label}</span>'
-                f'<span class="stage-sub">{OFF}<span class="tag">off the path</span></span></div>')
+                f'<span class="stage-sub">{off_mark(f["stage"])}<span class="tag">off the path</span></span></div>')
     tags = ""
     if f["answer"]:
         tags += f'<span class="tag">{esc(community.OUTCOMES[f["answer"]["outcome"]]["label"].lower())}</span>'
@@ -150,7 +159,7 @@ def chips(site, counts, href="#stage-{}", label="Filter by status"):
         key, n = status["key"], counts.get(status["key"], 0)
         if key == "not-a-defect":
             out += '<span class="chips-gap">Off the path</span>'
-        mark = meter(TYPICAL[key]) if key in TYPICAL else OFF
+        mark = meter(TYPICAL[key]) if key in TYPICAL else off_mark(key)
         out += (
             f'<a class="chip{"" if n else " none"}" href="{href.format(key)}" data-filter="{key}">'
             f'{mark}{esc(status["label"])} <b>{thousands(n)}</b></a>'
@@ -183,13 +192,19 @@ def path_with_counts(site, up=""):
     info, gone = counts.get("not-a-defect", 0), counts.get("withdrawn", 0)
 
     def off(n, key, words):
-        text = f"<strong>{thousands(n)}</strong> {words}"
+        text = f"{off_mark(key)}<strong>{thousands(n)}</strong> {words}"
         return f'<a href="{esc(stage_url(site, key, up))}">{text}</a>' if n else text
 
+    tabs = dict(site.config.get("nav", []))
+    register = "cases.html" if "cases.html" in tabs else "findings.html"
+    where = (
+        f'<p class="path-tabs">Every case is on the <a href="{up}{register}">{esc(tabs[register])}</a> tab. '
+        f'<a href="{up}take-part.html">{esc(tabs["take-part.html"])}</a> says how to report or verify one.</p>'
+    ) if register in tabs and "take-part.html" in tabs else ""
     return (
-        f'<div class="card pipeline">{path(steps, "How it works", "counts")}'
+        f'<div class="card pipeline">{path(steps, "How a case moves", "counts")}'
         f'<p class="path-off"><span>Off the path</span> {off(info, "not-a-defect", "for information")} · '
-        f'{off(gone, "withdrawn", "withdrawn")}</p></div>'
+        f'{off(gone, "withdrawn", "withdrawn")}</p>{where}</div>'
     )
 
 
@@ -197,7 +212,7 @@ def vocabulary(site):
     """Every status with its meter and the one sentence that is true of every finding that has it."""
     rows = ""
     for status in community.statuses(site.provider):
-        mark = meter(TYPICAL[status["key"]]) if status["key"] in TYPICAL else OFF
+        mark = meter(TYPICAL[status["key"]]) if status["key"] in TYPICAL else off_mark(status["key"])
         rows += f'<div><dt>{mark}{esc(status["label"])}</dt><dd>{esc(status["description"])}</dd></div>'
     return f'<dl class="panel vocabulary">{rows}</dl>'
 

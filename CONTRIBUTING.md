@@ -1,6 +1,6 @@
 # Contributing
 
-This file is for people who change this repository: its records, its site or its scripts. To report a finding, repeat a measurement or propose a contribution, start on the site's [Contribute](https://sentier-dev.github.io/sentier-bafu/take-part.html) page.
+This file is for people who change this repository: its records, its site or its scripts. To report a finding, verify one or propose a contribution, start on the site's [Contribute](https://sentier-dev.github.io/sentier-bafu/take-part.html) page.
 
 Open an issue or a pull request. For a contribution, name the BAFU release and the exact version of what you propose, and give public evidence, the steps to apply it beside BAFU's release, the results of the checks and the positions of the people involved. Start from the templates in [`community/templates/`](community/templates/). Keep objections on record.
 
@@ -153,7 +153,7 @@ Example, the title of F2: `Refrigerant R134a: HFC, HCFC and CFC emissions exactl
 
 ### Next step
 
-One or two sentences that start with what happens next, for example: "A second person repeats the measurement on BAFU's release files. Then the finding is reported to BAFU." Name no label and no internal state.
+One or two sentences that start with what happens next, for example: "A second person verifies the issue in BAFU's release files. Then the finding is reported to BAFU." Name no label and no internal state.
 
 ### Title of a contribution
 
@@ -170,14 +170,14 @@ A noun phrase that names the thing proposed, at most 90 characters. No verb of i
 
 | For | Write |
 |---|---|
-| Where a finding stands | its **status**, in the words the site shows, such as "Needs a second measurement" |
+| Where a finding stands | its **status**, in the words the site shows, such as "Needs verifying" |
 | A community change to the files | a **community patch** ("patch 0001") |
 | A preparation that every reader of the files needs | an **import fix** |
 | What BAFU publishes to put something right | a **correction** ("corrected by BAFU") |
 | The whole | **the database** (first mention: the BAFU/UVEK life-cycle inventory database) |
 | One process in it | a **dataset** |
 | A release | **BAFU:2026 v1** |
-| Repeating a measurement | a **second measurement**; to **repeat the measurement** |
+| Checking a finding again | a **verification**; to **verify the issue** (not "measurement": an issue in a database is already there) |
 | Telling BAFU | to **report to BAFU** |
 | What BAFU said | **BAFU's answer** |
 
@@ -186,7 +186,7 @@ These words are not used in a record or on the site: stage, triage, ledger, laye
 ### People and sources
 
 - BAFU's answer is summarised, never quoted. It is attributed to BAFU and names no person. Do not mention private correspondence.
-- A record names a person only as the reporter, as the person who repeated a measurement, or as the author or the authoriser of a community patch.
+- A record names a person only as the reporter, as the person who verified a finding, or as the author or the authoriser of a community patch.
 - Record text is Markdown. It holds no raw HTML, no image and no heading, and every link is a full `https://` address. `check` refuses anything else.
 
 ## Work done with an AI agent

@@ -10,8 +10,8 @@ BAFU, the Swiss Federal Office for the Environment (FOEN), publishes the BAFU/UV
 
 - **Reported to BAFU.** A finding is shown as reported when its record holds the date of the report and a public link that shows it. Where a record holds no such date, the page says "not recorded".
 - **BAFU's answer.** An answer is shown as a short summary, with its date and a link to the place where it is recorded. The summary is attributed to BAFU as an office. It names no person and quotes no message. An answer says what BAFU said. It does not show that the data has changed.
-- **Resolved.** A finding is resolved once a BAFU release or file that the record names covers the point, whether or not that followed a report made here.
-- **Repeated, not yet reported.** A second person repeated the measurement and got the same result. The finding has not been reported to BAFU yet.
+- **Resolved.** A finding is resolved once a new BAFU release, or a corrected file from BAFU, addresses it, for example by adopting a proposed patch. That counts whether or not a report made here led to it.
+- **Verified, not yet reported.** A second person checked the issue and found the same. The finding has not been reported to BAFU yet.
 
 ## A community patch is not BAFU's correction
 
@@ -19,4 +19,4 @@ Some findings have a community patch. A community patch changes a copy of BAFU's
 
 ## Where the evidence is
 
-Each finding has its own page. The page says what was observed and where the finding is discussed. The [case register](cases.md) lists them all, and [take part](take-part.md) explains how to repeat a measurement.
+Each finding has its own page. The page says what was observed and where the finding is discussed. The [case register](cases.md) lists them all, and [take part](take-part.md) explains how to verify a measurement.

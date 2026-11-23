@@ -319,6 +319,11 @@ select { /* drawn here, so that Safari does not fall back to its small native co
 .meter i.fail { background: var(--fail); border-color: var(--fail); }
 .meter i.gap { border-color: var(--index); background: linear-gradient(var(--index), var(--index)) center / 55% 1.5px no-repeat; }
 .meter.off { width: .875rem; height: .4375rem; border: 1.5px dashed var(--line-strong); border-radius: 2px; }
+.meter.off.info { width: .75rem; height: .75rem; border-style: solid; border-radius: 50%; display: inline-grid; place-items: center; font-size: .5625rem; font-weight: 800; line-height: 1; color: var(--muted); }
+.meter.off.info::after { content: "i"; }
+.meter.off.gone { border-style: solid; background: linear-gradient(to top right, transparent calc(50% - .75px), var(--line-strong) calc(50% - .75px), var(--line-strong) calc(50% + .75px), transparent calc(50% + .75px)); }
+.path-off .meter { margin-right: var(--s1, .25rem); }
+.path-tabs { margin-top: var(--s3); font-size: var(--t-sm); color: var(--muted); }
 .tag { font-size: var(--t-xs); font-weight: 700; color: var(--muted); white-space: nowrap; }
 
 /* path: the tracker. Across from 40rem, down below. */

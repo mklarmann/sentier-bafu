@@ -169,7 +169,7 @@ A comment on a line of its own is replaced by a generated block. Both forms work
 | `status-tracker` | the five steps of a finding's path with the number of findings that wait after each, and the two statuses off the path |
 | `status-vocabulary` | every status with its meter and the sentence that explains it |
 | `feedback-lists` | reported without answer, answered, resolved, repeated and not yet reported, each as a count and a list; then the reports by date |
-| `second-measurement-list` | the five findings that have waited longest for a second measurement, and a link to all of them |
+| `second-measurement-list` | the five findings that have waited longest to be verified, and a link to all of them |
 | `recent-changes` | the five newest dated steps |
 | `patch-table` | every community patch from `community/patches.json`, which `scripts/patches_snapshot.py` writes from the patch registry: what it does, the finding it answers, who wrote it, who authorised it |
 | `last-run` | the last run of the workflow that `"run"` in the configuration names, as the opening of a page: which run it is and whether it worked, then the run step by step (what each step does, the run's figures and notes for it, every line it printed), and the three answers: did it work, what is blocking, what was in it. What precedes the marker and the block itself stand above the page's two columns, over the full width; "On this page" begins below. What a step does is told in `site/run-steps.json`, in plain words and without a number: every figure is one the run states in its own account (`run.json`). The lines are the run's, character for character: they wrap, and a reader can have each on one line, take the whole window for them, copy them, or point at one (the time of a line is its link, `#run-line-N`). The run prints no colour; the name of a step, a command, a word that says how something ended and a checksum are told apart by the page, by the words alone, and no character is added or taken. One button replays the run, and while it plays goes to its end: nothing is paused, because the end is the page as it is. The steps are the run's own and the page adds none: what the run prints after its last step stands with that step, and whether a run made for a tag was kept under it is said with the answers. Read by `scripts/last_run.py` from GitHub when the site is built; `--last-run FILE` gives a saved record instead, and `--offline` builds without one. `--built-by OWNER/NAME` names the repository whose runs are read; a copy built by another repository than the site's own carries a preview notice on every page |
@@ -221,7 +221,7 @@ The public word for where a finding stands is **status**, and the site shows it 
 
 | Key | Status shown | Reached when the record has |
 |---|---|---|
-| `filed` | Needs a second measurement | nothing but `reported` |
+| `filed` | Needs verifying | nothing but `reported` |
 | `confirmed` | Repeated, not yet reported | `repeated` with result `reproduced`, by someone other than the reporter |
 | `sent` | Reported to BAFU | `sent` |
 | `answered` | Answered by BAFU | `answer` |
@@ -231,7 +231,7 @@ The public word for where a finding stands is **status**, and the site shows it 
 
 The status is the first that applies of `closed`, `fixed_in`, `answer`, `sent`, `repeated`; otherwise the finding is `filed`. A community patch and BAFU's answer are facts beside the status, never a status.
 
-The tracker shows the five steps of the path, in these words wherever it appears: Measured, Repeated, Reported to BAFU, Answered by BAFU, Resolved. A step is shown as done only when the record holds its evidence. A step without evidence that a later step has passed says "not recorded". The feedback is continuous and not tied to BAFU's releases: a finding is resolved once a BAFU release covers the point, and no generated text frames the path as waiting for a release or says what BAFU will do.
+The tracker shows the five steps of the path, in these words wherever it appears: Found, Verified, Reported to BAFU, Answered by BAFU, Resolved. A step is shown as done only when the record holds its evidence. A step without evidence that a later step has passed says "not recorded". The feedback is continuous and not tied to BAFU's releases: a finding is resolved once a BAFU release covers the point, and no generated text frames the path as waiting for a release or says what BAFU will do.
 
 Generated text follows the house style: British spelling; "12 October 2026" in prose and "12 Oct 2026" in lists, always inside `<time datetime>`; no person's name except the author and the authoriser of a community patch, as the registry gives them; never stage, triage, ledger, layer, upstream, provider, candidate or fix (except "import fix") for the site's own things.
 

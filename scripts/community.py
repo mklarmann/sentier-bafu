@@ -149,13 +149,13 @@ LAST_LEGACY_NUMBER = 47
 STATUSES = [
     {
         "key": "filed",
-        "label": "Needs a second measurement",
-        "description": "No second person is on record as having repeated this measurement on {provider}'s files.",
+        "label": "Needs verifying",
+        "description": "No second person is on record as having verified this issue in {provider}'s files.",
     },
     {
         "key": "confirmed",
-        "label": "Repeated, not yet reported",
-        "description": "A second person repeated the measurement and reproduced it; it has not been reported to {provider} yet.",
+        "label": "Verified, not yet reported",
+        "description": "A second person checked the issue and found the same; it has not been reported to {provider} yet.",
     },
     {
         "key": "sent",
@@ -170,7 +170,7 @@ STATUSES = [
     {
         "key": "fixed",
         "label": "Resolved",
-        "description": "{a_provider} release covers this point; the release is named below.",
+        "description": "A new {provider} release addresses this point; the release is named below.",
     },
     {
         "key": "not-a-defect",
@@ -180,7 +180,7 @@ STATUSES = [
     {
         "key": "withdrawn",
         "label": "Withdrawn",
-        "description": "The observation did not hold when it was measured again; it stays listed so that nobody reports it a second time.",
+        "description": "The issue did not hold when it was checked again; it stays listed so that nobody reports it a second time.",
     },
 ]
 STAGE_ORDER = {s["key"]: n for n, s in enumerate(STATUSES)}

@@ -563,7 +563,7 @@ class StageTests(unittest.TestCase):
             self.assertNotIn("provider", (status["label"] + status["description"]).lower())
             self.assertEqual(status["description"].count(". "), 0, "one sentence")
         self.assertEqual(records.status_label("sent", "BAFU"), "Reported to BAFU")
-        self.assertEqual(records.status_label("filed", "BAFU"), "Needs a second measurement")
+        self.assertEqual(records.status_label("filed", "BAFU"), "Needs verifying")
         self.assertEqual(records.status_label("fixed", "ecoinvent"), "Resolved")
         self.assertEqual(records.status_label("answered", "ecoinvent"), "Answered by ecoinvent")
 
@@ -881,7 +881,7 @@ class CommandTests(WorkspaceCase):
                                               "url": f"{REPO}/issues/41#issuecomment-9", "result": "reproduced"})
         self.assertEqual(records.stage(record), "confirmed")
         self.assertEqual(tuple(record), records.FINDING_FIELDS)
-        self.assertIn("Needs a second measurement -> Repeated, not yet reported", text)
+        self.assertIn("Needs verifying -> Verified, not yet reported", text)
         self.assertEqual(self.result()[0], 0)
 
     def test_repeat_refuses_the_reporter(self):

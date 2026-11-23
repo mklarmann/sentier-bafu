@@ -35,7 +35,7 @@ def discussion(site, f):
     issue = f["tracker"]
     if f["issue"]:
         url = issue["url"] if issue else f'{site.repo}/issues/{int(f["issue"])}'
-        return url, f'Issue #{int(f["issue"])}', issue["comments"] if issue else None
+        return url, f'GitHub issue #{int(f["issue"])}', issue["comments"] if issue else None
     if f["threads"]:
         return f["threads"][0], link_label(f["threads"][0], site.repo), None
     return None, "", None
@@ -251,8 +251,8 @@ def discussion_card(site, f, up):
     if f["stage"] == "filed":
         where = f'in {ext(url, esc(label.replace("Issue", "issue")))}' if url else "in its discussion"
         card += (
-            '<section class="card help" aria-labelledby="repeat"><h2 class="card-label" id="repeat">Can you repeat this measurement?</h2>'
-            f"<p>Measure it on {esc(site.provider)}'s release files and write what you got {where}. "
+            '<section class="card help" aria-labelledby="repeat"><h2 class="card-label" id="repeat">Can you verify this issue?</h2>'
+            f"<p>Check it in {esc(site.provider)}'s release files and write what you found {where}. "
             "A different result is as useful as the same one.</p>"
             f'<a class="arrow" href="{up}take-part.html">How to take part</a></section>'
         )
