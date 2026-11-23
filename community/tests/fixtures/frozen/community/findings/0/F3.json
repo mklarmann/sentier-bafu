@@ -1,0 +1,43 @@
+{
+  "schema": 2,
+  "id": "F3",
+  "issue": 8,
+  "title": "23 supplier links declare location ENTSO (registered as ENTSO-E); two declare CH for GLO/RER suppliers",
+  "kind": "defect",
+  "datasets": [],
+  "scope": "hard-coal supply chains + 2 others",
+  "releases": [
+    "2026-v1"
+  ],
+  "observation": "23 exchanges declare the supplier location `ENTSO`; no dataset is registered as ENTSO, 25 as ENTSO-E, and every one of the 23 suppliers exists as ENTSO-E. Two more exchanges declare `CH` for suppliers that exist only as GLO / RER (`Disposal, concrete, 5% water, to inert material landfill`; `Direct air capture system, sorbent-based, 100ktCO2`). An importer linking by name + location drops all 25 silently; one linking by dataset number does not.",
+  "exposure": "",
+  "method": "Re-measured on the release files by the reporter's side, not by a second person; the patch changes a location only when a supplier with the new location exists.",
+  "reported": {
+    "by": "mklarmann",
+    "date": "2026-10-07",
+    "url": "https://github.com/sentier-dev/sentier-bafu/issues/8"
+  },
+  "repeated": null,
+  "sent": null,
+  "answer": {
+    "date": "2026-10-12",
+    "outcome": "confirmed",
+    "summary": "BAFU confirmed the 25 supplier locations and said it will correct them in its next release.",
+    "url": "https://github.com/sentier-dev/sentier-bafu/issues/8#issuecomment-6312244411"
+  },
+  "fixed_in": null,
+  "closed": null,
+  "related": [
+    "F14",
+    "F16"
+  ],
+  "threads": [
+    "https://gitlab.com/eos-lci/lci-bafu-catalog/-/issues/3"
+  ],
+  "next": {
+    "action": "Verify the 25 locations in the next BAFU release; then record the correction and retire patch 0002. F14 and F16 are the same class but not part of patch 0002.",
+    "role": "maintainer"
+  },
+  "retained": [],
+  "notes": ""
+}

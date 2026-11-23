@@ -22,6 +22,20 @@ Pin the inventory checkout to the contribution's baseline revision. The script r
 
 For application testing, follow the toolkit's validate/rebuild_inventory.py and compare_multi.py instructions using a **copy** of the baseline data root. Export baseline and reconstructed candidate to separate paths with sentier-brightway; compare stock bw2calc scores across agreed products and methods. Never rebuild the canonical data root in place. Keep the baseline inventory pin aligned with the exported baseline; the installer's pinned cache can differ from the current inventory checkout.
 
+**Checks run on 21 October 2026** ([run record](runs/hackathon-checks-2026-10-21.json)):
+- **Round trip:** an exact comparison (no tolerance) across 766 families and 129,687 rows
+  finds no mismatch, so the representation is lossless as claimed.
+- **`forecast-held-out-validation` fails.** The rule was written before results were computed.
+  With undefined F1 counted as 0 and the eight regional aggregates not scored as
+  members, a simple baseline (technologies used by at least half the other members)
+  scores F1 0.80 and MAE 0.050, against the MILP's 0.65 and 0.061.
+- **`units-and-mass-balance` fails.** The sum-to-one constraint is applied to 90 families
+  whose inputs share one unit; in 22 of them no member sums to one.
+- **Score parity** was not run.
+- **To install at all,** pin `pulp<4`: `pulp>=2.7` resolves to 4.1.0, which breaks the
+  forecast. The toolkit also needs the inventory revision it was tested on, because
+  sentier-inventory's layout changed on 13 October.
+
 Forecasting is a different layer from lossless representation: test held-out products and locations, unit compatibility and physically meaningful share constraints; do not claim forecast outputs are source observations or mass-balanced merely because all inputs share a unit.
 
 ## Other contributions

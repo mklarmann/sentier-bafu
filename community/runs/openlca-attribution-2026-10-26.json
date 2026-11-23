@@ -1,0 +1,254 @@
+{
+  "date": "2026-10-26",
+  "kind": "score attribution; evidence for the published comparison, not an acceptance test",
+  "question": "Where do the differences between this route and BAFU's published LCIA results come from?",
+  "reference": {
+    "file": "BAFU-2026 v1 LCIA Results.xlsx",
+    "sheet": "BAFU_2026 v1",
+    "sha256": "a213ab5ad5252ad36366a2999dbd63ef64bd8aa65c006d937ff878dbad3a239c",
+    "note": "June 2026 workbook. Its ecotoxicity sub-indicator columns are swapped (F17); sub-indicators are compared against the swapped columns here. Re-run on 26 October 2026 against BAFU's corrected July workbook (BAFU-2026 v1 LCIA Results_corrected.xlsx, sha256 7e9f1c9f9c171f847b5d445c8d939896cc7594571a77029ca6c098f1dde7b672): it differs from the June file in three cells only: the date, and the header labels of the two ecotoxicity sub-indicator columns, which are exchanged. Every value is identical, so every share, median and zero count is unchanged, and the two sub-indicators now agree as labelled."
+  },
+  "design": "One technosphere and biosphere for all 11,947 processes, read from BAFU's own openLCA database (BAFU-2026 v1 openLCA.zolca), every one of its 293,747 elementary exchanges paired with sentier-inventory. Scored twice with only the factor vector changed: (1) the EF 3.1 method stored in that database ('EF 3.1 Method (adapted)', version 00.00.037; its description names openLCA LCIA methods 2.8.0); (2) JRC's EF 3.1 factors through this route's flow bridge. Strict rule of the 21 October comparison: every (process, category) pair counts, ratio ours/BAFU, within 1 %.",
+  "validation": "The JRC side reproduces the 21 October comparison record exactly in all 25 categories (same pins; shares, medians and zero counts identical).",
+  "per_category": [
+    {
+      "category": "climate",
+      "route_within_1pct": 0.9972,
+      "route_median_ratio": 1.0,
+      "bafu_openlca_greendelta_within_1pct": 0.9973,
+      "bafu_openlca_greendelta_outside_1pct_processes": 32,
+      "of_which_near_zero": 20,
+      "route_with_greendelta_numbers_on_shared_flows_within_1pct": 0.9973
+    },
+    {
+      "category": "cc_bio",
+      "route_within_1pct": 0.9965,
+      "route_median_ratio": 1.0,
+      "bafu_openlca_greendelta_within_1pct": 0.997,
+      "bafu_openlca_greendelta_outside_1pct_processes": 36,
+      "of_which_near_zero": 21,
+      "route_with_greendelta_numbers_on_shared_flows_within_1pct": 0.997
+    },
+    {
+      "category": "cc_fos",
+      "route_within_1pct": 0.9971,
+      "route_median_ratio": 1.0,
+      "bafu_openlca_greendelta_within_1pct": 0.9972,
+      "bafu_openlca_greendelta_outside_1pct_processes": 34,
+      "of_which_near_zero": 22,
+      "route_with_greendelta_numbers_on_shared_flows_within_1pct": 0.9972
+    },
+    {
+      "category": "cc_luc",
+      "route_within_1pct": 0.9968,
+      "route_median_ratio": 1.0,
+      "bafu_openlca_greendelta_within_1pct": 0.9968,
+      "bafu_openlca_greendelta_outside_1pct_processes": 38,
+      "of_which_near_zero": 21,
+      "route_with_greendelta_numbers_on_shared_flows_within_1pct": 0.9968
+    },
+    {
+      "category": "ozone",
+      "route_within_1pct": 0.9955,
+      "route_median_ratio": 1.0,
+      "bafu_openlca_greendelta_within_1pct": 0.9969,
+      "bafu_openlca_greendelta_outside_1pct_processes": 37,
+      "of_which_near_zero": 26,
+      "route_with_greendelta_numbers_on_shared_flows_within_1pct": 0.9955
+    },
+    {
+      "category": "radiation",
+      "route_within_1pct": 0.9931,
+      "route_median_ratio": 1.0,
+      "bafu_openlca_greendelta_within_1pct": 0.9971,
+      "bafu_openlca_greendelta_outside_1pct_processes": 35,
+      "of_which_near_zero": 22,
+      "route_with_greendelta_numbers_on_shared_flows_within_1pct": 0.9972
+    },
+    {
+      "category": "photo_ox",
+      "route_within_1pct": 0.997,
+      "route_median_ratio": 1.0,
+      "bafu_openlca_greendelta_within_1pct": 0.9971,
+      "bafu_openlca_greendelta_outside_1pct_processes": 35,
+      "of_which_near_zero": 21,
+      "route_with_greendelta_numbers_on_shared_flows_within_1pct": 0.9971
+    },
+    {
+      "category": "pm",
+      "route_within_1pct": 0.9931,
+      "route_median_ratio": 1.0,
+      "bafu_openlca_greendelta_within_1pct": 0.9972,
+      "bafu_openlca_greendelta_outside_1pct_processes": 34,
+      "of_which_near_zero": 22,
+      "route_with_greendelta_numbers_on_shared_flows_within_1pct": 0.9931
+    },
+    {
+      "category": "ht_nc",
+      "route_within_1pct": 0.9506,
+      "route_median_ratio": 1.0011,
+      "bafu_openlca_greendelta_within_1pct": 0.9977,
+      "bafu_openlca_greendelta_outside_1pct_processes": 27,
+      "of_which_near_zero": 12,
+      "route_with_greendelta_numbers_on_shared_flows_within_1pct": 0.9509
+    },
+    {
+      "category": "ht_nc_inorg",
+      "route_within_1pct": 0.9529,
+      "route_median_ratio": 1.0014,
+      "bafu_openlca_greendelta_within_1pct": 0.9976,
+      "bafu_openlca_greendelta_outside_1pct_processes": 29,
+      "of_which_near_zero": 14,
+      "route_with_greendelta_numbers_on_shared_flows_within_1pct": 0.9529
+    },
+    {
+      "category": "ht_nc_org",
+      "route_within_1pct": 0.975,
+      "route_median_ratio": 1.0,
+      "bafu_openlca_greendelta_within_1pct": 0.9974,
+      "bafu_openlca_greendelta_outside_1pct_processes": 31,
+      "of_which_near_zero": 12,
+      "route_with_greendelta_numbers_on_shared_flows_within_1pct": 0.9772
+    },
+    {
+      "category": "ht_c",
+      "route_within_1pct": 0.0264,
+      "route_median_ratio": 1.3553,
+      "bafu_openlca_greendelta_within_1pct": 0.9977,
+      "bafu_openlca_greendelta_outside_1pct_processes": 28,
+      "of_which_near_zero": 14,
+      "route_with_greendelta_numbers_on_shared_flows_within_1pct": 0.0264
+    },
+    {
+      "category": "ht_c_inorg",
+      "route_within_1pct": 0.0173,
+      "route_median_ratio": 2.0114,
+      "bafu_openlca_greendelta_within_1pct": 0.9977,
+      "bafu_openlca_greendelta_outside_1pct_processes": 27,
+      "of_which_near_zero": 10,
+      "route_with_greendelta_numbers_on_shared_flows_within_1pct": 0.0173
+    },
+    {
+      "category": "ht_c_org",
+      "route_within_1pct": 0.9967,
+      "route_median_ratio": 1.0,
+      "bafu_openlca_greendelta_within_1pct": 0.9972,
+      "bafu_openlca_greendelta_outside_1pct_processes": 34,
+      "of_which_near_zero": 18,
+      "route_with_greendelta_numbers_on_shared_flows_within_1pct": 0.9968
+    },
+    {
+      "category": "acid",
+      "route_within_1pct": 0.9972,
+      "route_median_ratio": 1.0,
+      "bafu_openlca_greendelta_within_1pct": 0.9971,
+      "bafu_openlca_greendelta_outside_1pct_processes": 35,
+      "of_which_near_zero": 21,
+      "route_with_greendelta_numbers_on_shared_flows_within_1pct": 0.9971
+    },
+    {
+      "category": "e_fw",
+      "route_within_1pct": 0.9973,
+      "route_median_ratio": 1.0,
+      "bafu_openlca_greendelta_within_1pct": 0.9973,
+      "bafu_openlca_greendelta_outside_1pct_processes": 32,
+      "of_which_near_zero": 17,
+      "route_with_greendelta_numbers_on_shared_flows_within_1pct": 0.9973
+    },
+    {
+      "category": "e_m",
+      "route_within_1pct": 0.8851,
+      "route_median_ratio": 1.0014,
+      "bafu_openlca_greendelta_within_1pct": 0.9977,
+      "bafu_openlca_greendelta_outside_1pct_processes": 28,
+      "of_which_near_zero": 13,
+      "route_with_greendelta_numbers_on_shared_flows_within_1pct": 0.8851
+    },
+    {
+      "category": "e_t",
+      "route_within_1pct": 0.9971,
+      "route_median_ratio": 1.0,
+      "bafu_openlca_greendelta_within_1pct": 0.9972,
+      "bafu_openlca_greendelta_outside_1pct_processes": 33,
+      "of_which_near_zero": 17,
+      "route_with_greendelta_numbers_on_shared_flows_within_1pct": 0.9972
+    },
+    {
+      "category": "ecotox",
+      "route_within_1pct": 0.7176,
+      "route_median_ratio": 1.0004,
+      "bafu_openlca_greendelta_within_1pct": 0.9977,
+      "bafu_openlca_greendelta_outside_1pct_processes": 27,
+      "of_which_near_zero": 17,
+      "route_with_greendelta_numbers_on_shared_flows_within_1pct": 0.7216
+    },
+    {
+      "category": "ecotox_inorg",
+      "route_within_1pct": 0.0116,
+      "route_median_ratio": 31.0352,
+      "bafu_openlca_greendelta_within_1pct": 0.0116,
+      "bafu_openlca_greendelta_outside_1pct_processes": 27,
+      "of_which_near_zero": 17,
+      "route_with_greendelta_numbers_on_shared_flows_within_1pct": 0.0116
+    },
+    {
+      "category": "ecotox_org",
+      "route_within_1pct": 0.0117,
+      "route_median_ratio": 0.0326,
+      "bafu_openlca_greendelta_within_1pct": 0.0116,
+      "bafu_openlca_greendelta_outside_1pct_processes": 33,
+      "of_which_near_zero": 19,
+      "route_with_greendelta_numbers_on_shared_flows_within_1pct": 0.0117
+    },
+    {
+      "category": "land",
+      "route_within_1pct": 0.9885,
+      "route_median_ratio": 1.0003,
+      "bafu_openlca_greendelta_within_1pct": 0.9976,
+      "bafu_openlca_greendelta_outside_1pct_processes": 29,
+      "of_which_near_zero": 12,
+      "route_with_greendelta_numbers_on_shared_flows_within_1pct": 0.9884
+    },
+    {
+      "category": "water",
+      "route_within_1pct": 0.2268,
+      "route_median_ratio": 1.0338,
+      "bafu_openlca_greendelta_within_1pct": 0.9969,
+      "bafu_openlca_greendelta_outside_1pct_processes": 37,
+      "of_which_near_zero": 30,
+      "route_with_greendelta_numbers_on_shared_flows_within_1pct": 0.2266
+    },
+    {
+      "category": "energy",
+      "route_within_1pct": 0.9748,
+      "route_median_ratio": 0.9993,
+      "bafu_openlca_greendelta_within_1pct": 0.9971,
+      "bafu_openlca_greendelta_outside_1pct_processes": 35,
+      "of_which_near_zero": 25,
+      "route_with_greendelta_numbers_on_shared_flows_within_1pct": 0.9947
+    },
+    {
+      "category": "mater",
+      "route_within_1pct": 0.9913,
+      "route_median_ratio": 1.0,
+      "bafu_openlca_greendelta_within_1pct": 0.9974,
+      "bafu_openlca_greendelta_outside_1pct_processes": 31,
+      "of_which_near_zero": 12,
+      "route_with_greendelta_numbers_on_shared_flows_within_1pct": 0.9914
+    }
+  ],
+  "findings": [
+    "BAFU's published results are reproduced by its own openLCA database scored with the EF 3.1 package it ships: 99.68-99.77 % of processes within 1 % in every category. The 27-38 processes per category outside that are mostly results near zero; a handful (e.g. 'Disposal, non-sulfidic overburden', 'Treatment of fuel cell stack, 1MWe, SOEC') are not explained yet.",
+    "Giving this route GreenDelta's number wherever both use the same flow (brightway-flows 1.1.0 crosswalk) leaves cancer toxicity, water use, ecotoxicity, marine eutrophication and non-cancer toxicity within half a percentage point of where they were. Two categories do move: resource use, fossils (97.5 -> 99.5 %) and ionising radiation (99.3 -> 99.7 %). The five differences come from which flow an exchange is assigned to, not from different numbers for the same flow.",
+    "Cancer toxicity: the two implementations characterise unspecified chromium differently; this route uses EF's chromium flow, which carries Cr(VI)'s factors (the method difference decided in sentier-mappings round 7).",
+    "Water use: BAFU applies country-specific water factors; this route installs global factors only. Separately, this route leaves the 'Chemically polluted water' and 'Waste water' returns unlinked.",
+    "Marine eutrophication: 'Nitrogen' emitted to water is scored on this route as EF 'Nitrogen, total' (factor 1.0), a documented decision (sentier-mappings #15).",
+    "Ionising radiation x1000 in 20 processes is an inventory unit reading: BAFU's ecoSpold states Carbon-14 and Radon-222 in Bq where its openLCA database holds the same numbers in kBq (F12)."
+  ],
+  "limits": [
+    "Shows which factor set and flow assignment reproduce BAFU's numbers, not which is correct.",
+    "'Same flow' means the brightway-flows 1.1.0 consensus crosswalk; 855 of the 2,460 openLCA flows used have no consensus id, so on 5,778 of 21,720 matrix rows a number difference and an identity difference cannot be told apart.",
+    "openLCA's calculation was reconstructed, not run; the 99.7 % agreement supports the reconstruction."
+  ],
+  "measured_by": "Manuel Klarmann (Eaternity), agent-run measurement"
+}

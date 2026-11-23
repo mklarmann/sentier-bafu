@@ -27,12 +27,18 @@ Start with [the synthetic audit example](../community/templates/build-audit.json
 `audit_registry.py` reads the final parquet registry produced by sentier-brightway. It checks manifest counts, consumer/target identities, finite amounts and CFs, duplicate factors and core CO2/CH4/N2O air-flow coverage in the headline EF 3.1 climate method. It reports missing coverage for every method without assuming that every substance should receive a factor in every category. It emits counts and hashes, not inventory amounts or factor tables.
 
 ```sh
-uv run --with pandas==2.2.3 --with pyarrow==19.0.1 scripts/audit_registry.py path/to/export --out .local/new-audit.json
+uv run --no-project --python 3.12 --with pandas==2.2.3 --with pyarrow==19.0.1 scripts/audit_registry.py path/to/export --out .local/new-audit.json
 ```
+
+The usage line in the script's docstring omits `--no-project --python 3.12`; the script is left unchanged because the export audit pins its SHA-256. Use the command above.
 
 The [measured export audit](runs/bafu-export-audit.json) passed on the previously generated, pinned baseline: **11,947 processes; 11,947 production, 114,369 technosphere and 293,747 biosphere exchanges**. All 420,063 exchange rows were retained in this exported registry. No missing core-gas factors were found under the stated policy. The report records input source pins, script and artifact hashes and per-method coverage.
 
-This establishes registry counts and identities, not raw ecoSpold parity, factor correctness, full greenhouse-gas coverage or LCIA score parity. In particular, the reported lci-bafu served-build differences remain unresolved. The script refuses to overwrite an evidence file.
+This establishes registry counts and identities, not raw ecoSpold parity, factor correctness, full greenhouse-gas coverage or LCIA score parity. The script refuses to overwrite an evidence file.
+
+### Measured importer parity
+
+The [importer parity run](runs/importer-parity-2026-10-21.json) compares sentier-importers and lci-bafu exchange by exchange on the same archive ([#2](https://github.com/sentier-dev/sentier-bafu/issues/2)). Both read the same 420,063 exchanges with the same classes. lci-bafu serves 22 fewer: 21 biosphere exchanges whose flows its flow-list build does not ingest, and one technosphere link declared at a location where no supplier exists ([#29](https://github.com/sentier-dev/sentier-bafu/issues/29)). Separately, 11 exchanges link to different suppliers, because BAFU's supplier number and declared location name different datasets: sentier-importers links by supplier number and keeps the declared location as stated, lci-bafu follows the declared location. Which one BAFU intends is open; until it is settled, the inventory can store both for these 11. The run also records the 3,217 biosphere amounts that lci-bafu converts to the flow list's units. It establishes what each importer reads and serves, not which importer is right where the source is ambiguous.
 
 ## Pin the inputs and the outputs
 
@@ -48,3 +54,17 @@ The audit emits a **summary_sha256** over the dataset, scope, counts, changes, c
 - **Scenario or forecast:** hold scope fixed and record assumptions, uncertainty and held-out validation. A scenario is not automatically a correction of the provider's source dataset.
 
 Publish only permitted aggregate evidence and metadata. Inventories, licensed background files and confidential partner evidence stay local. A passing technical check is not partner consensus; [the review workflow](workflow.md) records those decisions separately.
+
+## Compare scores with BAFU's published results
+
+BAFU computed its published LCIA results in openLCA, with the EF 3.1 package shipped in its openLCA distribution. The current Sentier route (sentier-brightway with the sentier-mappings EF 3.1 bridge) uses the JRC's EF 3.1 factors. Matching BAFU's numbers is not a goal: the comparison attributes each difference to the route, BAFU's inventory, BAFU's workbook or a method difference, and the route is not changed to follow openLCA.
+
+The [score comparison](runs/sentier-brightway-backtest-2026-10-21.json) (21 October 2026) scored all 11,947 processes in 25 EF 3.1 categories against BAFU's `LCIA-Results.xlsx` (the June 2026 file). In 13 categories at least 99 % of processes are within ±1 %. Cancer toxicity (2.6 %), water use (22.7 %), ecotoxicity (71.8 %), marine eutrophication (88.5 %) and non-cancer toxicity (95.1 %) are not.
+
+The [attribution run](runs/openlca-attribution-2026-10-26.json) shows where that comes from. BAFU's own openLCA database, scored with the package it ships, reproduces BAFU's published values for 99.7–99.8 % of processes in every category. Using that package's number wherever both use the same flow changes none of the five; the differences come from which flow an exchange is assigned to.
+
+- **Method differences.** Unspecified chromium is characterised differently: the route uses EF's chromium flow (the Cr(VI) factors), as decided in sentier-mappings round 7. BAFU applies country-specific water factors, where the route installs global ones.
+- **In the route.** It leaves two water returns unlinked.
+- **In BAFU's files.** The FI gas electricity label error ([#28](https://github.com/sentier-dev/sentier-bafu/issues/28)); the swapped ecotoxicity sub-indicator columns of the June workbook ([#35](https://github.com/sentier-dev/sentier-bafu/issues/35)), which BAFU's corrected July workbook fixes; and ionising-radiation amounts that BAFU's ecoSpold states in Bq and its openLCA database in kBq (F12).
+
+Both runs read the June workbook. Re-run against BAFU's corrected July workbook (26 October), every result is unchanged; the July file differs only in the header labels of the two ecotoxicity sub-indicator columns, which are now correct (F17).

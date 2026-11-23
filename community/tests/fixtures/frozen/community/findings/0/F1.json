@@ -1,0 +1,63 @@
+{
+  "schema": 2,
+  "id": "F1",
+  "issue": 6,
+  "title": "Strawberries in plastic tunnel: 126 / 18 / 18 kg of polyethylene disposal per kg of fruit",
+  "kind": "defect",
+  "datasets": [
+    {
+      "code": 188725,
+      "name": "Strawberries, conventional, unheated plastic tunnel",
+      "location": "ES"
+    },
+    {
+      "code": 178351,
+      "name": "Strawberries, organic, unheated plastic tunnel",
+      "location": "CH"
+    },
+    {
+      "code": 242090,
+      "name": "Strawberries, conventional, unheated plastic tunnel",
+      "location": "CH"
+    }
+  ],
+  "scope": "",
+  "releases": [
+    "2025-v2",
+    "2026-v1"
+  ],
+  "observation": "126.22 / 18.085 / 18.079 kg `Disposal, polyethylene, 0.4% water, to municipal incineration` per kg fruit, against 0.0096 / 0.042 / 0.036 kg of polyethylene granulate entering; the tunnel film is already disposed of in the tunnel dataset (per m²·a). The LCIA workbook scores them at 383 / 55 / 55 kg CO₂-eq per kg; the heated greenhouse in the same group scores 2.6. Identical in both releases; not in the 2026 change log.",
+  "exposure": "",
+  "method": "Re-measured on the release files by the reporter's side, not by a second person; the patch stops if a dataset does not carry the expected amount.",
+  "reported": {
+    "by": "mklarmann",
+    "date": "2026-10-07",
+    "url": "https://github.com/sentier-dev/sentier-bafu/issues/6"
+  },
+  "repeated": null,
+  "sent": null,
+  "answer": {
+    "date": "2026-10-12",
+    "outcome": "confirmed",
+    "summary": "BAFU confirmed the error and gave corrected amounts. They equal each dataset's own polyethylene granulate input. BAFU said it will correct the datasets in its next release.",
+    "url": "https://github.com/sentier-dev/sentier-bafu/issues/6#issuecomment-6312243969"
+  },
+  "fixed_in": null,
+  "closed": null,
+  "related": [],
+  "threads": [
+    "https://gitlab.com/eos-lci/lci-bafu-catalog/-/issues/1"
+  ],
+  "next": {
+    "action": "Verify the corrected amounts in the next BAFU release; then record the correction and retire patch 0001.",
+    "role": "maintainer"
+  },
+  "retained": [
+    {
+      "kind": "earlier-interpretation",
+      "text": "An earlier mass-balance framing of the finding was wrong and was corrected.",
+      "evidence_url": "https://gitlab.com/eos-lci/lci-bafu-catalog/-/issues/1"
+    }
+  ],
+  "notes": ""
+}

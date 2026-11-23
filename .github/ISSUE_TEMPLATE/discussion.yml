@@ -1,5 +1,5 @@
 name: Discussion
-description: A question or decision about the data, a method difference, or how a finding goes upstream
+description: A question or decision about the data, a method difference, or how a finding is reported to BAFU
 title: "[Discussion] "
 labels: ["discussion"]
 body:
@@ -7,14 +7,14 @@ body:
     id: topic
     attributes:
       label: Topic
-      description: One sentence — what should we decide, understand or change?
+      description: "One sentence: what should we decide, understand or change?"
     validations:
       required: true
   - type: textarea
     id: context
     attributes:
       label: Context
-      description: Links — a ledger row in community/findings.md, a BAFU release note, a contribution record, a paper.
+      description: "Links: a finding (its page on the site or its issue), a BAFU release note, a contribution, a paper."
   - type: textarea
     id: positions
     attributes:

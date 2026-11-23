@@ -1,0 +1,1971 @@
+{
+ "date": "2026-10-21",
+ "kind": "importer parity; sentier-importers vs lci-bafu on the same BAFU:2026 v1 archive (#2)",
+ "scope": "Exchange-level comparison of what each importer reads and serves from one archive. It does not judge which importer is right where BAFU's own data is ambiguous; those cases are listed as open.",
+ "pins": {
+  "archive": {
+   "path": "<local>/parity/input/bafu-2026-v1-ecospold.zip",
+   "sha256": "cbaeed4ae79c0be98709c854211cd72725d4f22f8b9b3fe334b7f343fca152f5",
+   "members_process_xml": 11947,
+   "ecospold_tree_sha256": "93215423864dcbdf779f8a652db77cfaa3b0b591857f141f1db60c962f587476",
+   "ecospold_tree_sha256_note": "lci_bafu.manifest.tree_sha256 recipe over the extracted members; equals lci-bafu releases/2026-v1.json raw.ecospold_tree_sha256 and the served manifest's raw pin",
+   "sha256_recomputed": "cbaeed4ae79c0be98709c854211cd72725d4f22f8b9b3fe334b7f343fca152f5"
+  },
+  "sentier_importers": {
+   "commit": "fe8adeba4c4ad7624879c37db5f540800d158d33",
+   "ref": "origin/main",
+   "worktree": "<local>/importer-parity",
+   "package_path_asserted_inside_worktree": true,
+   "run": "uv run --frozen --all-extras --all-groups sentier-importers run bafu-processes|bafu-exchanges"
+  },
+  "sentier_inventory": {
+   "commit": "c28bcd53e3c65bf1928fe5d5a7b39de32a7c3115",
+   "ref": "origin/main",
+   "canonical_checkout_HEAD": "c5aee155f0778f02e68a67fc766e23222a11686a (one merge behind; old per-sector folders)",
+   "vs_own_run": "processes.parquet identical (11,947 rows); exchanges.parquet 420,063 rows, identical except 152 uncertainty floats (scale 96, loc 56) differing by <= 2.2e-16 relative; row order differs (zip member order), compared per process"
+  },
+  "lci_bafu": {
+   "commit": "2133c4b9d95740c7814256643f5f98ca02396879",
+   "ref": "HEAD = origin/main",
+   "version": "0.1.13",
+   "code_copy": "git archive into <local>/parity/run/lci-bafu-src; lci_bafu import path asserted inside it",
+   "overlay_corrections_2026_v1_sha256": "6eaef47dde878d913f8b590dd0721cc827e87ab54212a8eb2fb051987c387553",
+   "overlay_sha_equals_served_manifest_corrections_sha256": true,
+   "flow_list_csv_sha256": "9b48bf6310fab6eff2a75bbeaaba92c5ce7cca01efb84964ef585e4d4aebaeab",
+   "served_manifest": {
+    "importer_version": "0.1.10",
+    "built": "2026-09-29T04:50:42+00:00",
+    "content_sha256": "045764a2d8589109f51f38cb49086468243ca4d6c99230ba059d263942dea61b"
+   },
+   "served_catalogue_sha256": "ca57c46ee8ddd62d1e01c3536c585f0b8ae71ec988d6d3e926399a30338a9c6f",
+   "python_libs": {
+    "bw2io": "0.9.17",
+    "bw2data": "4.7"
+   },
+   "dropped_edges_record": {
+    "path_at_commit": "src/lci_bafu/data/corrections/source_2026-v1_dropped_edges_2026-08-25.json (top-level corrections/ is a symlink to it)",
+    "sha256": "d608dbca8f1831189dfae4a5be2c624819e21c04a5a90989bb5ed46d9194c6b1"
+   },
+   "python_env": "fresh uv venv run/venv-lci-bafu: bw2io 0.9.17, bw2data 4.7, bw2calc 2.5.0, lxml 6.1.1 (versions of the shared .venv-bw, which was NOT used); BRIGHTWAY2_DIR = empty run/bwdir",
+   "served_manifest_sha256": "07f94e549f99c5ccbb1b20a51f5807dd66e84ec1899c6f31d4e0c34ea6e96368"
+  },
+  "bafu_change_log_xlsx_sha256": "bf75273d8f4ca7429a93bb7e721259928d6573d0a62e1fdd2ae33778beb09820",
+  "flow_list_csv": {
+   "file": "SetupDatabase_file.CSV (BAFU:2025 SimaPro export; the 2026 download ships none, per lci-bafu releases/2026-v1.json)",
+   "path_used": "SetupDatabase_file.CSV (BAFU:2025 SimaPro export)",
+   "sha256": "9b48bf6310fab6eff2a75bbeaaba92c5ce7cca01efb84964ef585e4d4aebaeab",
+   "equals_release_pin": true,
+   "encoding": "cp1252",
+   "sections": {
+    "Raw materials": 20378,
+    "Airborne emissions": 4426,
+    "Waterborne emissions": 3918,
+    "Final waste flows": 21,
+    "Emissions to soil": 3432,
+    "Non material emissions": 6,
+    "Economic issues": 231,
+    "Units": 97,
+    "Quantities": 16
+   }
+  },
+  "bafu_change_log_xlsx_sha256_recomputed": "bf75273d8f4ca7429a93bb7e721259928d6573d0a62e1fdd2ae33778beb09820"
+ },
+ "identity_key": "(dataset number = <dataset number=...>, exchange ordinal = 0-based position among flowData/exchange elements). Both sides key the same 420,063 exchanges; lci-bafu's per-file exchange-parse count equals the raw count in all 11,947 files.",
+ "object_names": {
+  "A_sentier": "sentier-importers BAFU sources bafu-processes + bafu-exchanges, run from worktree importer-parity at origin/main on the archive below (parquet written to <local>/parity/run/out/sentier); per-exchange ordinals from the same in-process parse+transform, asserted equal to the parquet row for row",
+  "A_published": "sentier-inventory data/bafu-2026-v1/ at the commit below (git show, not the working tree)",
+  "B_rebuilt": "lci-bafu REBUILT PARSE+LINK in memory: lci-bafu's EcoSpold1Parser, mapper, overlay location aliases, bw2io strategies, internal technosphere match and biosphere link (bafu_biosphere built in memory from the flow-list CSV by lci-bafu's own _create_bafu_biosphere); drop_unlinked and overlay restore entries emulated. No Brightway project written (BRIGHTWAY2_DIR = empty dir <local>/parity/run/bwdir).",
+  "B_served_manifest": "lci-bafu local, untracked dist/2026-v1/bafu_2026.manifest.json (served build of 2026-09-29, importer 0.1.10) - counts only",
+  "B_served_catalogue": "lci-bafu local, untracked results/bafu_catalog.json (serialisation of served project bafu_2026, exported 2026-09-27, exporter 0.1.3) - per-dataset (type, name, amount), no supplier keys",
+  "not_measured": "the live Brightway project bafu_2026 itself (not opened, by rule)"
+ },
+ "counts": {
+  "A_sentier (parquet rows, by flow_type)": {
+   "production": 11947,
+   "technosphere": 114369,
+   "biosphere": 293747,
+   "total": 420063
+  },
+  "B_rebuilt, all parsed edges (by type)": {
+   "production": 11947,
+   "technosphere": 114369,
+   "biosphere": 293747,
+   "total": 420063
+  },
+  "B_rebuilt, by fate": {
+   "biosphere/dropped_unlinked": 21,
+   "biosphere/linked": 293726,
+   "production/linked": 11947,
+   "technosphere/dropped_unlinked": 1,
+   "technosphere/linked": 114366,
+   "technosphere/restored_by_overlay": 2
+  },
+  "B_rebuilt, served (linked + overlay-restored)": {
+   "production": 11947,
+   "technosphere": 114368,
+   "biosphere": 293726,
+   "total": 420041
+  },
+  "B_served_manifest measured.counts": {
+   "production": 11947,
+   "technosphere": 114368,
+   "biosphere": 293726,
+   "exchanges": 420041,
+   "import.edges_total": 420063,
+   "import.unlinked_edges_total": 24
+  },
+  "B_served_catalogue (by type)": {
+   "production": 11947,
+   "technosphere": 114368,
+   "biosphere": 293726
+  },
+  "B_rebuilt vs B_served_catalogue": "0 datasets differ as multisets of (type, name, raw amount); negative control (serving every parsed edge) differs on 22 datasets",
+  "unlinked_at_import_B_rebuilt": {
+   "total": 24,
+   "biosphere": 21,
+   "technosphere": 3,
+   "note": "the 24 of the served manifest is this: 21 biosphere + 3 technosphere (2 later restored by B-002/B-026)"
+  },
+  "classification_agreement": "all 420,063 keyed exchanges carry the same class (production/technosphere/biosphere) on both sides"
+ },
+ "reconciliation": {
+  "served_set_difference": "420,063 (A) - 420,041 (B) = 22 = 21 biosphere + 1 technosphere, every one listed in differing_exchanges",
+  "technosphere_difference": "114,369 (A) - 114,368 (B) = 1 = dataset 584039 ordinal 46 (declared OCE, no overlay entry)",
+  "biosphere_difference": "293,747 (A) - 293,726 (B) = 21 = 13 economic-issues 'Water, embodied in product, XX' + 7 'Uranium' to water + 1 'Nitrogen dioxide, RAF'",
+  "same_edge_count_different_supplier": 11,
+  "by_reason_code": {
+   "economic_issues_section_not_ingested": 13,
+   "number_and_location_name_different_suppliers": 11,
+   "declared_CH_supplier_only_GLO_RER_restored": 2,
+   "flow_absent_from_flow_list_compartment": 7,
+   "flow_absent_from_flow_list": 1,
+   "declared_location_without_dataset_no_overlay": 1
+  }
+ },
+ "differing_exchanges": [
+  {
+   "dataset": "151668",
+   "dataset_file": "process_b8a44007-d762-3838-ac21-5ffd3884f499.xml",
+   "dataset_name": "Strawberries, conventional, heated greenhouse",
+   "dataset_location": "CH",
+   "exchange_ordinal": 21,
+   "exchange_number": "76560",
+   "exchange_name": "Water, embodied in product, CH",
+   "diff": [
+    "not_served_by_lci_bafu"
+   ],
+   "reason_code": "economic_issues_section_not_ingested",
+   "reason": "biosphere (outputGroup 4, category 'economic issues'). The flow IS in the flow-list CSV, section 'Economic issues', but lci-bafu builds bafu_biosphere only from six sections (SIMAPRO_SECTION_TO_CATEGORY has no 'Economic issues'), so the edge is unlinked and dropped. sentier-importers serves it under a uuid5 flow id.",
+   "sentier": {
+    "flow_type": "biosphere",
+    "group_code": 4,
+    "direction": "output",
+    "target_number": null,
+    "unit": "kg",
+    "location": null,
+    "amount": 0.9,
+    "category": "economic issues",
+    "subcategory": "unspecified"
+   },
+   "lci_bafu": {
+    "type": "biosphere",
+    "fate": "dropped_unlinked",
+    "restore_id": null,
+    "target_number": null,
+    "unit": "kilogram",
+    "location": null,
+    "declared_location": null,
+    "amount": 0.9,
+    "categories": [
+     "economic",
+     "primary production factor"
+    ],
+    "inputGroup": null,
+    "outputGroup": "4"
+   },
+   "sentier_target_location": null
+  },
+  {
+   "dataset": "178351",
+   "dataset_file": "process_f9a7fbd2-f755-3292-b3d0-b6e486e9f677.xml",
+   "dataset_name": "Strawberries, organic, unheated plastic tunnel",
+   "dataset_location": "CH",
+   "exchange_ordinal": 27,
+   "exchange_number": "76560",
+   "exchange_name": "Water, embodied in product, CH",
+   "diff": [
+    "not_served_by_lci_bafu"
+   ],
+   "reason_code": "economic_issues_section_not_ingested",
+   "reason": "biosphere (outputGroup 4, category 'economic issues'). The flow IS in the flow-list CSV, section 'Economic issues', but lci-bafu builds bafu_biosphere only from six sections (SIMAPRO_SECTION_TO_CATEGORY has no 'Economic issues'), so the edge is unlinked and dropped. sentier-importers serves it under a uuid5 flow id.",
+   "sentier": {
+    "flow_type": "biosphere",
+    "group_code": 4,
+    "direction": "output",
+    "target_number": null,
+    "unit": "kg",
+    "location": null,
+    "amount": 0.9,
+    "category": "economic issues",
+    "subcategory": "unspecified"
+   },
+   "lci_bafu": {
+    "type": "biosphere",
+    "fate": "dropped_unlinked",
+    "restore_id": null,
+    "target_number": null,
+    "unit": "kilogram",
+    "location": null,
+    "declared_location": null,
+    "amount": 0.9,
+    "categories": [
+     "economic",
+     "primary production factor"
+    ],
+    "inputGroup": null,
+    "outputGroup": "4"
+   },
+   "sentier_target_location": null
+  },
+  {
+   "dataset": "188725",
+   "dataset_file": "process_c2d0c99c-d28a-3b78-aad3-f4790f49c412.xml",
+   "dataset_name": "Strawberries, conventional, unheated plastic tunnel",
+   "dataset_location": "ES",
+   "exchange_ordinal": 17,
+   "exchange_number": "41905",
+   "exchange_name": "Water, embodied in product, ES",
+   "diff": [
+    "not_served_by_lci_bafu"
+   ],
+   "reason_code": "economic_issues_section_not_ingested",
+   "reason": "biosphere (outputGroup 4, category 'economic issues'). The flow IS in the flow-list CSV, section 'Economic issues', but lci-bafu builds bafu_biosphere only from six sections (SIMAPRO_SECTION_TO_CATEGORY has no 'Economic issues'), so the edge is unlinked and dropped. sentier-importers serves it under a uuid5 flow id.",
+   "sentier": {
+    "flow_type": "biosphere",
+    "group_code": 4,
+    "direction": "output",
+    "target_number": null,
+    "unit": "kg",
+    "location": null,
+    "amount": 0.9,
+    "category": "economic issues",
+    "subcategory": "unspecified"
+   },
+   "lci_bafu": {
+    "type": "biosphere",
+    "fate": "dropped_unlinked",
+    "restore_id": null,
+    "target_number": null,
+    "unit": "kilogram",
+    "location": null,
+    "declared_location": null,
+    "amount": 0.9,
+    "categories": [
+     "economic",
+     "primary production factor"
+    ],
+    "inputGroup": null,
+    "outputGroup": "4"
+   },
+   "sentier_target_location": null
+  },
+  {
+   "dataset": "195832",
+   "dataset_file": "process_1c395c00-26e8-3781-a8b8-024ed404a707.xml",
+   "dataset_name": "Natural gas, burned in power plant or heat plant",
+   "dataset_location": "RO",
+   "exchange_ordinal": 26,
+   "exchange_number": "345532",
+   "exchange_name": "Natural gas, high pressure, at consumer",
+   "diff": [
+    "technosphere_target"
+   ],
+   "reason_code": "number_and_location_name_different_suppliers",
+   "reason": "technosphere; the XML number 345532 names dataset 345532 (location RO), the XML location attribute says RER. sentier-importers follows the number; lci-bafu follows (name, location) to 330680 (location RER). Both sides serve an edge; they serve DIFFERENT suppliers.",
+   "sentier": {
+    "flow_type": "technosphere",
+    "group_code": 5,
+    "direction": "input",
+    "target_number": "345532",
+    "unit": "MJ",
+    "location": "RER",
+    "amount": 1.0,
+    "category": "fuels",
+    "subcategory": "natural gas\\gas to user"
+   },
+   "lci_bafu": {
+    "type": "technosphere",
+    "fate": "linked",
+    "restore_id": null,
+    "target_number": "330680",
+    "unit": "megajoule",
+    "location": "RER",
+    "declared_location": null,
+    "amount": 1.0,
+    "categories": [
+     "fuels",
+     "natural gas\\gas to user"
+    ],
+    "inputGroup": "5",
+    "outputGroup": null
+   },
+   "sentier_target_location": "RO"
+  },
+  {
+   "dataset": "202096",
+   "dataset_file": "process_4b80a9f6-b6a8-351f-bdcc-c5d6c0d185f1.xml",
+   "dataset_name": "Asparagus, conventional",
+   "dataset_location": "MX",
+   "exchange_ordinal": 46,
+   "exchange_number": "26977",
+   "exchange_name": "Water, embodied in product, MX",
+   "diff": [
+    "not_served_by_lci_bafu"
+   ],
+   "reason_code": "economic_issues_section_not_ingested",
+   "reason": "biosphere (outputGroup 4, category 'economic issues'). The flow IS in the flow-list CSV, section 'Economic issues', but lci-bafu builds bafu_biosphere only from six sections (SIMAPRO_SECTION_TO_CATEGORY has no 'Economic issues'), so the edge is unlinked and dropped. sentier-importers serves it under a uuid5 flow id.",
+   "sentier": {
+    "flow_type": "biosphere",
+    "group_code": 4,
+    "direction": "output",
+    "target_number": null,
+    "unit": "kg",
+    "location": null,
+    "amount": 0.93,
+    "category": "economic issues",
+    "subcategory": "unspecified"
+   },
+   "lci_bafu": {
+    "type": "biosphere",
+    "fate": "dropped_unlinked",
+    "restore_id": null,
+    "target_number": null,
+    "unit": "kilogram",
+    "location": null,
+    "declared_location": null,
+    "amount": 0.93,
+    "categories": [
+     "economic",
+     "primary production factor"
+    ],
+    "inputGroup": null,
+    "outputGroup": "4"
+   },
+   "sentier_target_location": null
+  },
+  {
+   "dataset": "204861",
+   "dataset_file": "process_bf3edfd6-d2bc-3885-8acb-5c718d43ae2d.xml",
+   "dataset_name": "Carbon dioxide, captured from atmosphere, with adsorbent-based direct air capture system, operated with HP, 100kt CO2",
+   "dataset_location": "CH",
+   "exchange_ordinal": 4,
+   "exchange_number": "208310",
+   "exchange_name": "Direct air capture system, sorbent-based, 100ktCO2",
+   "diff": [
+    "served_by_lci_bafu_only_via_overlay"
+   ],
+   "reason_code": "declared_CH_supplier_only_GLO_RER_restored",
+   "reason": "technosphere declared location CH; number names 208310; dropped at link by lci-bafu and restored by overlay 2026-v1/B-026 to the same supplier sentier-importers links by number. Same served edge on both sides; differs only in route (and lci-bafu's restored edge carries the supplier's location).",
+   "sentier": {
+    "flow_type": "technosphere",
+    "group_code": 5,
+    "direction": "input",
+    "target_number": "208310",
+    "unit": "p",
+    "location": "CH",
+    "amount": 5e-10,
+    "category": "fuels",
+    "subcategory": "synthetic\\infrastructure"
+   },
+   "lci_bafu": {
+    "type": "technosphere",
+    "fate": "restored_by_overlay",
+    "restore_id": "2026-v1/B-026",
+    "target_number": "208310",
+    "unit": "unit",
+    "location": "CH",
+    "declared_location": null,
+    "amount": 5e-10,
+    "categories": [
+     "fuels",
+     "synthetic\\infrastructure"
+    ],
+    "inputGroup": "5",
+    "outputGroup": null
+   },
+   "sentier_target_location": "RER"
+  },
+  {
+   "dataset": "222434",
+   "dataset_file": "process_9e9e0c7c-9117-3434-9230-b9adfdf9a71b.xml",
+   "dataset_name": "Natural gas, burned in power plant or heat plant",
+   "dataset_location": "CN",
+   "exchange_ordinal": 25,
+   "exchange_number": "352677",
+   "exchange_name": "Natural gas, high pressure, at consumer",
+   "diff": [
+    "technosphere_target"
+   ],
+   "reason_code": "number_and_location_name_different_suppliers",
+   "reason": "technosphere; the XML number 352677 names dataset 352677 (location CN), the XML location attribute says RER. sentier-importers follows the number; lci-bafu follows (name, location) to 330680 (location RER). Both sides serve an edge; they serve DIFFERENT suppliers.",
+   "sentier": {
+    "flow_type": "technosphere",
+    "group_code": 5,
+    "direction": "input",
+    "target_number": "352677",
+    "unit": "MJ",
+    "location": "RER",
+    "amount": 0.57,
+    "category": "fuels",
+    "subcategory": "natural gas\\gas to user"
+   },
+   "lci_bafu": {
+    "type": "technosphere",
+    "fate": "linked",
+    "restore_id": null,
+    "target_number": "330680",
+    "unit": "megajoule",
+    "location": "RER",
+    "declared_location": null,
+    "amount": 0.57,
+    "categories": [
+     "fuels",
+     "natural gas\\gas to user"
+    ],
+    "inputGroup": "5",
+    "outputGroup": null
+   },
+   "sentier_target_location": "CN"
+  },
+  {
+   "dataset": "222434",
+   "dataset_file": "process_9e9e0c7c-9117-3434-9230-b9adfdf9a71b.xml",
+   "dataset_name": "Natural gas, burned in power plant or heat plant",
+   "dataset_location": "CN",
+   "exchange_ordinal": 26,
+   "exchange_number": "352677",
+   "exchange_name": "Natural gas, high pressure, at consumer",
+   "diff": [
+    "technosphere_target"
+   ],
+   "reason_code": "number_and_location_name_different_suppliers",
+   "reason": "technosphere; the XML number 352677 names dataset 352677 (location CN), the XML location attribute says RER. sentier-importers follows the number; lci-bafu follows (name, location) to 330680 (location RER). Both sides serve an edge; they serve DIFFERENT suppliers.",
+   "sentier": {
+    "flow_type": "technosphere",
+    "group_code": 5,
+    "direction": "input",
+    "target_number": "352677",
+    "unit": "MJ",
+    "location": "RER",
+    "amount": 0.18,
+    "category": "fuels",
+    "subcategory": "natural gas\\gas to user"
+   },
+   "lci_bafu": {
+    "type": "technosphere",
+    "fate": "linked",
+    "restore_id": null,
+    "target_number": "330680",
+    "unit": "megajoule",
+    "location": "RER",
+    "declared_location": null,
+    "amount": 0.18,
+    "categories": [
+     "fuels",
+     "natural gas\\gas to user"
+    ],
+    "inputGroup": "5",
+    "outputGroup": null
+   },
+   "sentier_target_location": "CN"
+  },
+  {
+   "dataset": "225049",
+   "dataset_file": "process_25fd72f9-a1ed-3653-8da5-456750174691.xml",
+   "dataset_name": "Natural gas, burned in power plant or heat plant",
+   "dataset_location": "PL",
+   "exchange_ordinal": 26,
+   "exchange_number": "222326",
+   "exchange_name": "Natural gas, high pressure, at consumer",
+   "diff": [
+    "technosphere_target"
+   ],
+   "reason_code": "number_and_location_name_different_suppliers",
+   "reason": "technosphere; the XML number 222326 names dataset 222326 (location PL), the XML location attribute says RER. sentier-importers follows the number; lci-bafu follows (name, location) to 330680 (location RER). Both sides serve an edge; they serve DIFFERENT suppliers.",
+   "sentier": {
+    "flow_type": "technosphere",
+    "group_code": 5,
+    "direction": "input",
+    "target_number": "222326",
+    "unit": "MJ",
+    "location": "RER",
+    "amount": 1.0,
+    "category": "fuels",
+    "subcategory": "natural gas\\gas to user"
+   },
+   "lci_bafu": {
+    "type": "technosphere",
+    "fate": "linked",
+    "restore_id": null,
+    "target_number": "330680",
+    "unit": "megajoule",
+    "location": "RER",
+    "declared_location": null,
+    "amount": 1.0,
+    "categories": [
+     "fuels",
+     "natural gas\\gas to user"
+    ],
+    "inputGroup": "5",
+    "outputGroup": null
+   },
+   "sentier_target_location": "PL"
+  },
+  {
+   "dataset": "233546",
+   "dataset_file": "process_c22aaca5-3bca-34a0-8a34-71c551ee0d56.xml",
+   "dataset_name": "Green beans conventional, at farm",
+   "dataset_location": "KE",
+   "exchange_ordinal": 21,
+   "exchange_number": "44203",
+   "exchange_name": "Water, embodied in product, KE",
+   "diff": [
+    "not_served_by_lci_bafu"
+   ],
+   "reason_code": "economic_issues_section_not_ingested",
+   "reason": "biosphere (outputGroup 4, category 'economic issues'). The flow IS in the flow-list CSV, section 'Economic issues', but lci-bafu builds bafu_biosphere only from six sections (SIMAPRO_SECTION_TO_CATEGORY has no 'Economic issues'), so the edge is unlinked and dropped. sentier-importers serves it under a uuid5 flow id.",
+   "sentier": {
+    "flow_type": "biosphere",
+    "group_code": 4,
+    "direction": "output",
+    "target_number": null,
+    "unit": "kg",
+    "location": null,
+    "amount": 0.90973,
+    "category": "economic issues",
+    "subcategory": "unspecified"
+   },
+   "lci_bafu": {
+    "type": "biosphere",
+    "fate": "dropped_unlinked",
+    "restore_id": null,
+    "target_number": null,
+    "unit": "kilogram",
+    "location": null,
+    "declared_location": null,
+    "amount": 0.90973,
+    "categories": [
+     "economic",
+     "primary production factor"
+    ],
+    "inputGroup": null,
+    "outputGroup": "4"
+   },
+   "sentier_target_location": null
+  },
+  {
+   "dataset": "235784",
+   "dataset_file": "process_df878822-0deb-3a59-a6b4-396d94a3b654.xml",
+   "dataset_name": "Polyethylene, LLDPE, granulate, at plant",
+   "dataset_location": "RER",
+   "exchange_ordinal": 417,
+   "exchange_number": "53201",
+   "exchange_name": "Uranium",
+   "diff": [
+    "not_served_by_lci_bafu"
+   ],
+   "reason_code": "flow_absent_from_flow_list_compartment",
+   "reason": "biosphere 'Uranium', emissions to water. listed only in 'Raw materials' and 'Airborne emissions'; not in 'Waterborne emissions': unlinked and dropped by lci-bafu; served by sentier-importers.",
+   "sentier": {
+    "flow_type": "biosphere",
+    "group_code": 4,
+    "direction": "output",
+    "target_number": null,
+    "unit": "kg",
+    "location": null,
+    "amount": 3.6703e-08,
+    "category": "emissions to water",
+    "subcategory": "unspecified"
+   },
+   "lci_bafu": {
+    "type": "biosphere",
+    "fate": "dropped_unlinked",
+    "restore_id": null,
+    "target_number": null,
+    "unit": "kilogram",
+    "location": null,
+    "declared_location": null,
+    "amount": 3.6703e-08,
+    "categories": [
+     "water"
+    ],
+    "inputGroup": null,
+    "outputGroup": "4"
+   },
+   "sentier_target_location": null
+  },
+  {
+   "dataset": "242090",
+   "dataset_file": "process_82b2cf7c-b0b3-387c-b26f-781a572e7467.xml",
+   "dataset_name": "Strawberries, conventional, unheated plastic tunnel",
+   "dataset_location": "CH",
+   "exchange_ordinal": 39,
+   "exchange_number": "76560",
+   "exchange_name": "Water, embodied in product, CH",
+   "diff": [
+    "not_served_by_lci_bafu"
+   ],
+   "reason_code": "economic_issues_section_not_ingested",
+   "reason": "biosphere (outputGroup 4, category 'economic issues'). The flow IS in the flow-list CSV, section 'Economic issues', but lci-bafu builds bafu_biosphere only from six sections (SIMAPRO_SECTION_TO_CATEGORY has no 'Economic issues'), so the edge is unlinked and dropped. sentier-importers serves it under a uuid5 flow id.",
+   "sentier": {
+    "flow_type": "biosphere",
+    "group_code": 4,
+    "direction": "output",
+    "target_number": null,
+    "unit": "kg",
+    "location": null,
+    "amount": 0.9,
+    "category": "economic issues",
+    "subcategory": "unspecified"
+   },
+   "lci_bafu": {
+    "type": "biosphere",
+    "fate": "dropped_unlinked",
+    "restore_id": null,
+    "target_number": null,
+    "unit": "kilogram",
+    "location": null,
+    "declared_location": null,
+    "amount": 0.9,
+    "categories": [
+     "economic",
+     "primary production factor"
+    ],
+    "inputGroup": null,
+    "outputGroup": "4"
+   },
+   "sentier_target_location": null
+  },
+  {
+   "dataset": "272960",
+   "dataset_file": "process_cacb15b4-ed78-3186-9882-66696a7cb3b8.xml",
+   "dataset_name": "Tomatoes organic, tunnel, at farm",
+   "dataset_location": "CH",
+   "exchange_ordinal": 20,
+   "exchange_number": "76560",
+   "exchange_name": "Water, embodied in product, CH",
+   "diff": [
+    "not_served_by_lci_bafu"
+   ],
+   "reason_code": "economic_issues_section_not_ingested",
+   "reason": "biosphere (outputGroup 4, category 'economic issues'). The flow IS in the flow-list CSV, section 'Economic issues', but lci-bafu builds bafu_biosphere only from six sections (SIMAPRO_SECTION_TO_CATEGORY has no 'Economic issues'), so the edge is unlinked and dropped. sentier-importers serves it under a uuid5 flow id.",
+   "sentier": {
+    "flow_type": "biosphere",
+    "group_code": 4,
+    "direction": "output",
+    "target_number": null,
+    "unit": "kg",
+    "location": null,
+    "amount": 0.95,
+    "category": "economic issues",
+    "subcategory": "unspecified"
+   },
+   "lci_bafu": {
+    "type": "biosphere",
+    "fate": "dropped_unlinked",
+    "restore_id": null,
+    "target_number": null,
+    "unit": "kilogram",
+    "location": null,
+    "declared_location": null,
+    "amount": 0.95,
+    "categories": [
+     "economic",
+     "primary production factor"
+    ],
+    "inputGroup": null,
+    "outputGroup": "4"
+   },
+   "sentier_target_location": null
+  },
+  {
+   "dataset": "304227",
+   "dataset_file": "process_05a10e4b-a919-33b6-b017-7c0bf7f7a7f9.xml",
+   "dataset_name": "Polystyrene, expandable, at plant",
+   "dataset_location": "RER",
+   "exchange_ordinal": 384,
+   "exchange_number": "386",
+   "exchange_name": "Nitrogen dioxide, RAF",
+   "diff": [
+    "not_served_by_lci_bafu"
+   ],
+   "reason_code": "flow_absent_from_flow_list",
+   "reason": "biosphere 'Nitrogen dioxide, RAF', emissions to air. not listed in any section: unlinked and dropped by lci-bafu; served by sentier-importers.",
+   "sentier": {
+    "flow_type": "biosphere",
+    "group_code": 4,
+    "direction": "output",
+    "target_number": null,
+    "unit": "kg",
+    "location": null,
+    "amount": 0.0033963,
+    "category": "emissions to air",
+    "subcategory": "unspecified"
+   },
+   "lci_bafu": {
+    "type": "biosphere",
+    "fate": "dropped_unlinked",
+    "restore_id": null,
+    "target_number": null,
+    "unit": "kilogram",
+    "location": null,
+    "declared_location": null,
+    "amount": 0.0033963,
+    "categories": [
+     "air"
+    ],
+    "inputGroup": null,
+    "outputGroup": "4"
+   },
+   "sentier_target_location": null
+  },
+  {
+   "dataset": "318292",
+   "dataset_file": "process_76a2e6d1-6096-3338-a383-4af6b0542b10.xml",
+   "dataset_name": "Natural gas, burned in power plant or heat plant",
+   "dataset_location": "HR",
+   "exchange_ordinal": 26,
+   "exchange_number": "237897",
+   "exchange_name": "Natural gas, high pressure, at consumer",
+   "diff": [
+    "technosphere_target"
+   ],
+   "reason_code": "number_and_location_name_different_suppliers",
+   "reason": "technosphere; the XML number 237897 names dataset 237897 (location HR), the XML location attribute says RER. sentier-importers follows the number; lci-bafu follows (name, location) to 330680 (location RER). Both sides serve an edge; they serve DIFFERENT suppliers.",
+   "sentier": {
+    "flow_type": "technosphere",
+    "group_code": 5,
+    "direction": "input",
+    "target_number": "237897",
+    "unit": "MJ",
+    "location": "RER",
+    "amount": 1.0,
+    "category": "fuels",
+    "subcategory": "natural gas\\gas to user"
+   },
+   "lci_bafu": {
+    "type": "technosphere",
+    "fate": "linked",
+    "restore_id": null,
+    "target_number": "330680",
+    "unit": "megajoule",
+    "location": "RER",
+    "declared_location": null,
+    "amount": 1.0,
+    "categories": [
+     "fuels",
+     "natural gas\\gas to user"
+    ],
+    "inputGroup": "5",
+    "outputGroup": null
+   },
+   "sentier_target_location": "HR"
+  },
+  {
+   "dataset": "320861",
+   "dataset_file": "process_346be187-5f5a-331d-acec-d8b35ac3ef2a.xml",
+   "dataset_name": "Granite, natural stone council, at mine",
+   "dataset_location": "CH",
+   "exchange_ordinal": 18,
+   "exchange_number": "176928",
+   "exchange_name": "Transport, passenger car, fleet average",
+   "diff": [
+    "technosphere_target"
+   ],
+   "reason_code": "number_and_location_name_different_suppliers",
+   "reason": "technosphere; the XML number 176928 names dataset 176928 (location RER), the XML location attribute says CH. sentier-importers follows the number; lci-bafu follows (name, location) to 447339 (location CH). Both sides serve an edge; they serve DIFFERENT suppliers.",
+   "sentier": {
+    "flow_type": "technosphere",
+    "group_code": 5,
+    "direction": "input",
+    "target_number": "176928",
+    "unit": "km",
+    "location": "CH",
+    "amount": 0.00434875,
+    "category": "transport systems",
+    "subcategory": "road\\Transformation"
+   },
+   "lci_bafu": {
+    "type": "technosphere",
+    "fate": "linked",
+    "restore_id": null,
+    "target_number": "447339",
+    "unit": "kilometer",
+    "location": "CH",
+    "declared_location": null,
+    "amount": 0.00434875,
+    "categories": [
+     "transport systems",
+     "road\\Transformation"
+    ],
+    "inputGroup": "5",
+    "outputGroup": null
+   },
+   "sentier_target_location": "RER"
+  },
+  {
+   "dataset": "321596",
+   "dataset_file": "process_c7af8832-9551-38fd-a628-363e6fc17c8e.xml",
+   "dataset_name": "Polyethylene terephthalate, granulate, bottle grade, at plant",
+   "dataset_location": "RER",
+   "exchange_ordinal": 391,
+   "exchange_number": "53201",
+   "exchange_name": "Uranium",
+   "diff": [
+    "not_served_by_lci_bafu"
+   ],
+   "reason_code": "flow_absent_from_flow_list_compartment",
+   "reason": "biosphere 'Uranium', emissions to water. listed only in 'Raw materials' and 'Airborne emissions'; not in 'Waterborne emissions': unlinked and dropped by lci-bafu; served by sentier-importers.",
+   "sentier": {
+    "flow_type": "biosphere",
+    "group_code": 4,
+    "direction": "output",
+    "target_number": null,
+    "unit": "kg",
+    "location": null,
+    "amount": 5.6602e-08,
+    "category": "emissions to water",
+    "subcategory": "unspecified"
+   },
+   "lci_bafu": {
+    "type": "biosphere",
+    "fate": "dropped_unlinked",
+    "restore_id": null,
+    "target_number": null,
+    "unit": "kilogram",
+    "location": null,
+    "declared_location": null,
+    "amount": 5.6602e-08,
+    "categories": [
+     "water"
+    ],
+    "inputGroup": null,
+    "outputGroup": "4"
+   },
+   "sentier_target_location": null
+  },
+  {
+   "dataset": "366205",
+   "dataset_file": "process_3c0a4398-92c4-3e59-8b1d-f9a871df2f89.xml",
+   "dataset_name": "Tomatoes conventional, hors-sol heated, at greenhouse, late harvest",
+   "dataset_location": "CH",
+   "exchange_ordinal": 17,
+   "exchange_number": "76560",
+   "exchange_name": "Water, embodied in product, CH",
+   "diff": [
+    "not_served_by_lci_bafu"
+   ],
+   "reason_code": "economic_issues_section_not_ingested",
+   "reason": "biosphere (outputGroup 4, category 'economic issues'). The flow IS in the flow-list CSV, section 'Economic issues', but lci-bafu builds bafu_biosphere only from six sections (SIMAPRO_SECTION_TO_CATEGORY has no 'Economic issues'), so the edge is unlinked and dropped. sentier-importers serves it under a uuid5 flow id.",
+   "sentier": {
+    "flow_type": "biosphere",
+    "group_code": 4,
+    "direction": "output",
+    "target_number": null,
+    "unit": "kg",
+    "location": null,
+    "amount": 0.95039,
+    "category": "economic issues",
+    "subcategory": "unspecified"
+   },
+   "lci_bafu": {
+    "type": "biosphere",
+    "fate": "dropped_unlinked",
+    "restore_id": null,
+    "target_number": null,
+    "unit": "kilogram",
+    "location": null,
+    "declared_location": null,
+    "amount": 0.95039,
+    "categories": [
+     "economic",
+     "primary production factor"
+    ],
+    "inputGroup": null,
+    "outputGroup": "4"
+   },
+   "sentier_target_location": null
+  },
+  {
+   "dataset": "371178",
+   "dataset_file": "process_67829cd7-53f8-3b8c-acd5-5d441d8eeae3.xml",
+   "dataset_name": "Tomatoes conventional, hors-sol, at greenhouse",
+   "dataset_location": "ES",
+   "exchange_ordinal": 27,
+   "exchange_number": "76560",
+   "exchange_name": "Water, embodied in product, CH",
+   "diff": [
+    "not_served_by_lci_bafu"
+   ],
+   "reason_code": "economic_issues_section_not_ingested",
+   "reason": "biosphere (outputGroup 4, category 'economic issues'). The flow IS in the flow-list CSV, section 'Economic issues', but lci-bafu builds bafu_biosphere only from six sections (SIMAPRO_SECTION_TO_CATEGORY has no 'Economic issues'), so the edge is unlinked and dropped. sentier-importers serves it under a uuid5 flow id.",
+   "sentier": {
+    "flow_type": "biosphere",
+    "group_code": 4,
+    "direction": "output",
+    "target_number": null,
+    "unit": "kg",
+    "location": null,
+    "amount": 0.95054,
+    "category": "economic issues",
+    "subcategory": "unspecified"
+   },
+   "lci_bafu": {
+    "type": "biosphere",
+    "fate": "dropped_unlinked",
+    "restore_id": null,
+    "target_number": null,
+    "unit": "kilogram",
+    "location": null,
+    "declared_location": null,
+    "amount": 0.95054,
+    "categories": [
+     "economic",
+     "primary production factor"
+    ],
+    "inputGroup": null,
+    "outputGroup": "4"
+   },
+   "sentier_target_location": null
+  },
+  {
+   "dataset": "372602",
+   "dataset_file": "process_0d370e65-6c9a-3855-a715-953b8cab2e75.xml",
+   "dataset_name": "Tomatoes conventional, hors-sol heated, at greenhouse, early harvest",
+   "dataset_location": "CH",
+   "exchange_ordinal": 19,
+   "exchange_number": "76560",
+   "exchange_name": "Water, embodied in product, CH",
+   "diff": [
+    "not_served_by_lci_bafu"
+   ],
+   "reason_code": "economic_issues_section_not_ingested",
+   "reason": "biosphere (outputGroup 4, category 'economic issues'). The flow IS in the flow-list CSV, section 'Economic issues', but lci-bafu builds bafu_biosphere only from six sections (SIMAPRO_SECTION_TO_CATEGORY has no 'Economic issues'), so the edge is unlinked and dropped. sentier-importers serves it under a uuid5 flow id.",
+   "sentier": {
+    "flow_type": "biosphere",
+    "group_code": 4,
+    "direction": "output",
+    "target_number": null,
+    "unit": "kg",
+    "location": null,
+    "amount": 0.95039,
+    "category": "economic issues",
+    "subcategory": "unspecified"
+   },
+   "lci_bafu": {
+    "type": "biosphere",
+    "fate": "dropped_unlinked",
+    "restore_id": null,
+    "target_number": null,
+    "unit": "kilogram",
+    "location": null,
+    "declared_location": null,
+    "amount": 0.95039,
+    "categories": [
+     "economic",
+     "primary production factor"
+    ],
+    "inputGroup": null,
+    "outputGroup": "4"
+   },
+   "sentier_target_location": null
+  },
+  {
+   "dataset": "378451",
+   "dataset_file": "process_ec0533af-6c5d-3e49-95ea-fbb4a0b68d84.xml",
+   "dataset_name": "Asparagus, conventional",
+   "dataset_location": "PE",
+   "exchange_ordinal": 18,
+   "exchange_number": "81403",
+   "exchange_name": "Water, embodied in product, PE",
+   "diff": [
+    "not_served_by_lci_bafu"
+   ],
+   "reason_code": "economic_issues_section_not_ingested",
+   "reason": "biosphere (outputGroup 4, category 'economic issues'). The flow IS in the flow-list CSV, section 'Economic issues', but lci-bafu builds bafu_biosphere only from six sections (SIMAPRO_SECTION_TO_CATEGORY has no 'Economic issues'), so the edge is unlinked and dropped. sentier-importers serves it under a uuid5 flow id.",
+   "sentier": {
+    "flow_type": "biosphere",
+    "group_code": 4,
+    "direction": "output",
+    "target_number": null,
+    "unit": "kg",
+    "location": null,
+    "amount": 0.93,
+    "category": "economic issues",
+    "subcategory": "unspecified"
+   },
+   "lci_bafu": {
+    "type": "biosphere",
+    "fate": "dropped_unlinked",
+    "restore_id": null,
+    "target_number": null,
+    "unit": "kilogram",
+    "location": null,
+    "declared_location": null,
+    "amount": 0.93,
+    "categories": [
+     "economic",
+     "primary production factor"
+    ],
+    "inputGroup": null,
+    "outputGroup": "4"
+   },
+   "sentier_target_location": null
+  },
+  {
+   "dataset": "387631",
+   "dataset_file": "process_48985f3e-97b4-3128-a1a8-a5ba91a1cb88.xml",
+   "dataset_name": "Polyvinylchloride, suspension polymerised, at plant",
+   "dataset_location": "RER",
+   "exchange_ordinal": 436,
+   "exchange_number": "53201",
+   "exchange_name": "Uranium",
+   "diff": [
+    "not_served_by_lci_bafu"
+   ],
+   "reason_code": "flow_absent_from_flow_list_compartment",
+   "reason": "biosphere 'Uranium', emissions to water. listed only in 'Raw materials' and 'Airborne emissions'; not in 'Waterborne emissions': unlinked and dropped by lci-bafu; served by sentier-importers.",
+   "sentier": {
+    "flow_type": "biosphere",
+    "group_code": 4,
+    "direction": "output",
+    "target_number": null,
+    "unit": "kg",
+    "location": null,
+    "amount": 9.0467e-08,
+    "category": "emissions to water",
+    "subcategory": "unspecified"
+   },
+   "lci_bafu": {
+    "type": "biosphere",
+    "fate": "dropped_unlinked",
+    "restore_id": null,
+    "target_number": null,
+    "unit": "kilogram",
+    "location": null,
+    "declared_location": null,
+    "amount": 9.0467e-08,
+    "categories": [
+     "water"
+    ],
+    "inputGroup": null,
+    "outputGroup": "4"
+   },
+   "sentier_target_location": null
+  },
+  {
+   "dataset": "431726",
+   "dataset_file": "process_09cda8b1-b652-39b2-8761-c93aecc29f70.xml",
+   "dataset_name": "Polypropylene, granulate, at plant",
+   "dataset_location": "RER",
+   "exchange_ordinal": 417,
+   "exchange_number": "53201",
+   "exchange_name": "Uranium",
+   "diff": [
+    "not_served_by_lci_bafu"
+   ],
+   "reason_code": "flow_absent_from_flow_list_compartment",
+   "reason": "biosphere 'Uranium', emissions to water. listed only in 'Raw materials' and 'Airborne emissions'; not in 'Waterborne emissions': unlinked and dropped by lci-bafu; served by sentier-importers.",
+   "sentier": {
+    "flow_type": "biosphere",
+    "group_code": 4,
+    "direction": "output",
+    "target_number": null,
+    "unit": "kg",
+    "location": null,
+    "amount": 3.4729e-08,
+    "category": "emissions to water",
+    "subcategory": "unspecified"
+   },
+   "lci_bafu": {
+    "type": "biosphere",
+    "fate": "dropped_unlinked",
+    "restore_id": null,
+    "target_number": null,
+    "unit": "kilogram",
+    "location": null,
+    "declared_location": null,
+    "amount": 3.4729e-08,
+    "categories": [
+     "water"
+    ],
+    "inputGroup": null,
+    "outputGroup": "4"
+   },
+   "sentier_target_location": null
+  },
+  {
+   "dataset": "435703",
+   "dataset_file": "process_54499647-8b4d-3905-9d72-946fe99195ae.xml",
+   "dataset_name": "Asparagus, conventional",
+   "dataset_location": "CH",
+   "exchange_ordinal": 43,
+   "exchange_number": "76560",
+   "exchange_name": "Water, embodied in product, CH",
+   "diff": [
+    "not_served_by_lci_bafu"
+   ],
+   "reason_code": "economic_issues_section_not_ingested",
+   "reason": "biosphere (outputGroup 4, category 'economic issues'). The flow IS in the flow-list CSV, section 'Economic issues', but lci-bafu builds bafu_biosphere only from six sections (SIMAPRO_SECTION_TO_CATEGORY has no 'Economic issues'), so the edge is unlinked and dropped. sentier-importers serves it under a uuid5 flow id.",
+   "sentier": {
+    "flow_type": "biosphere",
+    "group_code": 4,
+    "direction": "output",
+    "target_number": null,
+    "unit": "kg",
+    "location": null,
+    "amount": 0.93,
+    "category": "economic issues",
+    "subcategory": "unspecified"
+   },
+   "lci_bafu": {
+    "type": "biosphere",
+    "fate": "dropped_unlinked",
+    "restore_id": null,
+    "target_number": null,
+    "unit": "kilogram",
+    "location": null,
+    "declared_location": null,
+    "amount": 0.93,
+    "categories": [
+     "economic",
+     "primary production factor"
+    ],
+    "inputGroup": null,
+    "outputGroup": "4"
+   },
+   "sentier_target_location": null
+  },
+  {
+   "dataset": "457952",
+   "dataset_file": "process_1a80a749-177e-3aaf-a48b-600b8682f219.xml",
+   "dataset_name": "Natural gas, burned in power plant or heat plant",
+   "dataset_location": "RU",
+   "exchange_ordinal": 25,
+   "exchange_number": "137658",
+   "exchange_name": "Natural gas, high pressure, at consumer",
+   "diff": [
+    "technosphere_target"
+   ],
+   "reason_code": "number_and_location_name_different_suppliers",
+   "reason": "technosphere; the XML number 137658 names dataset 137658 (location RU), the XML location attribute says RER. sentier-importers follows the number; lci-bafu follows (name, location) to 330680 (location RER). Both sides serve an edge; they serve DIFFERENT suppliers.",
+   "sentier": {
+    "flow_type": "technosphere",
+    "group_code": 5,
+    "direction": "input",
+    "target_number": "137658",
+    "unit": "MJ",
+    "location": "RER",
+    "amount": 1.0,
+    "category": "fuels",
+    "subcategory": "natural gas\\gas to user"
+   },
+   "lci_bafu": {
+    "type": "technosphere",
+    "fate": "linked",
+    "restore_id": null,
+    "target_number": "330680",
+    "unit": "megajoule",
+    "location": "RER",
+    "declared_location": null,
+    "amount": 1.0,
+    "categories": [
+     "fuels",
+     "natural gas\\gas to user"
+    ],
+    "inputGroup": "5",
+    "outputGroup": null
+   },
+   "sentier_target_location": "RU"
+  },
+  {
+   "dataset": "464240",
+   "dataset_file": "process_99a93e93-a8a8-34f3-88f3-6af0c21c4762.xml",
+   "dataset_name": "Vinyl chloride, at plant",
+   "dataset_location": "RER",
+   "exchange_ordinal": 432,
+   "exchange_number": "53201",
+   "exchange_name": "Uranium",
+   "diff": [
+    "not_served_by_lci_bafu"
+   ],
+   "reason_code": "flow_absent_from_flow_list_compartment",
+   "reason": "biosphere 'Uranium', emissions to water. listed only in 'Raw materials' and 'Airborne emissions'; not in 'Waterborne emissions': unlinked and dropped by lci-bafu; served by sentier-importers.",
+   "sentier": {
+    "flow_type": "biosphere",
+    "group_code": 4,
+    "direction": "output",
+    "target_number": null,
+    "unit": "kg",
+    "location": null,
+    "amount": 7.7705e-08,
+    "category": "emissions to water",
+    "subcategory": "unspecified"
+   },
+   "lci_bafu": {
+    "type": "biosphere",
+    "fate": "dropped_unlinked",
+    "restore_id": null,
+    "target_number": null,
+    "unit": "kilogram",
+    "location": null,
+    "declared_location": null,
+    "amount": 7.7705e-08,
+    "categories": [
+     "water"
+    ],
+    "inputGroup": null,
+    "outputGroup": "4"
+   },
+   "sentier_target_location": null
+  },
+  {
+   "dataset": "476483",
+   "dataset_file": "process_c4dbbb99-22d0-37c1-8cc7-fc5a8c64329b.xml",
+   "dataset_name": "Polyethylene, LDPE, granulate, at plant",
+   "dataset_location": "RER",
+   "exchange_ordinal": 420,
+   "exchange_number": "53201",
+   "exchange_name": "Uranium",
+   "diff": [
+    "not_served_by_lci_bafu"
+   ],
+   "reason_code": "flow_absent_from_flow_list_compartment",
+   "reason": "biosphere 'Uranium', emissions to water. listed only in 'Raw materials' and 'Airborne emissions'; not in 'Waterborne emissions': unlinked and dropped by lci-bafu; served by sentier-importers.",
+   "sentier": {
+    "flow_type": "biosphere",
+    "group_code": 4,
+    "direction": "output",
+    "target_number": null,
+    "unit": "kg",
+    "location": null,
+    "amount": 6.5492e-08,
+    "category": "emissions to water",
+    "subcategory": "unspecified"
+   },
+   "lci_bafu": {
+    "type": "biosphere",
+    "fate": "dropped_unlinked",
+    "restore_id": null,
+    "target_number": null,
+    "unit": "kilogram",
+    "location": null,
+    "declared_location": null,
+    "amount": 6.5492e-08,
+    "categories": [
+     "water"
+    ],
+    "inputGroup": null,
+    "outputGroup": "4"
+   },
+   "sentier_target_location": null
+  },
+  {
+   "dataset": "549121",
+   "dataset_file": "process_9f368204-9716-3b7b-bc63-98e3ee8c7088.xml",
+   "dataset_name": "Natural gas, burned in power plant or heat plant",
+   "dataset_location": "MY",
+   "exchange_ordinal": 26,
+   "exchange_number": "221577",
+   "exchange_name": "Natural gas, high pressure, at consumer",
+   "diff": [
+    "technosphere_target"
+   ],
+   "reason_code": "number_and_location_name_different_suppliers",
+   "reason": "technosphere; the XML number 221577 names dataset 221577 (location MY), the XML location attribute says RER. sentier-importers follows the number; lci-bafu follows (name, location) to 330680 (location RER). Both sides serve an edge; they serve DIFFERENT suppliers.",
+   "sentier": {
+    "flow_type": "technosphere",
+    "group_code": 5,
+    "direction": "input",
+    "target_number": "221577",
+    "unit": "MJ",
+    "location": "RER",
+    "amount": 0.81,
+    "category": "fuels",
+    "subcategory": "natural gas\\gas to user"
+   },
+   "lci_bafu": {
+    "type": "technosphere",
+    "fate": "linked",
+    "restore_id": null,
+    "target_number": "330680",
+    "unit": "megajoule",
+    "location": "RER",
+    "declared_location": null,
+    "amount": 0.81,
+    "categories": [
+     "fuels",
+     "natural gas\\gas to user"
+    ],
+    "inputGroup": "5",
+    "outputGroup": null
+   },
+   "sentier_target_location": "MY"
+  },
+  {
+   "dataset": "564216",
+   "dataset_file": "process_00405317-d258-34ae-80d0-65ab2e0ffe5b.xml",
+   "dataset_name": "Natural gas, burned in power plant or heat plant",
+   "dataset_location": "BG",
+   "exchange_ordinal": 26,
+   "exchange_number": "300474",
+   "exchange_name": "Natural gas, high pressure, at consumer",
+   "diff": [
+    "technosphere_target"
+   ],
+   "reason_code": "number_and_location_name_different_suppliers",
+   "reason": "technosphere; the XML number 300474 names dataset 300474 (location BG), the XML location attribute says RER. sentier-importers follows the number; lci-bafu follows (name, location) to 330680 (location RER). Both sides serve an edge; they serve DIFFERENT suppliers.",
+   "sentier": {
+    "flow_type": "technosphere",
+    "group_code": 5,
+    "direction": "input",
+    "target_number": "300474",
+    "unit": "MJ",
+    "location": "RER",
+    "amount": 1.0,
+    "category": "fuels",
+    "subcategory": "natural gas\\gas to user"
+   },
+   "lci_bafu": {
+    "type": "technosphere",
+    "fate": "linked",
+    "restore_id": null,
+    "target_number": "330680",
+    "unit": "megajoule",
+    "location": "RER",
+    "declared_location": null,
+    "amount": 1.0,
+    "categories": [
+     "fuels",
+     "natural gas\\gas to user"
+    ],
+    "inputGroup": "5",
+    "outputGroup": null
+   },
+   "sentier_target_location": "BG"
+  },
+  {
+   "dataset": "573961",
+   "dataset_file": "process_adb3bfb7-7eb5-31ca-b34d-fad5194d0c92.xml",
+   "dataset_name": "Platform, crude oil, offshore",
+   "dataset_location": "OCE",
+   "exchange_ordinal": 18,
+   "exchange_number": "571397",
+   "exchange_name": "Disposal, concrete, 5% water, to inert material landfill",
+   "diff": [
+    "served_by_lci_bafu_only_via_overlay"
+   ],
+   "reason_code": "declared_CH_supplier_only_GLO_RER_restored",
+   "reason": "technosphere declared location CH; number names 571397; dropped at link by lci-bafu and restored by overlay 2026-v1/B-002 to the same supplier sentier-importers links by number. Same served edge on both sides; differs only in route (and lci-bafu's restored edge carries the supplier's location).",
+   "sentier": {
+    "flow_type": "technosphere",
+    "group_code": 5,
+    "direction": "input",
+    "target_number": "571397",
+    "unit": "kg",
+    "location": "CH",
+    "amount": 1351400.0,
+    "category": "Others",
+    "subcategory": "unspecified"
+   },
+   "lci_bafu": {
+    "type": "technosphere",
+    "fate": "restored_by_overlay",
+    "restore_id": "2026-v1/B-002",
+    "target_number": "571397",
+    "unit": "kilogram",
+    "location": "CH",
+    "declared_location": null,
+    "amount": 1351400.0,
+    "categories": [
+     "Others"
+    ],
+    "inputGroup": "5",
+    "outputGroup": null
+   },
+   "sentier_target_location": "GLO"
+  },
+  {
+   "dataset": "584039",
+   "dataset_file": "process_729a0dd2-5a2b-3b5e-8960-df2240b7629f.xml",
+   "dataset_name": "Electricity mix, operation storage pumps, ENTSO, 2020, at plant",
+   "dataset_location": "CH",
+   "exchange_ordinal": 46,
+   "exchange_number": "535960",
+   "exchange_name": "Electricity, at 100MW wind farm, onshore, 2.3MW turbines",
+   "diff": [
+    "not_served_by_lci_bafu"
+   ],
+   "reason_code": "declared_location_without_dataset_no_overlay",
+   "reason": "technosphere; number 535960 names dataset 535960 (Electricity, at 100MW wind farm, onshore, 2.3MW turbines, location of that dataset: see target); the exchange declares location OCE, and no dataset of that name exists there, so lci-bafu's (name, reference product, location) link fails and the edge is dropped. No corrections/2026-v1.json entry restores it. sentier-importers links it by number.",
+   "sentier": {
+    "flow_type": "technosphere",
+    "group_code": 5,
+    "direction": "input",
+    "target_number": "535960",
+    "unit": "kWh",
+    "location": "OCE",
+    "amount": 0.0058202,
+    "category": "electricity by fuel",
+    "subcategory": "wind"
+   },
+   "lci_bafu": {
+    "type": "technosphere",
+    "fate": "dropped_unlinked",
+    "restore_id": null,
+    "target_number": null,
+    "unit": "kilowatt hour",
+    "location": "OCE",
+    "declared_location": null,
+    "amount": 0.0058202,
+    "categories": [
+     "electricity by fuel",
+     "wind"
+    ],
+    "inputGroup": "5",
+    "outputGroup": null
+   },
+   "sentier_target_location": "RER"
+  },
+  {
+   "dataset": "594650",
+   "dataset_file": "process_fba31eaa-9310-3098-86ba-1732d42311f5.xml",
+   "dataset_name": "xxx Polylactide, granulate, NatureWorks Nebraska",
+   "dataset_location": "US",
+   "exchange_ordinal": 14,
+   "exchange_number": "167283",
+   "exchange_name": "Natural gas, high pressure, at consumer",
+   "diff": [
+    "technosphere_target"
+   ],
+   "reason_code": "number_and_location_name_different_suppliers",
+   "reason": "technosphere; the XML number 167283 names dataset 167283 (location US), the XML location attribute says RER. sentier-importers follows the number; lci-bafu follows (name, location) to 330680 (location RER). Both sides serve an edge; they serve DIFFERENT suppliers.",
+   "sentier": {
+    "flow_type": "technosphere",
+    "group_code": 5,
+    "direction": "input",
+    "target_number": "167283",
+    "unit": "MJ",
+    "location": "RER",
+    "amount": 0.1296,
+    "category": "fuels",
+    "subcategory": "natural gas\\gas to user"
+   },
+   "lci_bafu": {
+    "type": "technosphere",
+    "fate": "linked",
+    "restore_id": null,
+    "target_number": "330680",
+    "unit": "megajoule",
+    "location": "RER",
+    "declared_location": null,
+    "amount": 0.1296,
+    "categories": [
+     "fuels",
+     "natural gas\\gas to user"
+    ],
+    "inputGroup": "5",
+    "outputGroup": null
+   },
+   "sentier_target_location": "US"
+  },
+  {
+   "dataset": "599376",
+   "dataset_file": "process_6738f024-eb64-3ef8-837e-05b84c6e43da.xml",
+   "dataset_name": "Polyethylene, HDPE, granulate, at plant",
+   "dataset_location": "RER",
+   "exchange_ordinal": 218,
+   "exchange_number": "53201",
+   "exchange_name": "Uranium",
+   "diff": [
+    "not_served_by_lci_bafu"
+   ],
+   "reason_code": "flow_absent_from_flow_list_compartment",
+   "reason": "biosphere 'Uranium', emissions to water. listed only in 'Raw materials' and 'Airborne emissions'; not in 'Waterborne emissions': unlinked and dropped by lci-bafu; served by sentier-importers.",
+   "sentier": {
+    "flow_type": "biosphere",
+    "group_code": 4,
+    "direction": "output",
+    "target_number": null,
+    "unit": "kg",
+    "location": null,
+    "amount": 3.9761e-08,
+    "category": "emissions to water",
+    "subcategory": "unspecified"
+   },
+   "lci_bafu": {
+    "type": "biosphere",
+    "fate": "dropped_unlinked",
+    "restore_id": null,
+    "target_number": null,
+    "unit": "kilogram",
+    "location": null,
+    "declared_location": null,
+    "amount": 3.9761e-08,
+    "categories": [
+     "water"
+    ],
+    "inputGroup": null,
+    "outputGroup": "4"
+   },
+   "sentier_target_location": null
+  },
+  {
+   "dataset": "610107",
+   "dataset_file": "process_a29ed30b-9c6c-32af-b788-c1fa0bbdf854.xml",
+   "dataset_name": "Green beans IP, at farm",
+   "dataset_location": "CH",
+   "exchange_ordinal": 8,
+   "exchange_number": "76560",
+   "exchange_name": "Water, embodied in product, CH",
+   "diff": [
+    "not_served_by_lci_bafu"
+   ],
+   "reason_code": "economic_issues_section_not_ingested",
+   "reason": "biosphere (outputGroup 4, category 'economic issues'). The flow IS in the flow-list CSV, section 'Economic issues', but lci-bafu builds bafu_biosphere only from six sections (SIMAPRO_SECTION_TO_CATEGORY has no 'Economic issues'), so the edge is unlinked and dropped. sentier-importers serves it under a uuid5 flow id.",
+   "sentier": {
+    "flow_type": "biosphere",
+    "group_code": 4,
+    "direction": "output",
+    "target_number": null,
+    "unit": "kg",
+    "location": null,
+    "amount": 0.90997,
+    "category": "economic issues",
+    "subcategory": "unspecified"
+   },
+   "lci_bafu": {
+    "type": "biosphere",
+    "fate": "dropped_unlinked",
+    "restore_id": null,
+    "target_number": null,
+    "unit": "kilogram",
+    "location": null,
+    "declared_location": null,
+    "amount": 0.90997,
+    "categories": [
+     "economic",
+     "primary production factor"
+    ],
+    "inputGroup": null,
+    "outputGroup": "4"
+   },
+   "sentier_target_location": null
+  },
+  {
+   "dataset": "619508",
+   "dataset_file": "process_2ddc6c69-c95e-3114-b827-75665e80bfbc.xml",
+   "dataset_name": "Natural gas, burned in power plant or heat plant",
+   "dataset_location": "IN",
+   "exchange_ordinal": 27,
+   "exchange_number": "576531",
+   "exchange_name": "Natural gas, high pressure, at consumer",
+   "diff": [
+    "technosphere_target"
+   ],
+   "reason_code": "number_and_location_name_different_suppliers",
+   "reason": "technosphere; the XML number 576531 names dataset 576531 (location IN), the XML location attribute says RER. sentier-importers follows the number; lci-bafu follows (name, location) to 330680 (location RER). Both sides serve an edge; they serve DIFFERENT suppliers.",
+   "sentier": {
+    "flow_type": "technosphere",
+    "group_code": 5,
+    "direction": "input",
+    "target_number": "576531",
+    "unit": "MJ",
+    "location": "RER",
+    "amount": 0.5,
+    "category": "fuels",
+    "subcategory": "natural gas\\gas to user"
+   },
+   "lci_bafu": {
+    "type": "technosphere",
+    "fate": "linked",
+    "restore_id": null,
+    "target_number": "330680",
+    "unit": "megajoule",
+    "location": "RER",
+    "declared_location": null,
+    "amount": 0.5,
+    "categories": [
+     "fuels",
+     "natural gas\\gas to user"
+    ],
+    "inputGroup": "5",
+    "outputGroup": null
+   },
+   "sentier_target_location": "IN"
+  }
+ ],
+ "location_column_vs_target": {
+  "ENTSO->ENTSO-E": 23,
+  "RER->RU": 1,
+  "RER->MY": 1,
+  "RER->CN": 2,
+  "RER->US": 1,
+  "RER->IN": 1,
+  "RER->PL": 1,
+  "RER->BG": 1,
+  "RER->RO": 1,
+  "RER->HR": 1,
+  "OCE->RER": 1,
+  "CH->RER": 2,
+  "CH->GLO": 1
+ },
+ "entso_location_column": {
+  "count": 23,
+  "note": "same served edge on both sides, same supplier (744906 high-voltage / 744754 medium-voltage ENTSO-E); sentier-importers' exchanges.location carries the declared 'ENTSO', the target process says 'ENTSO-E'; lci-bafu rewrites location to 'ENTSO-E' at import (B-001) and keeps 'declared_location': 'ENTSO'. The 23 B-003..B-025 restore entries find their edge already present.",
+  "rows": [
+   {
+    "dataset": "619839",
+    "exchange_ordinal": 9,
+    "exchange_name": "Electricity, medium voltage, production ENTSO-E, at grid",
+    "declared_location": "ENTSO",
+    "target": "744754",
+    "target_location": "ENTSO-E"
+   },
+   {
+    "dataset": "244788",
+    "exchange_ordinal": 2,
+    "exchange_name": "Electricity, high voltage, production ENTSO-E, at grid",
+    "declared_location": "ENTSO",
+    "target": "744906",
+    "target_location": "ENTSO-E"
+   },
+   {
+    "dataset": "559484",
+    "exchange_ordinal": 10,
+    "exchange_name": "Electricity, medium voltage, production ENTSO-E, at grid",
+    "declared_location": "ENTSO",
+    "target": "744754",
+    "target_location": "ENTSO-E"
+   },
+   {
+    "dataset": "483104",
+    "exchange_ordinal": 11,
+    "exchange_name": "Electricity, medium voltage, production ENTSO-E, at grid",
+    "declared_location": "ENTSO",
+    "target": "744754",
+    "target_location": "ENTSO-E"
+   },
+   {
+    "dataset": "372521",
+    "exchange_ordinal": 4,
+    "exchange_name": "Electricity, high voltage, production ENTSO-E, at grid",
+    "declared_location": "ENTSO",
+    "target": "744906",
+    "target_location": "ENTSO-E"
+   },
+   {
+    "dataset": "320449",
+    "exchange_ordinal": 13,
+    "exchange_name": "Electricity, medium voltage, production ENTSO-E, at grid",
+    "declared_location": "ENTSO",
+    "target": "744754",
+    "target_location": "ENTSO-E"
+   },
+   {
+    "dataset": "552959",
+    "exchange_ordinal": 11,
+    "exchange_name": "Electricity, medium voltage, production ENTSO-E, at grid",
+    "declared_location": "ENTSO",
+    "target": "744754",
+    "target_location": "ENTSO-E"
+   },
+   {
+    "dataset": "275187",
+    "exchange_ordinal": 5,
+    "exchange_name": "Electricity, high voltage, production ENTSO-E, at grid",
+    "declared_location": "ENTSO",
+    "target": "744906",
+    "target_location": "ENTSO-E"
+   },
+   {
+    "dataset": "284836",
+    "exchange_ordinal": 4,
+    "exchange_name": "Electricity, medium voltage, production ENTSO-E, at grid",
+    "declared_location": "ENTSO",
+    "target": "744754",
+    "target_location": "ENTSO-E"
+   },
+   {
+    "dataset": "300044",
+    "exchange_ordinal": 3,
+    "exchange_name": "Electricity, medium voltage, production ENTSO-E, at grid",
+    "declared_location": "ENTSO",
+    "target": "744754",
+    "target_location": "ENTSO-E"
+   },
+   {
+    "dataset": "610401",
+    "exchange_ordinal": 7,
+    "exchange_name": "Electricity, medium voltage, production ENTSO-E, at grid",
+    "declared_location": "ENTSO",
+    "target": "744754",
+    "target_location": "ENTSO-E"
+   },
+   {
+    "dataset": "245848",
+    "exchange_ordinal": 5,
+    "exchange_name": "Electricity, high voltage, production ENTSO-E, at grid",
+    "declared_location": "ENTSO",
+    "target": "744906",
+    "target_location": "ENTSO-E"
+   },
+   {
+    "dataset": "250789",
+    "exchange_ordinal": 4,
+    "exchange_name": "Electricity, high voltage, production ENTSO-E, at grid",
+    "declared_location": "ENTSO",
+    "target": "744906",
+    "target_location": "ENTSO-E"
+   },
+   {
+    "dataset": "166187",
+    "exchange_ordinal": 7,
+    "exchange_name": "Electricity, medium voltage, production ENTSO-E, at grid",
+    "declared_location": "ENTSO",
+    "target": "744754",
+    "target_location": "ENTSO-E"
+   },
+   {
+    "dataset": "162591",
+    "exchange_ordinal": 12,
+    "exchange_name": "Electricity, medium voltage, production ENTSO-E, at grid",
+    "declared_location": "ENTSO",
+    "target": "744754",
+    "target_location": "ENTSO-E"
+   },
+   {
+    "dataset": "255177",
+    "exchange_ordinal": 2,
+    "exchange_name": "Electricity, high voltage, production ENTSO-E, at grid",
+    "declared_location": "ENTSO",
+    "target": "744906",
+    "target_location": "ENTSO-E"
+   },
+   {
+    "dataset": "597242",
+    "exchange_ordinal": 12,
+    "exchange_name": "Electricity, medium voltage, production ENTSO-E, at grid",
+    "declared_location": "ENTSO",
+    "target": "744754",
+    "target_location": "ENTSO-E"
+   },
+   {
+    "dataset": "291390",
+    "exchange_ordinal": 9,
+    "exchange_name": "Electricity, medium voltage, production ENTSO-E, at grid",
+    "declared_location": "ENTSO",
+    "target": "744754",
+    "target_location": "ENTSO-E"
+   },
+   {
+    "dataset": "527990",
+    "exchange_ordinal": 9,
+    "exchange_name": "Electricity, medium voltage, production ENTSO-E, at grid",
+    "declared_location": "ENTSO",
+    "target": "744754",
+    "target_location": "ENTSO-E"
+   },
+   {
+    "dataset": "559593",
+    "exchange_ordinal": 5,
+    "exchange_name": "Electricity, high voltage, production ENTSO-E, at grid",
+    "declared_location": "ENTSO",
+    "target": "744906",
+    "target_location": "ENTSO-E"
+   },
+   {
+    "dataset": "185737",
+    "exchange_ordinal": 5,
+    "exchange_name": "Electricity, high voltage, production ENTSO-E, at grid",
+    "declared_location": "ENTSO",
+    "target": "744906",
+    "target_location": "ENTSO-E"
+   },
+   {
+    "dataset": "192042",
+    "exchange_ordinal": 5,
+    "exchange_name": "Electricity, high voltage, production ENTSO-E, at grid",
+    "declared_location": "ENTSO",
+    "target": "744906",
+    "target_location": "ENTSO-E"
+   },
+   {
+    "dataset": "190880",
+    "exchange_ordinal": 10,
+    "exchange_name": "Electricity, medium voltage, production ENTSO-E, at grid",
+    "declared_location": "ENTSO",
+    "target": "744754",
+    "target_location": "ENTSO-E"
+   }
+  ]
+ },
+ "amounts": {
+  "lci_bafu_unit_conversions": {
+   "Bq->kBq": 3171,
+   "kWh->MJ": 3,
+   "m->km": 43
+  },
+  "exchanges_whose_amount_differs": {
+   "Bq->kilo Becquerel": 3127,
+   "m->kilometer": 43,
+   "kWh->megajoule": 3
+  },
+  "note": "All 3,217 converted exchanges differ in amount (relative difference > 1e-6 on every one; none has a zero amount). The earlier 3,173 is an artifact of compare.py's absolute floor (|diff| > 1e-9*max(1,|a|)): the other 44 are Bq amounts between 1.5e-12 and 9.8e-10.",
+  "full_list": "not included here (3,217 rows); reproducible from the pins"
+ },
+ "year_unit_correction": {
+  "change_log_rows": 156,
+  "datasets_found_by_name_and_geography": 156,
+  "datasets_with_a_year_unit_exchange": 0,
+  "datasets_with_an_hr_exchange": 156,
+  "hr_exchanges_in_those_datasets": 396,
+  "year_symbols_anywhere_in_archive": {},
+  "power_sawing": {
+   "525719": {
+    "bafu_dataset_type": 1,
+    "bafu_aggregated_by": null,
+    "unit": "hour",
+    "name": "Power sawing, without catalytic converter",
+    "location": "RER",
+    "filename": "process_11a698cc-5730-3bc3-8807-995af913d885.xml"
+   },
+   "359043": {
+    "bafu_dataset_type": 1,
+    "bafu_aggregated_by": null,
+    "unit": "hour",
+    "name": "Power sawing, with catalytic converter",
+    "location": "RER",
+    "filename": "process_44683afa-04e8-3223-8e6f-fbb87be2bdc7.xml"
+   }
+  }
+ },
+ "aggregated": {
+  "raw_dataSetInformation_type": {
+   "1": 11845,
+   "2": 102
+  },
+  "sentier": {
+   "process_type_values": [
+    "unit"
+   ],
+   "note": "process_type is hard-coded 'unit' (inventory_processes.py); no column carries dataSetInformation@type; no structural flag"
+  },
+  "lci_bafu": {
+   "bafu_dataset_type": {
+    "1": 11845,
+    "2": 102
+   },
+   "bafu_aggregated_by": {
+    "null": 11808,
+    "flag": 102,
+    "structure": 37
+   }
+  },
+  "196588": {
+   "raw": {
+    "file": "process_b38d398d-60d0-3e39-9b8c-0c2dc0bcdee1.xml",
+    "type": "2",
+    "name": "Disposal, rectangular straw bale",
+    "n_exchanges": 1
+   },
+   "lci_bafu": {
+    "bafu_dataset_type": 2,
+    "bafu_aggregated_by": "flag",
+    "unit": "kilogram",
+    "name": "Disposal, rectangular straw bale",
+    "location": "CH",
+    "filename": "process_b38d398d-60d0-3e39-9b8c-0c2dc0bcdee1.xml"
+   },
+   "sentier": "one process row, process_type 'unit', one exchange (production, ordinal 0)"
+  }
+ },
+ "code_citations": {
+  "lci_bafu_economic_issues_skip": [
+   "src/lci_bafu/importer/bafu_biosphere_categories.py:61-68 SIMAPRO_SECTION_TO_CATEGORY (six sections, no 'Economic issues')",
+   "src/lci_bafu/importer/importer.py:385 `if first_cell in category_mapping:` (only those six open a section)",
+   "src/lci_bafu/importer/importer.py:405 `if current_category is None: continue` (rows of any other section, incl. 'Economic issues', are skipped)"
+  ],
+  "lci_bafu_missing_location_from_supplier_number": "src/lci_bafu/importer/parser.py:758-759",
+  "lci_bafu_reference_product_from_supplier_number": "src/lci_bafu/importer/parser.py:754-757 (link fields: name, reference product, location)",
+  "lci_bafu_location_alias": "src/lci_bafu/importer/importer.py:460-486 _normalise_declared_locations (overlay B-001 ENTSO->ENTSO-E)",
+  "sentier_process_type": "app/sentier_importers/sources/bafu/inventory_processes.py:40 \"process_type\": \"unit\"",
+  "sentier_link_by_number": "app/sentier_importers/sources/bafu/inventory_exchanges.py:49",
+  "sentier_location_column_declared": "app/sentier_importers/sources/bafu/inventory_exchanges.py:61"
+ },
+ "verdicts": [
+  {
+   "id": 1,
+   "verdict": "CONFIRMED",
+   "statement": "Same 420,063 exchanges keyed (dataset number, ordinal), identical classes; lci-bafu serves 420,041; gap 22 = 21 biosphere + 1 technosphere.",
+   "evidence": "RAW: 420,063 = 11,947 production + 114,369 technosphere + 293,747 biosphere. A published parquet equals RAW in per-dataset order on name and amount for all 420,063, 0 class mismatches. B_rebuilt equals RAW on class and meanValue for all 420,063. B_rebuilt served 420,041 (114,368 / 293,726), equal to the served manifest counts. The served catalogue matches RAW minus the 22 per dataset (multiset of type and amount) on all 11,947 datasets; negative control (no drops) differs on 22 datasets, so the check discriminates.",
+   "counted_object": "exchange elements under flowData in process_*.xml; served = B_rebuilt linked + overlay-restored, corroborated by the served catalogue"
+  },
+  {
+   "id": 2,
+   "verdict": "CONFIRMED",
+   "statement": "The 21 biosphere drops are 13 x 'Water, embodied in product, CH/ES/MX/KE/PE' (9 CH, 1 each ES/MX/KE/PE; listed in the flow list's 'Economic issues' section, which lci-bafu does not ingest), 7 x 'Uranium' to water (listed only under Raw materials and Airborne emissions) and 1 x 'Nitrogen dioxide, RAF' (no section).",
+   "evidence": "Own flow-list parser + RAW, predicted with no lci-bafu code: exactly the same 21 (ds, ordinal) that B_rebuilt drops. Code: lci-bafu src/lci_bafu/importer/bafu_biosphere_categories.py:61-68 (SIMAPRO_SECTION_TO_CATEGORY has six sections, no 'Economic issues'); importer.py:385 `if first_cell in category_mapping:` only opens those six; importer.py:405 `if current_category is None: continue` skips every other section's rows. Flow list: SetupDatabase_file.CSV, the BAFU:2025 SimaPro export (the 2026 download ships none), sha256 9b48bf6310fab6eff2a75bbeaaba92c5ce7cca01efb84964ef585e4d4aebaeab, cp1252. 'Uranium' and 'Nitrogen dioxide, RAF' are therefore absent from the 2025 list used as a stand-in, not from a 2026 list.",
+   "counted_object": "biosphere exchanges whose (name, compartment) is not in the six ingested sections"
+  },
+  {
+   "id": 3,
+   "verdict": "CONFIRMED",
+   "statement": "584039/46 declares OCE for supplier number 535960 (RER only); lci-bafu drops it; no overlay entry restores it.",
+   "evidence": "Hand-checked XML: location=\"OCE\" number=\"535960\" meanValue=\"0.0058202\" kWh, inputGroup 5, comment 'Wind Offshore / DE'. 535960 is RER. RAW: no (name, OCE) dataset. 584039 does not occur in corrections/2026-v1.json or in the volca adjudication record. Prior art: sentier-bafu #29 (F14).",
+   "counted_object": "technosphere exchanges whose (name, declared location) names no dataset and no restore entry covers"
+  },
+  {
+   "id": 4,
+   "verdict": "CONFIRMED",
+   "statement": "23 ENTSO exchanges link to the same supplier on both sides (lci-bafu aliases ENTSO->ENTSO-E at import, B-001); the 2 CH exchanges (573961/18, 204861/4) are dropped at link and restored by B-002 and B-026; sentier's location column keeps 'ENTSO'.",
+   "evidence": "RAW: all 23 aliased targets equal the XML number (744906 / 744754). B_rebuilt: aliased 23; restore entries matched 2 of 25 (B-002, B-026); B-003..B-025 find their edge already present. A published: location column 'ENTSO' on all 23, targets = number. Prior art: sentier-bafu #8 (F3); bafu-community-fixes patch 0002.",
+   "counted_object": "technosphere exchanges with location=\"ENTSO\" and the two CH rows"
+  },
+  {
+   "id": 5,
+   "verdict": "CONFIRMED",
+   "statement": "All 156 change-log 'Year unit correction' datasets carry 'hr' in the XML; no standalone year unit exists anywhere; the probe can return the other answer.",
+   "evidence": "156/156 change-log rows match one dataset by name+geography; 156 carry hr (396 hr exchanges), 0 carry a year unit. Units anywhere (exchange + reference): hr 782, no a/y/yr/year. Precision: four composite time-integrated units do carry a year factor (m2a 3,452+15, my 3,177+17, m3y 157, kmy 39+13); they are not the unit the change log corrected. Positive controls: changing one hr exchange of 304786 to 'a' in memory -> probe finds 1; same replace on the raw member bytes -> regex finds 1 where the original has 0.",
+   "counted_object": "exchange and reference units of the 156 change-log datasets and of the whole archive"
+  },
+  {
+   "id": 6,
+   "verdict": "CONFIRMED",
+   "statement": "lci-bafu exposes type=2 (102) and a structural marker (37); sentier hard-codes process_type 'unit' on all 11,947 processes.",
+   "evidence": "RAW dataSetInformation@type: 11,845 x 1, 102 x 2. B_rebuilt bafu_dataset_type 102 x 2, bafu_aggregated_by flag 102 / structure 37; the served catalogue has the same 37 codes. The structure rule reimplemented from its docstring finds the same 37 (definition is lci-bafu's, so this checks the count, not the definition). sentier-importers app/sentier_importers/sources/bafu/inventory_processes.py:40 \"process_type\": \"unit\"; ecospold.py never reads dataSetInformation@type; no published column carries it. 196588 (type 2, one exchange) is a 'unit' row in sentier.",
+   "counted_object": "datasets"
+  },
+  {
+   "id": 7,
+   "verdict": "CORRECTED",
+   "statement": "11 exchanges are served by both sides with different suppliers: the XML number names one dataset and (name, location) another of the same name (10 x 'Natural gas, high pressure, at consumer' declared RER with number = the consumer's country: BG, RU, RO, PL, HR, MY, CN x2, IN, US; 1 x car transport 320861/18, number 176928 RER, location CH -> 447339). sentier follows the number, lci-bafu follows name+location. The lci-bafu record lists ALL 11, not 10: it has 10 RESOLUTION_DIFF entries, one per consumer/supplier pair, and the CN entry covers both CN exchanges (volca_coeff -0.75 = 0.57 + 0.18).",
+   "evidence": "RAW resolver: exactly 11 such rows; B_rebuilt target != XML number on exactly these 11; A target = number on all 114,369. Record: src/lci_bafu/data/corrections/source_2026-v1_dropped_edges_2026-08-25.json (sha256 d608dbca8f1831189dfae4a5be2c624819e21c04a5a90989bb5ed46d9194c6b1). What it says: volca (number-following) linked these to the country / RER-car dataset, Brightway to the declared location; verdict 'volca rewired a DECLARED location (volca defect) - NOT applied'. That is lci-bafu's adjudication rule (declared location wins), not evidence of BAFU's intent. Its 'xml' evidence for MY and CN quotes the JP LNG exchange (0.19 / 0.25), not the disputed RER row (0.81 / 0.57+0.18). BAFU's intent is not determinable: the exchange comments read 'Approximation for domestic production in <country>' (CN 57%, MY 81%, IN 50%), 'pipeline imports in China (18%)', 'natural gas input' or nothing, and fit either reading. Prior art: the same number/location conflict class as sentier-bafu #8 (F3), #29 (F14), #31 (F16); bafu-community-fixes #6 counts 112,933 of 114,369 technosphere inputs whose number matches name and location, and the 1,436 remainder decomposes as 1,399 location-less + 23 ENTSO + 3 + these 11.",
+   "counted_object": "technosphere exchanges with a declared location where number-target != unique (name, location) target"
+  },
+  {
+   "id": 8,
+   "verdict": "CORRECTED",
+   "statement": "lci-bafu 0.1.13 re-expresses 3,217 biosphere amounts in the flow list's unit (Bq->kBq 3,171, m->km 43, kWh->MJ 3) that sentier keeps as declared; the amount differs on all 3,217, not 3,173.",
+   "evidence": "RAW vs flow list (own parser): 3,217 unit mismatches of these three kinds, all nonzero. A published: unit and amount equal RAW on all 420,063. B_rebuilt: every one of the 3,217 differs by > 1e-6 relative. The earlier 3,173 comes from compare.py's absolute floor (1e-9 x max(1,|a|)); the remaining 44 are Bq amounts between 1.5e-12 and 9.8e-10, not zeros. Also observed: 127 'Nm3' exchanges whose flow-list unit is 'm3' are not converted by either side. Whether the served build carries the conversions is NOT-DETERMINABLE here: the served manifest is importer 0.1.10 (pre-0.1.12) and the catalogue holds raw amounts; the live project was not read.",
+   "counted_object": "biosphere exchanges whose XML unit differs from the flow-list unit by a known factor"
+  }
+ ],
+ "spot_checks": "16 exchanges hand-checked in the raw XML (unzip -p + grep, ordinal counted separately), plus the supplier datasets and flow-list rows",
+ "limits": [
+  "The live served Brightway project was not opened; lci-bafu was rebuilt in memory at 2133c4b and compared with the served build's manifest and catalogue (importer 0.1.10, 2026-09-29).",
+  "The flow list is the BAFU:2025 SimaPro export, because the 2026 download ships none; 'absent from the flow list' means absent from that file.",
+  "For the 11 conflicting supplier links, the archive states both a number and a location; which one BAFU intends cannot be determined from the data."
+ ],
+ "measured_by": "agent-run pipeline, reproduced once after a lost run and verified by an independent re-implementation; 16 exchanges spot-checked by hand"
+}

@@ -1,0 +1,589 @@
+{
+  "date": "2026-10-21",
+  "baseline": {
+    "dataset": "BAFU/UVEK",
+    "release": "BAFU-2026-v1",
+    "import_repository": "https://github.com/sentier-dev/sentier-inventory",
+    "import_revision": "c5aee155f0778f02e68a67fc766e23222a11686a",
+    "input_hashes": {
+      "inventory-parquet-set-sha256": "c45bfac3ef75bad08eca3647cc23525ae86fbaf9a79dbe3fb76a16e4276be5e5",
+      "inventory-data-git-tree": "3490e90f2540dbb77fb0d9bfb0d849360c1d0027",
+      "inventory-parquet-manifest-sha256": "a3fb177509bff47dcf1f6c2e3bb72dace01e4d7100a905e2e60347f9807b1651"
+    },
+    "input_hash_notes": {
+      "inventory-parquet-set-sha256": "Declared in C001; carried forward, NOT reproduced: its recipe is not recorded and none of ~40 tried recipes (path/hash manifests, concatenations, with/without 99-obsolete) reproduces it.",
+      "inventory-data-git-tree": "git rev-parse <import_revision>:data",
+      "inventory-parquet-manifest-sha256": "sha256 of the `shasum -a 256` lines ('<hex>  data/<sector>/<file>.parquet') for all 22 data/**/*.parquet files of git archive <import_revision>, sorted by path (LC_ALL=C)."
+    }
+  },
+  "layer_revision": "a8c895d37b1ce5027733306eb95d60bb389cb31e",
+  "environment": {
+    "python": "3.12",
+    "installer": "uv",
+    "packages": {
+      "pandas": "3.0.6",
+      "numpy": "2.5.4",
+      "pyarrow": "26.0.0",
+      "pulp": "3.3.2",
+      "pycountry-convert": "per requirements.txt"
+    },
+    "pin_deviation": "requirements.txt says pulp>=2.7, which resolves to pulp 4.1.0; under 4.1.0 forecast_superstructure.py fails at line 165 (TypeError: LpVariable got unexpected keyword 'cat') and pulp exposes no PULP_CBC_CMD (line 200). The forecast check was therefore run with pulp<4 (3.3.2, bundled CBC). No other deviation."
+  },
+  "command": [
+    "python -I src/forecast_superstructure.py --data-root <pinned-inventory> --anchor global|regional",
+    "python -I eval_forecast.py <pr-src> <pinned-inventory> <out>  (independent rescoring; imports the PR's build_family/solve_member unchanged)",
+    "python -I structural_checks.py <pr-src> <pinned-inventory> <inventory-main> <demo-values.parquet> <out>"
+  ],
+  "decision_rules": {
+    "written_before_results": "2026-10-21T10:44:52Z",
+    "disclosure": "Before the units-and-mass-balance rule was written, an exploratory look at the forecast family had already shown 6 members with input sums outside 1 +/- 0.02 and 8 aggregate members with repeated slots; the forecast rule and baseline definition were fixed before any baseline or honest metric was computed.",
+    "forecast-held-out-validation": {
+      "family": "Electricity, production mix (81 members at the pinned baseline)",
+      "honest_scoring": "Leave-one-out exactly as solve_member() does it, but (1) a member whose F1 is undefined (no true positive, or nothing predicted) scores F1 = 0 instead of being dropped from the mean; (2) the 8 regional/global aggregate members (any location that is not an ISO 3166-1 alpha-2 country code: ENTSO-E, GLO, RAF, RAS, RER, RLA, RME, RNA) are not scored as held-out targets, because they are mixes of country mixes, not countries.",
+      "baseline": "For each held-out country, training = the other 80 members (as in the MILP). Predict active = input slots used (amount > 1e-6) by at least half of the training members; predicted share = mean amount of that slot over all training members (absent = 0), renormalised so the predicted shares sum to 1. Scored with the same MAE/precision/recall/F1 code path and the same honest rules.",
+      "rule": "PASSED iff, under honest scoring, at least one of the two shipped anchors (global, regional) has mean F1 strictly greater than the baseline's AND mean MAE strictly lower than the baseline's. Otherwise FAILED. Reproduction of REPORT.md's numbers is recorded but does not decide pass/fail."
+    },
+    "units-and-mass-balance": {
+      "scope": "The 766 copied-process families classify.py selects at the pinned baseline (99-obsolete skipped), using build_family() as shipped.",
+      "U1_one_unit_per_flow": "Within a family, every (flow_name, direction, flow_type) appears in exactly one unit. A family fails U1 if any such flow carries two or more units.",
+      "U2_reference_output": "Every member's production exchange is in the member's reference_unit and all members of a family share one reference_unit.",
+      "MB_sum_to_one": "For every family where _homogeneous_unit_inputs(structure) is True (the forecaster would impose sum(inputs) = 1 +/- 0.02), each member's summed input-direction amounts (all input rows, as the model sums them) lie in [0.98, 1.02].",
+      "rule": "PASSED iff zero families fail U1, zero families fail U2, and zero members fail MB. Otherwise FAILED, with counts and examples. MB is additionally reported for the forecast family alone."
+    }
+  },
+  "checks": [
+    {
+      "id": "forecast-held-out-validation",
+      "status": "failed",
+      "family": "Electricity, production mix",
+      "members": 81,
+      "as_shipped": {
+        "reproduces_report": true,
+        "global": {
+          "n": 81,
+          "mae": 0.0603,
+          "precision": 0.5535,
+          "recall": 0.7674,
+          "f1": 0.5975,
+          "f1_undefined_members": 0
+        },
+        "regional": {
+          "n": 81,
+          "mae": 0.0564,
+          "precision": 0.595,
+          "recall": 0.6504,
+          "f1": 0.5889,
+          "f1_undefined_members": 2
+        },
+        "report_md_values": {
+          "global": {
+            "mae": 0.0603,
+            "precision": 0.553,
+            "recall": 0.767,
+            "f1": 0.598
+          },
+          "regional": {
+            "mae": 0.0564,
+            "precision": 0.595,
+            "recall": 0.65,
+            "f1": 0.589
+          }
+        },
+        "zero_baseline_mae_printed": 0.0472
+      },
+      "nan_f1_as_zero_all_81": {
+        "global": {
+          "n": 81,
+          "mae": 0.0603,
+          "precision": 0.5535,
+          "recall": 0.7674,
+          "f1": 0.5975,
+          "f1_undefined_members": 0
+        },
+        "regional": {
+          "n": 81,
+          "mae": 0.0564,
+          "precision": 0.595,
+          "recall": 0.6504,
+          "f1": 0.5743,
+          "f1_undefined_members": 2
+        },
+        "baseline": {
+          "n": 81,
+          "mae": 0.0506,
+          "precision": 0.7329,
+          "recall": 0.762,
+          "f1": 0.725,
+          "f1_undefined_members": 8
+        }
+      },
+      "honest_countries_only": {
+        "global": {
+          "n": 73,
+          "mae": 0.0612,
+          "precision": 0.6057,
+          "recall": 0.7419,
+          "f1": 0.6474,
+          "f1_undefined_members": 0
+        },
+        "regional": {
+          "n": 73,
+          "mae": 0.0567,
+          "precision": 0.6524,
+          "recall": 0.6395,
+          "f1": 0.623,
+          "f1_undefined_members": 0
+        },
+        "baseline": {
+          "n": 73,
+          "mae": 0.05,
+          "precision": 0.8132,
+          "recall": 0.8455,
+          "f1": 0.8045,
+          "f1_undefined_members": 0
+        }
+      },
+      "sensitivity_aggregates_also_removed_from_training": {
+        "global": {
+          "mae": 0.0588,
+          "f1": 0.6056
+        },
+        "regional": {
+          "mae": 0.0553,
+          "f1": 0.5899
+        },
+        "baseline": {
+          "mae": 0.0528,
+          "f1": 0.7933
+        }
+      },
+      "findings": [
+        "The model does not beat the simple frequency baseline under any scoring tried: honest F1 0.647 (global) / 0.623 (regional) vs baseline 0.804; MAE 0.0612 / 0.0567 vs 0.0500.",
+        "solve_member skips undefined F1 in the mean; counting it as 0 moves regional F1 0.589 -> 0.574 (ENTSO-E and RER undefined).",
+        "8 aggregate members (ENTSO-E, GLO, RAF, RAS, RER, RLA, RME, RNA) are scored as held-out targets. Their input is 2-34 rows of the same slot ('Electricity, production mix' from member countries), and solve_member's dict(zip(slot_id, amount)) keeps only the last row, so the 'real' value scored is e.g. 0.023 for RER where the slot sums to 1.0.",
+        "6 of the 81 real members (ID 0.956, IS 0.701, IT 0.979, NZ 0.824, PH 0.907, TR 0.972) have input sums outside the 1 +/- 0.02 the MILP imposes, so their true recipe is infeasible for the model."
+      ]
+    },
+    {
+      "id": "units-and-mass-balance",
+      "status": "failed",
+      "families": 766,
+      "exchange_rows": 129687,
+      "U1_one_unit_per_flow": {
+        "families_failing": 18,
+        "examples": [
+          {
+            "family": "Electricity, natural gas, at power plant",
+            "flow_name": "Electricity, natural gas, at power plant",
+            "direction": "output",
+            "flow_type": "production",
+            "units": [
+              "MJ",
+              "kWh"
+            ]
+          },
+          {
+            "family": "Natural gas, production US, at long-distance pipeline",
+            "flow_name": "Natural gas, production US, at long-distance pipeline",
+            "direction": "output",
+            "flow_type": "production",
+            "units": [
+              "MJ",
+              "Nm3"
+            ]
+          },
+          {
+            "family": "Natural gas, production US, at evaporation plant",
+            "flow_name": "Production plant, natural gas",
+            "direction": "input",
+            "flow_type": "technosphere",
+            "units": [
+              "p",
+              "unit"
+            ]
+          }
+        ],
+        "all_families": [
+          {
+            "family": "Electricity, natural gas, at power plant",
+            "flow_name": "Electricity, natural gas, at power plant",
+            "flow_type": "production",
+            "units": [
+              "MJ",
+              "kWh"
+            ],
+            "data_finding": {
+              "finding": "F13",
+              "url": "https://github.com/sentier-dev/sentier-bafu/issues/28"
+            }
+          },
+          {
+            "family": "Natural gas, production US, at long-distance pipeline",
+            "flow_name": "Natural gas, production US, at long-distance pipeline",
+            "flow_type": "production",
+            "units": [
+              "MJ",
+              "Nm3"
+            ]
+          },
+          {
+            "family": "Natural gas, production US, at evaporation plant",
+            "flow_name": "Production plant, natural gas",
+            "flow_type": "technosphere",
+            "units": [
+              "p",
+              "unit"
+            ]
+          },
+          {
+            "family": "Natural gas, production RU, at long-distance pipeline",
+            "flow_name": "Natural gas, production RU, at long-distance pipeline",
+            "flow_type": "production",
+            "units": [
+              "MJ",
+              "Nm3"
+            ]
+          },
+          {
+            "family": "Natural gas, production DZ, at long-distance pipeline",
+            "flow_name": "Natural gas, production DZ, at long-distance pipeline",
+            "flow_type": "production",
+            "units": [
+              "MJ",
+              "Nm3"
+            ]
+          },
+          {
+            "family": "Natural gas, production NG, at long-distance pipeline",
+            "flow_name": "Natural gas, production NG, at long-distance pipeline",
+            "flow_type": "production",
+            "units": [
+              "MJ",
+              "Nm3"
+            ]
+          },
+          {
+            "family": "Natural gas, production NG, at evaporation plant",
+            "flow_name": "Production plant, natural gas",
+            "flow_type": "technosphere",
+            "units": [
+              "p",
+              "unit"
+            ]
+          },
+          {
+            "family": "Natural gas, production QA, at long-distance pipeline",
+            "flow_name": "Natural gas, production QA, at long-distance pipeline",
+            "flow_type": "production",
+            "units": [
+              "MJ",
+              "Nm3"
+            ]
+          },
+          {
+            "family": "Natural gas, production RU, at evaporation plant",
+            "flow_name": "Production plant, natural gas",
+            "flow_type": "technosphere",
+            "units": [
+              "p",
+              "unit"
+            ]
+          },
+          {
+            "family": "Natural gas, production DZ, at evaporation plant",
+            "flow_name": "Production plant, natural gas",
+            "flow_type": "technosphere",
+            "units": [
+              "p",
+              "unit"
+            ]
+          },
+          {
+            "family": "Natural gas, production QA, at evaporation plant",
+            "flow_name": "Production plant, natural gas",
+            "flow_type": "technosphere",
+            "units": [
+              "p",
+              "unit"
+            ]
+          },
+          {
+            "family": "Natural gas, production NO, at evaporation plant",
+            "flow_name": "Production plant, natural gas",
+            "flow_type": "technosphere",
+            "units": [
+              "p",
+              "unit"
+            ]
+          },
+          {
+            "family": "Natural gas, liquefied, at freight ship",
+            "flow_name": "Natural gas, liquefied, at freight ship",
+            "flow_type": "production",
+            "units": [
+              "Nm3",
+              "m3"
+            ],
+            "data_finding": {
+              "finding": "F15",
+              "url": "https://github.com/sentier-dev/sentier-bafu/issues/30"
+            }
+          },
+          {
+            "family": "Natural gas, production LY, at long-distance pipeline",
+            "flow_name": "Natural gas, production LY, at long-distance pipeline",
+            "flow_type": "production",
+            "units": [
+              "MJ",
+              "Nm3"
+            ]
+          },
+          {
+            "family": "Asparagus, conventional",
+            "flow_name": "Water, CH",
+            "flow_type": "biosphere",
+            "units": [
+              "kg",
+              "m3"
+            ]
+          },
+          {
+            "family": "Gypsum fibre board, at plant",
+            "flow_name": "Gypsum fibre board, at plant",
+            "flow_type": "production",
+            "units": [
+              "kg",
+              "m2"
+            ]
+          },
+          {
+            "family": "Irrigating",
+            "flow_name": "Irrigating",
+            "flow_type": "production",
+            "units": [
+              "ha",
+              "m3"
+            ]
+          },
+          {
+            "family": "Strawberries, conventional, unheated plastic tunnel",
+            "flow_name": "Water, CH",
+            "flow_type": "biosphere",
+            "units": [
+              "kg",
+              "m3"
+            ]
+          }
+        ],
+        "note": "F13 (MJ/kWh) and F15 (Nm3/m3) are BAFU data errors and account for 2 of the 18 families. The other 16 are 6 gas-production families whose members are declared in MJ and Nm3, 6 that write the same count unit as 'p' and 'unit', 2 with water in kg and m3, one board in kg and m2 and one irrigation family in ha and m3. Without the two data errors the check still fails."
+      },
+      "U2_reference_output": {
+        "families_failing": 10,
+        "examples": [
+          {
+            "family": "Electricity, natural gas, at power plant",
+            "production_unit_ne_reference_unit": 0,
+            "distinct_reference_units": [
+              "MJ",
+              "kWh"
+            ]
+          },
+          {
+            "family": "Natural gas, production US, at long-distance pipeline",
+            "production_unit_ne_reference_unit": 0,
+            "distinct_reference_units": [
+              "MJ",
+              "Nm3"
+            ]
+          },
+          {
+            "family": "Natural gas, production RU, at long-distance pipeline",
+            "production_unit_ne_reference_unit": 0,
+            "distinct_reference_units": [
+              "MJ",
+              "Nm3"
+            ]
+          }
+        ],
+        "all_families": [
+          {
+            "family": "Electricity, natural gas, at power plant",
+            "reference_units": [
+              "MJ",
+              "kWh"
+            ],
+            "data_finding": {
+              "finding": "F13",
+              "url": "https://github.com/sentier-dev/sentier-bafu/issues/28"
+            }
+          },
+          {
+            "family": "Natural gas, production US, at long-distance pipeline",
+            "reference_units": [
+              "MJ",
+              "Nm3"
+            ]
+          },
+          {
+            "family": "Natural gas, production RU, at long-distance pipeline",
+            "reference_units": [
+              "MJ",
+              "Nm3"
+            ]
+          },
+          {
+            "family": "Natural gas, production DZ, at long-distance pipeline",
+            "reference_units": [
+              "MJ",
+              "Nm3"
+            ]
+          },
+          {
+            "family": "Natural gas, production NG, at long-distance pipeline",
+            "reference_units": [
+              "MJ",
+              "Nm3"
+            ]
+          },
+          {
+            "family": "Natural gas, production QA, at long-distance pipeline",
+            "reference_units": [
+              "MJ",
+              "Nm3"
+            ]
+          },
+          {
+            "family": "Natural gas, liquefied, at freight ship",
+            "reference_units": [
+              "Nm3",
+              "m3"
+            ],
+            "data_finding": {
+              "finding": "F15",
+              "url": "https://github.com/sentier-dev/sentier-bafu/issues/30"
+            }
+          },
+          {
+            "family": "Natural gas, production LY, at long-distance pipeline",
+            "reference_units": [
+              "MJ",
+              "Nm3"
+            ]
+          },
+          {
+            "family": "Gypsum fibre board, at plant",
+            "reference_units": [
+              "kg",
+              "m2"
+            ]
+          },
+          {
+            "family": "Irrigating",
+            "reference_units": [
+              "ha",
+              "m3"
+            ]
+          }
+        ],
+        "note": "F13 and F15 account for 2 of the 10 families; the other 8 are 6 gas-production families in MJ and Nm3, one board in kg and m2 and one irrigation family in ha and m3."
+      },
+      "MB_sum_to_one": {
+        "families_where_model_imposes_it": 90,
+        "families_with_a_failing_member": 30,
+        "families_where_no_member_satisfies_it": 22,
+        "members_checked": 854,
+        "members_failing": 247,
+        "input_unit_of_constrained_families": {
+          "MJ": 25,
+          "tkm": 19,
+          "kWh": 15,
+          "kg": 12,
+          "m3": 9,
+          "km": 4,
+          "hr": 4,
+          "Nm3": 1
+        },
+        "forecast_family": {
+          "members": 81,
+          "fail": 6,
+          "input_unit": "kWh"
+        },
+        "examples": [
+          {
+            "family": "Electricity mix",
+            "location": "IS",
+            "input_sum": 0.701303,
+            "input_unit": "kWh"
+          },
+          {
+            "family": "Electricity, production mix",
+            "location": "IS",
+            "input_sum": 0.701303,
+            "input_unit": "kWh"
+          },
+          {
+            "family": "Heat, natural gas, at CHP power plant",
+            "location": "SE",
+            "input_sum": 0.77,
+            "input_unit": "MJ"
+          },
+          {
+            "family": "Electricity, natural gas, at CHP power plant",
+            "location": "CN",
+            "input_sum": 8.41,
+            "input_unit": "MJ"
+          },
+          {
+            "family": "xxx Electricity, GO supply mix",
+            "location": "LT",
+            "input_sum": 1.057515,
+            "input_unit": "kWh"
+          },
+          {
+            "family": "Electricity, natural gas, at power plant",
+            "location": "IT",
+            "input_sum": 6.89,
+            "input_unit": "MJ"
+          }
+        ]
+      },
+      "findings": [
+        "_homogeneous_unit_inputs gates the sum-to-one constraint on 'one input unit', which admits families whose single input unit is MJ, tkm, kg, m3, km or hr; 22 of the 90 such families have no member that sums to 1 +/- 0.02 (e.g. 'Electricity, natural gas, at power plant' IT = 6.89 MJ).",
+        "Families keyed on reference_product mix output units: 18 families carry one flow in two units (mostly the production output in MJ and Nm3, or MJ and kWh), so 'one family' is sometimes two products."
+      ]
+    }
+  ],
+  "related_observations": {
+    "values_yaml_primary_key": {
+      "declared": "(process_id, slot_id)",
+      "violating_families": 433,
+      "excess_rows": 45340,
+      "rows_in_duplicate_groups": 63513,
+      "generated_02_electricity_values_parquet": {
+        "rows": 32458,
+        "excess_rows": 14174,
+        "rows_in_duplicate_groups": 15939,
+        "excess_rows_even_with_flow_in_key": 9508
+      },
+      "note": "Adding the flow id does not make the key unique: the source exchanges table repeats (process_id, flow) with different amounts and declares no primary key."
+    },
+    "roundtrip_tolerance": {
+      "comparison": "np.allclose(rtol=1e-9, default atol=1e-8)",
+      "nonzero_amounts_below_1e-8": 31138,
+      "zeroing_one_such_amount_still_passes": true,
+      "exact_comparison_mismatch_rows": 0,
+      "exact_comparison_families": 766
+    }
+  },
+  "scope": "Pinned baseline only; the PR's 766 classify-selected families for units-and-mass-balance; forecast on the one family the PR reports as a benchmark ('Electricity, production mix'). Not full inventory, not other forecast families.",
+  "limits": [
+    "The declared inventory-parquet-set-sha256 was not reproduced (recipe unknown); identity of the inputs is instead pinned by the data git tree and a stated-recipe manifest hash.",
+    "Forecast numbers require pulp<4; the shipped requirements.txt does not run.",
+    "The baseline is one simple definition chosen by the reviewer; other baselines (e.g. regional frequency) were not tried.",
+    "Mass balance is checked as the model sums it (all input-direction rows, raw amounts, reference amount 1 for all but 6 processes); no physical or energy-content conversion was attempted.",
+    "No LCA engine was run."
+  ],
+  "not_run": [
+    "score-parity"
+  ]
+}

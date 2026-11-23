@@ -1,0 +1,99 @@
+[project]
+name = "bafu-community-fixes"
+version = "0.1.0"
+description = "Community patches for the BAFU LCA database (EcoSpold 1 in, EcoSpold 1 out), and the installer that writes the result into Brightway"
+readme = "README.md"
+license = "MIT"
+# The Brightway installer (`src/sentier_brightway`) is the code of sentier-brightway, moved
+# here with its history. It keeps its own copyright line, in its own licence file.
+license-files = ["LICENSE", "src/sentier_brightway/LICENSE"]
+authors = [
+    { name = "Chris Mutel", email = "cmutel@gmail.com" },
+    { name = "Laurenz Bougan", email = "laurenz@d-d-s.ch" },
+]
+requires-python = ">=3.14"
+classifiers = [
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering",
+]
+dependencies = [
+    "jinja2>=3.1.6",
+    "lxml>=6.1.3",
+    "platformdirs>=4.13.0",
+    "pydantic>=2.14.1",
+    "textual>=8.2.8",
+]
+
+[project.optional-dependencies]
+# What the Brightway installer (`sentier_brightway`, the command `sentier-brightway`) needs
+# on top of the patch tool. The patch tool runs without it; the build of a Brightway
+# database (`scripts/build_release.py`) and the installer's tests need it.
+brightway = [
+    "bw2calc>=2.0",
+    "bw2data>=4.0",
+    "bw_processing>=1.0",
+    "numpy>=1.24",
+    "openpyxl>=3.1",
+    "pandas>=2.0",
+    "pyarrow>=14",
+]
+
+[project.scripts]
+bafu-fixes = "bafu_community_fixes.cli:main"
+bafu-fixes-tui = "bafu_community_fixes.tui:main"
+sentier-brightway = "sentier_brightway.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.11.0,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+# Two packages in one distribution: the patch tool and the Brightway installer.
+module-name = ["bafu_community_fixes", "sentier_brightway"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "ruff>=0.17.0",
+]
+
+[tool.pytest.ini_options]
+# `uv run pytest` runs the patch tool's tests. The installer's tests need the `brightway`
+# extra and are run by name: `uv run --extra brightway pytest installer-tests`.
+testpaths = ["tests"]
+markers = ["bw: needs bw2data and bw2calc (the `brightway` extra)"]
+
+[tool.ruff]
+line-length = 100
+# Review-workspace files merged from sentier-bafu (#19) keep their own style for now;
+# the community lint scope stays exactly what it was. Bringing them under ruff is a
+# separate, visible change.
+extend-exclude = [
+    # Scripts of a recorded run keep the bytes their README pins by sha256.
+    "community/runs/",
+    "community/tests/",
+    "registry-tests/",
+    "scripts/audit_flow_mapping.py",
+    "scripts/audit_registry.py",
+    "scripts/build_checks.py",
+    "scripts/build_site.py",
+    "scripts/check_site.py",
+    "scripts/community.py",
+    # The records, the site and the automation, written after the merge above in the
+    # same style as the files before them.
+    "scripts/github_api.py",
+    "scripts/intake.py",
+    "scripts/patches_snapshot.py",
+    "scripts/shared_files.py",
+    "scripts/sitebuild/",
+    "scripts/sync.py",
+    "scripts/triage.py",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"

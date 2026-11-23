@@ -1,0 +1,9 @@
+[
+  {
+    "id": "strawberry-patch-tests",
+    "kind": "Validation test",
+    "title": "Strawberry disposal correction and its check on the original amount",
+    "url": "https://github.com/mklarmann/sentier-bafu/blob/5f4f475e60ab342143cec46591f6b03d0fb6f579/tests/test_patches.py#L14-L32",
+    "cases": ["F1"]
+  }
+]

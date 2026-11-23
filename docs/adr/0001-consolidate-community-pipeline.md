@@ -3,9 +3,9 @@ status: proposed
 ---
 # Preserve the community pipeline in the consolidated repository
 
-Consolidate the two repositories into one shared repository (working title:
-BAFU Community), preserving both Git histories. Chris and Laurenz will choose
-the final name. On 13 October 2026 Manuel Klarmann chose `bafu-community-fixes`
+Consolidate the two repositories into one shared repository, preserving both
+Git histories. Chris and Laurenz will choose the final name in
+[#25](https://github.com/sentier-dev/sentier-bafu/issues/25). On 13 October 2026 Manuel Klarmann chose `bafu-community-fixes`
 as authoritative where implementation or interpretation conflicts. Its package,
 CLI/TUI, import fixes, patches, tests and report remain the executable
 foundation; the existing findings and contribution history remain the review

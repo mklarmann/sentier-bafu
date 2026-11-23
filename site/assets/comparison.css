@@ -1,0 +1,120 @@
+/* Shared by the three Sentier comparison pages. Site typography and accent are inherited. */
+.sentier-comparison .comparison-opening {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 70rem;
+  margin: 0 auto;
+  min-width: 0;
+  color: #292a29;
+  text-align: left;
+}
+.sentier-comparison .comparison-opening * { box-sizing: border-box; }
+.sentier-comparison .comparison-crumb {
+  margin: 0 0 .65rem;
+  font-size: .875rem;
+  font-weight: 700;
+}
+.sentier-comparison .comparison-title {
+  margin: 0 0 .5rem;
+  font-size: clamp(2rem, 1.75rem + 1vw, 2.6rem);
+  line-height: 1.14;
+  letter-spacing: -.025em;
+}
+.sentier-comparison .comparison-intro {
+  max-width: 72ch;
+  margin: 0 0 1.25rem;
+  font-size: 1.0625rem;
+  line-height: 1.5;
+}
+.sentier-comparison .comparison-filter {
+  max-width: 100%;
+  margin: 0 0 1rem;
+}
+.sentier-comparison .comparison-filter label {
+  display: block;
+  margin: 0 0 .35rem;
+  font-size: .9375rem;
+  line-height: 1.45;
+  font-weight: 750;
+  letter-spacing: normal;
+  text-transform: none;
+}
+.sentier-comparison .comparison-opening :is(a, select, button):focus-visible {
+  outline: 3px solid #245c77;
+  outline-offset: 3px;
+}
+.sentier-comparison .comparison-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .75rem;
+  margin: 0;
+}
+.sentier-comparison .comparison-state {
+  min-width: 0;
+  padding: .95rem 1.125rem;
+  border: 1px solid #ceccbd;
+  border-radius: .5rem;
+  background: #fbfaf5;
+  overflow-wrap: anywhere;
+}
+.sentier-comparison .comparison-state-label {
+  margin: 0 0 .35rem;
+  color: #55564e;
+  font-size: .75rem;
+  font-weight: 800;
+  letter-spacing: .065em;
+  line-height: 1.35;
+  text-transform: uppercase;
+}
+.sentier-comparison .comparison-state-name {
+  display: block;
+  margin: 0;
+  color: #292a29;
+  font-size: 1.125rem;
+  font-weight: 750;
+  line-height: 1.35;
+}
+.sentier-comparison .comparison-state-detail {
+  margin: .25rem 0 0;
+  font-size: .9375rem;
+  line-height: 1.45;
+}
+.sentier-comparison .comparison-results-title {
+  margin: 1.75rem 0 .5rem;
+  font-size: 1.5rem;
+  line-height: 1.25;
+}
+@media (max-width: 40rem) {
+  .sentier-comparison .comparison-pair { grid-template-columns: minmax(0, 1fr); gap: .5rem; }
+  .sentier-comparison .comparison-state { padding: .75rem .875rem; }
+}
+.sentier-comparison .comparison-filter {
+  border: 1px solid #aaa89a;
+  border-radius: .5rem;
+  background: #fbfaf5;
+}
+.comparison-filter summary { padding: .75rem 1rem; cursor: pointer; font-weight: 750; }
+.comparison-filter summary span { margin-inline-start: .6rem; font-weight: 500; }
+.comparison-filter fieldset { min-width: 0; border: 0; padding: 0 1rem .75rem; }
+.comparison-options { max-height: 19rem; overflow-y: auto; margin-top: .5rem; }
+.sentier-comparison .comparison-options label {
+  display: flex;
+  align-items: baseline;
+  gap: .65rem;
+  padding: .5rem .25rem;
+  margin: 0;
+  font-weight: 500;
+  cursor: pointer;
+}
+.comparison-options input { width: 1.15rem; height: 1.15rem; flex: none; align-self: start; margin-top: .15rem; }
+.comparison-filter :is(input, summary):focus-visible { outline: 3px solid #245c77; outline-offset: 2px; }
+.comparison-case-result { margin-block: .75rem; border-top: 1px solid #ceccbd; }
+[data-step-sets] fieldset { margin-block: 1rem; padding: .75rem 1rem; }
+[data-step-sets] legend { padding-inline: .4rem; font-weight: 750; }
+[data-step-sets] .comparison-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); max-height: none; }
+[data-step-sets] .comparison-options label { display: flex; gap: .5rem; align-items: baseline; padding: .55rem .2rem; cursor: pointer; }
+[data-step-sets] select { max-width: 100%; }
+[data-step-sets] details { margin-block: .75rem; }
+[data-combine-steps] { margin-block: .4rem; }
+
+.comparison-step-actions { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; scroll-margin-top: 1rem; }

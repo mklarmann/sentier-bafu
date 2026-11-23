@@ -1,0 +1,58 @@
+{
+  "schema": 2,
+  "id": "F19",
+  "issue": 41,
+  "title": "Asparagus seedling 491975: 14 of 20 input amounts sit on the wrong row",
+  "kind": "defect",
+  "datasets": [
+    {
+      "code": 491975,
+      "name": "Asparagus seedling, open field, at production site",
+      "location": "GLO"
+    },
+    {
+      "code": 435703,
+      "name": "Asparagus, conventional",
+      "location": "CH",
+      "role": "affected"
+    },
+    {
+      "code": 378451,
+      "name": "Asparagus, conventional",
+      "location": "PE",
+      "role": "affected"
+    },
+    {
+      "code": 202096,
+      "name": "Asparagus, conventional",
+      "location": "MX",
+      "role": "affected"
+    }
+  ],
+  "scope": "",
+  "releases": [
+    "2025-v2",
+    "2026-v1"
+  ],
+  "observation": "14 of its 20 technosphere and land rows carry the amount, with its pedigree comment, of a different row of the report's Figure 6 (*Life cycle assessment of strawberry and asparagus production*, Kägi et al., 2022). `Pesticide unspecified` reads 0.04 kg per seedling against the figure's 3.35E-06 kg. That one row is 89 % of the seedling's GWP100 in the workbook (0.392 kg CO₂-eq/p; about 0.024 with the figure's assignment) and 22–37 % of its three consumers, `Asparagus, conventional` 435703 (CH), 378451 (PE) and 202096 (MX).",
+  "exposure": "",
+  "method": "Measured on the ecoSpold XML of 2025 v2 and 2026 v1 against the report figure, row by row by amount, and on the LCIA workbook; filed 31 October 2026. Not yet re-measured by a second person.",
+  "reported": {
+    "by": "mklarmann",
+    "date": "2026-10-31",
+    "url": "https://github.com/sentier-dev/sentier-bafu/issues/41"
+  },
+  "repeated": null,
+  "sent": null,
+  "answer": null,
+  "fixed_in": null,
+  "closed": null,
+  "related": [],
+  "threads": [],
+  "next": {
+    "action": "A second person repeats the measurement on BAFU's release files. Then the finding is reported to BAFU.",
+    "role": "reviewer"
+  },
+  "retained": [],
+  "notes": ""
+}

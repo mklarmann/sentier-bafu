@@ -1,0 +1,38 @@
+{
+  "schema": 2,
+  "id": "F15",
+  "issue": 30,
+  "title": "Natural-gas inputs declared in m3 where every provider is Nm3",
+  "kind": "defect",
+  "datasets": [],
+  "scope": "7 natural-gas supply names",
+  "releases": [
+    "2026-v1"
+  ],
+  "observation": "40 consumer exchanges declare `m3` where every provider of the name declares `Nm3` (DZ/NG/QA/US at production, NO/NL/GB offshore, DE/RU/NL onshore, three RER pipelines, LNG DZ to FR). Amounts are consistent with Nm3 (≈36 MJ per m3); relabel, no rescale.",
+  "exposure": "",
+  "method": "Re-measured on the release files on 2026-10-21; a release-wide scan found no further m3/Nm3 mismatches (apart from the #28 kWh/MJ edge and p/unit spellings). Sibling gas-turbine datasets take 0.027778 Nm3/MJ from the same provider, so the m3 rows already carry Nm3 amounts.",
+  "reported": {
+    "by": "tngTUDOR",
+    "date": "2026-10-14",
+    "url": "https://github.com/sentier-dev/sentier-bafu/issues/30"
+  },
+  "repeated": {
+    "by": "mklarmann",
+    "date": "2026-10-21",
+    "url": "https://github.com/sentier-dev/sentier-bafu/issues/30#issuecomment-6308092371",
+    "result": "reproduced"
+  },
+  "sent": null,
+  "answer": null,
+  "fixed_in": null,
+  "closed": null,
+  "related": [],
+  "threads": [],
+  "next": {
+    "action": "Send to BAFU with the next batch: relabel the 40 exchanges as Nm3, no rescale.",
+    "role": "maintainer"
+  },
+  "retained": [],
+  "notes": ""
+}

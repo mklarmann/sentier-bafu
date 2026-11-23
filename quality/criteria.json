@@ -1,0 +1,10 @@
+{
+  "about": "BAFU patched ecoSpold inventory checks. The weights for structure, input links, completeness, uncertainty and signs, and the band rules, follow the BAFU–AGRIBALYSE dataset quality profile.",
+  "absent_charge": -0.1,
+  "absent_charge_why": "A missing measurement provides less evidence than a measured failure.",
+  "evidence_floor": 0.5,
+  "weights": {"reference": 10, "suppliers": 10, "exchanges": 5, "uncertainty": 5, "signs": 5},
+  "bands": [{"name":"excellent","starts_at":0.9},{"name":"very good","starts_at":0.75},{"name":"good","starts_at":0.55},{"name":"fair","starts_at":0.35},{"name":"poor","starts_at":0}],
+  "caps": {"fail":"poor","warn":"good"},
+  "gate": {"mean_drop":0.05}
+}

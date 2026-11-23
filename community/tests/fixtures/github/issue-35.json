@@ -1,0 +1,23 @@
+{
+  "number": 35,
+  "title": "[Finding] LCIA results workbook: ecotoxicity freshwater inorganics and organics columns are swapped (primary copper: 0.60 vs 170 CTUe)",
+  "state": "open",
+  "state_reason": null,
+  "created_at": "2026-10-21T10:27:22Z",
+  "html_url": "https://github.com/sentier-dev/sentier-bafu/issues/35",
+  "user": {
+    "login": "mklarmann",
+    "type": "User"
+  },
+  "author_association": "MEMBER",
+  "labels": [
+    {
+      "name": "bafu-finding"
+    },
+    {
+      "name": "needs-triage"
+    }
+  ],
+  "comments": 1,
+  "body": "### BAFU activity code(s), name, geography, unit\n\nRelease-wide: the published LCIA results workbook `BAFU-2026 v1 LCIA Results.xlsx`, sheet `BAFU_2026 v1`, columns `Ecotoxicity freshwater (inorganics) [CTUe]` and `Ecotoxicity freshwater (organics) [CTUe]`. Headline: `Copper, primary, at refinery` (GLO, kg).\n\n### Release observed in\n\nBAFU:2026 v1 (workbook dated June 2026, sha256 a213ab5a…)\n\n### Where you looked\n\nThe published LCIA results workbook, compared with the method BAFU distributes with its openLCA release (`EF 3.1 Method (adapted)`, version 00.00.037), with GreenDelta's openLCA LCIA Methods 2.8.2 and with JRC's EF 3.1.\n\n### What you measured, and how\n\n```text\nWorkbook, per kg:\n  Copper, primary, at refinery GLO   inorganics 0.5964   organics 170.4   total 171\n  Nickel, 99.5%, at plant GLO        inorganics 0.9269   organics 76.58   total 77.48\n  Zinc, primary, at regional storage inorganics 0.197    organics 19.95   total 20.07\nRelease-wide: organics > inorganics in 11,600 of 11,947 rows; organics holds 97 % of the summed total.\n\nMethod side:\n  BAFU's own openLCA distribution, `EF 3.1 Method (adapted)` 00.00.037 (the copy hosted as\n  files.brightway.dev/bafu-greendelta-lcia.zip, sha256 c7c98b84…): \"Ecotoxicity freshwater (inorganics)\"\n  (dacd48b5-…) carries 93 metal-named factors (e.g. Cadmium II 674,494.8, Chromium VI 12,274.0);\n  \"(organics)\" (fd530f00-…) carries 749 factors, none on a metal.\n  GreenDelta EF 3.1 (openLCA 2.8.2): plain metal emissions to water have factors only in\n  \"Ecotoxicity freshwater (inorganics)\" (dacd48b5-…) and the total; \"(organics)\" (fd530f00-…)\n  carries 22,848 non-regionalised factors, none on a metal.\n  Examples, river: Copper ion 46.476, Zinc II 1,659.51, Nickel II 27,049.48 CTUe/kg.\n  JRC EF 3.1 (sentier-methods): plain Copper, Zinc and Chromium (VI) to water likewise sit in\n  inorganics and the total, not in organics.\n\nRecomputation (sentier-brightway backtest, all 11,947 processes): our \"inorganics\" score matches\nBAFU's \"organics\" column (median ratio 1.0001, 72 % of processes within ±1 %), and vice versa.\n```\n\n### Why it cannot be right\n\nPrimary copper's freshwater ecotoxicity comes from metal emissions, which EF 3.1 characterises under inorganics, in both the JRC and the GreenDelta implementations. The workbook puts 99.7 % of it under organics. The column contents match the other sub-indicator, so the two columns are swapped, in their labels or their order.\n\n### Exposure, if known\n\nEvery user of the published sub-indicators. The `Ecotoxicity freshwater` total is unaffected by the swap; its separate deviations are F7 (sentier-dev/sentier-bafu findings ledger).\n\n### Suggested correction (optional)\n\nSwap the two column headers (or the columns) in the published workbook. BAFU's own distributed method is correct, so the swap appears to happen in the workbook export, not in the calculation.\n\n_Measured with agent-run scripts; the workbook values and the GreenDelta categories were re-read by hand. Needs an independent re-measurement before it goes to BAFU._\n"
+}

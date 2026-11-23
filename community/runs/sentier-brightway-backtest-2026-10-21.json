@@ -1,0 +1,569 @@
+{
+  "date": "2026-10-21",
+  "kind": "score-baseline; current Sentier import route, not a contribution layer",
+  "purpose": "A published comparison with attribution, not an acceptance test. BAFU's published results were computed in openLCA with GreenDelta's EF 3.1 implementation; matching them is not a goal, and the route is not changed to follow openLCA. Each difference is attributed to this route, BAFU's inventory, BAFU's workbook or a method difference.",
+  "scope": "BAFU:2026 v1 through sentier-brightway and the sentier-mappings EF 3.1 bridge (bafu-2026-v1__ef-3.1), scored by adjoint solve for all processes and 25 EF 3.1 categories, compared with BAFU's published LCIA results. It does not consume the BAFU→openLCA 2.8.2 mapping; C002's own comparison stays not-run.",
+  "code": {
+    "repository": "https://github.com/sentier-dev/sentier-brightway",
+    "revisions": {
+      "pr-4-head": "5d642287c602fcf0e3c7b27f24509b6719b709f7",
+      "main": "884bf68a3df44c0b54c90f8e44489f39a5762ad7"
+    },
+    "command": "uv run --frozen sentier-brightway backtest --out <dir> --xlsx <LCIA-Results.xlsx>"
+  },
+  "data_pins": {
+    "sentier-inventory": "cf54f557e88284400418f1e4db03487be451de9f",
+    "sentier-vocab": "396c7be12d774d23161895fbf1bc00adf72875ab",
+    "sentier-methods": "ba536459f320ec694ce778be6e632048a1c777dc",
+    "sentier-mappings": "5ba4acd92902945cfa98170fbfc75efe5e1454fd"
+  },
+  "data_pin_check": "all 32 pinned files re-hashed against sources.toml",
+  "reference": {
+    "file": "BAFU-2026 v1 LCIA Results.xlsx",
+    "sheet": "BAFU_2026 v1",
+    "sha256": "a213ab5ad5252ad36366a2999dbd63ef64bd8aa65c006d937ff878dbad3a239c",
+    "version": "BAFU:2026 v1, June 2026",
+    "note": "The tool defaults to a '_corrected' workbook that was not available; what it changes is not established. Re-run on 26 October 2026 against BAFU's corrected July workbook (BAFU-2026 v1 LCIA Results_corrected.xlsx, sha256 7e9f1c9f9c171f847b5d445c8d939896cc7594571a77029ca6c098f1dde7b672): it differs from the June file in three cells only: the date, and the header labels of the two ecotoxicity sub-indicator columns, which are exchanged. Every value is identical, so every share, median and zero count is unchanged, and the two sub-indicators now agree as labelled."
+  },
+  "tools": {
+    "python": "3.12.12",
+    "bw2calc": "2.5.0",
+    "bw_processing": "1.6",
+    "scipy": "1.18.1",
+    "numpy": "2.5.3",
+    "pandas": "3.0.5",
+    "solver": "scipy (pypardiso not installed; arm64)"
+  },
+  "comparison_rule": "strict: every (process, category) pair counts; ratio ours/BAFU; two exact zeros agree; BAFU zero with ours non-zero disagrees; no near-zero floor and no cap. The tool's own rule (blank on BAFU zero, floor below 1 % of the category median, cap above 1000 %) is in its outputs.",
+  "processes": 11947,
+  "categories": 25,
+  "pr_vs_main": "identical scores in all 25 categories (max difference 0.0); outputs byte-identical apart from timestamps",
+  "overall": {
+    "pairs_within_1pct": 0.7874,
+    "pairs_within_5pct": 0.8196,
+    "processes_all_25_within_1pct": 0.0114,
+    "processes_all_20_within_1pct_excluding_5_divergent": 0.5955,
+    "processes_all_20_within_5pct_excluding_5_divergent": 0.8555,
+    "excluded_divergent_categories": [
+      "ecotox_inorg",
+      "ecotox_org",
+      "ht_c",
+      "ht_c_inorg",
+      "water"
+    ]
+  },
+  "per_category": [
+    {
+      "category": "climate",
+      "pairs": 11947,
+      "median_ratio_ours_over_bafu": 1.0,
+      "strict_within_1pct": 0.9972,
+      "strict_within_5pct": 0.9972,
+      "reference_zero": 160,
+      "reference_zero_ours_nonzero": 5,
+      "worst": [
+        {
+          "name": "Electricity, from natural gas - FI",
+          "ratio": 0.918
+        },
+        {
+          "name": "xxx Electricity, production mix FI - FI",
+          "ratio": 0.9777
+        }
+      ]
+    },
+    {
+      "category": "cc_bio",
+      "pairs": 11947,
+      "median_ratio_ours_over_bafu": 1.0,
+      "strict_within_1pct": 0.9965,
+      "strict_within_5pct": 0.9968,
+      "reference_zero": 168,
+      "reference_zero_ours_nonzero": 7,
+      "worst": [
+        {
+          "name": "Electricity, from natural gas - FI",
+          "ratio": 0.918
+        },
+        {
+          "name": "Sawnwood, board, softwood, raw, kiln dried (u=20%), at sawmill - CH",
+          "ratio": 0.9695
+        }
+      ]
+    },
+    {
+      "category": "cc_fos",
+      "pairs": 11947,
+      "median_ratio_ours_over_bafu": 1.0,
+      "strict_within_1pct": 0.9971,
+      "strict_within_5pct": 0.9972,
+      "reference_zero": 160,
+      "reference_zero_ours_nonzero": 6,
+      "worst": [
+        {
+          "name": "Electricity, from natural gas - FI",
+          "ratio": 0.918
+        },
+        {
+          "name": "xxx Electricity, production mix FI - FI",
+          "ratio": 0.9777
+        }
+      ]
+    },
+    {
+      "category": "cc_luc",
+      "pairs": 11947,
+      "median_ratio_ours_over_bafu": 1.0,
+      "strict_within_1pct": 0.9968,
+      "strict_within_5pct": 0.9968,
+      "reference_zero": 167,
+      "reference_zero_ours_nonzero": 7,
+      "worst": [
+        {
+          "name": "Electricity, from natural gas - FI",
+          "ratio": 0.918
+        },
+        {
+          "name": "xxx Electricity, production mix FI - FI",
+          "ratio": 0.9939
+        }
+      ]
+    },
+    {
+      "category": "ozone",
+      "pairs": 11947,
+      "median_ratio_ours_over_bafu": 1.0,
+      "strict_within_1pct": 0.9955,
+      "strict_within_5pct": 0.9956,
+      "reference_zero": 168,
+      "reference_zero_ours_nonzero": 6,
+      "worst": [
+        {
+          "name": "Hard coal, burned in power plant - FRCC",
+          "ratio": 0.8048
+        },
+        {
+          "name": "Electricity, hard coal, at power plant - FRCC",
+          "ratio": 0.8048
+        }
+      ]
+    },
+    {
+      "category": "radiation",
+      "pairs": 11947,
+      "median_ratio_ours_over_bafu": 1.0,
+      "strict_within_1pct": 0.9931,
+      "strict_within_5pct": 0.9931,
+      "reference_zero": 166,
+      "reference_zero_ours_nonzero": 7,
+      "worst": [
+        {
+          "name": "Cellular glass aggregate Misapor, at plant - CH",
+          "ratio": 0.001
+        },
+        {
+          "name": "Cellular glass aggregate, at regional storage - CH",
+          "ratio": 0.001
+        }
+      ]
+    },
+    {
+      "category": "photo_ox",
+      "pairs": 11947,
+      "median_ratio_ours_over_bafu": 1.0,
+      "strict_within_1pct": 0.997,
+      "strict_within_5pct": 0.9971,
+      "reference_zero": 157,
+      "reference_zero_ours_nonzero": 5,
+      "worst": [
+        {
+          "name": "Electricity, from natural gas - FI",
+          "ratio": 0.918
+        },
+        {
+          "name": "xxx Electricity, production mix FI - FI",
+          "ratio": 0.9787
+        }
+      ]
+    },
+    {
+      "category": "pm",
+      "pairs": 11947,
+      "median_ratio_ours_over_bafu": 1.0,
+      "strict_within_1pct": 0.9931,
+      "strict_within_5pct": 0.9967,
+      "reference_zero": 154,
+      "reference_zero_ours_nonzero": 5,
+      "worst": [
+        {
+          "name": "Polyvinylchloride, emulsion polymerised, at plant - RER",
+          "ratio": 1.3507
+        },
+        {
+          "name": "Polyvinylchloride, bulk polymerised, at plant - RER",
+          "ratio": 1.143
+        }
+      ]
+    },
+    {
+      "category": "ht_nc",
+      "pairs": 11947,
+      "median_ratio_ours_over_bafu": 1.0011,
+      "strict_within_1pct": 0.9506,
+      "strict_within_5pct": 0.9836,
+      "reference_zero": 143,
+      "reference_zero_ours_nonzero": 6,
+      "worst": [
+        {
+          "name": "xx Dimethenamide, at regional storage - RER",
+          "ratio": 1.4375
+        },
+        {
+          "name": "Silver, from combined gold-silver production, at refinery - PG",
+          "ratio": 1.3083
+        }
+      ]
+    },
+    {
+      "category": "ht_nc_inorg",
+      "pairs": 11947,
+      "median_ratio_ours_over_bafu": 1.0014,
+      "strict_within_1pct": 0.9529,
+      "strict_within_5pct": 0.9833,
+      "reference_zero": 144,
+      "reference_zero_ours_nonzero": 4,
+      "worst": [
+        {
+          "name": "Silver, from combined gold-silver production, at refinery - PG",
+          "ratio": 1.3875
+        },
+        {
+          "name": "Gold, from combined gold-silver production, at refinery - PG",
+          "ratio": 1.3875
+        }
+      ]
+    },
+    {
+      "category": "ht_nc_org",
+      "pairs": 11947,
+      "median_ratio_ours_over_bafu": 1.0,
+      "strict_within_1pct": 0.975,
+      "strict_within_5pct": 0.9861,
+      "reference_zero": 156,
+      "reference_zero_ours_nonzero": 5,
+      "worst": [
+        {
+          "name": "Rape seed IP, at farm - CH",
+          "ratio": 0.0697
+        },
+        {
+          "name": "xx Dimethenamide, at regional storage - RER",
+          "ratio": 12.0708
+        }
+      ]
+    },
+    {
+      "category": "ht_c",
+      "pairs": 11947,
+      "median_ratio_ours_over_bafu": 1.3553,
+      "strict_within_1pct": 0.0264,
+      "strict_within_5pct": 0.0843,
+      "reference_zero": 144,
+      "reference_zero_ours_nonzero": 8,
+      "worst": [
+        {
+          "name": "Glider lightweighting - GLO",
+          "ratio": 154.7374
+        },
+        {
+          "name": "Sunflower IP, at farm - CH",
+          "ratio": 126.547
+        }
+      ]
+    },
+    {
+      "category": "ht_c_inorg",
+      "pairs": 11947,
+      "median_ratio_ours_over_bafu": 2.0114,
+      "strict_within_1pct": 0.0173,
+      "strict_within_5pct": 0.0322,
+      "reference_zero": 147,
+      "reference_zero_ours_nonzero": 7,
+      "worst": [
+        {
+          "name": "Yarn, kenaf, at plant - IN",
+          "ratio": 113.0981
+        },
+        {
+          "name": "Ferrochromium, high-carbon, 68% Cr, at plant - GLO",
+          "ratio": 39.7139
+        }
+      ]
+    },
+    {
+      "category": "ht_c_org",
+      "pairs": 11947,
+      "median_ratio_ours_over_bafu": 1.0,
+      "strict_within_1pct": 0.9967,
+      "strict_within_5pct": 0.9969,
+      "reference_zero": 165,
+      "reference_zero_ours_nonzero": 7,
+      "worst": [
+        {
+          "name": "Purified terephthalic acid, at plant - RER",
+          "ratio": 1.1767
+        },
+        {
+          "name": "Electricity, from natural gas - FI",
+          "ratio": 0.918
+        }
+      ]
+    },
+    {
+      "category": "acid",
+      "pairs": 11947,
+      "median_ratio_ours_over_bafu": 1.0,
+      "strict_within_1pct": 0.9972,
+      "strict_within_5pct": 0.9972,
+      "reference_zero": 158,
+      "reference_zero_ours_nonzero": 4,
+      "worst": [
+        {
+          "name": "Electricity, from natural gas - FI",
+          "ratio": 0.918
+        },
+        {
+          "name": "xxx Electricity, production mix FI - FI",
+          "ratio": 0.991
+        }
+      ]
+    },
+    {
+      "category": "e_fw",
+      "pairs": 11947,
+      "median_ratio_ours_over_bafu": 1.0,
+      "strict_within_1pct": 0.9973,
+      "strict_within_5pct": 0.9973,
+      "reference_zero": 155,
+      "reference_zero_ours_nonzero": 7,
+      "worst": [
+        {
+          "name": "Electricity, from natural gas - FI",
+          "ratio": 0.918
+        },
+        {
+          "name": "Sawnwood, board, softwood, raw, kiln dried (u=20%), at sawmill - CH",
+          "ratio": 0.9911
+        }
+      ]
+    },
+    {
+      "category": "e_m",
+      "pairs": 11947,
+      "median_ratio_ours_over_bafu": 1.0014,
+      "strict_within_1pct": 0.8851,
+      "strict_within_5pct": 0.9725,
+      "reference_zero": 157,
+      "reference_zero_ours_nonzero": 5,
+      "worst": [
+        {
+          "name": "Crude coconut oil, at plant - PH",
+          "ratio": 29.0325
+        },
+        {
+          "name": "xxx Pc-Si wafer, at plant - RER",
+          "ratio": 5.4468
+        }
+      ]
+    },
+    {
+      "category": "e_t",
+      "pairs": 11947,
+      "median_ratio_ours_over_bafu": 1.0,
+      "strict_within_1pct": 0.9971,
+      "strict_within_5pct": 0.9972,
+      "reference_zero": 158,
+      "reference_zero_ours_nonzero": 6,
+      "worst": [
+        {
+          "name": "Electricity, from natural gas - FI",
+          "ratio": 0.918
+        },
+        {
+          "name": "xxx Electricity, production mix FI - FI",
+          "ratio": 0.985
+        }
+      ]
+    },
+    {
+      "category": "ecotox",
+      "pairs": 11947,
+      "median_ratio_ours_over_bafu": 1.0004,
+      "strict_within_1pct": 0.7176,
+      "strict_within_5pct": 0.9016,
+      "reference_zero": 143,
+      "reference_zero_ours_nonzero": 5,
+      "worst": [
+        {
+          "name": "Tailings, uranium milling - GLO",
+          "ratio": 0.0051
+        },
+        {
+          "name": "Disposal, uranium tailings, non-radioactive emissions - GLO",
+          "ratio": 0.0051
+        }
+      ]
+    },
+    {
+      "category": "ecotox_inorg",
+      "pairs": 11947,
+      "median_ratio_ours_over_bafu": 31.0352,
+      "strict_within_1pct": 0.0116,
+      "strict_within_5pct": 0.0122,
+      "reference_zero": 157,
+      "reference_zero_ours_nonzero": 20,
+      "worst": [
+        {
+          "name": "Disposal, spoil from coal mining, in surface landfill - GLO",
+          "ratio": 4377727967116.6875
+        },
+        {
+          "name": "Disposal, ash coffee ground pellets, to landfarming - CH",
+          "ratio": 917542.8859
+        }
+      ]
+    },
+    {
+      "category": "ecotox_org",
+      "pairs": 11947,
+      "median_ratio_ours_over_bafu": 0.0326,
+      "strict_within_1pct": 0.0117,
+      "strict_within_5pct": 0.0121,
+      "reference_zero": 143,
+      "reference_zero_ours_nonzero": 6,
+      "worst": [
+        {
+          "name": "Disposal, spoil from coal mining, in surface landfill - GLO",
+          "ratio": 0.0
+        },
+        {
+          "name": "Disposal, ash coffee ground pellets, to landfarming - CH",
+          "ratio": 0.0
+        }
+      ]
+    },
+    {
+      "category": "land",
+      "pairs": 11947,
+      "median_ratio_ours_over_bafu": 1.0003,
+      "strict_within_1pct": 0.9885,
+      "strict_within_5pct": 0.9923,
+      "reference_zero": 160,
+      "reference_zero_ours_nonzero": 4,
+      "worst": [
+        {
+          "name": "Wheat straw organic, at farm - CH",
+          "ratio": 6.3081
+        },
+        {
+          "name": "Wheat grains organic, at farm - CH",
+          "ratio": 5.9279
+        }
+      ]
+    },
+    {
+      "category": "water",
+      "pairs": 11947,
+      "median_ratio_ours_over_bafu": 1.0338,
+      "strict_within_1pct": 0.2268,
+      "strict_within_5pct": 0.5812,
+      "reference_zero": 169,
+      "reference_zero_ours_nonzero": 5,
+      "worst": [
+        {
+          "name": "Tap water, water balance according to MoeK 2013, at user - NO",
+          "ratio": 66.5557
+        },
+        {
+          "name": "Tap water, water balance according to MoeK 2013, at user - CO",
+          "ratio": 62.1231
+        }
+      ]
+    },
+    {
+      "category": "energy",
+      "pairs": 11947,
+      "median_ratio_ours_over_bafu": 0.9993,
+      "strict_within_1pct": 0.9748,
+      "strict_within_5pct": 0.9967,
+      "reference_zero": 167,
+      "reference_zero_ours_nonzero": 5,
+      "worst": [
+        {
+          "name": "Cellular glass aggregate Misapor, at plant - CH",
+          "ratio": 1.1398
+        },
+        {
+          "name": "Cellular glass aggregate, at regional storage - CH",
+          "ratio": 1.1314
+        }
+      ]
+    },
+    {
+      "category": "mater",
+      "pairs": 11947,
+      "median_ratio_ours_over_bafu": 1.0,
+      "strict_within_1pct": 0.9913,
+      "strict_within_5pct": 0.9923,
+      "reference_zero": 159,
+      "reference_zero_ours_nonzero": 6,
+      "worst": [
+        {
+          "name": "Chromium-nickel steel sheet 18/8, recycling share 2000 (37% Rec.), with resource correction - CH",
+          "ratio": 0.0617
+        },
+        {
+          "name": "Brass, architectural bronze sheet, with resource correction - CH",
+          "ratio": 0.1233
+        }
+      ]
+    }
+  ],
+  "explained_divergences": [
+    {
+      "what": "Electricity, from natural gas (FI) ×0.918 and the FI production mix ×0.978 in every category",
+      "cause": "BAFU's published value applies ×3.6 to the 0.0156738 kWh edge to 401085, which is labelled MJ but modelled per kWh; reproduced to six digits",
+      "evidence_url": "https://github.com/sentier-dev/sentier-bafu/issues/28"
+    },
+    {
+      "what": "ecotoxicity freshwater inorganics/organics",
+      "cause": "BAFU's June workbook has the two columns swapped: our inorganics match its 'organics' (median ratio 1.0001). BAFU's own distributed EF 3.1 Method (adapted), GreenDelta's 2.8.2 package and JRC's EF 3.1 all carry the plain-metal factors under inorganics. BAFU's corrected July workbook has them in order, and against it the two sub-indicators agree as labelled (F17: present in the June file, corrected in July).",
+      "evidence_url": "https://github.com/sentier-dev/sentier-bafu/issues/35"
+    },
+    {
+      "what": "ionising radiation, 23 processes at exactly ×1000",
+      "cause": "consistent with the Bq/kBq two-unit declaration (F12)",
+      "evidence_url": "https://github.com/sentier-dev/sentier-bafu/issues/32"
+    },
+    {
+      "what": "water use (22.7 % of processes within ±1 %; tap-water processes ×58–67)",
+      "cause": "method difference: BAFU applies country-specific water factors, where this route installs global factors only (sentier-brightway README limitation); this route also leaves the 'Chemically polluted water' and 'Waste water' returns unlinked. Stated by Laurenz Bougan from the September parity work and measured in the attribution run.",
+      "evidence_url": "https://github.com/sentier-dev/sentier-bafu/blob/main/community/runs/openlca-attribution-2026-10-26.json"
+    },
+    {
+      "what": "human toxicity, cancer: total ×1.36, inorganics ×2.01 (median)",
+      "cause": "method difference: the two implementations characterise unspecified chromium differently; this route uses EF's chromium flow, which carries Cr(VI)'s factors (decided on 14 September 2026 in sentier-mappings round 7). Stated by Laurenz Bougan and measured in the attribution run.",
+      "evidence_url": "https://github.com/sentier-dev/sentier-bafu/blob/main/community/runs/openlca-attribution-2026-10-26.json"
+    }
+  ],
+  "open_divergences": [
+    "ecotoxicity total (71.8 % within ±1 %)",
+    "marine eutrophication (88.5 % within ±1 %)"
+  ],
+  "limits": [
+    "Totals only; causes above are inferred from patterns unless an evidence link is given.",
+    "Both sides use the same BAFU inventory, so this tests the flow bridge, the factors and the solver, not the inventory.",
+    "One machine, one solver, deterministic scores only."
+  ],
+  "measured_by": "agent-run backtest; the FI and ecotox explanations were re-derived by hand from the score tables and the workbook"
+}
